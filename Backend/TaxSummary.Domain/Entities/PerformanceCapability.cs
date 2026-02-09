@@ -8,11 +8,30 @@ public class PerformanceCapability
     public Guid Id { get; private set; }
     public Guid EmployeeId { get; private set; }
     public string SystemRole { get; private set; }
+    
+    // Boolean flags (kept for backward compatibility)
     public bool DetectionOfTaxIssues { get; private set; }
     public bool DetectionOfTaxEvasion { get; private set; }
     public bool CompanyIdentification { get; private set; }
     public bool ValueAddedRecognition { get; private set; }
     public bool ReferredOrExecuted { get; private set; }
+    
+    // NEW: Numerical tracking - تعداد (Quantity) and مبلغ (Amount)
+    public int DetectionOfTaxIssues_Quantity { get; private set; }
+    public decimal DetectionOfTaxIssues_Amount { get; private set; }
+    
+    public int DetectionOfTaxEvasion_Quantity { get; private set; }
+    public decimal DetectionOfTaxEvasion_Amount { get; private set; }
+    
+    public int CompanyIdentification_Quantity { get; private set; }
+    public decimal CompanyIdentification_Amount { get; private set; }
+    
+    public int ValueAddedRecognition_Quantity { get; private set; }
+    public decimal ValueAddedRecognition_Amount { get; private set; }
+    
+    public int ReferredOrExecuted_Quantity { get; private set; }
+    public decimal ReferredOrExecuted_Amount { get; private set; }
+    
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -33,21 +52,52 @@ public class PerformanceCapability
         bool detectionOfTaxEvasion = false,
         bool companyIdentification = false,
         bool valueAddedRecognition = false,
-        bool referredOrExecuted = false)
+        bool referredOrExecuted = false,
+        int detectionOfTaxIssuesQuantity = 0,
+        decimal detectionOfTaxIssuesAmount = 0,
+        int detectionOfTaxEvasionQuantity = 0,
+        decimal detectionOfTaxEvasionAmount = 0,
+        int companyIdentificationQuantity = 0,
+        decimal companyIdentificationAmount = 0,
+        int valueAddedRecognitionQuantity = 0,
+        decimal valueAddedRecognitionAmount = 0,
+        int referredOrExecutedQuantity = 0,
+        decimal referredOrExecutedAmount = 0)
     {
         if (string.IsNullOrWhiteSpace(systemRole))
             throw new ArgumentException("System role cannot be empty", nameof(systemRole));
+
+        if (detectionOfTaxIssuesQuantity < 0) throw new ArgumentException("Quantity cannot be negative", nameof(detectionOfTaxIssuesQuantity));
+        if (detectionOfTaxIssuesAmount < 0) throw new ArgumentException("Amount cannot be negative", nameof(detectionOfTaxIssuesAmount));
+        if (detectionOfTaxEvasionQuantity < 0) throw new ArgumentException("Quantity cannot be negative", nameof(detectionOfTaxEvasionQuantity));
+        if (detectionOfTaxEvasionAmount < 0) throw new ArgumentException("Amount cannot be negative", nameof(detectionOfTaxEvasionAmount));
+        if (companyIdentificationQuantity < 0) throw new ArgumentException("Quantity cannot be negative", nameof(companyIdentificationQuantity));
+        if (companyIdentificationAmount < 0) throw new ArgumentException("Amount cannot be negative", nameof(companyIdentificationAmount));
+        if (valueAddedRecognitionQuantity < 0) throw new ArgumentException("Quantity cannot be negative", nameof(valueAddedRecognitionQuantity));
+        if (valueAddedRecognitionAmount < 0) throw new ArgumentException("Amount cannot be negative", nameof(valueAddedRecognitionAmount));
+        if (referredOrExecutedQuantity < 0) throw new ArgumentException("Quantity cannot be negative", nameof(referredOrExecutedQuantity));
+        if (referredOrExecutedAmount < 0) throw new ArgumentException("Amount cannot be negative", nameof(referredOrExecutedAmount));
 
         return new PerformanceCapability
         {
             Id = Guid.NewGuid(),
             EmployeeId = employeeId,
             SystemRole = systemRole.Trim(),
-            DetectionOfTaxIssues = detectionOfTaxIssues,
-            DetectionOfTaxEvasion = detectionOfTaxEvasion,
-            CompanyIdentification = companyIdentification,
-            ValueAddedRecognition = valueAddedRecognition,
-            ReferredOrExecuted = referredOrExecuted,
+            DetectionOfTaxIssues = detectionOfTaxIssues || detectionOfTaxIssuesQuantity > 0,
+            DetectionOfTaxEvasion = detectionOfTaxEvasion || detectionOfTaxEvasionQuantity > 0,
+            CompanyIdentification = companyIdentification || companyIdentificationQuantity > 0,
+            ValueAddedRecognition = valueAddedRecognition || valueAddedRecognitionQuantity > 0,
+            ReferredOrExecuted = referredOrExecuted || referredOrExecutedQuantity > 0,
+            DetectionOfTaxIssues_Quantity = detectionOfTaxIssuesQuantity,
+            DetectionOfTaxIssues_Amount = detectionOfTaxIssuesAmount,
+            DetectionOfTaxEvasion_Quantity = detectionOfTaxEvasionQuantity,
+            DetectionOfTaxEvasion_Amount = detectionOfTaxEvasionAmount,
+            CompanyIdentification_Quantity = companyIdentificationQuantity,
+            CompanyIdentification_Amount = companyIdentificationAmount,
+            ValueAddedRecognition_Quantity = valueAddedRecognitionQuantity,
+            ValueAddedRecognition_Amount = valueAddedRecognitionAmount,
+            ReferredOrExecuted_Quantity = referredOrExecutedQuantity,
+            ReferredOrExecuted_Amount = referredOrExecutedAmount,
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -65,6 +115,95 @@ public class PerformanceCapability
         CompanyIdentification = companyIdentification;
         ValueAddedRecognition = valueAddedRecognition;
         ReferredOrExecuted = referredOrExecuted;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Updates all capability metrics (quantity and amount)
+    /// </summary>
+    public void UpdateAllCapabilityMetrics(
+        int detectionOfTaxIssuesQuantity,
+        decimal detectionOfTaxIssuesAmount,
+        int detectionOfTaxEvasionQuantity,
+        decimal detectionOfTaxEvasionAmount,
+        int companyIdentificationQuantity,
+        decimal companyIdentificationAmount,
+        int valueAddedRecognitionQuantity,
+        decimal valueAddedRecognitionAmount,
+        int referredOrExecutedQuantity,
+        decimal referredOrExecutedAmount)
+    {
+        if (detectionOfTaxIssuesQuantity < 0) throw new ArgumentException("Quantity cannot be negative");
+        if (detectionOfTaxIssuesAmount < 0) throw new ArgumentException("Amount cannot be negative");
+        if (detectionOfTaxEvasionQuantity < 0) throw new ArgumentException("Quantity cannot be negative");
+        if (detectionOfTaxEvasionAmount < 0) throw new ArgumentException("Amount cannot be negative");
+        if (companyIdentificationQuantity < 0) throw new ArgumentException("Quantity cannot be negative");
+        if (companyIdentificationAmount < 0) throw new ArgumentException("Amount cannot be negative");
+        if (valueAddedRecognitionQuantity < 0) throw new ArgumentException("Quantity cannot be negative");
+        if (valueAddedRecognitionAmount < 0) throw new ArgumentException("Amount cannot be negative");
+        if (referredOrExecutedQuantity < 0) throw new ArgumentException("Quantity cannot be negative");
+        if (referredOrExecutedAmount < 0) throw new ArgumentException("Amount cannot be negative");
+
+        DetectionOfTaxIssues_Quantity = detectionOfTaxIssuesQuantity;
+        DetectionOfTaxIssues_Amount = detectionOfTaxIssuesAmount;
+        DetectionOfTaxEvasion_Quantity = detectionOfTaxEvasionQuantity;
+        DetectionOfTaxEvasion_Amount = detectionOfTaxEvasionAmount;
+        CompanyIdentification_Quantity = companyIdentificationQuantity;
+        CompanyIdentification_Amount = companyIdentificationAmount;
+        ValueAddedRecognition_Quantity = valueAddedRecognitionQuantity;
+        ValueAddedRecognition_Amount = valueAddedRecognitionAmount;
+        ReferredOrExecuted_Quantity = referredOrExecutedQuantity;
+        ReferredOrExecuted_Amount = referredOrExecutedAmount;
+
+        // Auto-update boolean flags based on quantity
+        DetectionOfTaxIssues = detectionOfTaxIssuesQuantity > 0;
+        DetectionOfTaxEvasion = detectionOfTaxEvasionQuantity > 0;
+        CompanyIdentification = companyIdentificationQuantity > 0;
+        ValueAddedRecognition = valueAddedRecognitionQuantity > 0;
+        ReferredOrExecuted = referredOrExecutedQuantity > 0;
+
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Updates a specific capability's metrics
+    /// </summary>
+    public void UpdateCapabilityMetric(string capabilityType, int quantity, decimal amount)
+    {
+        if (quantity < 0) throw new ArgumentException("Quantity cannot be negative", nameof(quantity));
+        if (amount < 0) throw new ArgumentException("Amount cannot be negative", nameof(amount));
+
+        switch (capabilityType.ToLower())
+        {
+            case "detectionoftaxissues":
+                DetectionOfTaxIssues_Quantity = quantity;
+                DetectionOfTaxIssues_Amount = amount;
+                DetectionOfTaxIssues = quantity > 0;
+                break;
+            case "detectionoftaxevasion":
+                DetectionOfTaxEvasion_Quantity = quantity;
+                DetectionOfTaxEvasion_Amount = amount;
+                DetectionOfTaxEvasion = quantity > 0;
+                break;
+            case "companyidentification":
+                CompanyIdentification_Quantity = quantity;
+                CompanyIdentification_Amount = amount;
+                CompanyIdentification = quantity > 0;
+                break;
+            case "valueaddedrecognition":
+                ValueAddedRecognition_Quantity = quantity;
+                ValueAddedRecognition_Amount = amount;
+                ValueAddedRecognition = quantity > 0;
+                break;
+            case "referredorexecuted":
+                ReferredOrExecuted_Quantity = quantity;
+                ReferredOrExecuted_Amount = amount;
+                ReferredOrExecuted = quantity > 0;
+                break;
+            default:
+                throw new ArgumentException($"Unknown capability type: {capabilityType}", nameof(capabilityType));
+        }
+
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -169,5 +308,48 @@ public class PerformanceCapability
         if (ReferredOrExecuted) capabilities.Add("Referred or Executed");
 
         return capabilities;
+    }
+
+    /// <summary>
+    /// Calculates the total amount across all capabilities
+    /// </summary>
+    public decimal GetTotalAmount()
+    {
+        return DetectionOfTaxIssues_Amount +
+               DetectionOfTaxEvasion_Amount +
+               CompanyIdentification_Amount +
+               ValueAddedRecognition_Amount +
+               ReferredOrExecuted_Amount;
+    }
+
+    /// <summary>
+    /// Calculates the total quantity across all capabilities
+    /// </summary>
+    public int GetTotalQuantity()
+    {
+        return DetectionOfTaxIssues_Quantity +
+               DetectionOfTaxEvasion_Quantity +
+               CompanyIdentification_Quantity +
+               ValueAddedRecognition_Quantity +
+               ReferredOrExecuted_Quantity;
+    }
+
+    /// <summary>
+    /// Checks if any capability has metrics (quantity or amount)
+    /// </summary>
+    public bool HasAnyMetrics()
+    {
+        return GetTotalQuantity() > 0 || GetTotalAmount() > 0;
+    }
+
+    public int GetCapabilityCount()
+    {
+        int count = 0;
+        if (DetectionOfTaxIssues) count++;
+        if (DetectionOfTaxEvasion) count++;
+        if (CompanyIdentification) count++;
+        if (ValueAddedRecognition) count++;
+        if (ReferredOrExecuted) count++;
+        return count;
     }
 }

@@ -48,6 +48,52 @@ public class PerformanceCapabilityConfiguration : IEntityTypeConfiguration<Perfo
             .IsRequired()
             .HasDefaultValue(false);
 
+        // NEW: Numerical tracking properties - تعداد (Quantity) and مبلغ (Amount)
+        builder.Property(p => p.DetectionOfTaxIssues_Quantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.DetectionOfTaxIssues_Amount)
+            .IsRequired()
+            .HasColumnType("DECIMAL(18,2)")
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.DetectionOfTaxEvasion_Quantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.DetectionOfTaxEvasion_Amount)
+            .IsRequired()
+            .HasColumnType("DECIMAL(18,2)")
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.CompanyIdentification_Quantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.CompanyIdentification_Amount)
+            .IsRequired()
+            .HasColumnType("DECIMAL(18,2)")
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.ValueAddedRecognition_Quantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.ValueAddedRecognition_Amount)
+            .IsRequired()
+            .HasColumnType("DECIMAL(18,2)")
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.ReferredOrExecuted_Quantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.ReferredOrExecuted_Amount)
+            .IsRequired()
+            .HasColumnType("DECIMAL(18,2)")
+            .HasDefaultValue(0);
+
         builder.Property(p => p.CreatedAt)
             .IsRequired()
             .HasColumnType("DATETIME2");

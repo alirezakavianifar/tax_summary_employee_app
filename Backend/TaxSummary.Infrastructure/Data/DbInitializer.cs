@@ -59,7 +59,7 @@ public static class DbInitializer
 
         employee.SetAdministrativeStatus(adminStatus);
 
-        // Add performance capability
+        // Add performance capability with metrics
         var capability = PerformanceCapability.Create(
             employeeId: employee.Id,
             systemRole: "معاون مالیاتی سامانه سنیم",
@@ -67,10 +67,26 @@ public static class DbInitializer
             detectionOfTaxEvasion: true,
             companyIdentification: false,
             valueAddedRecognition: true,
-            referredOrExecuted: true
+            referredOrExecuted: true,
+            detectionOfTaxIssuesQuantity: 15,
+            detectionOfTaxIssuesAmount: 250000000,
+            detectionOfTaxEvasionQuantity: 8,
+            detectionOfTaxEvasionAmount: 180000000,
+            companyIdentificationQuantity: 0,
+            companyIdentificationAmount: 0,
+            valueAddedRecognitionQuantity: 12,
+            valueAddedRecognitionAmount: 320000000,
+            referredOrExecutedQuantity: 5,
+            referredOrExecutedAmount: 95000000
         );
 
         employee.AddPerformanceCapability(capability);
+
+        // Add photo URL (if test image exists)
+        employee.UpdatePhoto("/uploads/employee-photos/Mehdi_Kazemi_744979.jpg");
+
+        // Add status description
+        employee.UpdateStatusDescription("کارمند نمونه با عملکرد مناسب و سوابق مثبت اداری. دارای تجربه کافی در حوزه امور مالیاتی و شناسایی مشاغل مشمول مالیات. سوابق اداری مثبت و بدون مشکل انضباطی.");
 
         // Add to context
         context.Employees.Add(employee);

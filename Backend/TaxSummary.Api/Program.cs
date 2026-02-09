@@ -99,6 +99,9 @@ app.UseExceptionHandlingMiddleware();
 // Use HTTPS redirection
 app.UseHttpsRedirection();
 
+// Serve static files (for employee photos)
+app.UseStaticFiles();
+
 // Use CORS
 app.UseCors("AllowFrontend");
 

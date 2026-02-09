@@ -174,3 +174,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Uploaded employee photos (except .gitkeep and test image)
+Backend/TaxSummary.Api/wwwroot/uploads/employee-photos/*
+!Backend/TaxSummary.Api/wwwroot/uploads/employee-photos/.gitkeep
+!Backend/TaxSummary.Api/wwwroot/uploads/employee-photos/Mehdi_Kazemi_744979.jpg

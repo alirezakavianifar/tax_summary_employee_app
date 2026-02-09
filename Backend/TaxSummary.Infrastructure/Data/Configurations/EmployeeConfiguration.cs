@@ -54,6 +54,14 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.Property(e => e.PreviousExperienceYears)
             .IsRequired();
 
+        builder.Property(e => e.PhotoUrl)
+            .HasMaxLength(500)
+            .IsRequired(false);
+
+        builder.Property(e => e.StatusDescription)
+            .HasMaxLength(2000)
+            .IsRequired(false);
+
         builder.Property(e => e.CreatedAt)
             .IsRequired()
             .HasColumnType("DATETIME2");

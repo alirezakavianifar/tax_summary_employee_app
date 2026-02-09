@@ -208,4 +208,237 @@ public class PerformanceCapabilityTests
         activeCapabilities.Should().Contain("Detection of Tax Issues");
         activeCapabilities.Should().Contain("Detection of Tax Evasion");
     }
+
+    [Fact]
+    public void Create_WithQuantityAndAmount_CreatesCapabilityWithMetrics()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+        var systemRole = "معاون مالیاتی";
+
+        // Act
+        var capability = PerformanceCapability.Create(
+            employeeId: employeeId,
+            systemRole: systemRole,
+            detectionOfTaxIssues: true,
+            detectionOfTaxEvasion: true,
+            companyIdentification: false,
+            valueAddedRecognition: true,
+            referredOrExecuted: true,
+            detectionOfTaxIssuesQuantity: 15,
+            detectionOfTaxIssuesAmount: 250000000,
+            detectionOfTaxEvasionQuantity: 8,
+            detectionOfTaxEvasionAmount: 180000000
+        );
+
+        // Assert
+        capability.Should().NotBeNull();
+        capability.DetectionOfTaxIssues_Quantity.Should().Be(15);
+        capability.DetectionOfTaxIssues_Amount.Should().Be(250000000);
+        capability.DetectionOfTaxEvasion_Quantity.Should().Be(8);
+        capability.DetectionOfTaxEvasion_Amount.Should().Be(180000000);
+    }
+
+    [Fact]
+    public void Create_WithQuantityButNoBoolean_AutoSetsBooleanToTrue()
+    {
+        // Arrange
+        var employeeId = Guid.NewGuid();
+
+        // Act
+        var capability = PerformanceCapability.Create(
+            employeeId: employeeId,
+            systemRole: "معاون",
+            detectionOfTaxIssues: false,
+            detectionOfTaxIssuesQuantity: 10
+        );
+
+        // Assert
+        capability.DetectionOfTaxIssues.Should().BeTrue();
+        capability.DetectionOfTaxIssues_Quantity.Should().Be(10);
+    }
+
+    [Fact]
+    public void Create_NegativeQuantity_ThrowsArgumentException()
+    {
+        // Act
+        var act = () => PerformanceCapability.Create(
+            employeeId: Guid.NewGuid(),
+            systemRole: "معاون",
+            detectionOfTaxIssuesQuantity: -5
+        );
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Quantity cannot be negative*");
+    }
+
+    [Fact]
+    public void Create_NegativeAmount_ThrowsArgumentException()
+    {
+        // Act
+        var act = () => PerformanceCapability.Create(
+            employeeId: Guid.NewGuid(),
+            systemRole: "معاون",
+            detectionOfTaxIssuesAmount: -1000
+        );
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Amount cannot be negative*");
+    }
+
+    [Fact]
+    public void GetTotalAmount_MultipleCapabilities_ReturnsSumOfAmounts()
+    {
+        // Arrange
+        var capability = PerformanceCapability.Create(
+            employeeId: Guid.NewGuid(),
+            systemRole: "معاون",
+            detectionOfTaxIssuesAmount: 100000,
+            detectionOfTaxEvasionAmount: 200000,
+            companyIdentificationAmount: 300000
+        );
+
+        // Act
+        var totalAmount = capability.GetTotalAmount();
+
+        // Assert
+        totalAmount.Should().Be(600000);
+    }
+
+    [Fact]
+    public void GetTotalQuantity_MultipleCapabilities_ReturnsSumOfQuantities()
+    {
+        // Arrange
+        var capability = PerformanceCapability.Create(
+            employeeId: Guid.NewGuid(),
+            systemRole: "معاون",
+            detectionOfTaxIssuesQuantity: 5,
+            detectionOfTaxEvasionQuantity: 10,
+            companyIdentificationQuantity: 15
+        );
+
+        // Act
+        var totalQuantity = capability.GetTotalQuantity();
+
+        // Assert
+        totalQuantity.Should().Be(30);
+    }
+
+    [Fact]
+    public void HasAnyMetrics_WithQuantity_ReturnsTrue()
+    {
+        // Arrange
+        var capability = PerformanceCapability.Create(
+            employeeId: Guid.NewGuid(),
+            systemRole: "معاون",
+            detectionOfTaxIssuesQuantity: 5
+        );
+
+        // Act
+        var hasMetrics = capability.HasAnyMetrics();
+
+        // Assert
+        hasMetrics.Should().BeTrue();
+    }
+
+    [Fact]
+    public void HasAnyMetrics_WithAmount_ReturnsTrue()
+    {
+        // Arrange
+        var capability = PerformanceCapability.Create(
+            employeeId: Guid.NewGuid(),
+            systemRole: "معاون",
+            detectionOfTaxIssuesAmount: 1000
+        );
+
+        // Act
+        var hasMetrics = capability.HasAnyMetrics();
+
+        // Assert
+        hasMetrics.Should().BeTrue();
+    }
+
+    [Fact]
+    public void HasAnyMetrics_NoQuantityOrAmount_ReturnsFalse()
+    {
+        // Arrange
+        var capability = PerformanceCapability.Create(
+            employeeId: Guid.NewGuid(),
+            systemRole: "معاون"
+        );
+
+        // Act
+        var hasMetrics = capability.HasAnyMetrics();
+
+        // Assert
+        hasMetrics.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UpdateAllCapabilityMetrics_ValidData_UpdatesSuccessfully()
+    {
+        // Arrange
+        var capability = PerformanceCapability.Create(
+            employeeId: Guid.NewGuid(),
+            systemRole: "معاون"
+        );
+
+        // Act
+        capability.UpdateAllCapabilityMetrics(
+            detectionOfTaxIssuesQuantity: 10,
+            detectionOfTaxIssuesAmount: 100000,
+            detectionOfTaxEvasionQuantity: 5,
+            detectionOfTaxEvasionAmount: 50000,
+            companyIdentificationQuantity: 3,
+            companyIdentificationAmount: 30000,
+            valueAddedRecognitionQuantity: 8,
+            valueAddedRecognitionAmount: 80000,
+            referredOrExecutedQuantity: 2,
+            referredOrExecutedAmount: 20000
+        );
+
+        // Assert
+        capability.DetectionOfTaxIssues_Quantity.Should().Be(10);
+        capability.DetectionOfTaxIssues_Amount.Should().Be(100000);
+        capability.DetectionOfTaxIssues.Should().BeTrue(); // Auto-set from quantity
+        capability.GetTotalQuantity().Should().Be(28);
+        capability.GetTotalAmount().Should().Be(280000);
+    }
+
+    [Fact]
+    public void UpdateCapabilityMetric_ValidData_UpdatesSpecificMetric()
+    {
+        // Arrange
+        var capability = PerformanceCapability.Create(
+            employeeId: Guid.NewGuid(),
+            systemRole: "معاون"
+        );
+
+        // Act
+        capability.UpdateCapabilityMetric("detectionoftaxissues", 15, 150000);
+
+        // Assert
+        capability.DetectionOfTaxIssues_Quantity.Should().Be(15);
+        capability.DetectionOfTaxIssues_Amount.Should().Be(150000);
+        capability.DetectionOfTaxIssues.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateCapabilityMetric_UnknownType_ThrowsArgumentException()
+    {
+        // Arrange
+        var capability = PerformanceCapability.Create(
+            employeeId: Guid.NewGuid(),
+            systemRole: "معاون"
+        );
+
+        // Act
+        var act = () => capability.UpdateCapabilityMetric("unknownType", 10, 1000);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Unknown capability type*");
+    }
 }

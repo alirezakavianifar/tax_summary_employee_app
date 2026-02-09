@@ -5,12 +5,15 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { reportsApi } from '@/lib/api/reports'
 import type { EmployeeReportDto, UpdateEmployeeReportDto } from '@/lib/api/types'
+import { PhotoUpload } from '@/components/PhotoUpload'
 
 export default function EditReportPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | undefined>(undefined)
   
   // Form state
   const [formData, setFormData] = useState<UpdateEmployeeReportDto>({
@@ -38,6 +41,8 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
       setError(null)
       const report = await reportsApi.getReport(params.id)
       
+      setCurrentPhotoUrl(report.employee.photoUrl)
+      
       setFormData({
         firstName: report.employee.firstName,
         lastName: report.employee.lastName,
@@ -46,6 +51,8 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
         currentPosition: report.employee.currentPosition,
         appointmentPosition: report.employee.appointmentPosition,
         previousExperienceYears: report.employee.previousExperienceYears,
+        photoUrl: report.employee.photoUrl,
+        statusDescription: report.employee.statusDescription || '',
         missionDays: report.adminStatus?.missionDays || 0,
         incentiveHours: report.adminStatus?.incentiveHours || 0,
         delayAndAbsenceHours: report.adminStatus?.delayAndAbsenceHours || 0,
@@ -57,6 +64,16 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
           companyIdentification: c.companyIdentification,
           valueAddedRecognition: c.valueAddedRecognition,
           referredOrExecuted: c.referredOrExecuted,
+          detectionOfTaxIssues_Quantity: c.detectionOfTaxIssues_Quantity || 0,
+          detectionOfTaxIssues_Amount: c.detectionOfTaxIssues_Amount || 0,
+          detectionOfTaxEvasion_Quantity: c.detectionOfTaxEvasion_Quantity || 0,
+          detectionOfTaxEvasion_Amount: c.detectionOfTaxEvasion_Amount || 0,
+          companyIdentification_Quantity: c.companyIdentification_Quantity || 0,
+          companyIdentification_Amount: c.companyIdentification_Amount || 0,
+          valueAddedRecognition_Quantity: c.valueAddedRecognition_Quantity || 0,
+          valueAddedRecognition_Amount: c.valueAddedRecognition_Amount || 0,
+          referredOrExecuted_Quantity: c.referredOrExecuted_Quantity || 0,
+          referredOrExecuted_Amount: c.referredOrExecuted_Amount || 0,
         })),
       })
     } catch (err) {
@@ -72,7 +89,15 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
     try {
       setSaving(true)
       setError(null)
+      
+      // Update report
       await reportsApi.updateReport(params.id, formData)
+      
+      // Upload new photo if provided
+      if (photoFile) {
+        await reportsApi.uploadPhoto(params.id, photoFile)
+      }
+      
       alert('گزارش با موفقیت بروزرسانی شد')
       router.push(`/reports/${params.id}`)
     } catch (err) {
@@ -89,7 +114,7 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
     }))
   }
 
-  const handleCapabilityChange = (index: number, field: string, value: boolean) => {
+  const handleCapabilityChange = (index: number, field: string, value: boolean | number) => {
     setFormData(prev => ({
       ...prev,
       capabilities: prev.capabilities.map((cap, i) =>
@@ -230,6 +255,37 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
+          {/* Employee Photo */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+              عکس پرسنلی
+            </h2>
+            <PhotoUpload 
+              currentPhotoUrl={currentPhotoUrl}
+              onPhotoChange={setPhotoFile}
+              disabled={saving}
+            />
+          </div>
+
+          {/* Status Description */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+              توضیحات وضعیت
+            </h2>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">توضیحات</label>
+              <textarea
+                rows={6}
+                name="statusDescription"
+                value={formData.statusDescription}
+                onChange={(e) => setFormData({ ...formData, statusDescription: e.target.value })}
+                placeholder="توضیحات مربوط به وضعیت فعلی کارمند را وارد کنید..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-vertical"
+              />
+              <p className="text-xs text-gray-500 mt-1">حداکثر 2000 کاراکتر</p>
+            </div>
+          </div>
+
           {/* Administrative Status */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
@@ -298,66 +354,177 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
                 توانمندی‌های عملکردی
               </h2>
               {formData.capabilities.map((capability, index) => (
-                <div key={index} className="mb-6 pb-6 border-b last:border-b-0">
+                <div key={index} className="mb-6">
                   <h3 className="font-bold text-gray-700 mb-3">
                     نقش سیستمی: {capability.systemRole}
                   </h3>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={capability.detectionOfTaxIssues}
-                        onChange={(e) =>
-                          handleCapabilityChange(index, 'detectionOfTaxIssues', e.target.checked)
-                        }
-                        className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
-                      />
-                      <span>تشخیص موارد مالیاتی</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={capability.detectionOfTaxEvasion}
-                        onChange={(e) =>
-                          handleCapabilityChange(index, 'detectionOfTaxEvasion', e.target.checked)
-                        }
-                        className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
-                      />
-                      <span>تشخیص فرار مالیاتی</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={capability.companyIdentification}
-                        onChange={(e) =>
-                          handleCapabilityChange(index, 'companyIdentification', e.target.checked)
-                        }
-                        className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
-                      />
-                      <span>شناسایی شرکت</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={capability.valueAddedRecognition}
-                        onChange={(e) =>
-                          handleCapabilityChange(index, 'valueAddedRecognition', e.target.checked)
-                        }
-                        className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
-                      />
-                      <span>شناسایی ارزش افزوده</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={capability.referredOrExecuted}
-                        onChange={(e) =>
-                          handleCapabilityChange(index, 'referredOrExecuted', e.target.checked)
-                        }
-                        className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
-                      />
-                      <span>ارجاع یا اجرای کننده</span>
-                    </label>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">نوع توانمندی</th>
+                          <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">فعال</th>
+                          <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">تعداد</th>
+                          <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">مبلغ (ریال)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص مشاغل/مالیات</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={capability.detectionOfTaxIssues}
+                              onChange={(e) => handleCapabilityChange(index, 'detectionOfTaxIssues', e.target.checked)}
+                              className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={capability.detectionOfTaxIssues_Quantity}
+                              onChange={(e) => handleCapabilityChange(index, 'detectionOfTaxIssues_Quantity', parseInt(e.target.value) || 0)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={capability.detectionOfTaxIssues_Amount}
+                              onChange={(e) => handleCapabilityChange(index, 'detectionOfTaxIssues_Amount', parseFloat(e.target.value) || 0)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص فرار مالیاتی</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={capability.detectionOfTaxEvasion}
+                              onChange={(e) => handleCapabilityChange(index, 'detectionOfTaxEvasion', e.target.checked)}
+                              className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={capability.detectionOfTaxEvasion_Quantity}
+                              onChange={(e) => handleCapabilityChange(index, 'detectionOfTaxEvasion_Quantity', parseInt(e.target.value) || 0)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={capability.detectionOfTaxEvasion_Amount}
+                              onChange={(e) => handleCapabilityChange(index, 'detectionOfTaxEvasion_Amount', parseFloat(e.target.value) || 0)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص شرکت/مالیات</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={capability.companyIdentification}
+                              onChange={(e) => handleCapabilityChange(index, 'companyIdentification', e.target.checked)}
+                              className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={capability.companyIdentification_Quantity}
+                              onChange={(e) => handleCapabilityChange(index, 'companyIdentification_Quantity', parseInt(e.target.value) || 0)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={capability.companyIdentification_Amount}
+                              onChange={(e) => handleCapabilityChange(index, 'companyIdentification_Amount', parseFloat(e.target.value) || 0)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص ارزش افزوده/مالیات</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={capability.valueAddedRecognition}
+                              onChange={(e) => handleCapabilityChange(index, 'valueAddedRecognition', e.target.checked)}
+                              className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={capability.valueAddedRecognition_Quantity}
+                              onChange={(e) => handleCapabilityChange(index, 'valueAddedRecognition_Quantity', parseInt(e.target.value) || 0)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={capability.valueAddedRecognition_Amount}
+                              onChange={(e) => handleCapabilityChange(index, 'valueAddedRecognition_Amount', parseFloat(e.target.value) || 0)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                            />
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-2 text-sm">ارجاع یا اجرا شده</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={capability.referredOrExecuted}
+                              onChange={(e) => handleCapabilityChange(index, 'referredOrExecuted', e.target.checked)}
+                              className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={capability.referredOrExecuted_Quantity}
+                              onChange={(e) => handleCapabilityChange(index, 'referredOrExecuted_Quantity', parseInt(e.target.value) || 0)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={capability.referredOrExecuted_Amount}
+                              onChange={(e) => handleCapabilityChange(index, 'referredOrExecuted_Amount', parseFloat(e.target.value) || 0)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                            />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ))}

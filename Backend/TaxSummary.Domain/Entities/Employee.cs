@@ -14,6 +14,8 @@ public class Employee
     public string CurrentPosition { get; private set; }
     public string AppointmentPosition { get; private set; }
     public int PreviousExperienceYears { get; private set; }
+    public string? PhotoUrl { get; private set; }
+    public string? StatusDescription { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -121,6 +123,18 @@ public class Employee
             PerformanceCapabilities.Remove(capability);
             UpdatedAt = DateTime.UtcNow;
         }
+    }
+
+    public void UpdatePhoto(string? photoUrl)
+    {
+        PhotoUrl = photoUrl;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateStatusDescription(string? statusDescription)
+    {
+        StatusDescription = statusDescription;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public string GetFullName() => $"{FirstName} {LastName}";

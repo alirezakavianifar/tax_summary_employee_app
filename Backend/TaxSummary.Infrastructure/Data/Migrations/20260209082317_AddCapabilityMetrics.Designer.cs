@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaxSummary.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using TaxSummary.Infrastructure.Data;
 namespace TaxSummary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(TaxSummaryDbContext))]
-    partial class TaxSummaryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260209082317_AddCapabilityMetrics")]
+    partial class AddCapabilityMetrics
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -106,10 +109,6 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("NVARCHAR(50)");
 
-                    b.Property<string>("PhotoUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<int>("PreviousExperienceYears")
                         .HasColumnType("int");
 
@@ -117,10 +116,6 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("NVARCHAR(200)");
-
-                    b.Property<string>("StatusDescription")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("DATETIME2");

@@ -14,6 +14,8 @@ public class EmployeeDto
     public string CurrentPosition { get; set; } = string.Empty;
     public string AppointmentPosition { get; set; } = string.Empty;
     public int PreviousExperienceYears { get; set; }
+    public string? PhotoUrl { get; set; }
+    public string? StatusDescription { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

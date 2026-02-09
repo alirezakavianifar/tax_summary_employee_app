@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using TaxSummary.Domain.Interfaces;
 
@@ -29,11 +30,22 @@ public class UnitOfWork : IUnitOfWork
             throw new InvalidOperationException("A transaction is already in progress.");
         }
 
-        _currentTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        // In-memory database doesn't support transactions the same way
+        // Skip transaction creation for in-memory databases
+        if (!_context.Database.IsInMemory())
+        {
+            _currentTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        }
     }
 
     public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
     {
+        // For in-memory databases, there's nothing to commit
+        if (_context.Database.IsInMemory())
+        {
+            return;
+        }
+
         if (_currentTransaction == null)
         {
             throw new InvalidOperationException("No transaction is in progress.");
@@ -60,9 +72,15 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
     {
+        // For in-memory databases, there's nothing to rollback
+        if (_context.Database.IsInMemory())
+        {
+            return;
+        }
+
         if (_currentTransaction == null)
         {
-            throw new InvalidOperationException("No transaction is in progress.");
+            return; // Changed from throwing exception to silently returning
         }
 
         try

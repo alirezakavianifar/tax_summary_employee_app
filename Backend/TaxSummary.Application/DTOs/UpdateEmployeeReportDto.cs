@@ -12,6 +12,8 @@ public class UpdateEmployeeReportDto
     public string CurrentPosition { get; set; } = string.Empty;
     public string AppointmentPosition { get; set; } = string.Empty;
     public int PreviousExperienceYears { get; set; }
+    public string? PhotoUrl { get; set; }
+    public string? StatusDescription { get; set; }
 
     // Administrative Status
     public int MissionDays { get; set; }

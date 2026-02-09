@@ -138,6 +138,18 @@ public class EmployeeReportService : IEmployeeReportService
             employee.UpdatePersonalInfo(dto.FirstName, dto.LastName, dto.Education);
             employee.UpdatePosition(dto.CurrentPosition, dto.AppointmentPosition, dto.PreviousExperienceYears);
             employee.UpdateServiceUnit(dto.ServiceUnit);
+            
+            // Update photo URL if provided
+            if (dto.PhotoUrl != null)
+            {
+                employee.UpdatePhoto(dto.PhotoUrl);
+            }
+            
+            // Update status description if provided
+            if (dto.StatusDescription != null)
+            {
+                employee.UpdateStatusDescription(dto.StatusDescription);
+            }
 
             // Update administrative status
             if (employee.AdministrativeStatus != null)
@@ -178,6 +190,20 @@ public class EmployeeReportService : IEmployeeReportService
                     companyIdentification: capabilityDto.CompanyIdentification,
                     valueAddedRecognition: capabilityDto.ValueAddedRecognition,
                     referredOrExecuted: capabilityDto.ReferredOrExecuted
+                );
+
+                // Update all capability metrics
+                capability.UpdateAllCapabilityMetrics(
+                    detectionOfTaxIssuesQuantity: capabilityDto.DetectionOfTaxIssues_Quantity,
+                    detectionOfTaxIssuesAmount: capabilityDto.DetectionOfTaxIssues_Amount,
+                    detectionOfTaxEvasionQuantity: capabilityDto.DetectionOfTaxEvasion_Quantity,
+                    detectionOfTaxEvasionAmount: capabilityDto.DetectionOfTaxEvasion_Amount,
+                    companyIdentificationQuantity: capabilityDto.CompanyIdentification_Quantity,
+                    companyIdentificationAmount: capabilityDto.CompanyIdentification_Amount,
+                    valueAddedRecognitionQuantity: capabilityDto.ValueAddedRecognition_Quantity,
+                    valueAddedRecognitionAmount: capabilityDto.ValueAddedRecognition_Amount,
+                    referredOrExecutedQuantity: capabilityDto.ReferredOrExecuted_Quantity,
+                    referredOrExecutedAmount: capabilityDto.ReferredOrExecuted_Amount
                 );
 
                 employee.AddPerformanceCapability(capability);

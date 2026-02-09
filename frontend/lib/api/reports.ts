@@ -78,4 +78,21 @@ export const reportsApi = {
     )
     return response.data
   },
+
+  // Upload employee photo
+  uploadPhoto: async (employeeId: string, photoFile: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append('photo', photoFile)
+
+    const response = await apiClient.post<{ photoUrl: string }>(
+      `${REPORTS_BASE}/${employeeId}/photo`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+    return response.data.photoUrl
+  },
 }

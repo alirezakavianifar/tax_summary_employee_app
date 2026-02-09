@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TaxSummary.Domain.Interfaces;
 using TaxSummary.Infrastructure.Data;
 using TaxSummary.Infrastructure.Repositories;
+using TaxSummary.Infrastructure.Services;
 
 namespace TaxSummary.Infrastructure;
 
@@ -58,6 +59,9 @@ public static class DependencyInjection
 
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Register File Storage Service
+        services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
         return services;
     }

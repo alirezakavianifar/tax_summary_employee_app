@@ -56,6 +56,10 @@ public class CreateEmployeeReportValidator : AbstractValidator<CreateEmployeeRep
             .GreaterThanOrEqualTo(0).WithMessage("ساعات مرخصی ساعتی نمی‌تواند منفی باشد")
             .LessThanOrEqualTo(8760).WithMessage("ساعات مرخصی ساعتی نمی‌تواند بیش از 8760 ساعت باشد");
 
+        // Status Description
+        RuleFor(x => x.StatusDescription)
+            .MaximumLength(2000).WithMessage("توضیحات وضعیت نمی‌تواند بیشتر از 2000 کاراکتر باشد");
+
         // Performance Capabilities
         RuleFor(x => x.Capabilities)
             .NotNull().WithMessage("توانمندی‌های عملکردی الزامی است");
@@ -74,5 +78,42 @@ public class CreatePerformanceCapabilityValidator : AbstractValidator<CreatePerf
         RuleFor(x => x.SystemRole)
             .NotEmpty().WithMessage("نقش در سامانه الزامی است")
             .MaximumLength(200).WithMessage("نقش در سامانه نمی‌تواند بیش از 200 کاراکتر باشد");
+
+        // Validation for quantity fields
+        RuleFor(x => x.DetectionOfTaxIssues_Quantity)
+            .GreaterThanOrEqualTo(0).WithMessage("تعداد تشخیص مشاغل نمی‌تواند منفی باشد");
+
+        RuleFor(x => x.DetectionOfTaxEvasion_Quantity)
+            .GreaterThanOrEqualTo(0).WithMessage("تعداد تشخیص فرار مالیاتی نمی‌تواند منفی باشد");
+
+        RuleFor(x => x.CompanyIdentification_Quantity)
+            .GreaterThanOrEqualTo(0).WithMessage("تعداد تشخیص شرکت نمی‌تواند منفی باشد");
+
+        RuleFor(x => x.ValueAddedRecognition_Quantity)
+            .GreaterThanOrEqualTo(0).WithMessage("تعداد تشخیص ارزش افزوده نمی‌تواند منفی باشد");
+
+        RuleFor(x => x.ReferredOrExecuted_Quantity)
+            .GreaterThanOrEqualTo(0).WithMessage("تعداد ارجاع یا اجرا نمی‌تواند منفی باشد");
+
+        // Validation for amount fields
+        RuleFor(x => x.DetectionOfTaxIssues_Amount)
+            .GreaterThanOrEqualTo(0).WithMessage("مبلغ تشخیص مشاغل نمی‌تواند منفی باشد")
+            .LessThanOrEqualTo(999999999999.99m).WithMessage("مبلغ تشخیص مشاغل بیش از حد مجاز است");
+
+        RuleFor(x => x.DetectionOfTaxEvasion_Amount)
+            .GreaterThanOrEqualTo(0).WithMessage("مبلغ تشخیص فرار مالیاتی نمی‌تواند منفی باشد")
+            .LessThanOrEqualTo(999999999999.99m).WithMessage("مبلغ تشخیص فرار مالیاتی بیش از حد مجاز است");
+
+        RuleFor(x => x.CompanyIdentification_Amount)
+            .GreaterThanOrEqualTo(0).WithMessage("مبلغ تشخیص شرکت نمی‌تواند منفی باشد")
+            .LessThanOrEqualTo(999999999999.99m).WithMessage("مبلغ تشخیص شرکت بیش از حد مجاز است");
+
+        RuleFor(x => x.ValueAddedRecognition_Amount)
+            .GreaterThanOrEqualTo(0).WithMessage("مبلغ تشخیص ارزش افزوده نمی‌تواند منفی باشد")
+            .LessThanOrEqualTo(999999999999.99m).WithMessage("مبلغ تشخیص ارزش افزوده بیش از حد مجاز است");
+
+        RuleFor(x => x.ReferredOrExecuted_Amount)
+            .GreaterThanOrEqualTo(0).WithMessage("مبلغ ارجاع یا اجرا نمی‌تواند منفی باشد")
+            .LessThanOrEqualTo(999999999999.99m).WithMessage("مبلغ ارجاع یا اجرا بیش از حد مجاز است");
     }
 }

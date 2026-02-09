@@ -4,11 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { reportsApi } from '@/lib/api/reports'
 import type { CreateEmployeeReportDto } from '@/lib/api/types'
+import { PhotoUpload } from '@/components/PhotoUpload'
 
 export default function CreateReportPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
   
   const [formData, setFormData] = useState<CreateEmployeeReportDto>({
     personnelNumber: '',
@@ -19,6 +21,7 @@ export default function CreateReportPage() {
     currentPosition: '',
     appointmentPosition: '',
     previousExperienceYears: 0,
+    statusDescription: '',
     missionDays: 0,
     incentiveHours: 0,
     delayAndAbsenceHours: 0,
@@ -31,6 +34,16 @@ export default function CreateReportPage() {
         companyIdentification: false,
         valueAddedRecognition: false,
         referredOrExecuted: false,
+        detectionOfTaxIssues_Quantity: 0,
+        detectionOfTaxIssues_Amount: 0,
+        detectionOfTaxEvasion_Quantity: 0,
+        detectionOfTaxEvasion_Amount: 0,
+        companyIdentification_Quantity: 0,
+        companyIdentification_Amount: 0,
+        valueAddedRecognition_Quantity: 0,
+        valueAddedRecognition_Amount: 0,
+        referredOrExecuted_Quantity: 0,
+        referredOrExecuted_Amount: 0,
       },
     ],
   })
@@ -41,7 +54,15 @@ export default function CreateReportPage() {
     try {
       setLoading(true)
       setError(null)
+      
+      // Create employee report
       const employeeId = await reportsApi.createReport(formData)
+      
+      // Upload photo if provided
+      if (photoFile) {
+        await reportsApi.uploadPhoto(employeeId, photoFile)
+      }
+      
       router.push(`/reports/${employeeId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطا در ثبت اطلاعات')
@@ -152,6 +173,31 @@ export default function CreateReportPage() {
             </div>
           </div>
 
+          {/* Employee Photo */}
+          <div>
+            <h2 className="text-xl font-bold mb-4 pb-2 border-b">عکس پرسنلی</h2>
+            <PhotoUpload 
+              onPhotoChange={setPhotoFile}
+              disabled={loading}
+            />
+          </div>
+
+          {/* Status Description */}
+          <div>
+            <h2 className="text-xl font-bold mb-4 pb-2 border-b">توضیحات وضعیت</h2>
+            <div>
+              <label className="block text-sm font-medium mb-1">توضیحات</label>
+              <textarea
+                rows={6}
+                value={formData.statusDescription}
+                onChange={(e) => setFormData({ ...formData, statusDescription: e.target.value })}
+                placeholder="توضیحات مربوط به وضعیت فعلی کارمند را وارد کنید..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-vertical"
+              />
+              <p className="text-xs text-gray-500 mt-1">حداکثر 2000 کاراکتر</p>
+            </div>
+          </div>
+
           {/* Administrative Status */}
           <div>
             <h2 className="text-xl font-bold mb-4 pb-2 border-b">وضعیت نظم و انضباط اداری</h2>
@@ -222,86 +268,263 @@ export default function CreateReportPage() {
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.capabilities[0].detectionOfTaxIssues}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      capabilities: [{
-                        ...formData.capabilities[0],
-                        detectionOfTaxIssues: e.target.checked,
-                      }],
-                    })}
-                    className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-sm">تشخیص مسائل مالیاتی</span>
-                </label>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">نوع توانمندی</th>
+                      <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">فعال</th>
+                      <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">تعداد</th>
+                      <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">مبلغ (ریال)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص مشاغل/مالیات</td>
+                      <td className="border border-gray-300 px-4 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.capabilities[0].detectionOfTaxIssues}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              detectionOfTaxIssues: e.target.checked,
+                            }],
+                          })}
+                          className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.capabilities[0].detectionOfTaxIssues_Quantity}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              detectionOfTaxIssues_Quantity: parseInt(e.target.value) || 0,
+                            }],
+                          })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.capabilities[0].detectionOfTaxIssues_Amount}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              detectionOfTaxIssues_Amount: parseFloat(e.target.value) || 0,
+                            }],
+                          })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </td>
+                    </tr>
 
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.capabilities[0].detectionOfTaxEvasion}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      capabilities: [{
-                        ...formData.capabilities[0],
-                        detectionOfTaxEvasion: e.target.checked,
-                      }],
-                    })}
-                    className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-sm">تشخیص فرار مالیاتی</span>
-                </label>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص فرار مالیاتی</td>
+                      <td className="border border-gray-300 px-4 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.capabilities[0].detectionOfTaxEvasion}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              detectionOfTaxEvasion: e.target.checked,
+                            }],
+                          })}
+                          className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.capabilities[0].detectionOfTaxEvasion_Quantity}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              detectionOfTaxEvasion_Quantity: parseInt(e.target.value) || 0,
+                            }],
+                          })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.capabilities[0].detectionOfTaxEvasion_Amount}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              detectionOfTaxEvasion_Amount: parseFloat(e.target.value) || 0,
+                            }],
+                          })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </td>
+                    </tr>
 
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.capabilities[0].companyIdentification}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      capabilities: [{
-                        ...formData.capabilities[0],
-                        companyIdentification: e.target.checked,
-                      }],
-                    })}
-                    className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-sm">شناسایی شرکت</span>
-                </label>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص شرکت/مالیات</td>
+                      <td className="border border-gray-300 px-4 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.capabilities[0].companyIdentification}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              companyIdentification: e.target.checked,
+                            }],
+                          })}
+                          className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.capabilities[0].companyIdentification_Quantity}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              companyIdentification_Quantity: parseInt(e.target.value) || 0,
+                            }],
+                          })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.capabilities[0].companyIdentification_Amount}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              companyIdentification_Amount: parseFloat(e.target.value) || 0,
+                            }],
+                          })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </td>
+                    </tr>
 
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.capabilities[0].valueAddedRecognition}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      capabilities: [{
-                        ...formData.capabilities[0],
-                        valueAddedRecognition: e.target.checked,
-                      }],
-                    })}
-                    className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-sm">شناسایی ارزش افزوده</span>
-                </label>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص ارزش افزوده/مالیات</td>
+                      <td className="border border-gray-300 px-4 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.capabilities[0].valueAddedRecognition}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              valueAddedRecognition: e.target.checked,
+                            }],
+                          })}
+                          className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.capabilities[0].valueAddedRecognition_Quantity}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              valueAddedRecognition_Quantity: parseInt(e.target.value) || 0,
+                            }],
+                          })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.capabilities[0].valueAddedRecognition_Amount}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              valueAddedRecognition_Amount: parseFloat(e.target.value) || 0,
+                            }],
+                          })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </td>
+                    </tr>
 
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.capabilities[0].referredOrExecuted}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      capabilities: [{
-                        ...formData.capabilities[0],
-                        referredOrExecuted: e.target.checked,
-                      }],
-                    })}
-                    className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-sm">ارجاع یا اجرا شده</span>
-                </label>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2 text-sm">ارجاع یا اجرا شده</td>
+                      <td className="border border-gray-300 px-4 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.capabilities[0].referredOrExecuted}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              referredOrExecuted: e.target.checked,
+                            }],
+                          })}
+                          className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.capabilities[0].referredOrExecuted_Quantity}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              referredOrExecuted_Quantity: parseInt(e.target.value) || 0,
+                            }],
+                          })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.capabilities[0].referredOrExecuted_Amount}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            capabilities: [{
+                              ...formData.capabilities[0],
+                              referredOrExecuted_Amount: parseFloat(e.target.value) || 0,
+                            }],
+                          })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

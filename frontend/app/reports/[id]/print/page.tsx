@@ -99,10 +99,18 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
 
           {/* Employee Photo and Personal Info */}
           <div className="grid grid-cols-12 gap-6 mb-6">
-            {/* Photo Placeholder */}
+            {/* Photo */}
             <div className="col-span-3">
               <div className="photo-box border-2 border-gray-800 aspect-[3/4] flex items-center justify-center bg-gray-50">
-                <span className="text-gray-400 text-sm text-center">عکس پرسنلی</span>
+                {report.employee.photoUrl ? (
+                  <img 
+                    src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'}${report.employee.photoUrl}`}
+                    alt="عکس پرسنلی"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-gray-400 text-sm text-center">عکس پرسنلی</span>
+                )}
               </div>
             </div>
 
@@ -132,6 +140,13 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
               <div className="form-field">
                 <span className="label">واحد محل خدمت:</span>
                 <span className="value">{report.employee.serviceUnit}</span>
+              </div>
+
+              <div className="form-field col-span-2">
+                <span className="label">توضیحات وضعیت:</span>
+                <div className="value border border-gray-300 p-2 min-h-[100px] bg-white whitespace-pre-wrap">
+                  {report.employee.statusDescription || ''}
+                </div>
               </div>
             </div>
           </div>
@@ -185,30 +200,80 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
             <div className="section-box mb-6">
               <h2 className="section-title">توانمندی‌های عملکردی</h2>
               {report.capabilities.map((capability, index) => (
-                <div key={capability.id} className="mb-4 pb-4 border-b last:border-b-0">
+                <div key={capability.id} className="mb-4">
                   <div className="font-bold mb-3">نقش سیستمی: {capability.systemRole}</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="checkbox-field">
-                      <span className="checkbox">{capability.detectionOfTaxIssues ? '✓' : '☐'}</span>
-                      <span>تشخیص موارد مالیاتی</span>
-                    </div>
-                    <div className="checkbox-field">
-                      <span className="checkbox">{capability.detectionOfTaxEvasion ? '✓' : '☐'}</span>
-                      <span>تشخیص فرار مالیاتی</span>
-                    </div>
-                    <div className="checkbox-field">
-                      <span className="checkbox">{capability.companyIdentification ? '✓' : '☐'}</span>
-                      <span>شناسایی شرکت</span>
-                    </div>
-                    <div className="checkbox-field">
-                      <span className="checkbox">{capability.valueAddedRecognition ? '✓' : '☐'}</span>
-                      <span>شناسایی ارزش افزوده</span>
-                    </div>
-                    <div className="checkbox-field">
-                      <span className="checkbox">{capability.referredOrExecuted ? '✓' : '☐'}</span>
-                      <span>ارجاع یا اجرای کننده</span>
-                    </div>
-                  </div>
+                  <table className="w-full border-collapse border border-gray-800">
+                    <thead>
+                      <tr>
+                        <th className="border border-gray-800 px-3 py-2 text-sm font-bold bg-gray-100">نوع توانمندی</th>
+                        <th className="border border-gray-800 px-3 py-2 text-sm font-bold bg-gray-100">وضعیت</th>
+                        <th className="border border-gray-800 px-3 py-2 text-sm font-bold bg-gray-100">تعداد</th>
+                        <th className="border border-gray-800 px-3 py-2 text-sm font-bold bg-gray-100">مبلغ (ریال)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-gray-800 px-3 py-2 text-sm">تشخیص مشاغل/مالیات</td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.detectionOfTaxIssues ? '✓' : '☐'}
+                        </td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.detectionOfTaxIssues_Quantity?.toLocaleString('fa-IR') || 0}
+                        </td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.detectionOfTaxIssues_Amount?.toLocaleString('fa-IR') || 0}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-800 px-3 py-2 text-sm">تشخیص فرار مالیاتی</td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.detectionOfTaxEvasion ? '✓' : '☐'}
+                        </td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.detectionOfTaxEvasion_Quantity?.toLocaleString('fa-IR') || 0}
+                        </td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.detectionOfTaxEvasion_Amount?.toLocaleString('fa-IR') || 0}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-800 px-3 py-2 text-sm">تشخیص شرکت/مالیات</td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.companyIdentification ? '✓' : '☐'}
+                        </td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.companyIdentification_Quantity?.toLocaleString('fa-IR') || 0}
+                        </td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.companyIdentification_Amount?.toLocaleString('fa-IR') || 0}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-800 px-3 py-2 text-sm">تشخیص ارزش افزوده/مالیات</td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.valueAddedRecognition ? '✓' : '☐'}
+                        </td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.valueAddedRecognition_Quantity?.toLocaleString('fa-IR') || 0}
+                        </td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.valueAddedRecognition_Amount?.toLocaleString('fa-IR') || 0}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-800 px-3 py-2 text-sm">ارجاع یا اجرا شده</td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.referredOrExecuted ? '✓' : '☐'}
+                        </td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.referredOrExecuted_Quantity?.toLocaleString('fa-IR') || 0}
+                        </td>
+                        <td className="border border-gray-800 px-3 py-2 text-center text-sm">
+                          {capability.referredOrExecuted_Amount?.toLocaleString('fa-IR') || 0}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               ))}
             </div>

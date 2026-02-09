@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using TaxSummary.Application.DTOs;
 using TaxSummary.Application.Services;
+using TaxSummary.Application.Validators;
+using TaxSummary.Infrastructure.Services;
 
 namespace TaxSummary.Api.Controllers;
 
@@ -13,14 +15,19 @@ namespace TaxSummary.Api.Controllers;
 public class EmployeeReportsController : ControllerBase
 {
     private readonly IEmployeeReportService _reportService;
+    private readonly IFileStorageService _fileStorageService;
+    private readonly PhotoUploadValidator _photoValidator;
     private readonly ILogger<EmployeeReportsController> _logger;
 
     public EmployeeReportsController(
         IEmployeeReportService reportService,
+        IFileStorageService fileStorageService,
         ILogger<EmployeeReportsController> logger)
     {
         _reportService = reportService ?? throw new ArgumentNullException(nameof(reportService));
+        _fileStorageService = fileStorageService ?? throw new ArgumentNullException(nameof(fileStorageService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _photoValidator = new PhotoUploadValidator();
     }
 
     /// <summary>
@@ -303,5 +310,113 @@ public class EmployeeReportsController : ControllerBase
         }
 
         return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Upload employee photo
+    /// </summary>
+    /// <param name="employeeId">Employee unique identifier</param>
+    /// <param name="photo">Photo file to upload</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Photo upload response with URL</returns>
+    [HttpPost("{employeeId:guid}/photo")]
+    [ProducesResponseType(typeof(PhotoUploadResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<PhotoUploadResponseDto>> UploadPhoto(
+        Guid employeeId,
+        IFormFile photo,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Uploading photo for employee {EmployeeId}", employeeId);
+
+        // Validate file
+        var validationResult = _photoValidator.Validate(photo);
+        if (validationResult.IsFailure)
+        {
+            _logger.LogWarning("Photo validation failed: {Error}", validationResult.Error);
+            return BadRequest(new { error = validationResult.Error });
+        }
+
+        // Get employee
+        var employeeResult = await _reportService.GetReportAsync(employeeId, cancellationToken);
+        if (employeeResult.IsFailure)
+        {
+            _logger.LogWarning("Employee not found: {EmployeeId}", employeeId);
+            return NotFound(new { error = "کارمند یافت نشد" });
+        }
+
+        try
+        {
+            // Delete old photo if exists
+            var oldPhotoUrl = employeeResult.Value.Employee.PhotoUrl;
+            if (!string.IsNullOrEmpty(oldPhotoUrl))
+            {
+                await _fileStorageService.DeleteEmployeePhotoAsync(oldPhotoUrl);
+            }
+
+            // Save new photo
+            var photoUrl = await _fileStorageService.SaveEmployeePhotoAsync(
+                photo,
+                employeeResult.Value.Employee.PersonnelNumber);
+
+            // Update employee with photo URL
+            var updateDto = new UpdateEmployeeReportDto
+            {
+                FirstName = employeeResult.Value.Employee.FirstName,
+                LastName = employeeResult.Value.Employee.LastName,
+                Education = employeeResult.Value.Employee.Education,
+                ServiceUnit = employeeResult.Value.Employee.ServiceUnit,
+                CurrentPosition = employeeResult.Value.Employee.CurrentPosition,
+                AppointmentPosition = employeeResult.Value.Employee.AppointmentPosition,
+                PreviousExperienceYears = employeeResult.Value.Employee.PreviousExperienceYears,
+                PhotoUrl = photoUrl,
+                MissionDays = employeeResult.Value.AdminStatus?.MissionDays ?? 0,
+                IncentiveHours = employeeResult.Value.AdminStatus?.IncentiveHours ?? 0,
+                DelayAndAbsenceHours = employeeResult.Value.AdminStatus?.DelayAndAbsenceHours ?? 0,
+                HourlyLeaveHours = employeeResult.Value.AdminStatus?.HourlyLeaveHours ?? 0,
+                Capabilities = employeeResult.Value.Capabilities.Select(c => new CreatePerformanceCapabilityDto
+                {
+                    SystemRole = c.SystemRole,
+                    DetectionOfTaxIssues = c.DetectionOfTaxIssues,
+                    DetectionOfTaxEvasion = c.DetectionOfTaxEvasion,
+                    CompanyIdentification = c.CompanyIdentification,
+                    ValueAddedRecognition = c.ValueAddedRecognition,
+                    ReferredOrExecuted = c.ReferredOrExecuted,
+                    DetectionOfTaxIssues_Quantity = c.DetectionOfTaxIssues_Quantity,
+                    DetectionOfTaxIssues_Amount = c.DetectionOfTaxIssues_Amount,
+                    DetectionOfTaxEvasion_Quantity = c.DetectionOfTaxEvasion_Quantity,
+                    DetectionOfTaxEvasion_Amount = c.DetectionOfTaxEvasion_Amount,
+                    CompanyIdentification_Quantity = c.CompanyIdentification_Quantity,
+                    CompanyIdentification_Amount = c.CompanyIdentification_Amount,
+                    ValueAddedRecognition_Quantity = c.ValueAddedRecognition_Quantity,
+                    ValueAddedRecognition_Amount = c.ValueAddedRecognition_Amount,
+                    ReferredOrExecuted_Quantity = c.ReferredOrExecuted_Quantity,
+                    ReferredOrExecuted_Amount = c.ReferredOrExecuted_Amount
+                }).ToList()
+            };
+
+            var updateResult = await _reportService.UpdateReportAsync(employeeId, updateDto, cancellationToken);
+            
+            if (updateResult.IsFailure)
+            {
+                _logger.LogError("Failed to update employee with photo URL: {Error}", updateResult.Error);
+                return StatusCode(500, new { error = "خطا در بروزرسانی اطلاعات کارمند" });
+            }
+
+            _logger.LogInformation("Photo uploaded successfully for employee {EmployeeId}: {PhotoUrl}", employeeId, photoUrl);
+
+            return Ok(new PhotoUploadResponseDto
+            {
+                PhotoUrl = photoUrl,
+                Message = "عکس با موفقیت آپلود شد"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading photo for employee {EmployeeId}", employeeId);
+            return StatusCode(500, new { error = "خطا در آپلود عکس" });
+        }
     }
 }

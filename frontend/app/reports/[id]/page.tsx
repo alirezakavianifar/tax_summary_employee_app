@@ -133,6 +133,38 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
           <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
             اطلاعات فردی
           </h2>
+          
+          {/* Photo and Status Description - Side by Side */}
+          <div className="grid grid-cols-12 gap-6 mb-6">
+            {/* Photo - Left Side */}
+            <div className="col-span-3">
+              {report.employee.photoUrl ? (
+                <div className="w-full aspect-[3/4] border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+                  <img 
+                    src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'}${report.employee.photoUrl}`}
+                    alt={`${report.employee.firstName} ${report.employee.lastName}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-full aspect-[3/4] border-2 border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                  <span className="text-gray-400 text-sm">عکس پرسنلی</span>
+                </div>
+              )}
+              <p className="text-center text-sm text-gray-600 mt-2">عکس</p>
+            </div>
+
+            {/* Status Description - Right Side */}
+            <div className="col-span-9">
+              <div className="border-2 border-gray-300 rounded-lg p-4 h-full bg-gray-50">
+                <h3 className="text-sm font-bold text-gray-700 mb-2">توضیحات وضعیت:</h3>
+                <p className="text-gray-900 whitespace-pre-wrap">
+                  {report.employee.statusDescription || 'توضیحاتی ثبت نشده است'}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">نام:</label>
@@ -198,33 +230,75 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
             <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
               توانمندی‌های عملکردی
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {report.capabilities.map((capability, index) => (
                 <div key={capability.id} className="border-b pb-4 last:border-b-0">
                   <h3 className="font-bold text-gray-700 mb-3">
                     نقش سیستمی: {capability.systemRole}
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-4 h-4 rounded-full ${capability.detectionOfTaxIssues ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                      <span className="text-sm">تشخیص موارد مالیاتی</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`w-4 h-4 rounded-full ${capability.detectionOfTaxEvasion ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                      <span className="text-sm">تشخیص فرار مالیاتی</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`w-4 h-4 rounded-full ${capability.companyIdentification ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                      <span className="text-sm">شناسایی شرکت</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`w-4 h-4 rounded-full ${capability.valueAddedRecognition ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                      <span className="text-sm">شناسایی ارزش افزوده</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`w-4 h-4 rounded-full ${capability.referredOrExecuted ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                      <span className="text-sm">ارجاع یا اجرای کننده</span>
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">نوع توانمندی</th>
+                          <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">وضعیت</th>
+                          <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">تعداد</th>
+                          <th className="border border-gray-300 px-4 py-2 text-sm font-semibold">مبلغ (ریال)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص مشاغل/مالیات</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <span className={`inline-block px-2 py-1 rounded text-xs ${capability.detectionOfTaxIssues ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                              {capability.detectionOfTaxIssues ? 'فعال' : 'غیرفعال'}
+                            </span>
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">{capability.detectionOfTaxIssues_Quantity?.toLocaleString('fa-IR') || 0}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">{capability.detectionOfTaxIssues_Amount?.toLocaleString('fa-IR') || 0}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص فرار مالیاتی</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <span className={`inline-block px-2 py-1 rounded text-xs ${capability.detectionOfTaxEvasion ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                              {capability.detectionOfTaxEvasion ? 'فعال' : 'غیرفعال'}
+                            </span>
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">{capability.detectionOfTaxEvasion_Quantity?.toLocaleString('fa-IR') || 0}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">{capability.detectionOfTaxEvasion_Amount?.toLocaleString('fa-IR') || 0}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص شرکت/مالیات</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <span className={`inline-block px-2 py-1 rounded text-xs ${capability.companyIdentification ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                              {capability.companyIdentification ? 'فعال' : 'غیرفعال'}
+                            </span>
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">{capability.companyIdentification_Quantity?.toLocaleString('fa-IR') || 0}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">{capability.companyIdentification_Amount?.toLocaleString('fa-IR') || 0}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-2 text-sm">تشخیص ارزش افزوده/مالیات</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <span className={`inline-block px-2 py-1 rounded text-xs ${capability.valueAddedRecognition ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                              {capability.valueAddedRecognition ? 'فعال' : 'غیرفعال'}
+                            </span>
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">{capability.valueAddedRecognition_Quantity?.toLocaleString('fa-IR') || 0}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">{capability.valueAddedRecognition_Amount?.toLocaleString('fa-IR') || 0}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-2 text-sm">ارجاع یا اجرا شده</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            <span className={`inline-block px-2 py-1 rounded text-xs ${capability.referredOrExecuted ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                              {capability.referredOrExecuted ? 'فعال' : 'غیرفعال'}
+                            </span>
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">{capability.referredOrExecuted_Quantity?.toLocaleString('fa-IR') || 0}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">{capability.referredOrExecuted_Amount?.toLocaleString('fa-IR') || 0}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ))}
