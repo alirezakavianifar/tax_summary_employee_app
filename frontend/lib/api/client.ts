@@ -1,12 +1,13 @@
 import axios from 'axios'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important for cookies
 })
 
 // Request interceptor for logging

@@ -1,11 +1,17 @@
+using System.Text;
 using System.Text.Json;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using TaxSummary.Api.Middleware;
 using TaxSummary.Application.Mapping;
 using TaxSummary.Application.Services;
 using TaxSummary.Application.Validators;
+using TaxSummary.Domain.Interfaces;
 using TaxSummary.Infrastructure;
 using TaxSummary.Infrastructure.Data;
+using TaxSummary.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,12 +29,58 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 // Add Application services
 builder.Services.AddScoped<IEmployeeReportService, EmployeeReportService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Add Infrastructure services
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // Add FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<CreateEmployeeReportValidator>();
+
+// Add JWT Authentication
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings["Issuer"] ?? "TaxSummaryApi",
+        ValidateAudience = true,
+        ValidAudience = jwtSettings["Audience"] ?? "TaxSummaryClient",
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero // No tolerance for expired tokens
+    };
+
+    // Extract token from cookie if not in Authorization header
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Check if token is in Authorization header first
+            if (string.IsNullOrEmpty(context.Token))
+            {
+                // If not, try to get from cookie (for refresh token scenarios)
+                context.Token = context.Request.Cookies["accessToken"];
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+
+builder.Services.AddAuthorization();
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -49,14 +101,40 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Tax Summary Employee API",
         Version = "v1",
-        Description = "REST API for Tax Summary Employee Application - Persian RTL Form System",
-        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        Description = "REST API for Tax Summary Employee Application - Persian RTL Form System with JWT Authentication",
+        Contact = new OpenApiContact
         {
             Name = "Tax Summary Team"
+        }
+    });
+
+    // Add JWT Authentication support in Swagger
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\""
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
         }
     });
 
@@ -105,7 +183,8 @@ app.UseStaticFiles();
 // Use CORS
 app.UseCors("AllowFrontend");
 
-// Use authorization (if needed in the future)
+// Use authentication and authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Map controllers

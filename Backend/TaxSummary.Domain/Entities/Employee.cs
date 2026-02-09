@@ -22,6 +22,16 @@ public class Employee
     // Navigation Properties
     public AdministrativeStatus? AdministrativeStatus { get; private set; }
     public ICollection<PerformanceCapability> PerformanceCapabilities { get; private set; }
+    
+    /// <summary>
+    /// Optional reference to associated user account
+    /// </summary>
+    public Guid? UserId { get; private set; }
+    
+    /// <summary>
+    /// Navigation property to associated user account
+    /// </summary>
+    public User? User { get; private set; }
 
     // Private constructor for EF Core
     private Employee()
@@ -138,6 +148,24 @@ public class Employee
     }
 
     public string GetFullName() => $"{FirstName} {LastName}";
+
+    /// <summary>
+    /// Associate this employee with a user account
+    /// </summary>
+    public void AssociateWithUser(Guid userId)
+    {
+        UserId = userId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Remove user association
+    /// </summary>
+    public void RemoveUserAssociation()
+    {
+        UserId = null;
+        UpdatedAt = DateTime.UtcNow;
+    }
 
     // Private validation methods
     private static void ValidateRequiredFields(string personnelNumber, string firstName, string lastName)

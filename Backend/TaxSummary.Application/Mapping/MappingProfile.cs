@@ -1,5 +1,6 @@
 using AutoMapper;
 using TaxSummary.Application.DTOs;
+using TaxSummary.Application.DTOs.Auth;
 using TaxSummary.Domain.Entities;
 
 namespace TaxSummary.Application.Mapping;
@@ -48,5 +49,19 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Employee, opt => opt.MapFrom(src => src))
             .ForMember(dest => dest.AdminStatus, opt => opt.MapFrom(src => src.AdministrativeStatus))
             .ForMember(dest => dest.Capabilities, opt => opt.MapFrom(src => src.PerformanceCapabilities));
+
+        // User mappings
+        CreateMap<User, UserDto>();
+        
+        CreateMap<RegisterRequestDto, User>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.PasswordHash, opt => opt.Ignore()) // Handled by AuthService
+            .ForMember(dest => dest.IsActive, opt => opt.Ignore())
+            .ForMember(dest => dest.FailedLoginAttempts, opt => opt.Ignore())
+            .ForMember(dest => dest.LockoutEnd, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.Employee, opt => opt.Ignore())
+            .ForMember(dest => dest.RefreshTokens, opt => opt.Ignore());
     }
 }

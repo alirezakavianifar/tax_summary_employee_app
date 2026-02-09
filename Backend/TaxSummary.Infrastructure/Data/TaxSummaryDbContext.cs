@@ -16,6 +16,8 @@ public class TaxSummaryDbContext : DbContext
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<AdministrativeStatus> AdministrativeStatuses => Set<AdministrativeStatus>();
     public DbSet<PerformanceCapability> PerformanceCapabilities => Set<PerformanceCapability>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

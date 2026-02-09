@@ -3,12 +3,14 @@ using TaxSummary.Application.DTOs;
 using TaxSummary.Application.Services;
 using TaxSummary.Application.Validators;
 using TaxSummary.Infrastructure.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace TaxSummary.Api.Controllers;
 
 /// <summary>
 /// API controller for employee report operations
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
