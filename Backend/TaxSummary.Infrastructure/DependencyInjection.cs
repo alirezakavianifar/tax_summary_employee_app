@@ -57,6 +57,7 @@ public static class DependencyInjection
 
         // Register repositories
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
 
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
