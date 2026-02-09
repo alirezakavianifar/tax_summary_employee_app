@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -10,6 +10,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaxSummary.Infrastructure", "TaxSummary.Infrastructure\TaxSummary.Infrastructure.csproj", "{3C19103F-16F7-4668-BE54-9A1E7A4F7558}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaxSummary.Api", "TaxSummary.Api\TaxSummary.Api.csproj", "{4D19103F-16F7-4668-BE54-9A1E7A4F7559}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{42F665A1-C5DF-4206-A89C-F47C41E63BF3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaxSummary.Domain.Tests", "Tests\TaxSummary.Domain.Tests\TaxSummary.Domain.Tests.csproj", "{FCF525A9-3A06-464A-833F-CDAE57F809D0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,5 +37,12 @@ Global
 		{4D19103F-16F7-4668-BE54-9A1E7A4F7559}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4D19103F-16F7-4668-BE54-9A1E7A4F7559}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4D19103F-16F7-4668-BE54-9A1E7A4F7559}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FCF525A9-3A06-464A-833F-CDAE57F809D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FCF525A9-3A06-464A-833F-CDAE57F809D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FCF525A9-3A06-464A-833F-CDAE57F809D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FCF525A9-3A06-464A-833F-CDAE57F809D0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{FCF525A9-3A06-464A-833F-CDAE57F809D0} = {42F665A1-C5DF-4206-A89C-F47C41E63BF3}
 	EndGlobalSection
 EndGlobal
