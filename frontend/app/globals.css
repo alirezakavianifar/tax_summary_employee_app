@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    direction: rtl;
+  }
+
+  body {
+    @apply text-gray-900;
+  }
+}
+
+@layer utilities {
+  .print-only {
+    @apply hidden;
+  }
+
+  @media print {
+    .print-only {
+      @apply block;
+    }
+    
+    .no-print {
+      @apply hidden;
+    }
+  }
+}
+
+/* Print styles for A4 layout */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .report-container {
+    width: 210mm;
+    height: 297mm;
+    padding: 10mm;
+    box-sizing: border-box;
+    page-break-after: always;
+  }
+
+  .report-title {
+    background: #d9d9d9 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  table {
+    page-break-inside: avoid;
+  }
+}
