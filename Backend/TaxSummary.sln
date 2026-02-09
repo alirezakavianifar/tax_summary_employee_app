@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaxSummary.Domain", "TaxSum
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaxSummary.Application", "TaxSummary.Application\TaxSummary.Application.csproj", "{2B19103F-16F7-4668-BE54-9A1E7A4F7557}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaxSummary.Infrastructure", "TaxSummary.Infrastructure\TaxSummary.Infrastructure.csproj", "{3C19103F-16F7-4668-BE54-9A1E7A4F7558}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,5 +23,9 @@ Global
 		{2B19103F-16F7-4668-BE54-9A1E7A4F7557}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2B19103F-16F7-4668-BE54-9A1E7A4F7557}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2B19103F-16F7-4668-BE54-9A1E7A4F7557}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C19103F-16F7-4668-BE54-9A1E7A4F7558}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C19103F-16F7-4668-BE54-9A1E7A4F7558}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C19103F-16F7-4668-BE54-9A1E7A4F7558}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C19103F-16F7-4668-BE54-9A1E7A4F7558}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
