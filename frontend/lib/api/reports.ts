@@ -42,7 +42,9 @@ export const reportsApi = {
 
   // Get all employees
   getAllEmployees: async (): Promise<EmployeeDto[]> => {
-    const response = await apiClient.get<EmployeeDto[]>(`${REPORTS_BASE}/employees`)
+    const response = await apiClient.get<EmployeeDto[]>(`${REPORTS_BASE}/employees`, {
+      params: { _t: new Date().getTime() }
+    })
     return response.data
   },
 
@@ -54,7 +56,7 @@ export const reportsApi = {
     const response = await apiClient.get<PaginatedResponse<EmployeeDto>>(
       `${REPORTS_BASE}/employees/paged`,
       {
-        params: { pageNumber, pageSize },
+        params: { pageNumber, pageSize, _t: new Date().getTime() },
       }
     )
     return response.data
@@ -94,5 +96,18 @@ export const reportsApi = {
       }
     )
     return response.data.photoUrl
+  },
+
+  // Seed from Excel
+  seedFromExcel: async (file: File): Promise<{ message: string, count: number }> => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await apiClient.post<{ message: string, count: number }>('/seed/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
   },
 }

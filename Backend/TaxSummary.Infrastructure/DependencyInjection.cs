@@ -5,6 +5,7 @@ using TaxSummary.Domain.Interfaces;
 using TaxSummary.Infrastructure.Data;
 using TaxSummary.Infrastructure.Repositories;
 using TaxSummary.Infrastructure.Services;
+using TaxSummary.Application.Services;
 
 namespace TaxSummary.Infrastructure;
 
@@ -37,10 +38,10 @@ public static class DependencyInjection
                     sqlOptions =>
                     {
                         sqlOptions.MigrationsAssembly(typeof(TaxSummaryDbContext).Assembly.FullName);
-                        sqlOptions.EnableRetryOnFailure(
-                            maxRetryCount: 3,
-                            maxRetryDelay: TimeSpan.FromSeconds(5),
-                            errorNumbersToAdd: null);
+                        // sqlOptions.EnableRetryOnFailure(
+                        //     maxRetryCount: 3,
+                        //     maxRetryDelay: TimeSpan.FromSeconds(5),
+                        //     errorNumbersToAdd: null);
                     });
             }
 
@@ -62,6 +63,9 @@ public static class DependencyInjection
 
         // Register File Storage Service
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
+
+        // Register Excel Seed Service
+        services.AddScoped<IExcelSeedService, ExcelSeedService>();
 
         return services;
     }
