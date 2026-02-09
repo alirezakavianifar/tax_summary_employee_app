@@ -44,6 +44,7 @@ public interface IEmployeeReportService
     Task<Result<(IEnumerable<EmployeeDto> Employees, int TotalCount)>> GetEmployeesPagedAsync(
         int pageNumber, 
         int pageSize, 
+        string? searchTerm = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

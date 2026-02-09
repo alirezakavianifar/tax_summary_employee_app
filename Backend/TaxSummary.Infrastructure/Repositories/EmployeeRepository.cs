@@ -49,6 +49,7 @@ public class EmployeeRepository : IEmployeeRepository
     public async Task<(IEnumerable<Employee> Employees, int TotalCount)> GetPagedAsync(
         int pageNumber,
         int pageSize,
+        string? searchTerm = null,
         CancellationToken cancellationToken = default)
     {
         if (pageNumber < 1)
@@ -63,7 +64,17 @@ public class EmployeeRepository : IEmployeeRepository
         var query = _context.Employees
             .Include(e => e.AdministrativeStatus)
             .Include(e => e.PerformanceCapabilities)
-            .OrderBy(e => e.LastName)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearchTerm = searchTerm.Trim().ToLower();
+            query = query.Where(e => e.FirstName.ToLower().Contains(normalizedSearchTerm) ||
+                                     e.LastName.ToLower().Contains(normalizedSearchTerm) ||
+                                     e.PersonnelNumber.ToLower().Contains(normalizedSearchTerm));
+        }
+
+        query = query.OrderBy(e => e.LastName)
             .ThenBy(e => e.FirstName);
 
         var totalCount = await query.CountAsync(cancellationToken);

@@ -28,6 +28,7 @@ public interface IEmployeeRepository
     Task<(IEnumerable<Employee> Employees, int TotalCount)> GetPagedAsync(
         int pageNumber, 
         int pageSize, 
+        string? searchTerm = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

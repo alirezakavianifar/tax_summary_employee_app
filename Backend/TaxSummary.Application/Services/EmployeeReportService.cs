@@ -257,12 +257,13 @@ public class EmployeeReportService : IEmployeeReportService
 
     public async Task<Result<(IEnumerable<EmployeeDto> Employees, int TotalCount)>> GetEmployeesPagedAsync(
         int pageNumber, 
-        int pageSize, 
+        int pageSize,
+        string? searchTerm = null,
         CancellationToken cancellationToken = default)
     {
         if (pageNumber < 1)
         {
-            return Result.Failure<(IEnumerable<EmployeeDto>, int)>("شماره صفحه باید بزرگتر از صفر باشد");
+            return Result.Failure<(IEnumerable<EmployeeDto>, int)>("شماره صفحه باید بزرگتر از 0 باشد");
         }
 
         if (pageSize < 1 || pageSize > 100)
@@ -270,10 +271,17 @@ public class EmployeeReportService : IEmployeeReportService
             return Result.Failure<(IEnumerable<EmployeeDto>, int)>("اندازه صفحه باید بین 1 تا 100 باشد");
         }
 
-        var (employees, totalCount) = await _employeeRepository.GetPagedAsync(pageNumber, pageSize, cancellationToken);
-        var employeeDtos = _mapper.Map<IEnumerable<EmployeeDto>>(employees);
+        try
+        {
+            var (employees, totalCount) = await _employeeRepository.GetPagedAsync(pageNumber, pageSize, searchTerm, cancellationToken);
+            var dtos = _mapper.Map<IEnumerable<EmployeeDto>>(employees);
 
-        return Result.Success((employeeDtos, totalCount));
+            return Result.Success<(IEnumerable<EmployeeDto>, int)>((dtos, totalCount));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<(IEnumerable<EmployeeDto>, int)>($"Failed to get paged employees: {ex.Message}");
+        }
     }
 
     public async Task<Result<IEnumerable<EmployeeDto>>> SearchEmployeesByNameAsync(

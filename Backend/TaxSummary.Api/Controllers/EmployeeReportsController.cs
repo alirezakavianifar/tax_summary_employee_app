@@ -220,11 +220,12 @@ public class EmployeeReportsController : ControllerBase
     public async Task<ActionResult> GetEmployeesPaged(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchTerm = null,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Getting employees page {PageNumber} with size {PageSize}", pageNumber, pageSize);
+        _logger.LogInformation("Getting employees page {PageNumber} with size {PageSize} and search term '{SearchTerm}'", pageNumber, pageSize, searchTerm);
 
-        var result = await _reportService.GetEmployeesPagedAsync(pageNumber, pageSize, cancellationToken);
+        var result = await _reportService.GetEmployeesPagedAsync(pageNumber, pageSize, searchTerm, cancellationToken);
 
         if (result.IsFailure)
         {

@@ -16,19 +16,20 @@ export default function ReportsPage() {
   const [pageSize] = useState(10)
   const [totalPages, setTotalPages] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadEmployees(currentPage)
-  }, [currentPage])
+  }, [currentPage, searchTerm]) // Added searchTerm to dependencies to trigger reload on search/clear
 
   const loadEmployees = async (page: number) => {
     try {
       setLoading(true)
       setError(null)
-      // Call paginated API
-      const response = await reportsApi.getEmployeesPaged(page, pageSize)
+      // Call paginated API with search term if present
+      const response = await reportsApi.getEmployeesPaged(page, pageSize, searchTerm)
       setEmployees(response.data)
       setTotalPages(response.pagination.totalPages)
       setTotalCount(response.pagination.totalCount)
@@ -43,6 +44,16 @@ export default function ReportsPage() {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage)
     }
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setCurrentPage(1) // This will trigger useEffect, which calls loadEmployees(1)
+  }
+
+  const handleClearSearch = () => {
+    setSearchTerm('')
+    setCurrentPage(1) // This will trigger useEffect, which calls loadEmployees(1) with empty searchTerm
   }
 
   const handleImportClick = () => {
@@ -143,6 +154,34 @@ export default function ReportsPage() {
               ثبت فرم جدید
             </Link>
           </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="جستجو بر اساس نام، نام خانوادگی یا شماره پرسنلی..."
+              className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
+            <button
+              type="submit"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              جستجو
+            </button>
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+              >
+                پاک کردن
+              </button>
+            )}
+          </form>
         </div>
 
         {employees.length === 0 && !loading ? (

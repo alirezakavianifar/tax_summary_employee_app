@@ -51,13 +51,15 @@ export const reportsApi = {
   // Get paginated employees
   getEmployeesPaged: async (
     pageNumber: number = 1,
-    pageSize: number = 10
+    pageSize: number = 10,
+    searchTerm?: string
   ): Promise<PaginatedResponse<EmployeeDto>> => {
+    const params: any = { pageNumber, pageSize, _t: new Date().getTime() }
+    if (searchTerm) params.searchTerm = searchTerm
+
     const response = await apiClient.get<PaginatedResponse<EmployeeDto>>(
       `${REPORTS_BASE}/employees/paged`,
-      {
-        params: { pageNumber, pageSize, _t: new Date().getTime() },
-      }
+      { params }
     )
     return response.data
   },
