@@ -78,6 +78,22 @@ public class UserRepository : IUserRepository
         }
     }
 
+    public async Task<Result<IEnumerable<User>>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var users = await _context.Users
+                .Include(u => u.Employee)
+                .ToListAsync(cancellationToken);
+
+            return Result.Success<IEnumerable<User>>(users);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<IEnumerable<User>>($"خطا در دریافت لیست کاربران: {ex.Message}");
+        }
+    }
+
     public async Task<Result<Guid>> CreateAsync(User user, CancellationToken cancellationToken = default)
     {
         try

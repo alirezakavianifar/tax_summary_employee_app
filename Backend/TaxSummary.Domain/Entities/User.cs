@@ -36,6 +36,18 @@ public class User
     public bool IsActive { get; private set; }
 
     /// <summary>
+    /// Update user details
+    /// </summary>
+    public void UpdateDetails(string email, string role, bool isActive, Guid? employeeId)
+    {
+        Email = email.ToLowerInvariant();
+        Role = role;
+        IsActive = isActive;
+        EmployeeId = employeeId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
     /// Number of consecutive failed login attempts
     /// </summary>
     public int FailedLoginAttempts { get; private set; }

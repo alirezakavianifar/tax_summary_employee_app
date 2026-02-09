@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
+import Navbar from '@/components/layout/Navbar'
 
 const vazirmatn = localFont({
   src: [
@@ -38,7 +39,12 @@ export default function RootLayout({
     <html lang="fa" dir="rtl">
       <body className={`${vazirmatn.variable} font-vazirmatn antialiased bg-gray-50`}>
         <AuthProvider>
-          {children}
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-grow">
+              {children}
+            </main>
+          </div>
         </AuthProvider>
       </body>
     </html>

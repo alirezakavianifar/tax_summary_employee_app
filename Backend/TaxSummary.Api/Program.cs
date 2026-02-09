@@ -30,6 +30,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // Add Application services
 builder.Services.AddScoped<IEmployeeReportService, EmployeeReportService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Add Infrastructure services
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();

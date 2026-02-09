@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
 import * as authApi from '@/lib/api/auth';
 import { AuthContextType, User, LoginRequest } from '@/types/auth';
@@ -61,6 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('accessToken', response.accessToken);
             localStorage.setItem('user', JSON.stringify(response.user));
 
+            // Set cookie for middleware
+            Cookies.set('accessToken', response.accessToken, { expires: 1 / 96, secure: process.env.NODE_ENV === 'production' });
+
             setAccessToken(response.accessToken);
             setUser(response.user);
 
@@ -83,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Clear local state regardless of API call success
             localStorage.removeItem('accessToken');
             localStorage.removeItem('user');
+            Cookies.remove('accessToken'); // Clear cookie
             setAccessToken(null);
             setUser(null);
             router.push('/login');
@@ -95,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             localStorage.setItem('accessToken', response.accessToken);
             localStorage.setItem('user', JSON.stringify(response.user));
+            Cookies.set('accessToken', response.accessToken, { expires: 1 / 96, secure: process.env.NODE_ENV === 'production' });
 
             setAccessToken(response.accessToken);
             setUser(response.user);

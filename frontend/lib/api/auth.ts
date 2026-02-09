@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import Cookies from 'js-cookie';
 import { LoginRequest, LoginResponse, RegisterRequest, ChangePasswordRequest, User } from '@/types/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -80,6 +81,19 @@ export async function register(data: RegisterRequest): Promise<User> {
  */
 export async function refreshToken(): Promise<LoginResponse> {
     const response = await authApi.post<LoginResponse>('/refresh');
+    const { accessToken, user } = response.data;
+
+    // Update local storage and cookie to ensure client.ts and middleware have latest token
+    if (accessToken) {
+        localStorage.setItem('accessToken', accessToken);
+        // Set cookie for 15 minutes (matching token lifetime)
+        Cookies.set('accessToken', accessToken, { expires: 1 / 96, secure: process.env.NODE_ENV === 'production' });
+    }
+
+    if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+    }
+
     return response.data;
 }
 

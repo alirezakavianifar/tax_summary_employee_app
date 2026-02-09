@@ -24,6 +24,11 @@ public interface IUserRepository
     Task<Result<User>> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Get all users
+    /// </summary>
+    Task<Result<IEnumerable<User>>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Create a new user
     /// </summary>
     Task<Result<Guid>> CreateAsync(User user, CancellationToken cancellationToken = default);
