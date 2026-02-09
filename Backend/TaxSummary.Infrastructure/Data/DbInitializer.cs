@@ -14,7 +14,15 @@ public static class DbInitializer
     public static async Task InitializeAsync(TaxSummaryDbContext context)
     {
         // Ensure database is created
-        await context.Database.MigrateAsync();
+        // For in-memory database, just ensure created instead of migrate
+        if (context.Database.IsInMemory())
+        {
+            await context.Database.EnsureCreatedAsync();
+        }
+        else
+        {
+            await context.Database.MigrateAsync();
+        }
 
         // Check if we already have data
         if (await context.Employees.AnyAsync())

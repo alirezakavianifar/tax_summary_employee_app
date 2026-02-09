@@ -16,19 +16,32 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Check if we should use in-memory database
+        var useInMemory = configuration.GetConnectionString("UseInMemoryDatabase");
+        var useInMemoryDb = !string.IsNullOrEmpty(useInMemory) && bool.Parse(useInMemory);
+
         // Add DbContext
         services.AddDbContext<TaxSummaryDbContext>(options =>
         {
-            options.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection"),
-                sqlOptions =>
-                {
-                    sqlOptions.MigrationsAssembly(typeof(TaxSummaryDbContext).Assembly.FullName);
-                    sqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 3,
-                        maxRetryDelay: TimeSpan.FromSeconds(5),
-                        errorNumbersToAdd: null);
-                });
+            if (useInMemoryDb)
+            {
+                // Use in-memory database for testing/development without SQL Server
+                options.UseInMemoryDatabase("TaxSummaryDb");
+            }
+            else
+            {
+                // Use SQL Server for production
+                options.UseSqlServer(
+                    configuration.GetConnectionString("DefaultConnection"),
+                    sqlOptions =>
+                    {
+                        sqlOptions.MigrationsAssembly(typeof(TaxSummaryDbContext).Assembly.FullName);
+                        sqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 3,
+                            maxRetryDelay: TimeSpan.FromSeconds(5),
+                            errorNumbersToAdd: null);
+                    });
+            }
 
             // Enable sensitive data logging in development
             var enableSensitiveDataLogging = configuration.GetSection("Logging")
