@@ -88,6 +88,14 @@ public static class DbInitializer
                 companyIdentificationAmount: 0,
                 valueAddedRecognitionQuantity: 12,
                 valueAddedRecognitionAmount: 320000000,
+                valueAddedRecognitionUndetectedQuantity: 0,
+                jobsQuantity: 0,
+                jobsAmount: 0,
+                jobsUndetectedQuantity: 0,
+                otherQuantity: 0,
+                otherAmount: 0,
+                otherUndetectedQuantity: 0,
+                companyIdentificationUndetectedQuantity: 0,
                 referredOrExecutedQuantity: 5,
                 referredOrExecutedAmount: 95000000
             );

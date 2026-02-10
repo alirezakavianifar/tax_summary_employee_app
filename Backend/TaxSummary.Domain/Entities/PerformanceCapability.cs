@@ -28,9 +28,21 @@ public class PerformanceCapability
     
     public int ValueAddedRecognition_Quantity { get; private set; }
     public decimal ValueAddedRecognition_Amount { get; private set; }
+    public int ValueAddedRecognition_UndetectedQuantity { get; private set; } // Added
+
+    public int Jobs_Quantity { get; private set; } // Added
+    public decimal Jobs_Amount { get; private set; } // Added
+    public int Jobs_UndetectedQuantity { get; private set; } // Added
+
+    public int Other_Quantity { get; private set; } // Added
+    public decimal Other_Amount { get; private set; } // Added
+    public int Other_UndetectedQuantity { get; private set; } // Added
     
     public int ReferredOrExecuted_Quantity { get; private set; }
     public decimal ReferredOrExecuted_Amount { get; private set; }
+    
+    // Additional Undetected for Company
+    public int CompanyIdentification_UndetectedQuantity { get; private set; } // Added
     
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
@@ -61,6 +73,14 @@ public class PerformanceCapability
         decimal companyIdentificationAmount = 0,
         int valueAddedRecognitionQuantity = 0,
         decimal valueAddedRecognitionAmount = 0,
+        int valueAddedRecognitionUndetectedQuantity = 0,
+        int jobsQuantity = 0,
+        decimal jobsAmount = 0,
+        int jobsUndetectedQuantity = 0,
+        int otherQuantity = 0,
+        decimal otherAmount = 0,
+        int otherUndetectedQuantity = 0,
+        int companyIdentificationUndetectedQuantity = 0,
         int referredOrExecutedQuantity = 0,
         decimal referredOrExecutedAmount = 0)
     {
@@ -96,6 +116,18 @@ public class PerformanceCapability
             CompanyIdentification_Amount = companyIdentificationAmount,
             ValueAddedRecognition_Quantity = valueAddedRecognitionQuantity,
             ValueAddedRecognition_Amount = valueAddedRecognitionAmount,
+            ValueAddedRecognition_UndetectedQuantity = valueAddedRecognitionUndetectedQuantity,
+            
+            Jobs_Quantity = jobsQuantity,
+            Jobs_Amount = jobsAmount,
+            Jobs_UndetectedQuantity = jobsUndetectedQuantity,
+            
+            Other_Quantity = otherQuantity,
+            Other_Amount = otherAmount,
+            Other_UndetectedQuantity = otherUndetectedQuantity,
+            
+            CompanyIdentification_UndetectedQuantity = companyIdentificationUndetectedQuantity,
+
             ReferredOrExecuted_Quantity = referredOrExecutedQuantity,
             ReferredOrExecuted_Amount = referredOrExecutedAmount,
             CreatedAt = DateTime.UtcNow
@@ -128,8 +160,16 @@ public class PerformanceCapability
         decimal detectionOfTaxEvasionAmount,
         int companyIdentificationQuantity,
         decimal companyIdentificationAmount,
+        int companyIdentificationUndetectedQuantity,
         int valueAddedRecognitionQuantity,
         decimal valueAddedRecognitionAmount,
+        int valueAddedRecognitionUndetectedQuantity,
+        int jobsQuantity,
+        decimal jobsAmount,
+        int jobsUndetectedQuantity,
+        int otherQuantity,
+        decimal otherAmount,
+        int otherUndetectedQuantity,
         int referredOrExecutedQuantity,
         decimal referredOrExecutedAmount)
     {
@@ -143,6 +183,16 @@ public class PerformanceCapability
         if (valueAddedRecognitionAmount < 0) throw new ArgumentException("Amount cannot be negative");
         if (referredOrExecutedQuantity < 0) throw new ArgumentException("Quantity cannot be negative");
         if (referredOrExecutedAmount < 0) throw new ArgumentException("Amount cannot be negative");
+        
+        // No strict check for Undetected quantities? Assuming non-negative.
+        if (companyIdentificationUndetectedQuantity < 0) throw new ArgumentException("Undetected Quantity cannot be negative");
+        if (valueAddedRecognitionUndetectedQuantity < 0) throw new ArgumentException("Undetected Quantity cannot be negative");
+        if (jobsQuantity < 0) throw new ArgumentException("Jobs Quantity cannot be negative");
+        if (jobsAmount < 0) throw new ArgumentException("Jobs Amount cannot be negative");
+        if (jobsUndetectedQuantity < 0) throw new ArgumentException("Undetected Quantity cannot be negative");
+        if (otherQuantity < 0) throw new ArgumentException("Other Quantity cannot be negative");
+        if (otherAmount < 0) throw new ArgumentException("Other Amount cannot be negative");
+        if (otherUndetectedQuantity < 0) throw new ArgumentException("Undetected Quantity cannot be negative");
 
         DetectionOfTaxIssues_Quantity = detectionOfTaxIssuesQuantity;
         DetectionOfTaxIssues_Amount = detectionOfTaxIssuesAmount;
@@ -150,8 +200,20 @@ public class PerformanceCapability
         DetectionOfTaxEvasion_Amount = detectionOfTaxEvasionAmount;
         CompanyIdentification_Quantity = companyIdentificationQuantity;
         CompanyIdentification_Amount = companyIdentificationAmount;
+        CompanyIdentification_UndetectedQuantity = companyIdentificationUndetectedQuantity;
+        
         ValueAddedRecognition_Quantity = valueAddedRecognitionQuantity;
         ValueAddedRecognition_Amount = valueAddedRecognitionAmount;
+        ValueAddedRecognition_UndetectedQuantity = valueAddedRecognitionUndetectedQuantity;
+        
+        Jobs_Quantity = jobsQuantity;
+        Jobs_Amount = jobsAmount;
+        Jobs_UndetectedQuantity = jobsUndetectedQuantity;
+        
+        Other_Quantity = otherQuantity;
+        Other_Amount = otherAmount;
+        Other_UndetectedQuantity = otherUndetectedQuantity;
+        
         ReferredOrExecuted_Quantity = referredOrExecutedQuantity;
         ReferredOrExecuted_Amount = referredOrExecutedAmount;
 

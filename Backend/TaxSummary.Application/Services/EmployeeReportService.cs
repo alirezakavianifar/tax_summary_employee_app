@@ -103,7 +103,20 @@ public class EmployeeReportService : IEmployeeReportService
                     detectionOfTaxEvasion: capabilityDto.DetectionOfTaxEvasion,
                     companyIdentification: capabilityDto.CompanyIdentification,
                     valueAddedRecognition: capabilityDto.ValueAddedRecognition,
-                    referredOrExecuted: capabilityDto.ReferredOrExecuted
+                    referredOrExecuted: capabilityDto.ReferredOrExecuted,
+                    // Default values for new metrics not yet in DTO
+                    valueAddedRecognitionQuantity: 0,
+                    valueAddedRecognitionAmount: 0,
+                    valueAddedRecognitionUndetectedQuantity: 0,
+                    jobsQuantity: 0,
+                    jobsAmount: 0,
+                    jobsUndetectedQuantity: 0,
+                    otherQuantity: 0,
+                    otherAmount: 0,
+                    otherUndetectedQuantity: 0,
+                    companyIdentificationUndetectedQuantity: 0,
+                    referredOrExecutedQuantity: 0,
+                    referredOrExecutedAmount: 0
                 );
 
                 employee.AddPerformanceCapability(capability);
@@ -195,7 +208,20 @@ public class EmployeeReportService : IEmployeeReportService
                     detectionOfTaxEvasion: capabilityDto.DetectionOfTaxEvasion,
                     companyIdentification: capabilityDto.CompanyIdentification,
                     valueAddedRecognition: capabilityDto.ValueAddedRecognition,
-                    referredOrExecuted: capabilityDto.ReferredOrExecuted
+                    referredOrExecuted: capabilityDto.ReferredOrExecuted,
+                    // Default values
+                    valueAddedRecognitionQuantity: 0,
+                    valueAddedRecognitionAmount: 0,
+                    valueAddedRecognitionUndetectedQuantity: 0,
+                    jobsQuantity: 0,
+                    jobsAmount: 0,
+                    jobsUndetectedQuantity: 0,
+                    otherQuantity: 0,
+                    otherAmount: 0,
+                    otherUndetectedQuantity: 0,
+                    companyIdentificationUndetectedQuantity: 0,
+                    referredOrExecutedQuantity: 0,
+                    referredOrExecutedAmount: 0
                 );
 
                 // Update all capability metrics
@@ -206,8 +232,20 @@ public class EmployeeReportService : IEmployeeReportService
                     detectionOfTaxEvasionAmount: capabilityDto.DetectionOfTaxEvasion_Amount,
                     companyIdentificationQuantity: capabilityDto.CompanyIdentification_Quantity,
                     companyIdentificationAmount: capabilityDto.CompanyIdentification_Amount,
+                    companyIdentificationUndetectedQuantity: 0, // Default
+                    
                     valueAddedRecognitionQuantity: capabilityDto.ValueAddedRecognition_Quantity,
                     valueAddedRecognitionAmount: capabilityDto.ValueAddedRecognition_Amount,
+                    valueAddedRecognitionUndetectedQuantity: 0, // Default
+                    
+                    jobsQuantity: 0, // Default
+                    jobsAmount: 0, // Default
+                    jobsUndetectedQuantity: 0, // Default
+                    
+                    otherQuantity: 0, // Default
+                    otherAmount: 0, // Default
+                    otherUndetectedQuantity: 0, // Default
+                    
                     referredOrExecutedQuantity: capabilityDto.ReferredOrExecuted_Quantity,
                     referredOrExecutedAmount: capabilityDto.ReferredOrExecuted_Amount
                 );

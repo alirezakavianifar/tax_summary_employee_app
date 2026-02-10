@@ -35,22 +35,56 @@ public class ExcelSeedService : IExcelSeedService
             var personnelNumber = GetValue(props, "شماره کارمند");
             if (string.IsNullOrWhiteSpace(personnelNumber)) continue;
 
-            var rawName = GetValue(props, "نام");
-            var nameParts = rawName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-            var firstName = nameParts.Length > 0 ? nameParts[0] : "-";
-            var lastName = nameParts.Length > 1 ? nameParts[1] : "-";
+            // Name handling: Prefer separate columns, fallback to splitting "نام"
+            var firstName = GetValue(props, "نام");
+            var lastName = GetValue(props, "نام خانوادگي");
+
+            if (string.IsNullOrWhiteSpace(lastName) && !string.IsNullOrWhiteSpace(firstName) && firstName.Contains(" "))
+            {
+                var nameParts = firstName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                firstName = nameParts.Length > 0 ? nameParts[0] : "-";
+                lastName = nameParts.Length > 1 ? nameParts[1] : "-";
+            }
             
+            if (string.IsNullOrWhiteSpace(firstName)) firstName = "-";
+            if (string.IsNullOrWhiteSpace(lastName)) lastName = "-";
+
+            // Optional fields
             var serviceUnit = GetValue(props, "واحد متبوع");
             var currentPosition = GetValue(props, "نام پست");
+            var education = GetValue(props, "رشته تحصيلي");
+            var appointmentPosition = GetValue(props, "پست انتصابی");
+            var previousExperienceYears = ParseInt(GetValue(props, "سنوات سال"));
             
-            // Parse numeric/time values
-            // Parse numeric/time values
+            // Parse Administrative Status values
             int missionDays = ParseInt(GetValue(props, "مأموريت"));
-            int sickLeaveDays = ParseInt(GetValue(props, "استعلاجی"));
-            int paidLeaveDays = ParseInt(GetValue(props, "استحقاقی"));
+            int sickLeaveDays = ParseInt(GetValue(props, "استعلاجي"));
+            int paidLeaveDays = ParseInt(GetValue(props, "استحقاقي"));
             int overtimeHours = ParseTime(GetValue(props, "اضافه واقعي"));
             int delayAll = ParseTime(GetValue(props, "جمع تأخيروتعجيل"));
-            int hourlyLeave = ParseTime(GetValue(props, "مرخصي ساعتي"));
+            int hourlyLeave = ParseTime(GetValue(props, "مرخصي ساعتي مجاز"));
+
+            // Parse Tax Performance Values
+            // VAT
+            int vatQty = ParseInt(GetValue(props, "تعداد تشخیص شده ارزش افزوده"));
+            decimal vatAmt = ParseDecimal(GetValue(props, "مالیات تشخیص شده ارزش افزوده"));
+            int vatUndetectedQty = ParseInt(GetValue(props, "تعداد تشخیص نشده ارزش افزوده"));
+
+            // Companies
+            int compQty = ParseInt(GetValue(props, "تعداد تشخیص شده شرکت ها"));
+            decimal compAmt = ParseDecimal(GetValue(props, "مالیات تشخیص شده شرکت ها"));
+            int compUndetectedQty = ParseInt(GetValue(props, "تعداد تشخیص نشده شرکت ها"));
+
+            // Jobs
+            int jobsQty = ParseInt(GetValue(props, "تعداد تشخیص شده مشاغل"));
+            decimal jobsAmt = ParseDecimal(GetValue(props, "مالیات تشخیص شده مشاغل"));
+            int jobsUndetectedQty = ParseInt(GetValue(props, "تعداد تشخیص نشده مشاغل"));
+
+            // Other
+            int otherQty = ParseInt(GetValue(props, "تعداد تشخیص شده سایر"));
+            decimal otherAmt = ParseDecimal(GetValue(props, "مالیات تشخیص شده سایر"));
+            int otherUndetectedQty = ParseInt(GetValue(props, "تعداد تشخیص نشده سایر"));
+
 
             // Check if employee exists
             var employee = await _employeeRepository.GetByPersonnelNumberAsync(personnelNumber, cancellationToken);
@@ -62,11 +96,11 @@ public class ExcelSeedService : IExcelSeedService
                     personnelNumber,
                     firstName,
                     lastName,
-                    education: "", // Not existing in Excel
+                    education,
                     serviceUnit,
                     currentPosition,
-                    appointmentPosition: "", // Not existing in Excel
-                    previousExperienceYears: 0 // Not existing in Excel
+                    appointmentPosition,
+                    previousExperienceYears
                 );
 
                 await _employeeRepository.AddAsync(employee, cancellationToken);
@@ -74,9 +108,9 @@ public class ExcelSeedService : IExcelSeedService
             else
             {
                 // Update existing employee info
-                employee.UpdatePersonalInfo(firstName, lastName, employee.Education);
+                employee.UpdatePersonalInfo(firstName, lastName, education);
                 employee.UpdateServiceUnit(serviceUnit);
-                employee.UpdatePosition(currentPosition, employee.AppointmentPosition, employee.PreviousExperienceYears);
+                employee.UpdatePosition(currentPosition, appointmentPosition, previousExperienceYears);
             }
 
             // Handle Administrative Status
@@ -104,6 +138,72 @@ public class ExcelSeedService : IExcelSeedService
                     hourlyLeave
                 );
             }
+
+            // Handle Performance Capabilities
+            // We assume one capability record per employee for this import logic
+            var capability = employee.PerformanceCapabilities.FirstOrDefault();
+            
+            if (capability == null)
+            {
+                capability = PerformanceCapability.Create(
+                    employeeId: employee.Id,
+                    systemRole: "Imported User", // Default role
+                    detectionOfTaxIssues: false, // Will be auto-set by metrics
+                    detectionOfTaxEvasion: false,
+                    companyIdentification: false,
+                    valueAddedRecognition: false,
+                    referredOrExecuted: false,
+                    
+                    valueAddedRecognitionQuantity: vatQty,
+                    valueAddedRecognitionAmount: vatAmt,
+                    valueAddedRecognitionUndetectedQuantity: vatUndetectedQty,
+                    
+                    jobsQuantity: jobsQty,
+                    jobsAmount: jobsAmt,
+                    jobsUndetectedQuantity: jobsUndetectedQty,
+                    
+                    otherQuantity: otherQty,
+                    otherAmount: otherAmt,
+                    otherUndetectedQuantity: otherUndetectedQty,
+                    
+                    companyIdentificationUndetectedQuantity: compUndetectedQty,
+                    companyIdentificationQuantity: compQty,
+                    companyIdentificationAmount: compAmt,
+
+                    referredOrExecutedQuantity: 0, // Not in Excel
+                    referredOrExecutedAmount: 0 // Not in Excel
+                );
+                employee.AddPerformanceCapability(capability);
+            }
+            else
+            {
+                capability.UpdateAllCapabilityMetrics(
+                     detectionOfTaxIssuesQuantity: 0, // Not in Excel yet
+                     detectionOfTaxIssuesAmount: 0,
+                     detectionOfTaxEvasionQuantity: 0,
+                     detectionOfTaxEvasionAmount: 0,
+                     
+                     companyIdentificationQuantity: compQty,
+                     companyIdentificationAmount: compAmt,
+                     companyIdentificationUndetectedQuantity: compUndetectedQty,
+                     
+                     valueAddedRecognitionQuantity: vatQty,
+                     valueAddedRecognitionAmount: vatAmt,
+                     valueAddedRecognitionUndetectedQuantity: vatUndetectedQty,
+                     
+                     jobsQuantity: jobsQty,
+                     jobsAmount: jobsAmt,
+                     jobsUndetectedQuantity: jobsUndetectedQty,
+                     
+                     otherQuantity: otherQty,
+                     otherAmount: otherAmt,
+                     otherUndetectedQuantity: otherUndetectedQty,
+                     
+                     referredOrExecutedQuantity: capability.ReferredOrExecuted_Quantity, // Keep existing
+                     referredOrExecutedAmount: capability.ReferredOrExecuted_Amount // Keep existing
+                );
+            }
+
             count++;
         }
 
@@ -129,7 +229,23 @@ public class ExcelSeedService : IExcelSeedService
 
     private int ParseInt(string value)
     {
+        if (string.IsNullOrWhiteSpace(value)) return 0;
         if (int.TryParse(value, out var result))
+        {
+            return result;
+        }
+        // Handle decimals cast to int
+        if (double.TryParse(value, out var d))
+        {
+            return (int)Math.Round(d);
+        }
+        return 0;
+    }
+
+    private decimal ParseDecimal(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return 0;
+        if (decimal.TryParse(value, out var result))
         {
             return result;
         }
