@@ -27,7 +27,15 @@ public class AdministrativeStatusConfiguration : IEntityTypeConfiguration<Admini
             .IsRequired()
             .HasDefaultValue(0);
 
-        builder.Property(a => a.IncentiveHours)
+        builder.Property(a => a.SickLeaveDays)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(a => a.PaidLeaveDays)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(a => a.OvertimeHours)
             .IsRequired()
             .HasDefaultValue(0);
 

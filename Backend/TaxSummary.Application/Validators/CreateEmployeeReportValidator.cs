@@ -44,9 +44,17 @@ public class CreateEmployeeReportValidator : AbstractValidator<CreateEmployeeRep
             .GreaterThanOrEqualTo(0).WithMessage("تعداد روز ماموریت نمی‌تواند منفی باشد")
             .LessThanOrEqualTo(365).WithMessage("تعداد روز ماموریت نمی‌تواند بیش از 365 روز باشد");
 
-        RuleFor(x => x.IncentiveHours)
-            .GreaterThanOrEqualTo(0).WithMessage("ساعات تشویقی نمی‌تواند منفی باشد")
-            .LessThanOrEqualTo(8760).WithMessage("ساعات تشویقی نمی‌تواند بیش از 8760 ساعت باشد");
+        RuleFor(x => x.SickLeaveDays)
+            .GreaterThanOrEqualTo(0).WithMessage("تعداد روز مرخصی استعلاجی نمی‌تواند منفی باشد")
+            .LessThanOrEqualTo(365).WithMessage("تعداد روز مرخصی استعلاجی نمی‌تواند بیش از 365 روز باشد");
+
+        RuleFor(x => x.PaidLeaveDays)
+            .GreaterThanOrEqualTo(0).WithMessage("تعداد روز مرخصی استحقاقی نمی‌تواند منفی باشد")
+            .LessThanOrEqualTo(365).WithMessage("تعداد روز مرخصی استحقاقی نمی‌تواند بیش از 365 روز باشد");
+
+        RuleFor(x => x.OvertimeHours)
+            .GreaterThanOrEqualTo(0).WithMessage("ساعات اضافه کاری نمی‌تواند منفی باشد")
+            .LessThanOrEqualTo(8760).WithMessage("ساعات اضافه کاری نمی‌تواند بیش از 8760 ساعت باشد");
 
         RuleFor(x => x.DelayAndAbsenceHours)
             .GreaterThanOrEqualTo(0).WithMessage("ساعات تاخیر و غیبت نمی‌تواند منفی باشد")

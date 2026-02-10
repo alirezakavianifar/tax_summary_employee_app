@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { reportsApi } from '@/lib/api/reports'
 import ProtectedRoute from '@/components/ProtectedRoute'
@@ -18,19 +18,25 @@ export default function ReportsPage() {
   const [totalPages, setTotalPages] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Debounce search term to avoid multiple API calls while typing
   useEffect(() => {
-    loadEmployees(currentPage)
-  }, [currentPage, searchTerm]) // Added searchTerm to dependencies to trigger reload on search/clear
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 500) // 500ms delay
 
-  const loadEmployees = async (page: number) => {
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  const loadEmployees = useCallback(async (page: number, search: string = '') => {
     try {
       setLoading(true)
       setError(null)
       // Call paginated API with search term if present
-      const response = await reportsApi.getEmployeesPaged(page, pageSize, searchTerm)
+      const response = await reportsApi.getEmployeesPaged(page, pageSize, search)
       setEmployees(response.data)
       setTotalPages(response.pagination.totalPages)
       setTotalCount(response.pagination.totalCount)
@@ -39,7 +45,11 @@ export default function ReportsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [pageSize])
+
+  useEffect(() => {
+    loadEmployees(currentPage, debouncedSearchTerm)
+  }, [currentPage, debouncedSearchTerm, loadEmployees])
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -49,11 +59,14 @@ export default function ReportsPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    // Immediately set debounced search term to trigger search without delay
+    setDebouncedSearchTerm(searchTerm)
     setCurrentPage(1) // This will trigger useEffect, which calls loadEmployees(1)
   }
 
   const handleClearSearch = () => {
     setSearchTerm('')
+    setDebouncedSearchTerm('') // Immediately clear debounced term too
     setCurrentPage(1) // This will trigger useEffect, which calls loadEmployees(1) with empty searchTerm
   }
 
@@ -74,7 +87,7 @@ export default function ReportsPage() {
       // Clear current list and force reload to page 1
       setEmployees([])
       if (currentPage === 1) {
-        await loadEmployees(1)
+        await loadEmployees(1, debouncedSearchTerm)
       } else {
         setCurrentPage(1)
       }
@@ -117,7 +130,7 @@ export default function ReportsPage() {
             <h2 className="text-xl font-bold text-red-700 mb-2">خطا</h2>
             <p className="text-red-600">{error}</p>
             <button
-              onClick={() => loadEmployees(currentPage)}
+              onClick={() => loadEmployees(currentPage, debouncedSearchTerm)}
               className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
             >
               تلاش مجدد

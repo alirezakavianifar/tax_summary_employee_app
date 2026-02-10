@@ -8,6 +8,7 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Important for cookies
+  timeout: 60000, // 60 second timeout - allow time for database queries
 })
 
 // Request interceptor for logging

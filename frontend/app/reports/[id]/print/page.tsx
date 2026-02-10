@@ -103,7 +103,7 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
             <div className="col-span-3">
               <div className="photo-box border-2 border-gray-800 aspect-[3/4] flex items-center justify-center bg-gray-50">
                 {report.employee.photoUrl ? (
-                  <img 
+                  <img
                     src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'}${report.employee.photoUrl}`}
                     alt="عکس پرسنلی"
                     className="w-full h-full object-cover"
@@ -126,7 +126,7 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
                   <span className="value">{report.employee.lastName}</span>
                 </div>
               </div>
-              
+
               <div className="form-field">
                 <span className="label">شماره پرسنلی:</span>
                 <span className="value">{report.employee.personnelNumber}</span>
@@ -174,14 +174,22 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
           {report.adminStatus && (
             <div className="section-box mb-6">
               <h2 className="section-title">وضعیت اداری</h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="stat-box">
                   <span className="stat-label">روزهای مأموریت:</span>
                   <span className="stat-value">{report.adminStatus.missionDays} روز</span>
                 </div>
                 <div className="stat-box">
                   <span className="stat-label">ساعات اضافه‌کاری:</span>
-                  <span className="stat-value">{report.adminStatus.incentiveHours} ساعت</span>
+                  <span className="stat-value">{report.adminStatus.overtimeHours} ساعت</span>
+                </div>
+                <div className="stat-box">
+                  <span className="stat-label">مرخصی استعلاجی:</span>
+                  <span className="stat-value">{report.adminStatus.sickLeaveDays} روز</span>
+                </div>
+                <div className="stat-box">
+                  <span className="stat-label">مرخصی استحقاقی:</span>
+                  <span className="stat-value">{report.adminStatus.paidLeaveDays} روز</span>
                 </div>
                 <div className="stat-box">
                   <span className="stat-label">تأخیر و غیبت:</span>

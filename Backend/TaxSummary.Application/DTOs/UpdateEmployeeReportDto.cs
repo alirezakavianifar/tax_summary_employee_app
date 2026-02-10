@@ -14,13 +14,11 @@ public class UpdateEmployeeReportDto
     public int PreviousExperienceYears { get; set; }
     public string? PhotoUrl { get; set; }
     public string? StatusDescription { get; set; }
-
-    // Administrative Status
     public int MissionDays { get; set; }
-    public int IncentiveHours { get; set; }
+    public int SickLeaveDays { get; set; }
+    public int PaidLeaveDays { get; set; }
+    public int OvertimeHours { get; set; }
     public int DelayAndAbsenceHours { get; set; }
     public int HourlyLeaveHours { get; set; }
-
-    // Performance Capabilities
     public List<CreatePerformanceCapabilityDto> Capabilities { get; set; } = new();
 }

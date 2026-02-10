@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaxSummary.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using TaxSummary.Infrastructure.Data;
 namespace TaxSummary.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(TaxSummaryDbContext))]
-    partial class TaxSummaryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260210054809_AddSickPaidLeaveAndRenameIncentive")]
+    partial class AddSickPaidLeaveAndRenameIncentive
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -142,9 +145,6 @@ namespace TaxSummary.Infrastructure.Data.Migrations
 
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("IX_Employees_CreatedAt");
-
-                    b.HasIndex("FirstName")
-                        .HasDatabaseName("IX_Employees_FirstName");
 
                     b.HasIndex("LastName")
                         .HasDatabaseName("IX_Employees_LastName");

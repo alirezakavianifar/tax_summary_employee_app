@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { Home, FileText, Users, LogOut, LogIn } from 'lucide-react';
 
 export default function Navbar() {
     const { user, isAuthenticated, logout } = useAuth();
@@ -46,35 +47,38 @@ export default function Navbar() {
                                 سامانه انتصاب
                             </Link>
                         </div>
-                        <div className="hidden sm:ml-6 sm:flex sm:space-x-8 sm:space-x-reverse">
+                        <div className="hidden sm:mr-10 sm:flex sm:space-x-8 sm:space-x-reverse">
                             <Link
                                 href="/"
-                                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/')
-                                        ? 'border-primary-500 text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${isActive('/')
+                                    ? 'border-primary-500 text-gray-900'
+                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                     }`}
                             >
+                                <Home className="w-5 h-5" />
                                 خانه
                             </Link>
                             {isAuthenticated && (
                                 <Link
                                     href="/reports"
-                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/reports')
-                                            ? 'border-primary-500 text-gray-900'
-                                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${isActive('/reports')
+                                        ? 'border-primary-500 text-gray-900'
+                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                         }`}
                                 >
+                                    <FileText className="w-5 h-5" />
                                     فرم‌ها
                                 </Link>
                             )}
                             {isAuthenticated && user?.role === 'Admin' && (
                                 <Link
                                     href="/admin/users"
-                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/admin/users')
-                                            ? 'border-primary-500 text-gray-900'
-                                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${isActive('/admin/users')
+                                        ? 'border-primary-500 text-gray-900'
+                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                         }`}
                                 >
+                                    <Users className="w-5 h-5" />
                                     مدیریت کاربران
                                 </Link>
                             )}
@@ -120,9 +124,10 @@ export default function Navbar() {
                                                 logout();
                                                 setIsMenuOpen(false);
                                             }}
-                                            className="block w-full text-right px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                                             role="menuitem"
                                         >
+                                            <LogOut className="w-4 h-4" />
                                             خروج
                                         </button>
                                     </div>
@@ -132,8 +137,9 @@ export default function Navbar() {
                             <div className="flex gap-4">
                                 <Link
                                     href="/login"
-                                    className="text-gray-500 hover:text-gray-900 font-medium px-3 py-2 rounded-md transition-colors"
+                                    className="flex items-center gap-2 text-gray-500 hover:text-gray-900 font-medium px-3 py-2 rounded-md transition-colors"
                                 >
+                                    <LogIn className="w-5 h-5" />
                                     ورود
                                 </Link>
                             </div>
@@ -169,32 +175,35 @@ export default function Navbar() {
                     <div className="pt-2 pb-3 space-y-1">
                         <Link
                             href="/"
-                            className={`block pl-3 pr-4 py-2 border-r-4 text-base font-medium ${isActive('/')
-                                    ? 'bg-primary-50 border-primary-500 text-primary-700'
-                                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                            className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${isActive('/')
+                                ? 'bg-primary-50 border-primary-500 text-primary-700'
+                                : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
                                 }`}
                         >
+                            <Home className="w-5 h-5" />
                             خانه
                         </Link>
                         {isAuthenticated && (
                             <Link
                                 href="/reports"
-                                className={`block pl-3 pr-4 py-2 border-r-4 text-base font-medium ${isActive('/reports')
-                                        ? 'bg-primary-50 border-primary-500 text-primary-700'
-                                        : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                                className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${isActive('/reports')
+                                    ? 'bg-primary-50 border-primary-500 text-primary-700'
+                                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
                                     }`}
                             >
+                                <FileText className="w-5 h-5" />
                                 فرم‌ها
                             </Link>
                         )}
                         {isAuthenticated && user?.role === 'Admin' && (
                             <Link
                                 href="/admin/users"
-                                className={`block pl-3 pr-4 py-2 border-r-4 text-base font-medium ${isActive('/admin/users')
-                                        ? 'bg-primary-50 border-primary-500 text-primary-700'
-                                        : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                                className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${isActive('/admin/users')
+                                    ? 'bg-primary-50 border-primary-500 text-primary-700'
+                                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
                                     }`}
                             >
+                                <Users className="w-5 h-5" />
                                 مدیریت کاربران
                             </Link>
                         )}
@@ -221,8 +230,9 @@ export default function Navbar() {
                 </Link> */}
                                 <button
                                     onClick={() => logout()}
-                                    className="block w-full text-right px-4 py-2 text-base font-medium text-red-600 hover:text-red-800 hover:bg-gray-100"
+                                    className="flex w-full items-center gap-2 px-4 py-2 text-base font-medium text-red-600 hover:text-red-800 hover:bg-gray-100"
                                 >
+                                    <LogOut className="w-5 h-5" />
                                     خروج
                                 </button>
                             </div>
@@ -232,8 +242,9 @@ export default function Navbar() {
                             <div className="space-y-1">
                                 <Link
                                     href="/login"
-                                    className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                                    className="flex items-center gap-2 px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                                 >
+                                    <LogIn className="w-5 h-5" />
                                     ورود
                                 </Link>
                             </div>

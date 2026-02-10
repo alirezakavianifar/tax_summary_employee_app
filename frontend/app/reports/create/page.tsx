@@ -11,7 +11,7 @@ export default function CreateReportPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  
+
   const [formData, setFormData] = useState<CreateEmployeeReportDto>({
     personnelNumber: '',
     firstName: '',
@@ -23,7 +23,9 @@ export default function CreateReportPage() {
     previousExperienceYears: 0,
     statusDescription: '',
     missionDays: 0,
-    incentiveHours: 0,
+    sickLeaveDays: 0,
+    paidLeaveDays: 0,
+    overtimeHours: 0,
     delayAndAbsenceHours: 0,
     hourlyLeaveHours: 0,
     capabilities: [
@@ -50,19 +52,19 @@ export default function CreateReportPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       setLoading(true)
       setError(null)
-      
+
       // Create employee report
       const employeeId = await reportsApi.createReport(formData)
-      
+
       // Upload photo if provided
       if (photoFile) {
         await reportsApi.uploadPhoto(employeeId, photoFile)
       }
-      
+
       router.push(`/reports/${employeeId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطا در ثبت اطلاعات')
@@ -176,7 +178,7 @@ export default function CreateReportPage() {
           {/* Employee Photo */}
           <div>
             <h2 className="text-xl font-bold mb-4 pb-2 border-b">عکس پرسنلی</h2>
-            <PhotoUpload 
+            <PhotoUpload
               onPhotoChange={setPhotoFile}
               disabled={loading}
             />
@@ -214,12 +216,34 @@ export default function CreateReportPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">ساعات تشویقی</label>
+                <label className="block text-sm font-medium mb-1">ساعات اضافه‌کاری</label>
                 <input
                   type="number"
                   min="0"
-                  value={formData.incentiveHours}
-                  onChange={(e) => setFormData({ ...formData, incentiveHours: parseInt(e.target.value) || 0 })}
+                  value={formData.overtimeHours}
+                  onChange={(e) => setFormData({ ...formData, overtimeHours: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">مرخصی استعلاجی (روز)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.sickLeaveDays}
+                  onChange={(e) => setFormData({ ...formData, sickLeaveDays: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">مرخصی استحقاقی (روز)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.paidLeaveDays}
+                  onChange={(e) => setFormData({ ...formData, paidLeaveDays: parseInt(e.target.value) || 0 })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
@@ -547,7 +571,7 @@ export default function CreateReportPage() {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   )
 }

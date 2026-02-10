@@ -376,7 +376,7 @@ public class EmployeeReportsController : ControllerBase
                 PreviousExperienceYears = employeeResult.Value.Employee.PreviousExperienceYears,
                 PhotoUrl = photoUrl,
                 MissionDays = employeeResult.Value.AdminStatus?.MissionDays ?? 0,
-                IncentiveHours = employeeResult.Value.AdminStatus?.IncentiveHours ?? 0,
+                OvertimeHours = employeeResult.Value.AdminStatus?.OvertimeHours ?? 0,
                 DelayAndAbsenceHours = employeeResult.Value.AdminStatus?.DelayAndAbsenceHours ?? 0,
                 HourlyLeaveHours = employeeResult.Value.AdminStatus?.HourlyLeaveHours ?? 0,
                 Capabilities = employeeResult.Value.Capabilities.Select(c => new CreatePerformanceCapabilityDto

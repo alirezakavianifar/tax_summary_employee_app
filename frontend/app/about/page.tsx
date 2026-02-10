@@ -6,13 +6,13 @@ export default function AboutPage() {
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-8 mb-6">
           <h1 className="text-4xl font-bold text-gray-800 mb-6">درباره سامانه</h1>
-          
+
           <div className="space-y-6">
             <section>
               <h2 className="text-2xl font-bold text-gray-800 mb-3">معرفی سامانه</h2>
               <p className="text-gray-700 leading-relaxed">
-                سامانه مدیریت فرم‌های داوطلبین ارتقاء و انتصاب به سطوح مدیریتی، یک سیستم جامع برای ثبت، 
-                مدیریت و ارزیابی اطلاعات کارکنان داوطلب ارتقاء است. این سامانه با استفاده از جدیدترین 
+                سامانه مدیریت فرم‌های داوطلبین ارتقاء و انتصاب به سطوح مدیریتی، یک سیستم جامع برای ثبت،
+                مدیریت و ارزیابی اطلاعات کارکنان داوطلب ارتقاء است. این سامانه با استفاده از جدیدترین
                 تکنولوژی‌های وب طراحی و پیاده‌سازی شده است.
               </p>
             </section>
@@ -62,13 +62,13 @@ export default function AboutPage() {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="font-bold text-gray-800 mb-2">1. ثبت فرم جدید</h3>
                   <p className="text-gray-700 text-sm">
-                    از صفحه اصلی روی "ثبت فرم جدید" کلیک کنید و اطلاعات کارمند را وارد کنید.
+                    از صفحه اصلی روی &quot;ثبت فرم جدید&quot; کلیک کنید و اطلاعات کارمند را وارد کنید.
                   </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="font-bold text-gray-800 mb-2">2. مشاهده فرم‌ها</h3>
                   <p className="text-gray-700 text-sm">
-                    لیست کامل فرم‌های ثبت شده را مشاهده کنید و روی "مشاهده" کلیک کنید تا جزئیات را ببینید.
+                    لیست کامل فرم‌های ثبت شده را مشاهده کنید و روی &quot;مشاهده&quot; کلیک کنید تا جزئیات را ببینید.
                   </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
@@ -80,7 +80,7 @@ export default function AboutPage() {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="font-bold text-gray-800 mb-2">4. چاپ فرم</h3>
                   <p className="text-gray-700 text-sm">
-                    روی دکمه "چاپ" کلیک کنید تا فرم با قالب استاندارد A4 برای چاپ آماده شود.
+                    روی دکمه &quot;چاپ&quot; کلیک کنید تا فرم با قالب استاندارد A4 برای چاپ آماده شود.
                   </p>
                 </div>
               </div>

@@ -44,8 +44,11 @@ public class ExcelSeedService : IExcelSeedService
             var currentPosition = GetValue(props, "نام پست");
             
             // Parse numeric/time values
+            // Parse numeric/time values
             int missionDays = ParseInt(GetValue(props, "مأموريت"));
-            int incentiveHours = ParseTime(GetValue(props, "اضافه واقعي"));
+            int sickLeaveDays = ParseInt(GetValue(props, "استعلاجی"));
+            int paidLeaveDays = ParseInt(GetValue(props, "استحقاقی"));
+            int overtimeHours = ParseTime(GetValue(props, "اضافه واقعي"));
             int delayAll = ParseTime(GetValue(props, "جمع تأخيروتعجيل"));
             int hourlyLeave = ParseTime(GetValue(props, "مرخصي ساعتي"));
 
@@ -82,7 +85,9 @@ public class ExcelSeedService : IExcelSeedService
                 var status = AdministrativeStatus.Create(
                     employee.Id,
                     missionDays,
-                    incentiveHours,
+                    sickLeaveDays,
+                    paidLeaveDays,
+                    overtimeHours,
                     delayAll,
                     hourlyLeave
                 );
@@ -92,7 +97,9 @@ public class ExcelSeedService : IExcelSeedService
             {
                 employee.AdministrativeStatus.UpdateStatus(
                     missionDays,
-                    incentiveHours,
+                    sickLeaveDays,
+                    paidLeaveDays,
+                    overtimeHours,
                     delayAll,
                     hourlyLeave
                 );

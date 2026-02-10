@@ -77,6 +77,9 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.HasIndex(e => e.LastName)
             .HasDatabaseName("IX_Employees_LastName");
 
+        builder.HasIndex(e => e.FirstName)
+            .HasDatabaseName("IX_Employees_FirstName");
+
         builder.HasIndex(e => e.ServiceUnit)
             .HasDatabaseName("IX_Employees_ServiceUnit");
 

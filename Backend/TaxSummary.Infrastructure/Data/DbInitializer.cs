@@ -64,7 +64,9 @@ public static class DbInitializer
             var adminStatus = AdministrativeStatus.Create(
                 employeeId: employeeRecord.Id,
                 missionDays: 15,
-                incentiveHours: 40,
+                sickLeaveDays: 2,
+                paidLeaveDays: 5,
+                overtimeHours: 40,
                 delayAndAbsenceHours: 8,
                 hourlyLeaveHours: 16
             );

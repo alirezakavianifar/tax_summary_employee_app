@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TaxSummary.Application.DTOs;
 
 /// <summary>
@@ -16,10 +18,28 @@ public class CreateEmployeeReportDto
     public string? PhotoUrl { get; set; }
     public string? StatusDescription { get; set; }
 
-    // Administrative Status
+    [Required]
+    [Range(0, 365, ErrorMessage = "تعداد روزهای ماموریت باید بین 0 تا 365 باشد")]
     public int MissionDays { get; set; }
-    public int IncentiveHours { get; set; }
+
+    [Required]
+    [Range(0, 365, ErrorMessage = "تعداد روزهای مرخصی استعلاجی باید بین 0 تا 365 باشد")]
+    public int SickLeaveDays { get; set; }
+
+    [Required]
+    [Range(0, 365, ErrorMessage = "تعداد روزهای مرخصی استحقاقی باید بین 0 تا 365 باشد")]
+    public int PaidLeaveDays { get; set; }
+
+    [Required]
+    [Range(0, 8760, ErrorMessage = "ساعات اضافه کاری باید بین 0 تا 8760 باشد")]
+    public int OvertimeHours { get; set; }
+
+    [Required]
+    [Range(0, 8760, ErrorMessage = "ساعات تاخیر و غیبت باید بین 0 تا 8760 باشد")]
     public int DelayAndAbsenceHours { get; set; }
+
+    [Required]
+    [Range(0, 8760, ErrorMessage = "ساعات مرخصی ساعتی باید بین 0 تا 8760 باشد")]
     public int HourlyLeaveHours { get; set; }
 
     // Performance Capabilities

@@ -84,7 +84,9 @@ public class EmployeeReportService : IEmployeeReportService
             var adminStatus = AdministrativeStatus.Create(
                 employeeId: employee.Id,
                 missionDays: dto.MissionDays,
-                incentiveHours: dto.IncentiveHours,
+                sickLeaveDays: dto.SickLeaveDays,
+                paidLeaveDays: dto.PaidLeaveDays,
+                overtimeHours: dto.OvertimeHours,
                 delayAndAbsenceHours: dto.DelayAndAbsenceHours,
                 hourlyLeaveHours: dto.HourlyLeaveHours
             );
@@ -156,7 +158,9 @@ public class EmployeeReportService : IEmployeeReportService
             {
                 employee.AdministrativeStatus.UpdateStatus(
                     missionDays: dto.MissionDays,
-                    incentiveHours: dto.IncentiveHours,
+                    sickLeaveDays: dto.SickLeaveDays,
+                    paidLeaveDays: dto.PaidLeaveDays,
+                    overtimeHours: dto.OvertimeHours,
                     delayAndAbsenceHours: dto.DelayAndAbsenceHours,
                     hourlyLeaveHours: dto.HourlyLeaveHours
                 );
@@ -166,7 +170,9 @@ public class EmployeeReportService : IEmployeeReportService
                 var adminStatus = AdministrativeStatus.Create(
                     employeeId: employee.Id,
                     missionDays: dto.MissionDays,
-                    incentiveHours: dto.IncentiveHours,
+                    sickLeaveDays: dto.SickLeaveDays,
+                    paidLeaveDays: dto.PaidLeaveDays,
+                    overtimeHours: dto.OvertimeHours,
                     delayAndAbsenceHours: dto.DelayAndAbsenceHours,
                     hourlyLeaveHours: dto.HourlyLeaveHours
                 );

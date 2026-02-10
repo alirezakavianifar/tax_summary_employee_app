@@ -22,22 +22,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const storedUser = localStorage.getItem('user');
 
                 if (storedToken && storedUser) {
-                    setAccessToken(storedToken);
-                    setUser(JSON.parse(storedUser));
-
-                    // Verify token is still valid by fetching current user
+                    // Verify token is still valid by fetching current user BEFORE setting state
                     try {
                         const currentUser = await authApi.getCurrentUser();
+                        // Only set state if token is valid
+                        setAccessToken(storedToken);
                         setUser(currentUser);
                         localStorage.setItem('user', JSON.stringify(currentUser));
                     } catch (error) {
-                        // Token might be expired, try to refresh
+                        // Token is invalid or expired, try to refresh
                         try {
                             await refreshToken();
                         } catch (refreshError) {
                             // Refresh failed, clear auth state
+                            console.log('Token validation failed, clearing auth state');
                             localStorage.removeItem('accessToken');
                             localStorage.removeItem('user');
+                            Cookies.remove('accessToken');
                             setAccessToken(null);
                             setUser(null);
                         }
@@ -53,6 +54,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         initAuth();
     }, []);
 
+    // Automatic token refresh - refresh 5 minutes before expiration
+    useEffect(() => {
+        if (!accessToken || !user) return;
+
+        // Access token expires in 60 minutes, refresh after 55 minutes
+        const REFRESH_INTERVAL = 55 * 60 * 1000; // 55 minutes in milliseconds
+
+        const refreshTimer = setInterval(async () => {
+            try {
+                console.log('Auto-refreshing token...');
+                await refreshToken();
+            } catch (error) {
+                console.error('Auto token refresh failed:', error);
+                // If auto-refresh fails, user will be logged out on next API call
+            }
+        }, REFRESH_INTERVAL);
+
+        return () => clearInterval(refreshTimer);
+    }, [accessToken, user]);
+
     const login = useCallback(async (credentials: LoginRequest) => {
         try {
             setIsLoading(true);
@@ -62,8 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('accessToken', response.accessToken);
             localStorage.setItem('user', JSON.stringify(response.user));
 
-            // Set cookie for middleware
-            Cookies.set('accessToken', response.accessToken, { expires: 1 / 96, secure: process.env.NODE_ENV === 'production' });
+            // Set cookie for middleware (expires in 60 minutes)
+            Cookies.set('accessToken', response.accessToken, { expires: 1 / 24, secure: process.env.NODE_ENV === 'production' });
 
             setAccessToken(response.accessToken);
             setUser(response.user);
@@ -79,17 +100,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [router]);
 
     const logout = useCallback(async () => {
+        // Clear local state FIRST to prevent UI from showing stale data
+        setAccessToken(null);
+        setUser(null);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('user');
+        Cookies.remove('accessToken'); // Clear cookie
+
         try {
             await authApi.logout();
         } catch (error) {
             console.error('Logout API call failed:', error);
         } finally {
-            // Clear local state regardless of API call success
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('user');
-            Cookies.remove('accessToken'); // Clear cookie
-            setAccessToken(null);
-            setUser(null);
             router.push('/login');
         }
     }, [router]);
@@ -100,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             localStorage.setItem('accessToken', response.accessToken);
             localStorage.setItem('user', JSON.stringify(response.user));
-            Cookies.set('accessToken', response.accessToken, { expires: 1 / 96, secure: process.env.NODE_ENV === 'production' });
+            Cookies.set('accessToken', response.accessToken, { expires: 1 / 24, secure: process.env.NODE_ENV === 'production' });
 
             setAccessToken(response.accessToken);
             setUser(response.user);

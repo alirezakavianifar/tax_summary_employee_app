@@ -14,7 +14,7 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | undefined>(undefined)
-  
+
   // Form state
   const [formData, setFormData] = useState<UpdateEmployeeReportDto>({
     firstName: '',
@@ -25,7 +25,9 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
     appointmentPosition: '',
     previousExperienceYears: 0,
     missionDays: 0,
-    incentiveHours: 0,
+    sickLeaveDays: 0,
+    paidLeaveDays: 0,
+    overtimeHours: 0,
     delayAndAbsenceHours: 0,
     hourlyLeaveHours: 0,
     capabilities: [],
@@ -40,9 +42,9 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
       setLoading(true)
       setError(null)
       const report = await reportsApi.getReport(params.id)
-      
+
       setCurrentPhotoUrl(report.employee.photoUrl)
-      
+
       setFormData({
         firstName: report.employee.firstName,
         lastName: report.employee.lastName,
@@ -54,7 +56,9 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
         photoUrl: report.employee.photoUrl,
         statusDescription: report.employee.statusDescription || '',
         missionDays: report.adminStatus?.missionDays || 0,
-        incentiveHours: report.adminStatus?.incentiveHours || 0,
+        sickLeaveDays: report.adminStatus?.sickLeaveDays || 0,
+        paidLeaveDays: report.adminStatus?.paidLeaveDays || 0,
+        overtimeHours: report.adminStatus?.overtimeHours || 0,
         delayAndAbsenceHours: report.adminStatus?.delayAndAbsenceHours || 0,
         hourlyLeaveHours: report.adminStatus?.hourlyLeaveHours || 0,
         capabilities: report.capabilities.map(c => ({
@@ -85,19 +89,19 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       setSaving(true)
       setError(null)
-      
+
       // Update report
       await reportsApi.updateReport(params.id, formData)
-      
+
       // Upload new photo if provided
       if (photoFile) {
         await reportsApi.uploadPhoto(params.id, photoFile)
       }
-      
+
       alert('گزارش با موفقیت بروزرسانی شد')
       router.push(`/reports/${params.id}`)
     } catch (err) {
@@ -260,7 +264,7 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
             <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
               عکس پرسنلی
             </h2>
-            <PhotoUpload 
+            <PhotoUpload
               currentPhotoUrl={currentPhotoUrl}
               onPhotoChange={setPhotoFile}
               disabled={saving}
@@ -311,8 +315,34 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
                 </label>
                 <input
                   type="number"
-                  name="incentiveHours"
-                  value={formData.incentiveHours}
+                  name="overtimeHours"
+                  value={formData.overtimeHours}
+                  onChange={handleChange}
+                  min="0"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  مرخصی استعلاجی (روز)
+                </label>
+                <input
+                  type="number"
+                  name="sickLeaveDays"
+                  value={formData.sickLeaveDays}
+                  onChange={handleChange}
+                  min="0"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  مرخصی استحقاقی (روز)
+                </label>
+                <input
+                  type="number"
+                  name="paidLeaveDays"
+                  value={formData.paidLeaveDays}
                   onChange={handleChange}
                   min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"

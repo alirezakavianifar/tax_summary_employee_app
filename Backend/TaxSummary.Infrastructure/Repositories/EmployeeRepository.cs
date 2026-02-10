@@ -61,17 +61,19 @@ public class EmployeeRepository : IEmployeeRepository
         if (pageSize > 100)
             pageSize = 100;
 
+        // Only select basic employee fields for pagination - no need to load related entities
+        // The list view only displays: personnelNumber, firstName, lastName, serviceUnit, currentPosition
+        // Related data (AdministrativeStatus, PerformanceCapabilities) is loaded separately for detail views
         var query = _context.Employees
-            .Include(e => e.AdministrativeStatus)
-            .Include(e => e.PerformanceCapabilities)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            var normalizedSearchTerm = searchTerm.Trim().ToLower();
-            query = query.Where(e => e.FirstName.ToLower().Contains(normalizedSearchTerm) ||
-                                     e.LastName.ToLower().Contains(normalizedSearchTerm) ||
-                                     e.PersonnelNumber.ToLower().Contains(normalizedSearchTerm));
+            var normalizedSearchTerm = searchTerm.Trim();
+            // Use EF.Functions.Like for better performance with indexes
+            query = query.Where(e => EF.Functions.Like(e.FirstName, $"%{normalizedSearchTerm}%") ||
+                                     EF.Functions.Like(e.LastName, $"%{normalizedSearchTerm}%") ||
+                                     EF.Functions.Like(e.PersonnelNumber, $"%{normalizedSearchTerm}%"));
         }
 
         query = query.OrderBy(e => e.LastName)

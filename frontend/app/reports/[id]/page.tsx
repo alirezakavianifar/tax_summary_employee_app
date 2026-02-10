@@ -133,14 +133,14 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
           <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
             اطلاعات فردی
           </h2>
-          
+
           {/* Photo and Status Description - Side by Side */}
           <div className="grid grid-cols-12 gap-6 mb-6">
             {/* Photo - Left Side */}
             <div className="col-span-3">
               {report.employee.photoUrl ? (
                 <div className="w-full aspect-[3/4] border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-50">
-                  <img 
+                  <img
                     src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'}${report.employee.photoUrl}`}
                     alt={`${report.employee.firstName} ${report.employee.lastName}`}
                     className="w-full h-full object-cover"
@@ -203,14 +203,22 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
             <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
               وضعیت اداری
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <label className="block text-sm font-bold text-gray-700 mb-1">روزهای مأموریت:</label>
                 <p className="text-2xl font-bold text-blue-600">{report.adminStatus.missionDays}</p>
               </div>
               <div className="bg-green-50 p-4 rounded-lg">
                 <label className="block text-sm font-bold text-gray-700 mb-1">ساعات اضافه‌کاری:</label>
-                <p className="text-2xl font-bold text-green-600">{report.adminStatus.incentiveHours}</p>
+                <p className="text-2xl font-bold text-green-600">{report.adminStatus.overtimeHours}</p>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <label className="block text-sm font-bold text-gray-700 mb-1">مرخصی استعلاجی:</label>
+                <p className="text-2xl font-bold text-purple-600">{report.adminStatus.sickLeaveDays}</p>
+              </div>
+              <div className="bg-orange-50 p-4 rounded-lg">
+                <label className="block text-sm font-bold text-gray-700 mb-1">مرخصی استحقاقی:</label>
+                <p className="text-2xl font-bold text-orange-600">{report.adminStatus.paidLeaveDays}</p>
               </div>
               <div className="bg-red-50 p-4 rounded-lg">
                 <label className="block text-sm font-bold text-gray-700 mb-1">تأخیر و غیبت (ساعت):</label>

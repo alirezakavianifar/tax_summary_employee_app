@@ -18,7 +18,9 @@ export interface AdministrativeStatusDto {
   id: string
   employeeId: string
   missionDays: number
-  incentiveHours: number
+  sickLeaveDays: number
+  paidLeaveDays: number
+  overtimeHours: number
   delayAndAbsenceHours: number
   hourlyLeaveHours: number
   createdAt: string
@@ -68,7 +70,9 @@ export interface CreateEmployeeReportDto {
   photoUrl?: string
   statusDescription?: string
   missionDays: number
-  incentiveHours: number
+  sickLeaveDays: number
+  paidLeaveDays: number
+  overtimeHours: number
   delayAndAbsenceHours: number
   hourlyLeaveHours: number
   capabilities: CreatePerformanceCapabilityDto[]
@@ -106,7 +110,9 @@ export interface UpdateEmployeeReportDto {
   photoUrl?: string
   statusDescription?: string
   missionDays: number
-  incentiveHours: number
+  sickLeaveDays: number
+  paidLeaveDays: number
+  overtimeHours: number
   delayAndAbsenceHours: number
   hourlyLeaveHours: number
   capabilities: CreatePerformanceCapabilityDto[]
