@@ -21,6 +21,7 @@ export default function ReportsPage() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Debounce search term to avoid multiple API calls while typing
   useEffect(() => {
@@ -32,23 +33,43 @@ export default function ReportsPage() {
   }, [searchTerm])
 
   const loadEmployees = useCallback(async (page: number, search: string = '') => {
+    // Cancel any in-flight request to prevent duplicate calls (React StrictMode)
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     try {
       setLoading(true)
       setError(null)
       // Call paginated API with search term if present
       const response = await reportsApi.getEmployeesPaged(page, pageSize, search)
-      setEmployees(response.data)
-      setTotalPages(response.pagination.totalPages)
-      setTotalCount(response.pagination.totalCount)
+      // Only update state if this request wasn't cancelled
+      if (!controller.signal.aborted) {
+        setEmployees(response.data)
+        setTotalPages(response.pagination.totalPages)
+        setTotalCount(response.pagination.totalCount)
+      }
     } catch (err) {
+      // Ignore errors from cancelled requests
+      if (controller.signal.aborted) return
       setError(err instanceof Error ? err.message : 'خطا در بارگذاری اطلاعات')
     } finally {
-      setLoading(false)
+      if (!controller.signal.aborted) {
+        setLoading(false)
+      }
     }
   }, [pageSize])
 
   useEffect(() => {
     loadEmployees(currentPage, debouncedSearchTerm)
+    return () => {
+      // Cleanup: abort any pending request when dependencies change or component unmounts
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
   }, [currentPage, debouncedSearchTerm, loadEmployees])
 
   const handlePageChange = (newPage: number) => {
