@@ -43,10 +43,12 @@
   }
 
   .report-container {
-    width: 210mm;
-    height: 297mm;
-    padding: 10mm;
+    width: 100%;
+    max-width: 210mm;
     box-sizing: border-box;
+  }
+
+  .report-container:not(:last-child) {
     page-break-after: always;
   }
 
