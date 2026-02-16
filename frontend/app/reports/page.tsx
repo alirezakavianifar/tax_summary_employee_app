@@ -91,6 +91,21 @@ export default function ReportsPage() {
     setCurrentPage(1) // This will trigger useEffect, which calls loadEmployees(1) with empty searchTerm
   }
 
+  const handleSyncPhotos = async () => {
+    try {
+      setImporting(true)
+      const data = await reportsApi.syncPhotos()
+      alert(data.message)
+      await loadEmployees(currentPage, debouncedSearchTerm)
+    } catch (err) {
+      console.error(err)
+      const errorMessage = err instanceof Error ? err.message : 'خطا در همگام‌سازی تصاویر'
+      alert(errorMessage)
+    } finally {
+      setImporting(false)
+    }
+  }
+
   const handleImportClick = () => {
     fileInputRef.current?.click()
   }
@@ -176,6 +191,13 @@ export default function ReportsPage() {
                 onChange={handleFileChange}
                 className="hidden"
               />
+              <button
+                onClick={handleSyncPhotos}
+                disabled={importing}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {importing ? 'در حال عملیات...' : 'بروزرسانی عکس‌ها'}
+              </button>
               <button
                 onClick={handleImportClick}
                 disabled={importing}

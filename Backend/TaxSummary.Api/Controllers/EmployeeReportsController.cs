@@ -418,8 +418,34 @@ public class EmployeeReportsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error uploading photo for employee {EmployeeId}", employeeId);
             return StatusCode(500, new { error = "خطا در آپلود عکس" });
         }
+    }
+
+    /// <summary>
+    /// Synchronize employee photos from upload directory based on National ID
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Count of updated records</returns>
+    [HttpPost("sync-photos")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult> SyncPhotos(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Starting synchronization of employee photos");
+
+        var result = await _reportService.SyncEmployeePhotosAsync(cancellationToken);
+
+        if (result.IsFailure)
+        {
+            _logger.LogError("Failed to synchronize photos: {Error}", result.Error);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = result.Error });
+        }
+
+        _logger.LogInformation("Photo synchronization completed. Updated {Count} records.", result.Value);
+        return Ok(new { 
+            count = result.Value, 
+            message = $"همگام‌سازی با موفقیت انجام شد. {result.Value} تصویر متصل شد." 
+        });
     }
 }

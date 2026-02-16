@@ -60,4 +60,9 @@ public interface IEmployeeRepository
     /// Searches employees by name (first name or last name)
     /// </summary>
     Task<IEnumerable<Employee>> SearchByNameAsync(string searchTerm, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets an employee by their National ID
+    /// </summary>
+    Task<Employee?> GetByNationalIdAsync(string nationalId, CancellationToken cancellationToken = default);
 }

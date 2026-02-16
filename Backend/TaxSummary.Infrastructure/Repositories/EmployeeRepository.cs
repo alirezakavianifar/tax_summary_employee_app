@@ -157,4 +157,36 @@ public class EmployeeRepository : IEmployeeRepository
             .ThenBy(e => e.FirstName)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<Employee?> GetByNationalIdAsync(string nationalId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(nationalId))
+            return null;
+
+        var normalizedNationalId = nationalId.TrimStart('0');
+        if (string.IsNullOrEmpty(normalizedNationalId)) normalizedNationalId = "0";
+
+        // Query by exact match or normalized match. 
+        // We'll also fetch a few candidates if needed, but for National ID, 
+        // exact match or a simple 'ends with' or similar can be used if appropriate.
+        // However, the most robust way that translates well is to check exact and then fallback in memory if needed.
+        
+        var employee = await _context.Employees
+            .Include(e => e.AdministrativeStatus)
+            .Include(e => e.PerformanceCapabilities)
+            .FirstOrDefaultAsync(e => e.NationalId == nationalId || e.NationalId == normalizedNationalId, cancellationToken);
+
+        if (employee == null)
+        {
+            // If still not found, search for records that might be the same when leading zeros are ignored.
+            // Since we can't translate TrimStart, we'll look for potential matches and filter in memory.
+            var candidates = await _context.Employees
+                .Where(e => e.NationalId != null && (e.NationalId.EndsWith(normalizedNationalId) || normalizedNationalId.EndsWith(e.NationalId)))
+                .ToListAsync(cancellationToken);
+
+            employee = candidates.FirstOrDefault(e => e.NationalId?.TrimStart('0') == normalizedNationalId);
+        }
+
+        return employee;
+    }
 }

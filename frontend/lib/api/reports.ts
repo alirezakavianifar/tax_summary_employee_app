@@ -112,4 +112,10 @@ export const reportsApi = {
     })
     return response.data
   },
+
+  // Sync photos from upload folder based on National ID
+  syncPhotos: async (): Promise<{ message: string, count: number }> => {
+    const response = await apiClient.post<{ message: string, count: number }>(`${REPORTS_BASE}/sync-photos`)
+    return response.data
+  },
 }

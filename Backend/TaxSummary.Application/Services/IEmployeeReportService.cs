@@ -60,4 +60,9 @@ public interface IEmployeeReportService
     Task<Result<IEnumerable<EmployeeDto>>> GetEmployeesByServiceUnitAsync(
         string serviceUnit, 
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Synchronizes employee photos from the upload directory based on National ID
+    /// </summary>
+    Task<Result<int>> SyncEmployeePhotosAsync(CancellationToken cancellationToken = default);
 }

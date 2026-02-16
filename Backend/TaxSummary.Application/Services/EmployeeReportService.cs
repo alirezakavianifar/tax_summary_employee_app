@@ -1,3 +1,5 @@
+using System.IO;
+using System.Linq;
 using AutoMapper;
 using TaxSummary.Application.DTOs;
 using TaxSummary.Domain.Common;
@@ -357,5 +359,75 @@ public class EmployeeReportService : IEmployeeReportService
         var employeeDtos = _mapper.Map<IEnumerable<EmployeeDto>>(employees);
 
         return Result.Success(employeeDtos);
+    }
+
+    public async Task<Result<int>> SyncEmployeePhotosAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var uploadPath = "wwwroot/uploads/employee-photos";
+            var currentDir = Directory.GetCurrentDirectory();
+            var fullUploadPath = Path.Combine(currentDir, uploadPath);
+
+            // Robust path detection: if running from root, look into Backend/TaxSummary.Api
+            if (!Directory.Exists(fullUploadPath))
+            {
+                var apiProjectPath = Path.Combine(currentDir, "Backend", "TaxSummary.Api", uploadPath);
+                if (Directory.Exists(apiProjectPath))
+                {
+                    fullUploadPath = apiProjectPath;
+                }
+                else
+                {
+                    return Result.Failure<int>($"پوشه تصاویر یافت نشد. مسیرهای بررسی شده: {fullUploadPath}, {apiProjectPath}");
+                }
+            }
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            var files = Directory.GetFiles(fullUploadPath)
+                .Where(f => allowedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .ToList();
+
+            var updatedCount = 0;
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            foreach (var filePath in files)
+            {
+                var fileName = Path.GetFileName(filePath);
+                var nationalId = Path.GetFileNameWithoutExtension(fileName);
+
+                // Simple check: is nationalId numeric? (Optional, but helps filter out non-national ID files)
+                if (!nationalId.All(char.IsDigit) || nationalId.Length < 8)
+                {
+                    continue;
+                }
+
+                var employee = await _employeeRepository.GetByNationalIdAsync(nationalId, cancellationToken);
+                if (employee != null)
+                {
+                    var relativeUrl = $"/uploads/employee-photos/{fileName}";
+                    if (employee.PhotoUrl != relativeUrl)
+                    {
+                        Console.WriteLine($"Linking photo for {employee.PersonnelNumber}: {relativeUrl}");
+                        employee.UpdatePhoto(relativeUrl);
+                        await _employeeRepository.UpdateAsync(employee, cancellationToken);
+                        updatedCount++;
+                    }
+                }
+            }
+
+            if (updatedCount > 0)
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            return Result.Success(updatedCount);
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            return Result.Failure<int>($"خطا در همگام‌سازی تصاویر: {ex.Message}");
+        }
     }
 }
