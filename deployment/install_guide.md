@@ -2,20 +2,25 @@
 
 ## 1. Prerequisites
 - **Target OS**: Windows x64 (Same as build environment)
-- **Database**: SQL Server (Standard/Enterprise/Express)
+- **Database**: SQLite (no installation required - included)
 - **Node.js**: Required for Frontend.
   - Download `node.exe` (Standalone/Binary) from [nodejs.org](https://nodejs.org/) if you cannot run the installer.
   - Add it to PATH or place it in the `frontend` folder.
 
 ## 2. Database Setup
-1. On your development machine, backup your database to a `.bak` file or generate a full SQL script.
-2. Copy the `.bak` or `.sql` file to the server.
-3. Restore the database or run the script on the server's SQL Server instance.
-4. Update the connection string:
-   - Open `backend/appsettings.json` (or `appsettings.Production.json`).
-   - Edit `ConnectionStrings:DefaultConnection` to point to the server's database.
+The database is now included in the deployment package as `taxsummary.db` (SQLite format).
+
+**To use with existing data:**
+1. On your development machine, the backend creates `taxsummary.db` automatically on first run.
+2. After populating with data, copy `taxsummary.db` to the `backend` folder in the deployment package.
+3. The backend will automatically use the existing database file.
+
+**To start fresh:**
+- Simply run the backend - it will create a new empty `taxsummary.db` file automatically.
+- You can seed data using the `/seed` endpoint on the API if needed.
 
 ## 3. Backend Deployment
+   - The database file `taxsummary.db` will be created/used automatically in the `backend` folder.
 1. Navigate to the `backend` folder.
 2. Run `TaxSummary.Api.exe`.
    - It will start listening on the configured ports (usually `http://localhost:5000`).
@@ -38,5 +43,6 @@
   - *Recommendation*: Use IIS to reverse proxy both apps if possible.
 
 ## 6. Troubleshooting
-- **Backend fails to start**: Check `logs` folder (if logging to file) or Event Viewer. Ensure correct .NET dependencies (though it is self-contained, some OS patches might be needed).
+- **Backend fails to start**: Check `logs` folder (if logging to file) or Event Viewer. Ens
+- **Database issues**: If `taxsummary.db` is locked or corrupted, delete it and restart the backend to create a fresh one.ure correct .NET dependencies (though it is self-contained, some OS patches might be needed).
 - **Frontend fails**: Check if `node_modules` are present (they should be in `standalone`).

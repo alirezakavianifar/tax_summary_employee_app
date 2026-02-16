@@ -32,16 +32,12 @@ public static class DependencyInjection
             }
             else
             {
-                // Use SQL Server for production
-                options.UseSqlServer(
+                // Use SQLite for easy deployment and portability
+                options.UseSqlite(
                     configuration.GetConnectionString("DefaultConnection"),
-                    sqlOptions =>
+                    sqliteOptions =>
                     {
-                        sqlOptions.MigrationsAssembly(typeof(TaxSummaryDbContext).Assembly.FullName);
-                        // sqlOptions.EnableRetryOnFailure(
-                        //     maxRetryCount: 3,
-                        //     maxRetryDelay: TimeSpan.FromSeconds(5),
-                        //     errorNumbersToAdd: null);
+                        sqliteOptions.MigrationsAssembly(typeof(TaxSummaryDbContext).Assembly.FullName);
                     });
             }
 
