@@ -23,7 +23,8 @@ public class EmployeeTests
             serviceUnit: "واحد مالیات",
             currentPosition: "کارشناس",
             appointmentPosition: "کارشناس ارشد",
-            previousExperienceYears: 5
+            previousExperienceYears: 5,
+            nationalId: "1234567890"
         );
 
         // Assert
@@ -32,6 +33,7 @@ public class EmployeeTests
         employee.PersonnelNumber.Should().Be(personnelNumber);
         employee.FirstName.Should().Be(firstName);
         employee.LastName.Should().Be(lastName);
+        employee.NationalId.Should().Be("1234567890");
         employee.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
     }
 
@@ -135,12 +137,13 @@ public class EmployeeTests
         var newEducation = "کارشناسی ارشد";
 
         // Act
-        employee.UpdatePersonalInfo(newFirstName, newLastName, newEducation);
+        employee.UpdatePersonalInfo(newFirstName, newLastName, newEducation, "0987654321");
 
         // Assert
         employee.FirstName.Should().Be(newFirstName);
         employee.LastName.Should().Be(newLastName);
         employee.Education.Should().Be(newEducation);
+        employee.NationalId.Should().Be("0987654321");
         employee.UpdatedAt.Should().NotBeNull();
         employee.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
     }
@@ -214,7 +217,9 @@ public class EmployeeTests
         var adminStatus = AdministrativeStatus.Create(
             employeeId: employee.Id,
             missionDays: 10,
-            incentiveHours: 20,
+            sickLeaveDays: 2,
+            paidLeaveDays: 5,
+            overtimeHours: 20,
             delayAndAbsenceHours: 5,
             hourlyLeaveHours: 8
         );

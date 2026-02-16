@@ -14,7 +14,7 @@ export default function SearchReportsPage() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!searchTerm.trim()) {
       setError('لطفاً عبارت جستجو را وارد کنید')
       return
@@ -150,6 +150,9 @@ export default function SearchReportsPage() {
                         نام و نام خانوادگی
                       </th>
                       <th className="px-6 py-3 text-right text-sm font-bold text-gray-700">
+                        کد ملی
+                      </th>
+                      <th className="px-6 py-3 text-right text-sm font-bold text-gray-700">
                         واحد محل خدمت
                       </th>
                       <th className="px-6 py-3 text-right text-sm font-bold text-gray-700">
@@ -166,6 +169,9 @@ export default function SearchReportsPage() {
                         <td className="px-6 py-4 text-sm">{employee.personnelNumber}</td>
                         <td className="px-6 py-4 text-sm font-medium">
                           {employee.firstName} {employee.lastName}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {employee.nationalId || '-'}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {employee.serviceUnit}

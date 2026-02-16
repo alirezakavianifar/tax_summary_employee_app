@@ -8,6 +8,7 @@ export interface EmployeeDto {
   currentPosition: string
   appointmentPosition: string
   previousExperienceYears: number
+  nationalId?: string
   photoUrl?: string
   statusDescription?: string
   createdAt: string
@@ -67,6 +68,7 @@ export interface CreateEmployeeReportDto {
   currentPosition: string
   appointmentPosition: string
   previousExperienceYears: number
+  nationalId?: string
   photoUrl?: string
   statusDescription?: string
   missionDays: number
@@ -107,6 +109,7 @@ export interface UpdateEmployeeReportDto {
   currentPosition: string
   appointmentPosition: string
   previousExperienceYears: number
+  nationalId?: string
   photoUrl?: string
   statusDescription?: string
   missionDays: number

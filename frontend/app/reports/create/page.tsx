@@ -21,6 +21,7 @@ export default function CreateReportPage() {
     currentPosition: '',
     appointmentPosition: '',
     previousExperienceYears: 0,
+    nationalId: '',
     statusDescription: '',
     missionDays: 0,
     sickLeaveDays: 0,
@@ -137,6 +138,16 @@ export default function CreateReportPage() {
                   type="text"
                   value={formData.serviceUnit}
                   onChange={(e) => setFormData({ ...formData, serviceUnit: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">کد ملی</label>
+                <input
+                  type="text"
+                  value={formData.nationalId}
+                  onChange={(e) => setFormData({ ...formData, nationalId: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>

@@ -65,7 +65,7 @@ public class EmployeeRepository : IEmployeeRepository
         // The list view only displays: personnelNumber, firstName, lastName, serviceUnit, currentPosition
         // Related data (AdministrativeStatus, PerformanceCapabilities) is loaded separately for detail views
         var query = _context.Employees
-            .AsQueryable();
+            .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -73,15 +73,15 @@ public class EmployeeRepository : IEmployeeRepository
             // Use EF.Functions.Like for better performance with indexes
             query = query.Where(e => EF.Functions.Like(e.FirstName, $"%{normalizedSearchTerm}%") ||
                                      EF.Functions.Like(e.LastName, $"%{normalizedSearchTerm}%") ||
-                                     EF.Functions.Like(e.PersonnelNumber, $"%{normalizedSearchTerm}%"));
+                                     EF.Functions.Like(e.PersonnelNumber, $"%{normalizedSearchTerm}%") ||
+                                     EF.Functions.Like(e.NationalId, $"%{normalizedSearchTerm}%"));
         }
-
-        query = query.OrderBy(e => e.LastName)
-            .ThenBy(e => e.FirstName);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
         var employees = await query
+            .OrderBy(e => e.LastName)
+            .ThenBy(e => e.FirstName)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);

@@ -43,6 +43,11 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
             .HasMaxLength(200)
             .HasColumnType("NVARCHAR(200)");
 
+        builder.Property(e => e.NationalId)
+            .HasMaxLength(10)
+            .IsRequired(false)
+            .HasColumnType("NVARCHAR(10)");
+
         builder.Property(e => e.CurrentPosition)
             .HasMaxLength(200)
             .HasColumnType("NVARCHAR(200)");
@@ -82,6 +87,12 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
 
         builder.HasIndex(e => e.ServiceUnit)
             .HasDatabaseName("IX_Employees_ServiceUnit");
+
+        builder.HasIndex(e => e.NationalId)
+            .HasDatabaseName("IX_Employees_NationalId");
+
+        builder.HasIndex(e => new { e.LastName, e.FirstName })
+            .HasDatabaseName("IX_Employees_LastName_FirstName");
 
         builder.HasIndex(e => e.CreatedAt)
             .HasDatabaseName("IX_Employees_CreatedAt");

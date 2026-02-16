@@ -111,6 +111,10 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("NVARCHAR(100)");
 
+                    b.Property<string>("NationalId")
+                        .HasMaxLength(10)
+                        .HasColumnType("NVARCHAR(10)");
+
                     b.Property<string>("PersonnelNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -149,12 +153,18 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.HasIndex("LastName")
                         .HasDatabaseName("IX_Employees_LastName");
 
+                    b.HasIndex("NationalId")
+                        .HasDatabaseName("IX_Employees_NationalId");
+
                     b.HasIndex("PersonnelNumber")
                         .IsUnique()
                         .HasDatabaseName("IX_Employees_PersonnelNumber");
 
                     b.HasIndex("ServiceUnit")
                         .HasDatabaseName("IX_Employees_ServiceUnit");
+
+                    b.HasIndex("LastName", "FirstName")
+                        .HasDatabaseName("IX_Employees_LastName_FirstName");
 
                     b.ToTable("Employees", (string)null);
                 });

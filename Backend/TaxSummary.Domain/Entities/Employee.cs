@@ -11,6 +11,7 @@ public class Employee
     public string LastName { get; private set; }
     public string Education { get; private set; }
     public string ServiceUnit { get; private set; }
+    public string? NationalId { get; private set; }
     public string CurrentPosition { get; private set; }
     public string AppointmentPosition { get; private set; }
     public int PreviousExperienceYears { get; private set; }
@@ -55,7 +56,8 @@ public class Employee
         string serviceUnit,
         string currentPosition,
         string appointmentPosition,
-        int previousExperienceYears)
+        int previousExperienceYears,
+        string? nationalId = null)
     {
         ValidateRequiredFields(personnelNumber, firstName, lastName);
         ValidateExperienceYears(previousExperienceYears);
@@ -71,13 +73,14 @@ public class Employee
             CurrentPosition = currentPosition?.Trim() ?? string.Empty,
             AppointmentPosition = appointmentPosition?.Trim() ?? string.Empty,
             PreviousExperienceYears = previousExperienceYears,
+            NationalId = nationalId?.Trim(),
             CreatedAt = DateTime.UtcNow,
             PerformanceCapabilities = new List<PerformanceCapability>()
         };
     }
 
     // Domain Methods
-    public void UpdatePersonalInfo(string firstName, string lastName, string education)
+    public void UpdatePersonalInfo(string firstName, string lastName, string education, string? nationalId = null)
     {
         if (string.IsNullOrWhiteSpace(firstName))
             throw new ArgumentException("First name cannot be empty", nameof(firstName));
@@ -88,6 +91,7 @@ public class Employee
         FirstName = firstName.Trim();
         LastName = lastName.Trim();
         Education = education?.Trim() ?? string.Empty;
+        NationalId = nationalId?.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 

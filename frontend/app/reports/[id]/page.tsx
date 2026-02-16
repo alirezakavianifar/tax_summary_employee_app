@@ -179,6 +179,10 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
               <p className="text-gray-900">{report.employee.education}</p>
             </div>
             <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">کد ملی:</label>
+              <p className="text-gray-900">{report.employee.nationalId || '-'}</p>
+            </div>
+            <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">سابقه خدمت (سال):</label>
               <p className="text-gray-900">{report.employee.previousExperienceYears}</p>
             </div>

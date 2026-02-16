@@ -24,6 +24,7 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
     currentPosition: '',
     appointmentPosition: '',
     previousExperienceYears: 0,
+    nationalId: '',
     missionDays: 0,
     sickLeaveDays: 0,
     paidLeaveDays: 0,
@@ -53,6 +54,7 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
         currentPosition: report.employee.currentPosition,
         appointmentPosition: report.employee.appointmentPosition,
         previousExperienceYears: report.employee.previousExperienceYears,
+        nationalId: report.employee.nationalId || '',
         photoUrl: report.employee.photoUrl,
         statusDescription: report.employee.statusDescription || '',
         missionDays: report.adminStatus?.missionDays || 0,
@@ -200,6 +202,18 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
                   value={formData.education}
                   onChange={handleChange}
                   required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  کد ملی
+                </label>
+                <input
+                  type="text"
+                  name="nationalId"
+                  value={formData.nationalId}
+                  onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>

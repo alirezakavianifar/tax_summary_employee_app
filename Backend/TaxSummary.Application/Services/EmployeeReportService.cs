@@ -77,7 +77,8 @@ public class EmployeeReportService : IEmployeeReportService
                 serviceUnit: dto.ServiceUnit,
                 currentPosition: dto.CurrentPosition,
                 appointmentPosition: dto.AppointmentPosition,
-                previousExperienceYears: dto.PreviousExperienceYears
+                previousExperienceYears: dto.PreviousExperienceYears,
+                nationalId: dto.NationalId
             );
 
             // Create administrative status
@@ -150,7 +151,7 @@ public class EmployeeReportService : IEmployeeReportService
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
             // Update employee information
-            employee.UpdatePersonalInfo(dto.FirstName, dto.LastName, dto.Education);
+            employee.UpdatePersonalInfo(dto.FirstName, dto.LastName, dto.Education, dto.NationalId);
             employee.UpdatePosition(dto.CurrentPosition, dto.AppointmentPosition, dto.PreviousExperienceYears);
             employee.UpdateServiceUnit(dto.ServiceUnit);
             

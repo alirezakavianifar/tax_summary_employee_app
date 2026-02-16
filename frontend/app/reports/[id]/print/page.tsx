@@ -127,9 +127,15 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
                 </div>
               </div>
 
-              <div className="form-field">
-                <span className="label">شماره پرسنلی:</span>
-                <span className="value">{report.employee.personnelNumber}</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="form-field">
+                  <span className="label">شماره پرسنلی:</span>
+                  <span className="value">{report.employee.personnelNumber}</span>
+                </div>
+                <div className="form-field">
+                  <span className="label">کد ملی:</span>
+                  <span className="value">{report.employee.nationalId || '-'}</span>
+                </div>
               </div>
 
               <div className="form-field">

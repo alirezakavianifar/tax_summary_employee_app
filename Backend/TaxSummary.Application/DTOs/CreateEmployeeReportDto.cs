@@ -12,6 +12,7 @@ public class CreateEmployeeReportDto
     public string LastName { get; set; } = string.Empty;
     public string Education { get; set; } = string.Empty;
     public string ServiceUnit { get; set; } = string.Empty;
+    public string? NationalId { get; set; }
     public string CurrentPosition { get; set; } = string.Empty;
     public string AppointmentPosition { get; set; } = string.Empty;
     public int PreviousExperienceYears { get; set; }

@@ -393,8 +393,16 @@ public class PerformanceCapabilityTests
             detectionOfTaxEvasionAmount: 50000,
             companyIdentificationQuantity: 3,
             companyIdentificationAmount: 30000,
+            companyIdentificationUndetectedQuantity: 0,
             valueAddedRecognitionQuantity: 8,
             valueAddedRecognitionAmount: 80000,
+            valueAddedRecognitionUndetectedQuantity: 0,
+            jobsQuantity: 0,
+            jobsAmount: 0,
+            jobsUndetectedQuantity: 0,
+            otherQuantity: 0,
+            otherAmount: 0,
+            otherUndetectedQuantity: 0,
             referredOrExecutedQuantity: 2,
             referredOrExecutedAmount: 20000
         );

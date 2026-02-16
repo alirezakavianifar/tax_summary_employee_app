@@ -55,6 +55,7 @@ public class ExcelSeedService : IExcelSeedService
             var education = GetValue(props, "رشته تحصيلي");
             var appointmentPosition = GetValue(props, "پست انتصابی");
             var previousExperienceYears = ParseInt(GetValue(props, "سنوات سال"));
+            var nationalIdValue = GetValue(props, "شماره ملي");
             
             // Parse Administrative Status values
             int missionDays = ParseInt(GetValue(props, "مأموريت"));
@@ -100,7 +101,8 @@ public class ExcelSeedService : IExcelSeedService
                     serviceUnit,
                     currentPosition,
                     appointmentPosition,
-                    previousExperienceYears
+                    previousExperienceYears,
+                    nationalIdValue
                 );
 
                 await _employeeRepository.AddAsync(employee, cancellationToken);
@@ -108,7 +110,7 @@ public class ExcelSeedService : IExcelSeedService
             else
             {
                 // Update existing employee info
-                employee.UpdatePersonalInfo(firstName, lastName, education);
+                employee.UpdatePersonalInfo(firstName, lastName, education, nationalIdValue);
                 employee.UpdateServiceUnit(serviceUnit);
                 employee.UpdatePosition(currentPosition, appointmentPosition, previousExperienceYears);
             }

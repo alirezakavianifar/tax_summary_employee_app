@@ -119,7 +119,7 @@ export default function ReportsPage() {
       }
 
       if (count === 0) {
-        alert('هشدار: هیچ رکوردی بارگذاری نشد. لطفاً سرستون‌های فایل اکسل را بررسی کنید.\\n(Expected: شماره کارمند, نام, نام خانوادگي, رشته تحصيلي, سنوات سال, واحد متبوع, ...)')
+        alert('هشدار: هیچ رکوردی بارگذاری نشد. لطفاً سرستون‌های فایل اکسل را بررسی کنید.\\n(Expected: شماره کارمند, نام, نام خانوادگي, شماره ملي, رشته تحصيلي, سنوات سال, واحد متبوع, ...)')
       } else {
         alert(`${message}\\nتعداد رکوردهای پردازش شده: ${count}`)
       }
@@ -247,6 +247,7 @@ export default function ReportsPage() {
                     <tr>
                       <th className="px-6 py-3 text-right text-sm font-bold text-gray-700">شماره پرسنلی</th>
                       <th className="px-6 py-3 text-right text-sm font-bold text-gray-700">نام و نام خانوادگی</th>
+                      <th className="px-6 py-3 text-right text-sm font-bold text-gray-700">کد ملی</th>
                       <th className="px-6 py-3 text-right text-sm font-bold text-gray-700">واحد محل خدمت</th>
                       <th className="px-6 py-3 text-right text-sm font-bold text-gray-700">پست فعلی</th>
                       <th className="px-6 py-3 text-right text-sm font-bold text-gray-700">عملیات</th>
@@ -259,6 +260,7 @@ export default function ReportsPage() {
                         <td className="px-6 py-4 text-sm font-medium">
                           {employee.firstName} {employee.lastName}
                         </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{employee.nationalId || '-'}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{employee.serviceUnit}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{employee.currentPosition}</td>
                         <td className="px-6 py-4 text-sm">
