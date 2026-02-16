@@ -176,7 +176,10 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandlingMiddleware();
 
 // Use HTTPS redirection
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Serve static files (for employee photos)
 app.UseStaticFiles();

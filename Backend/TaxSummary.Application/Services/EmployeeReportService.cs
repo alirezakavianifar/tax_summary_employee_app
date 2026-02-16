@@ -1,5 +1,7 @@
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 using AutoMapper;
 using TaxSummary.Application.DTOs;
 using TaxSummary.Domain.Common;
@@ -16,15 +18,18 @@ public class EmployeeReportService : IEmployeeReportService
     private readonly IEmployeeRepository _employeeRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly Microsoft.Extensions.Logging.ILogger<EmployeeReportService> _logger;
 
     public EmployeeReportService(
         IEmployeeRepository employeeRepository,
         IUnitOfWork unitOfWork,
-        IMapper mapper)
+        IMapper mapper,
+        Microsoft.Extensions.Logging.ILogger<EmployeeReportService> logger)
     {
         _employeeRepository = employeeRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<Result<EmployeeReportDto>> GetReportAsync(Guid employeeId, CancellationToken cancellationToken = default)
@@ -428,6 +433,65 @@ public class EmployeeReportService : IEmployeeReportService
         {
             await _unitOfWork.RollbackTransactionAsync(cancellationToken);
             return Result.Failure<int>($"خطا در همگام‌سازی تصاویر: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<string>> GenerateDescriptionAsync(Guid employeeId, CancellationToken cancellationToken = default)
+    {
+        var employee = await _employeeRepository.GetByIdAsync(employeeId, cancellationToken);
+
+        if (employee == null)
+        {
+            return Result.Failure<string>("کارمند یافت نشد");
+        }
+
+        try
+        {
+            var description = employee.GenerateStatusDescription();
+            return Result.Success(description);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<string>($"خطا در تولید توضیحات: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<int>> BulkGenerateDescriptionsAsync(bool overwriteExisting, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Get all employees - we need full entities with relations
+            var employees = (await _employeeRepository.GetAllAsync(cancellationToken)).ToList();
+            var updatedCount = 0;
+            
+            _logger.LogInformation("Found {Count} employees for bulk generation. Overwrite={Overwrite}", employees.Count, overwriteExisting);
+
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            foreach (var employee in employees)
+            {
+                // Only generate if empty OR overwrite is requested
+                if (overwriteExisting || string.IsNullOrWhiteSpace(employee.StatusDescription))
+                {
+                    var description = employee.GenerateStatusDescription();
+                    employee.UpdateStatusDescription(description);
+                    await _employeeRepository.UpdateAsync(employee, cancellationToken);
+                    updatedCount++;
+                }
+            }
+
+            if (updatedCount > 0)
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            return Result.Success(updatedCount);
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            return Result.Failure<int>($"خطا در تولید انبوه توضیحات: {ex.Message}");
         }
     }
 }

@@ -448,4 +448,67 @@ public class EmployeeReportsController : ControllerBase
             message = $"همگام‌سازی با موفقیت انجام شد. {result.Value} تصویر متصل شد." 
         });
     }
+
+    /// <summary>
+    /// Generate a professional Persian description for an employee (Admin only)
+    /// </summary>
+    /// <param name="employeeId">Employee unique identifier</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Generated description</returns>
+    [HttpGet("{employeeId:guid}/generate-description")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult> GenerateDescription(
+        Guid employeeId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Generating description for employee {EmployeeId}", employeeId);
+
+        var result = await _reportService.GenerateDescriptionAsync(employeeId, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            _logger.LogWarning("Failed to generate description for employee {EmployeeId}: {Error}", employeeId, result.Error);
+            
+            if (result.Error.Contains("یافت نشد"))
+                return NotFound(new { error = result.Error });
+
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = result.Error });
+        }
+
+        return Ok(new { description = result.Value });
+    }
+
+    /// <summary>
+    /// Bulk generate Persian descriptions for all employees (Admin only)
+    /// </summary>
+    /// <param name="overwrite">Whether to overwrite existing descriptions</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Count of updated records</returns>
+    [HttpPost("bulk-generate-descriptions")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult> BulkGenerateDescriptions(
+        [FromQuery] bool overwrite = false,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Starting bulk generation of employee descriptions (overwrite={Overwrite})", overwrite);
+
+        var result = await _reportService.BulkGenerateDescriptionsAsync(overwrite, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            _logger.LogError("Failed to bulk generate descriptions: {Error}", result.Error);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = result.Error });
+        }
+
+        _logger.LogInformation("Bulk generation completed. Updated {Count} records.", result.Value);
+        return Ok(new { 
+            count = result.Value, 
+            message = $"عملیات با موفقیت انجام شد. {result.Value} مورد بروزرسانی شد." 
+        });
+    }
 }

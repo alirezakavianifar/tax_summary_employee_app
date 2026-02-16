@@ -65,4 +65,14 @@ public interface IEmployeeReportService
     /// Synchronizes employee photos from the upload directory based on National ID
     /// </summary>
     Task<Result<int>> SyncEmployeePhotosAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Generates a professional Persian description for an employee
+    /// </summary>
+    Task<Result<string>> GenerateDescriptionAsync(Guid employeeId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Bulk generates Persian descriptions for all employees
+    /// </summary>
+    Task<Result<int>> BulkGenerateDescriptionsAsync(bool overwriteExisting, CancellationToken cancellationToken = default);
 }

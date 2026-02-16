@@ -4,13 +4,18 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { reportsApi } from '@/lib/api/reports'
 import type { EmployeeDto } from '@/lib/api/types'
+import { useAuth } from '@/contexts/AuthContext'
+import { Settings, Sparkles } from 'lucide-react'
 
 export default function SearchReportsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState<EmployeeDto[]>([])
   const [loading, setLoading] = useState(false)
+  const [bulkLoading, setBulkLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasSearched, setHasSearched] = useState(false)
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'Admin'
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,21 +46,77 @@ export default function SearchReportsPage() {
     setHasSearched(false)
   }
 
+  const handleBulkGenerate = async (overwrite: boolean = false) => {
+    const confirmMessage = overwrite
+      ? 'آیا از بازنویسی تمامی توضیحات اطمینان دارید؟ این عمل قابل بازگشت نیست.'
+      : 'آیا از تولید خودکار توضیحات برای تمامی کارمندانی که توضیحات ندارند اطمینان دارید؟'
+
+    if (!confirm(confirmMessage)) return
+
+    try {
+      setBulkLoading(true)
+      setError(null)
+      const result = await reportsApi.bulkGenerateDescriptions(overwrite)
+
+      if (result.count === 0 && !overwrite) {
+        alert('هیچ موردی برروزرسانی نشد. احتمالا تمامی کارمندان از قبل دارای توضیحات هستند. برای بروزرسانی تمامی موارد، از آیکون تنظیمات (چرخ‌دنده) کنار دکمه استفاده کنید.')
+      } else {
+        alert(result.message)
+        // If we are currently showing search results, refresh them
+        if (hasSearched && searchTerm) {
+          const results = await reportsApi.searchEmployees(searchTerm.trim())
+          setSearchResults(results)
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'خطا در عملیات انبوه')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">جستجو در فرم‌ها</h1>
-          <p className="text-gray-600">
-            جستجو بر اساس نام، نام خانوادگی یا شماره پرسنلی
-          </p>
-          <Link
-            href="/"
-            className="inline-block mt-4 text-primary-500 hover:text-primary-600"
-          >
-            ← بازگشت به صفحه اصلی
-          </Link>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">جستجو در فرم‌ها</h1>
+              <p className="text-gray-600">
+                جستجو بر اساس نام، نام خانوادگی یا شماره پرسنلی
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 items-end">
+              <Link
+                href="/"
+                className="text-primary-500 hover:text-primary-600"
+              >
+                ← بازگشت به صفحه اصلی
+              </Link>
+              {isAdmin && (
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => handleBulkGenerate(false)}
+                    disabled={bulkLoading}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-50 transition-colors text-sm font-medium"
+                    title="تولید توضیحات برای موارد خالی"
+                  >
+                    <Sparkles size={16} />
+                    {bulkLoading ? 'در حال پردازش...' : 'تولید انبوه توضیحات ✨'}
+                  </button>
+                  <button
+                    onClick={() => handleBulkGenerate(true)}
+                    disabled={bulkLoading}
+                    className="flex items-center justify-center p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-200"
+                    title="بازنویسی تمامی توضیحات (احتیاط!)"
+                  >
+                    <Settings size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Search Form */}

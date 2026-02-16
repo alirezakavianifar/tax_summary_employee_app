@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { reportsApi } from '@/lib/api/reports'
 import type { EmployeeReportDto, UpdateEmployeeReportDto } from '@/lib/api/types'
 import { PhotoUpload } from '@/components/PhotoUpload'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function EditReportPage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -14,6 +15,9 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | undefined>(undefined)
+  const [generatingDescription, setGeneratingDescription] = useState(false)
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'Admin'
 
   // Form state
   const [formData, setFormData] = useState<UpdateEmployeeReportDto>({
@@ -118,6 +122,18 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
       ...prev,
       [name]: type === 'number' ? parseInt(value) || 0 : value,
     }))
+  }
+
+  const handleGenerateDescription = async () => {
+    try {
+      setGeneratingDescription(true)
+      const description = await reportsApi.generateDescription(params.id)
+      setFormData(prev => ({ ...prev, statusDescription: description }))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'خطا در تولید توضیحات')
+    } finally {
+      setGeneratingDescription(false)
+    }
   }
 
   const handleCapabilityChange = (index: number, field: string, value: boolean | number) => {
@@ -291,9 +307,28 @@ export default function EditReportPage({ params }: { params: { id: string } }) {
               توضیحات وضعیت
             </h2>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">توضیحات</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-bold text-gray-700">توضیحات</label>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleGenerateDescription}
+                    disabled={generatingDescription}
+                    className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full border border-blue-200 hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1 transition-colors"
+                  >
+                    {generatingDescription ? (
+                      <>
+                        <span className="animate-spin inline-block w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full"></span>
+                        در حال تولید...
+                      </>
+                    ) : (
+                      'تولید خودکار توضیحات ✨'
+                    )}
+                  </button>
+                )}
+              </div>
               <textarea
-                rows={6}
+                rows={8}
                 name="statusDescription"
                 value={formData.statusDescription}
                 onChange={(e) => setFormData({ ...formData, statusDescription: e.target.value })}

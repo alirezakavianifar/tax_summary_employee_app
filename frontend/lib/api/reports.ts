@@ -118,4 +118,22 @@ export const reportsApi = {
     const response = await apiClient.post<{ message: string, count: number }>(`${REPORTS_BASE}/sync-photos`)
     return response.data
   },
+
+  // Generate automatic description (Admin only)
+  generateDescription: async (employeeId: string): Promise<string> => {
+    const response = await apiClient.get<{ description: string }>(
+      `${REPORTS_BASE}/${employeeId}/generate-description`
+    )
+    return response.data.description
+  },
+
+  // Bulk generate descriptions (Admin only)
+  bulkGenerateDescriptions: async (overwrite: boolean = false): Promise<{ message: string, count: number }> => {
+    const response = await apiClient.post<{ message: string, count: number }>(
+      `${REPORTS_BASE}/bulk-generate-descriptions`,
+      null,
+      { params: { overwrite } }
+    )
+    return response.data
+  },
 }
