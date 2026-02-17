@@ -175,6 +175,10 @@ Thumbs.db
 *.tmp
 *.temp
 
+# Compressed files
+*.rar
+*.zip
+
 # Uploaded employee photos (except .gitkeep and test image)
 Backend/TaxSummary.Api/wwwroot/uploads/employee-photos/*
 !Backend/TaxSummary.Api/wwwroot/uploads/employee-photos/.gitkeep
