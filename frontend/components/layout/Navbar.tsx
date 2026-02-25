@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Home, FileText, Users, LogOut, LogIn } from 'lucide-react';
+import { Home, FileText, Users, LogOut, LogIn, Calculator } from 'lucide-react';
 
 export default function Navbar() {
     const { user, isAuthenticated, logout } = useAuth();
@@ -44,7 +44,7 @@ export default function Navbar() {
                     <div className="flex">
                         <div className="flex-shrink-0 flex items-center">
                             <Link href="/" className="text-xl font-bold text-primary-600">
-                                سامانه انتصاب
+                                سامانه مدیریت
                             </Link>
                         </div>
                         <div className="hidden sm:mr-10 sm:flex sm:space-x-8 sm:space-x-reverse">
@@ -68,6 +68,18 @@ export default function Navbar() {
                                 >
                                     <FileText className="w-5 h-5" />
                                     فرم‌ها
+                                </Link>
+                            )}
+                            {isAuthenticated && (
+                                <Link
+                                    href="/payroll"
+                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${pathname.startsWith('/payroll')
+                                        ? 'border-primary-500 text-gray-900'
+                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                        }`}
+                                >
+                                    <Calculator className="w-5 h-5" />
+                                    محاسبات حقوقی
                                 </Link>
                             )}
                             {isAuthenticated && user?.role === 'Admin' && (
@@ -193,6 +205,18 @@ export default function Navbar() {
                             >
                                 <FileText className="w-5 h-5" />
                                 فرم‌ها
+                            </Link>
+                        )}
+                        {isAuthenticated && (
+                            <Link
+                                href="/payroll"
+                                className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${pathname.startsWith('/payroll')
+                                    ? 'bg-primary-50 border-primary-500 text-primary-700'
+                                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                                    }`}
+                            >
+                                <Calculator className="w-5 h-5" />
+                                محاسبات حقوقی
                             </Link>
                         )}
                         {isAuthenticated && user?.role === 'Admin' && (

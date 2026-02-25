@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
     const token = request.cookies.get('accessToken')?.value || ''
-    const protectedPaths = ['/reports', '/admin']
+    const protectedPaths = ['/reports', '/admin', '/payroll']
     const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
     if (isProtectedPath && !token) {
@@ -20,5 +20,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/reports/:path*', '/admin/:path*', '/login'],
+    matcher: ['/reports/:path*', '/admin/:path*', '/payroll/:path*', '/login'],
 }

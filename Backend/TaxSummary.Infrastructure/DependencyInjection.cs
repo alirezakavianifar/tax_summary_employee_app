@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TaxSummary.Application.Services;
 using TaxSummary.Domain.Interfaces;
 using TaxSummary.Infrastructure.Data;
 using TaxSummary.Infrastructure.Repositories;
 using TaxSummary.Infrastructure.Services;
-using TaxSummary.Application.Services;
 
 namespace TaxSummary.Infrastructure;
 
@@ -54,6 +54,7 @@ public static class DependencyInjection
         // Register repositories
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IPayrollRepository, PayrollRepository>();
 
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -63,6 +64,10 @@ public static class DependencyInjection
 
         // Register Excel Seed Service
         services.AddScoped<IExcelSeedService, ExcelSeedService>();
+
+        // Register Payroll Services
+        services.AddScoped<IPayrollService, PayrollService>();
+        services.AddScoped<IPayrollExcelExportService, PayrollExcelExportService>();
 
         return services;
     }
