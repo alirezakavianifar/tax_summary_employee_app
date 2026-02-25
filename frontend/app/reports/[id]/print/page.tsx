@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { reportsApi } from '@/lib/api/reports'
+import { BASE_URL } from '@/lib/api/config'
 import type { EmployeeReportDto } from '@/lib/api/types'
 
 export default function PrintReportPage({ params }: { params: { id: string } }) {
@@ -104,7 +105,7 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
               <div className="photo-box border-2 border-gray-800 aspect-[3/4] flex items-center justify-center bg-gray-50">
                 {report.employee.photoUrl ? (
                   <img
-                    src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'}${report.employee.photoUrl}`}
+                    src={`${BASE_URL}${report.employee.photoUrl}`}
                     alt="عکس پرسنلی"
                     className="w-full h-full object-cover"
                   />

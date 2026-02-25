@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, ChangeEvent, DragEvent } from 'react'
+import { BASE_URL } from '@/lib/api/config'
 import Image from 'next/image'
 
 interface PhotoUploadProps {
@@ -47,7 +48,7 @@ export function PhotoUpload({ currentPhotoUrl, onPhotoChange, disabled = false }
     }
 
     setError(null)
-    
+
     // Create preview
     const reader = new FileReader()
     reader.onloadend = () => {
@@ -99,7 +100,7 @@ export function PhotoUpload({ currentPhotoUrl, onPhotoChange, disabled = false }
   const getPhotoSrc = () => {
     if (preview) return preview
     if (currentPhotoUrl) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'
+      const apiUrl = BASE_URL
       return `${apiUrl}${currentPhotoUrl}`
     }
     return null
@@ -110,11 +111,10 @@ export function PhotoUpload({ currentPhotoUrl, onPhotoChange, disabled = false }
   return (
     <div className="space-y-4">
       <div
-        className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
-          isDragging
-            ? 'border-primary-500 bg-primary-50'
-            : 'border-gray-300 hover:border-gray-400'
-        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${isDragging
+          ? 'border-primary-500 bg-primary-50'
+          : 'border-gray-300 hover:border-gray-400'
+          } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

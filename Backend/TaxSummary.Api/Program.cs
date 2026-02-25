@@ -88,13 +88,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-            ?? new[] { "http://localhost:3000" };
-
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(origin => true) // Allow any origin
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials();
+              .AllowCredentials(); // Support cookies/credentials
     });
 });
 
@@ -154,6 +151,13 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// Initialize database (create, migrate, and seed if empty)
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<TaxSummaryDbContext>();
+    await DbInitializer.InitializeAsync(context);
+}
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -163,23 +167,16 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Tax Summary API v1");
         options.RoutePrefix = string.Empty; // Swagger UI at root
     });
-
-    // Initialize database in development
-    using (var scope = app.Services.CreateScope())
-    {
-        var context = scope.ServiceProvider.GetRequiredService<TaxSummaryDbContext>();
-        await DbInitializer.InitializeAsync(context);
-    }
 }
 
 // Use custom exception handling middleware
 app.UseExceptionHandlingMiddleware();
 
-// Use HTTPS redirection
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-}
+// Use HTTPS redirection - Disabled for simpler local network deployment
+// if (!app.Environment.IsDevelopment())
+// {
+//     app.UseHttpsRedirection();
+// }
 
 // Serve static files (for employee photos)
 app.UseStaticFiles();

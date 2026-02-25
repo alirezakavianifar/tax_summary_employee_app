@@ -84,7 +84,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('user', JSON.stringify(response.user));
 
             // Set cookie for middleware (expires in 60 minutes)
-            Cookies.set('accessToken', response.accessToken, { expires: 1 / 24, secure: process.env.NODE_ENV === 'production' });
+            Cookies.set('accessToken', response.accessToken, {
+                expires: 1 / 24,
+                secure: window.location.protocol === 'https:',
+                sameSite: 'lax'
+            });
 
             setAccessToken(response.accessToken);
             setUser(response.user);
@@ -122,7 +126,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             localStorage.setItem('accessToken', response.accessToken);
             localStorage.setItem('user', JSON.stringify(response.user));
-            Cookies.set('accessToken', response.accessToken, { expires: 1 / 24, secure: process.env.NODE_ENV === 'production' });
+            Cookies.set('accessToken', response.accessToken, {
+                expires: 1 / 24,
+                secure: window.location.protocol === 'https:',
+                sameSite: 'lax'
+            });
 
             setAccessToken(response.accessToken);
             setUser(response.user);

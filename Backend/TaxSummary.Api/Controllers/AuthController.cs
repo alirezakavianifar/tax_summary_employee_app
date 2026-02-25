@@ -206,8 +206,8 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true, // Requires HTTPS
-            SameSite = SameSiteMode.Strict,
+            Secure = Request.IsHttps, // Dynamically set secure based on if request is HTTPS
+            SameSite = SameSiteMode.Lax, // Use Lax instead of Strict to allow cross-origin requests on same domain
             Expires = DateTimeOffset.UtcNow.AddDays(7)
         };
 

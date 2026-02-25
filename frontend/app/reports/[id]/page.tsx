@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { reportsApi } from '@/lib/api/reports'
+import { BASE_URL } from '@/lib/api/config'
 import type { EmployeeReportDto } from '@/lib/api/types'
 
 export default function ReportDetailPage({ params }: { params: { id: string } }) {
@@ -141,7 +142,7 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
               {report.employee.photoUrl ? (
                 <div className="w-full aspect-[3/4] border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-50">
                   <img
-                    src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'}${report.employee.photoUrl}`}
+                    src={`${BASE_URL}${report.employee.photoUrl}`}
                     alt={`${report.employee.firstName} ${report.employee.lastName}`}
                     className="w-full h-full object-cover"
                   />

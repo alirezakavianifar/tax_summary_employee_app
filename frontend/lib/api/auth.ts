@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios';
 import Cookies from 'js-cookie';
 import { LoginRequest, LoginResponse, RegisterRequest, ChangePasswordRequest, User } from '@/types/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL, BASE_URL } from './config';
 
 // Create axios instance with default config
 const authApi = axios.create({
@@ -81,6 +81,7 @@ export async function register(data: RegisterRequest): Promise<User> {
  */
 export async function refreshToken(): Promise<LoginResponse> {
     const response = await authApi.post<LoginResponse>('/refresh');
+    const apiUrl = BASE_URL;
     const { accessToken, user } = response.data;
 
     // Update local storage and cookie to ensure client.ts and middleware have latest token
