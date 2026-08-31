@@ -70,15 +70,19 @@ export default function Navbar() {
           {/* Right side (RTL Start): Logo and Modular Navigation */}
           <div className="flex items-center gap-6">
             {/* Logo / Brand */}
-            <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary-600 to-indigo-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
-                <Building2 className="w-5 h-5" />
+            <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl overflow-hidden p-1 border border-gray-200 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
+                <img
+                  src="/images/Intamedia_Logo.png"
+                  alt="اداره کل امور مالیاتی استان خوزستان"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div className="flex flex-col">
-                <span className="text-base font-black text-gray-900 leading-tight">
-                  سامانه مدیریت یکپارچه
+                <span className="text-sm sm:text-base font-black text-gray-900 leading-tight">
+                  اداره کل امور مالیاتی استان خوزستان
                 </span>
-                <span className="text-[10px] text-primary-600 font-bold">امور اداری و مالیاتی</span>
+                <span className="text-[10px] text-primary-600 font-bold">سامانه جامع خدمات اداری، ارزیابی و حقوقی</span>
               </div>
             </Link>
 

@@ -90,7 +90,7 @@ export default function AboutPage() {
               <h2 className="text-2xl font-bold text-gray-800 mb-3">اطلاعات تماس</h2>
               <div className="bg-primary-50 p-4 rounded-lg">
                 <p className="text-gray-700">
-                  <strong>سازمان:</strong> سازمان امور مالیاتی کشور
+                  <strong>سازمان:</strong> اداره کل امور مالیاتی استان خوزستان
                 </p>
                 <p className="text-gray-700 mt-2">
                   <strong>نسخه:</strong> 1.0.0

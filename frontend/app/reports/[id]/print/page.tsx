@@ -94,7 +94,7 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
               فرم وضعیت داوطلبین ارتقاء و انتصاب به سطوح مدیریتی
             </h1>
             <p className="text-lg text-gray-700">
-              سازمان امور مالیاتی کشور
+              سازمان امور مالیاتی کشور — اداره کل امور مالیاتی استان خوزستان
             </p>
           </div>
 
