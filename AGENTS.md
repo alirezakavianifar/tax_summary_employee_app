@@ -26,3 +26,7 @@ When the user uses the keyword "push" in a request (e.g., "please push these cha
 4. **Push**: `git push` (or `git push -u origin <branch>` if the upstream is not set).
 
 **Note:** You should proactively execute these commands without asking for extra confirmation if the user explicitly said "push".
+
+## Language Policy
+
+**Always respond in English.** Regardless of the language used in prompts or queries, all explanations, responses, and communications must be written in English.
