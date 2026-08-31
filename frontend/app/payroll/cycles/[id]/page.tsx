@@ -204,10 +204,20 @@ export default function CycleDetailPage() {
                 </span>
               </div>
               <h1 className="text-2xl font-bold text-gray-900">{cycle.title}</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                دوره مالی: {formatNumber(cycle.fiscalMonth)} / {formatNumber(cycle.fiscalYear)} | ایجادکننده:{' '}
-                {cycle.createdByUsername} | تاریخ ایجاد:{' '}
-                {new Date(cycle.createdAt).toLocaleDateString('fa-IR')}
+              <p className="text-sm text-gray-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>دوره مالی: {formatNumber(cycle.fiscalMonth)} / {formatNumber(cycle.fiscalYear)}</span>
+                <span>|</span>
+                <span>ایجادکننده: {cycle.createdByUsername}</span>
+                <span>|</span>
+                <span>تاریخ ایجاد: {new Date(cycle.createdAt).toLocaleDateString('fa-IR')}</span>
+                {cycle.deadline && (
+                  <>
+                    <span>|</span>
+                    <span className="text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-xs">
+                      مهلت ارسال ادارات: {new Date(cycle.deadline).toLocaleDateString('fa-IR')}
+                    </span>
+                  </>
+                )}
               </p>
             </div>
 

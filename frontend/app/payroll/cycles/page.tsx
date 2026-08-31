@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
@@ -11,6 +11,8 @@ import {
   type PayrollCycleSummaryDto,
 } from '@/lib/api/payrollCycles'
 import { PROCESS_TYPE_LABELS } from '@/lib/api/payroll'
+import ShamsiDatePicker from '@/components/ShamsiDatePicker'
+import { PERSIAN_MONTH_NAMES, getTodayJalali } from '@/lib/jalali'
 import {
   Plus,
   Calendar,
@@ -25,11 +27,25 @@ import {
   Trash2,
   ChevronRight,
   Upload,
+  Sparkles,
 } from 'lucide-react'
 
 function formatNumber(v: number | null | undefined): string {
   if (v == null) return '—'
   return v.toLocaleString('fa-IR')
+}
+
+function getDefaultCycleTitle(processType: string, year: number, month: number): string {
+  const monthName = PERSIAN_MONTH_NAMES[month - 1] || `ماه ${month}`
+  const monthWithSuffix = `${monthName}‌ماه`
+
+  if (processType === 'HalfPercentBonus') {
+    return `پردازش نیم‌درصد و پاداش ${monthWithSuffix} ${year}`
+  }
+  if (processType === 'OvertimeWelfareMonetary') {
+    return `محاسبه اضافه کار و رفاهی مبلغی ${monthWithSuffix} ${year}`
+  }
+  return `محاسبه اضافه کار و رفاهی ${monthWithSuffix} ${year}`
 }
 
 export default function PayrollCyclesPage() {
@@ -41,13 +57,56 @@ export default function PayrollCyclesPage() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Current Shamsi date for auto-filling
+  const currentJalali = useMemo(() => getTodayJalali(), [])
+
   // Form states for new cycle modal
-  const [title, setTitle] = useState('')
   const [processType, setProcessType] = useState('OvertimeWelfareRated')
-  const [fiscalYear, setFiscalYear] = useState(1405)
-  const [fiscalMonth, setFiscalMonth] = useState(4)
+  const [fiscalYear, setFiscalYear] = useState<number>(currentJalali.jy)
+  const [fiscalMonth, setFiscalMonth] = useState<number>(currentJalali.jm)
+  const [title, setTitle] = useState<string>(() =>
+    getDefaultCycleTitle('OvertimeWelfareRated', currentJalali.jy, currentJalali.jm)
+  )
+  const [isTitleManual, setIsTitleManual] = useState(false)
   const [deadline, setDeadline] = useState('')
   const [notes, setNotes] = useState('')
+
+  const handleProcessTypeChange = (newType: string) => {
+    setProcessType(newType)
+    if (!isTitleManual) {
+      setTitle(getDefaultCycleTitle(newType, fiscalYear, fiscalMonth))
+    }
+  }
+
+  const handleFiscalYearChange = (newYear: number) => {
+    setFiscalYear(newYear)
+    if (!isTitleManual) {
+      setTitle(getDefaultCycleTitle(processType, newYear, fiscalMonth))
+    }
+  }
+
+  const handleFiscalMonthChange = (newMonth: number) => {
+    setFiscalMonth(newMonth)
+    if (!isTitleManual) {
+      setTitle(getDefaultCycleTitle(processType, fiscalYear, newMonth))
+    }
+  }
+
+  const handleAutoFillTitle = () => {
+    setIsTitleManual(false)
+    setTitle(getDefaultCycleTitle(processType, fiscalYear, fiscalMonth))
+  }
+
+  const openNewCycleModal = () => {
+    if (!title.trim() || !isTitleManual) {
+      const t = getTodayJalali()
+      setFiscalYear(t.jy)
+      setFiscalMonth(t.jm)
+      setTitle(getDefaultCycleTitle(processType, t.jy, t.jm))
+      setIsTitleManual(false)
+    }
+    setIsModalOpen(true)
+  }
 
   const ezafeRef = useRef<HTMLInputElement>(null)
   const refahiRef = useRef<HTMLInputElement>(null)
@@ -121,8 +180,14 @@ export default function PayrollCyclesPage() {
     try {
       const created = await payrollCyclesApi.createCycle(formData)
       setIsModalOpen(false)
-      // Reset fields
-      setTitle('')
+      // Reset fields with current Shamsi defaults
+      const t = getTodayJalali()
+      setFiscalYear(t.jy)
+      setFiscalMonth(t.jm)
+      setProcessType('OvertimeWelfareRated')
+      setTitle(getDefaultCycleTitle('OvertimeWelfareRated', t.jy, t.jm))
+      setIsTitleManual(false)
+      setDeadline('')
       setNotes('')
       setEzafeName(null)
       setRefahiName(null)
@@ -177,7 +242,7 @@ export default function PayrollCyclesPage() {
 
             {isAdmin && (
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={openNewCycleModal}
                 className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors text-sm"
               >
                 <Plus className="w-4 h-4" />
@@ -208,7 +273,7 @@ export default function PayrollCyclesPage() {
             </p>
             {isAdmin && (
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={openNewCycleModal}
                 className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -262,6 +327,12 @@ export default function PayrollCyclesPage() {
                         <Clock className="w-3.5 h-3.5 text-gray-400" />
                         <span>تاریخ ثبت: {new Date(cycle.createdAt).toLocaleDateString('fa-IR')}</span>
                       </div>
+                      {cycle.deadline && (
+                        <div className="flex items-center gap-1.5 text-amber-600 font-medium">
+                          <Clock className="w-3.5 h-3.5 text-amber-500" />
+                          <span>مهلت ارسال: {new Date(cycle.deadline).toLocaleDateString('fa-IR')}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Progress bar */}
@@ -334,15 +405,29 @@ export default function PayrollCyclesPage() {
 
               <form onSubmit={handleCreateCycle} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    عنوان دوره محاسبه <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      عنوان دوره محاسبه <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAutoFillTitle}
+                      className="text-xs text-primary-600 hover:text-primary-800 flex items-center gap-1 font-medium transition-colors"
+                      title="تولید خودکار عنوان بر اساس ماه و نوع فرآیند"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      تکمیل خودکار عنوان
+                    </button>
+                  </div>
                   <input
                     type="text"
                     required
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="مثال: محاسبه اضافه کار و رفاهی تیرماه ۱۴۰۵"
+                    onChange={(e) => {
+                      setTitle(e.target.value)
+                      setIsTitleManual(true)
+                    }}
+                    placeholder={`مثال: ${getDefaultCycleTitle(processType, fiscalYear, fiscalMonth)}`}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                   />
                 </div>
@@ -352,8 +437,8 @@ export default function PayrollCyclesPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">نوع فرآیند</label>
                     <select
                       value={processType}
-                      onChange={(e) => setProcessType(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      onChange={(e) => handleProcessTypeChange(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
                     >
                       <option value="OvertimeWelfareRated">ادغام و محاسبه اضافه کار و رفاهی</option>
                       <option value="OvertimeWelfareMonetary">اضافه کار و رفاهی مبلغی</option>
@@ -366,7 +451,7 @@ export default function PayrollCyclesPage() {
                     <input
                       type="number"
                       value={fiscalYear}
-                      onChange={(e) => setFiscalYear(parseInt(e.target.value) || 1405)}
+                      onChange={(e) => handleFiscalYearChange(parseInt(e.target.value) || currentJalali.jy)}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     />
                   </div>
@@ -375,12 +460,12 @@ export default function PayrollCyclesPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">ماه</label>
                     <select
                       value={fiscalMonth}
-                      onChange={(e) => setFiscalMonth(parseInt(e.target.value) || 1)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      onChange={(e) => handleFiscalMonthChange(parseInt(e.target.value) || 1)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
                     >
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                        <option key={m} value={m}>
-                          ماه {m}
+                      {PERSIAN_MONTH_NAMES.map((name, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          ماه {i + 1} ({name})
                         </option>
                       ))}
                     </select>
@@ -389,11 +474,10 @@ export default function PayrollCyclesPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">مهلت ارسال ادارات (اختیاری)</label>
-                  <input
-                    type="date"
+                  <ShamsiDatePicker
                     value={deadline}
-                    onChange={(e) => setDeadline(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    onChange={(val) => setDeadline(val)}
+                    placeholder="مثال: ۱۴۰۵/۰۶/۱۵"
                   />
                 </div>
 

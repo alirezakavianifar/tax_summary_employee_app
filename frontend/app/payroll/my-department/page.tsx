@@ -103,6 +103,8 @@ export default function MyDepartmentPage() {
                 color: 'bg-gray-100 text-gray-700 border-gray-200',
                 dot: 'bg-gray-400',
               }
+              const cycle = allCycles.find((c) => c.id === dept.payrollCycleId)
+              const cycleDeadline = cycle?.deadline
 
               return (
                 <div
@@ -147,6 +149,12 @@ export default function MyDepartmentPage() {
                         <span className="text-gray-400">مجموع رفاهی:</span>
                         <span className="font-bold text-emerald-700">{formatNumber(dept.totalWelfareAmount)} ریال</span>
                       </div>
+                      {cycleDeadline && (
+                        <div className="flex justify-between text-amber-600 font-medium pt-1 border-t border-dashed border-gray-100">
+                          <span>مهلت ارسال اداره:</span>
+                          <span>{new Date(cycleDeadline).toLocaleDateString('fa-IR')}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
