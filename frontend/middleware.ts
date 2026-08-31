@@ -13,7 +13,7 @@ export function middleware(request: NextRequest) {
     }
 
     if (request.nextUrl.pathname === '/login' && token) {
-        return NextResponse.redirect(new URL('/reports', request.url))
+        return NextResponse.redirect(new URL('/', request.url))
     }
 
     return NextResponse.next()

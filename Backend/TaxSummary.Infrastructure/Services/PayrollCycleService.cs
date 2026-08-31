@@ -644,7 +644,7 @@ public class PayrollCycleService : IPayrollCycleService
     {
         if (currentUserRole.Equals("Admin", StringComparison.OrdinalIgnoreCase))
         {
-            return; // Admin has full access
+            return; // Admin has organization-wide access for monitoring, review and master export
         }
 
         var userResult = await _userRepository.GetByIdAsync(currentUserId, ct);
@@ -652,11 +652,7 @@ public class PayrollCycleService : IPayrollCycleService
         var userDept = user?.Employee?.ServiceUnit;
         if (string.IsNullOrWhiteSpace(userDept) || !userDept.Equals(departmentName, StringComparison.OrdinalIgnoreCase))
         {
-            // Allow if user is general Manager role in development or matches department
-            if (!currentUserRole.Equals("Manager", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new UnauthorizedAccessException("شما دسترسی لازم به اطلاعات این اداره را ندارید");
-            }
+            throw new UnauthorizedAccessException($"دسترسی غیرمجاز: شما فقط مجاز به مشاهده و مدیریت کاربرگ اداره مربوط به خود ({userDept ?? "فاقد اداره"}) هستید.");
         }
     }
 

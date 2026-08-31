@@ -1,305 +1,429 @@
-'use client';
+'use client'
 
-import { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { Home, FileText, Users, LogOut, LogIn, Calculator } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
+import { getAuthorizedPortalModules } from '@/lib/modules/portalRegistry'
+import {
+  Home,
+  LogOut,
+  LogIn,
+  ChevronDown,
+  ShieldCheck,
+  UserPlus,
+  Users,
+  Building2,
+  Menu,
+  X,
+  Sparkles,
+} from 'lucide-react'
 
 export default function Navbar() {
-    const { user, isAuthenticated, logout } = useAuth();
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
-    const pathname = usePathname();
+  const { user, isAuthenticated, logout } = useAuth()
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [mobileExpandedModule, setMobileExpandedModule] = useState<string | null>(null)
+  const navRef = useRef<HTMLDivElement>(null)
+  const pathname = usePathname()
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setIsMenuOpen(false);
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
+  const modules = getAuthorizedPortalModules(user?.role)
 
-    // Close mobile menu when route changes
-    useEffect(() => {
-        setIsMobileMenuOpen(false);
-        setIsMenuOpen(false);
-    }, [pathname]);
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null)
+        setIsUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
-    const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-    const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+  // Close menus on route change
+  useEffect(() => {
+    setOpenDropdown(null)
+    setIsUserMenuOpen(false)
+    setIsMobileMenuOpen(false)
+  }, [pathname])
 
-    const isActive = (path: string) => pathname === path;
+  const toggleDropdown = (id: string) => {
+    setOpenDropdown(openDropdown === id ? null : id)
+  }
 
-    return (
-        <nav className="bg-white shadow border-b border-gray-200 no-print">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16">
-                    <div className="flex">
-                        <div className="flex-shrink-0 flex items-center">
-                            <Link href="/" className="text-xl font-bold text-primary-600">
-                                سامانه مدیریت
-                            </Link>
-                        </div>
-                        <div className="hidden sm:mr-10 sm:flex sm:space-x-8 sm:space-x-reverse">
-                            <Link
-                                href="/"
-                                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${isActive('/')
-                                    ? 'border-primary-500 text-gray-900'
-                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+  const isModuleActive = (moduleId: string) => {
+    const mod = modules.find((m) => m.id === moduleId)
+    if (!mod) return false
+    return mod.actions.some((a) => pathname === a.href || (a.href !== '/' && pathname.startsWith(a.href)))
+  }
+
+  const isAdminActive = () => pathname.startsWith('/admin')
+
+  return (
+    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50 no-print" ref={navRef}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          {/* Right side (RTL Start): Logo and Modular Navigation */}
+          <div className="flex items-center gap-6">
+            {/* Logo / Brand */}
+            <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary-600 to-indigo-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-base font-black text-gray-900 leading-tight">
+                  سامانه مدیریت یکپارچه
+                </span>
+                <span className="text-[10px] text-primary-600 font-bold">امور اداری و مالیاتی</span>
+              </div>
+            </Link>
+
+            {/* Desktop Modular Navigation */}
+            <div className="hidden lg:flex items-center space-x-1 space-x-reverse">
+              {/* Home */}
+              <Link
+                href="/"
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                  pathname === '/'
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <Home className="w-4 h-4" />
+                خانه
+              </Link>
+
+              {/* Dynamic Extensible Modules Dropdowns */}
+              {isAuthenticated &&
+                modules.map((mod) => {
+                  const Icon = mod.icon
+                  const active = isModuleActive(mod.id)
+                  const isOpen = openDropdown === mod.id
+                  const actions = mod.getAuthorizedActions(user?.role)
+
+                  return (
+                    <div key={mod.id} className="relative">
+                      <button
+                        onClick={() => toggleDropdown(mod.id)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                          active
+                            ? `${mod.iconBgColor} ${mod.accentColor} ring-1 ring-inset ring-current/20`
+                            : isOpen
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span>{mod.navTitle}</span>
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                            isOpen ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isOpen && (
+                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                          {/* Dropdown Header */}
+                          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+                            <span className="text-xs font-bold text-gray-900">{mod.title}</span>
+                            <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                              {mod.badgeText}
+                            </span>
+                          </div>
+
+                          {/* Action Items */}
+                          <div className="p-1.5 space-y-1">
+                            {actions.map((action) => {
+                              const ActionIcon = action.icon
+                              const isActionActive =
+                                pathname === action.href ||
+                                (action.href !== '/' && pathname.startsWith(action.href))
+
+                              return (
+                                <Link
+                                  key={action.id}
+                                  href={action.href}
+                                  onClick={() => setOpenDropdown(null)}
+                                  className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
+                                    isActionActive
+                                      ? 'bg-primary-50 text-primary-800 font-bold'
+                                      : 'hover:bg-gray-50 text-gray-700'
+                                  }`}
+                                >
+                                  <div
+                                    className={`p-2 rounded-lg flex-shrink-0 mt-0.5 ${
+                                      isActionActive
+                                        ? 'bg-primary-100 text-primary-700'
+                                        : 'bg-gray-100 text-gray-500'
                                     }`}
-                            >
-                                <Home className="w-5 h-5" />
-                                خانه
-                            </Link>
-                            {isAuthenticated && (
-                                <Link
-                                    href="/reports"
-                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${isActive('/reports')
-                                        ? 'border-primary-500 text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                                        }`}
-                                >
-                                    <FileText className="w-5 h-5" />
-                                    فرم‌ها
+                                  >
+                                    <ActionIcon className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <span className="text-xs font-bold block">{action.title}</span>
+                                    {action.description && (
+                                      <span className="text-[11px] text-gray-400 font-normal line-clamp-1">
+                                        {action.description}
+                                      </span>
+                                    )}
+                                  </div>
                                 </Link>
-                            )}
-                            {isAuthenticated && (
-                                <Link
-                                    href="/payroll/cycles"
-                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${pathname.startsWith('/payroll/cycles')
-                                        ? 'border-primary-500 text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                                        }`}
-                                >
-                                    <Calculator className="w-5 h-5" />
-                                    دوره‌های محاسبه
-                                </Link>
-                            )}
-                            {isAuthenticated && (
-                                <Link
-                                    href="/payroll/my-department"
-                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${pathname.startsWith('/payroll/my-department') || pathname.startsWith('/payroll/department')
-                                        ? 'border-primary-500 text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                                        }`}
-                                >
-                                    <FileText className="w-5 h-5" />
-                                    ثبت اطلاعات اداره
-                                </Link>
-                            )}
-                            {isAuthenticated && user?.role === 'Admin' && (
-                                <Link
-                                    href="/admin/users"
-                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${isActive('/admin/users')
-                                        ? 'border-primary-500 text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                                        }`}
-                                >
-                                    <Users className="w-5 h-5" />
-                                    مدیریت کاربران
-                                </Link>
-                            )}
+                              )
+                            })}
+                          </div>
                         </div>
+                      )}
                     </div>
-                    <div className="hidden sm:ml-6 sm:flex sm:items-center">
-                        {isAuthenticated ? (
-                            <div className="ml-3 relative" ref={menuRef}>
-                                <div>
-                                    <button
-                                        onClick={toggleMenu}
-                                        className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 items-center gap-2 px-3 py-1 border border-gray-200 hover:bg-gray-50"
-                                        id="user-menu-button"
-                                        aria-expanded="false"
-                                        aria-haspopup="true"
-                                    >
-                                        <span className="sr-only">Open user menu</span>
-                                        <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold">
-                                            {user?.username?.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className="flex flex-col items-start">
-                                            <span className="font-medium text-gray-700">{user?.username}</span>
-                                            <span className="text-xs text-gray-500">{user?.role}</span>
-                                        </div>
-                                        <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                {isMenuOpen && (
-                                    <div
-                                        className="origin-top-left absolute left-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
-                                        role="menu"
-                                        aria-orientation="vertical"
-                                        aria-labelledby="user-menu-button"
-                                    >
-                                        {/* Placeholder for Profile Link */}
-                                        {/* <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
-                      پروفایل کاربری
-                    </Link> */}
-                                        <button
-                                            onClick={() => {
-                                                logout();
-                                                setIsMenuOpen(false);
-                                            }}
-                                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                            role="menuitem"
-                                        >
-                                            <LogOut className="w-4 h-4" />
-                                            خروج
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="flex gap-4">
-                                <Link
-                                    href="/login"
-                                    className="flex items-center gap-2 text-gray-500 hover:text-gray-900 font-medium px-3 py-2 rounded-md transition-colors"
-                                >
-                                    <LogIn className="w-5 h-5" />
-                                    ورود
-                                </Link>
-                            </div>
-                        )}
-                    </div>
-                    <div className="-mr-2 flex items-center sm:hidden">
-                        {/* Mobile menu button */}
-                        <button
-                            onClick={toggleMobileMenu}
-                            type="button"
-                            className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
-                            aria-controls="mobile-menu"
-                            aria-expanded="false"
-                        >
-                            <span className="sr-only">Open main menu</span>
-                            {isMobileMenuOpen ? (
-                                <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            ) : (
-                                <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                                </svg>
-                            )}
-                        </button>
-                    </div>
-                </div>
-            </div>
+                  )
+                })}
 
-            {/* Mobile menu, show/hide based on menu state */}
-            {isMobileMenuOpen && (
-                <div className="sm:hidden" id="mobile-menu">
-                    <div className="pt-2 pb-3 space-y-1">
+              {/* Admin Management Dropdown */}
+              {isAuthenticated && user?.role === 'Admin' && (
+                <div className="relative">
+                  <button
+                    onClick={() => toggleDropdown('admin')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                      isAdminActive()
+                        ? 'bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-200'
+                        : openDropdown === 'admin'
+                        ? 'bg-gray-100 text-gray-900'
+                        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ShieldCheck className="w-4 h-4 text-purple-600" />
+                    <span>مدیریت سیستم</span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                        openDropdown === 'admin' ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {openDropdown === 'admin' && (
+                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <span className="text-xs font-bold text-gray-900">پنل راهبری و مدیریت سیستم</span>
+                      </div>
+                      <div className="p-1.5 space-y-1">
                         <Link
-                            href="/"
-                            className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${isActive('/')
-                                ? 'bg-primary-50 border-primary-500 text-primary-700'
-                                : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-                                }`}
+                          href="/admin/users"
+                          onClick={() => setOpenDropdown(null)}
+                          className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
+                            pathname === '/admin/users'
+                              ? 'bg-purple-50 text-purple-800 font-bold'
+                              : 'hover:bg-gray-50 text-gray-700'
+                          }`}
                         >
-                            <Home className="w-5 h-5" />
-                            خانه
+                          <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
+                            <Users className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold block">فهرست و مدیریت کاربران</span>
+                            <span className="text-[11px] text-gray-400 font-normal">
+                              تعیین نقش‌ها و ادارات سازمانی
+                            </span>
+                          </div>
                         </Link>
-                        {isAuthenticated && (
-                            <Link
-                                href="/reports"
-                                className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${isActive('/reports')
-                                    ? 'bg-primary-50 border-primary-500 text-primary-700'
-                                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-                                    }`}
-                            >
-                                <FileText className="w-5 h-5" />
-                                فرم‌ها
-                            </Link>
-                        )}
-                        {isAuthenticated && (
-                            <Link
-                                href="/payroll/cycles"
-                                className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${pathname.startsWith('/payroll/cycles')
-                                    ? 'bg-primary-50 border-primary-500 text-primary-700'
-                                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-                                    }`}
-                            >
-                                <Calculator className="w-5 h-5" />
-                                دوره‌های محاسبه
-                            </Link>
-                        )}
-                        {isAuthenticated && (
-                            <Link
-                                href="/payroll/my-department"
-                                className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${pathname.startsWith('/payroll/my-department')
-                                    ? 'bg-primary-50 border-primary-500 text-primary-700'
-                                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-                                    }`}
-                            >
-                                <FileText className="w-5 h-5" />
-                                ثبت اطلاعات اداره
-                            </Link>
-                        )}
-                        {isAuthenticated && user?.role === 'Admin' && (
-                            <Link
-                                href="/admin/users"
-                                className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${isActive('/admin/users')
-                                    ? 'bg-primary-50 border-primary-500 text-primary-700'
-                                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-                                    }`}
-                            >
-                                <Users className="w-5 h-5" />
-                                مدیریت کاربران
-                            </Link>
-                        )}
+
+                        <Link
+                          href="/admin/users/create"
+                          onClick={() => setOpenDropdown(null)}
+                          className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
+                            pathname === '/admin/users/create'
+                              ? 'bg-purple-50 text-purple-800 font-bold'
+                              : 'hover:bg-gray-50 text-gray-700'
+                          }`}
+                        >
+                          <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
+                            <UserPlus className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold block">تعریف کاربر جدید</span>
+                            <span className="text-[11px] text-gray-400 font-normal">
+                              افزودن دسترسی کاربری جدید
+                            </span>
+                          </div>
+                        </Link>
+                      </div>
                     </div>
-                    {isAuthenticated ? (
-                        <div className="pt-4 pb-4 border-t border-gray-200">
-                            <div className="flex items-center px-4">
-                                <div className="flex-shrink-0">
-                                    <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-lg">
-                                        {user?.username?.charAt(0).toUpperCase()}
-                                    </div>
-                                </div>
-                                <div className="mr-3">
-                                    <div className="text-base font-medium text-gray-800">{user?.username}</div>
-                                    <div className="text-sm font-medium text-gray-500">{user?.role}</div>
-                                </div>
-                            </div>
-                            <div className="mt-3 space-y-1">
-                                {/* <Link
-                  href="/profile"
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                >
-                  پروفایل کاربری
-                </Link> */}
-                                <button
-                                    onClick={() => logout()}
-                                    className="flex w-full items-center gap-2 px-4 py-2 text-base font-medium text-red-600 hover:text-red-800 hover:bg-gray-100"
-                                >
-                                    <LogOut className="w-5 h-5" />
-                                    خروج
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="pt-4 pb-4 border-t border-gray-200">
-                            <div className="space-y-1">
-                                <Link
-                                    href="/login"
-                                    className="flex items-center gap-2 px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                                >
-                                    <LogIn className="w-5 h-5" />
-                                    ورود
-                                </Link>
-                            </div>
-                        </div>
-                    )}
+                  )}
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Left side (RTL End): User Profile / Login Button & Mobile toggle */}
+          <div className="flex items-center gap-3">
+            {isAuthenticated ? (
+              <div className="relative">
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center gap-2 p-1.5 pr-2.5 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex flex-col text-left items-end">
+                    <span className="text-xs font-bold text-gray-800 leading-tight">
+                      {user?.username}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-medium">{user?.role}</span>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                    {user?.username?.charAt(0).toUpperCase()}
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                </button>
+
+                {/* User Dropdown */}
+                {isUserMenuOpen && (
+                  <div className="absolute left-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-50">
+                    <div className="px-4 py-2.5 border-b border-gray-100">
+                      <span className="text-xs font-bold text-gray-800 block">{user?.username}</span>
+                      <span className="text-[11px] text-primary-600 font-medium">نقش سازمانی: {user?.role}</span>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        logout()
+                        setIsUserMenuOpen(false)
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-red-600 hover:bg-red-50 font-bold transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      خروج از حساب کاربری
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm"
+              >
+                <LogIn className="w-4 h-4" />
+                ورود به سامانه
+              </Link>
             )}
-        </nav>
-    );
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 lg:hidden"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Drawer Navigation */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden border-t border-gray-200 bg-white px-4 pt-3 pb-6 space-y-3">
+          <Link
+            href="/"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${
+              pathname === '/' ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
+            }`}
+          >
+            <Home className="w-4 h-4" />
+            صفحه اصلی پرتال
+          </Link>
+
+          {isAuthenticated && (
+            <div className="space-y-2">
+              {modules.map((mod) => {
+                const Icon = mod.icon
+                const isExpanded = mobileExpandedModule === mod.id
+                const actions = mod.getAuthorizedActions(user?.role)
+
+                return (
+                  <div key={mod.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setMobileExpandedModule(isExpanded ? null : mod.id)}
+                      className="w-full flex items-center justify-between p-3 bg-gray-50 text-xs font-bold text-gray-900"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon className={`w-4 h-4 ${mod.accentColor}`} />
+                        {mod.title}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    {isExpanded && (
+                      <div className="p-2 space-y-1 bg-white">
+                        {actions.map((action) => {
+                          const ActionIcon = action.icon
+                          return (
+                            <Link
+                              key={action.id}
+                              href={action.href}
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
+                            >
+                              <ActionIcon className="w-4 h-4 text-gray-400" />
+                              <span>{action.title}</span>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {user?.role === 'Admin' && (
+                <div className="border border-purple-100 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() =>
+                      setMobileExpandedModule(mobileExpandedModule === 'admin' ? null : 'admin')
+                    }
+                    className="w-full flex items-center justify-between p-3 bg-purple-50/50 text-xs font-bold text-purple-900"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-purple-600" />
+                      مدیریت سیستم
+                    </span>
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${
+                        mobileExpandedModule === 'admin' ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {mobileExpandedModule === 'admin' && (
+                    <div className="p-2 space-y-1 bg-white">
+                      <Link
+                        href="/admin/users"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
+                      >
+                        <Users className="w-4 h-4 text-purple-500" />
+                        <span>فهرست و مدیریت کاربران</span>
+                      </Link>
+                      <Link
+                        href="/admin/users/create"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
+                      >
+                        <UserPlus className="w-4 h-4 text-purple-500" />
+                        <span>تعریف کاربر جدید</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </nav>
+  )
 }

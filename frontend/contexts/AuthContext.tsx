@@ -38,14 +38,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             console.log('Token validation failed, clearing auth state');
                             localStorage.removeItem('accessToken');
                             localStorage.removeItem('user');
-                            Cookies.remove('accessToken');
+                            Cookies.remove('accessToken', { path: '/' });
                             setAccessToken(null);
                             setUser(null);
                         }
                     }
+                } else {
+                    Cookies.remove('accessToken', { path: '/' });
                 }
             } catch (error) {
                 console.error('Failed to initialize auth:', error);
+                Cookies.remove('accessToken', { path: '/' });
             } finally {
                 setIsLoading(false);
             }
@@ -109,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
-        Cookies.remove('accessToken'); // Clear cookie
+        Cookies.remove('accessToken', { path: '/' }); // Clear cookie
 
         try {
             await authApi.logout();
