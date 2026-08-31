@@ -54,7 +54,6 @@ public static class DependencyInjection
         // Register repositories
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IPayrollRepository, PayrollRepository>();
 
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -66,7 +65,10 @@ public static class DependencyInjection
         services.AddScoped<IExcelSeedService, ExcelSeedService>();
 
         // Register Payroll Services
+        services.AddScoped<IPayrollRepository, PayrollRepository>();
+        services.AddScoped<IPayrollCycleRepository, PayrollCycleRepository>();
         services.AddScoped<IPayrollService, PayrollService>();
+        services.AddScoped<IPayrollCycleService, PayrollCycleService>();
         services.AddScoped<IPayrollExcelExportService, PayrollExcelExportService>();
 
         return services;

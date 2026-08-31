@@ -72,14 +72,26 @@ export default function Navbar() {
                             )}
                             {isAuthenticated && (
                                 <Link
-                                    href="/payroll"
-                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${pathname.startsWith('/payroll')
+                                    href="/payroll/cycles"
+                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${pathname.startsWith('/payroll/cycles')
                                         ? 'border-primary-500 text-gray-900'
                                         : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                         }`}
                                 >
                                     <Calculator className="w-5 h-5" />
-                                    محاسبات حقوقی
+                                    دوره‌های محاسبه
+                                </Link>
+                            )}
+                            {isAuthenticated && (
+                                <Link
+                                    href="/payroll/my-department"
+                                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium gap-2 ${pathname.startsWith('/payroll/my-department') || pathname.startsWith('/payroll/department')
+                                        ? 'border-primary-500 text-gray-900'
+                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                        }`}
+                                >
+                                    <FileText className="w-5 h-5" />
+                                    ثبت اطلاعات اداره
                                 </Link>
                             )}
                             {isAuthenticated && user?.role === 'Admin' && (
@@ -209,14 +221,26 @@ export default function Navbar() {
                         )}
                         {isAuthenticated && (
                             <Link
-                                href="/payroll"
-                                className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${pathname.startsWith('/payroll')
+                                href="/payroll/cycles"
+                                className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${pathname.startsWith('/payroll/cycles')
                                     ? 'bg-primary-50 border-primary-500 text-primary-700'
                                     : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
                                     }`}
                             >
                                 <Calculator className="w-5 h-5" />
-                                محاسبات حقوقی
+                                دوره‌های محاسبه
+                            </Link>
+                        )}
+                        {isAuthenticated && (
+                            <Link
+                                href="/payroll/my-department"
+                                className={`flex items-center gap-2 pl-3 pr-4 py-2 border-r-4 text-base font-medium ${pathname.startsWith('/payroll/my-department')
+                                    ? 'bg-primary-50 border-primary-500 text-primary-700'
+                                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                                    }`}
+                            >
+                                <FileText className="w-5 h-5" />
+                                ثبت اطلاعات اداره
                             </Link>
                         )}
                         {isAuthenticated && user?.role === 'Admin' && (

@@ -19,6 +19,9 @@ public class TaxSummaryDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PayrollRun> PayrollRuns => Set<PayrollRun>();
+    public DbSet<PayrollCycle> PayrollCycles => Set<PayrollCycle>();
+    public DbSet<PayrollDepartmentEntry> PayrollDepartmentEntries => Set<PayrollDepartmentEntry>();
+    public DbSet<PayrollEmployeeItem> PayrollEmployeeItems => Set<PayrollEmployeeItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using MiniExcelLibs;
 using TaxSummary.Application.Services;
 using TaxSummary.Domain.Entities;
@@ -39,19 +40,23 @@ public class ExcelSeedService : IExcelSeedService
             var firstName = GetValue(props, "نام");
             var lastName = GetValue(props, "نام خانوادگي");
 
-            if (string.IsNullOrWhiteSpace(lastName) && !string.IsNullOrWhiteSpace(firstName) && firstName.Contains(" "))
+            if (string.IsNullOrWhiteSpace(lastName) && !string.IsNullOrWhiteSpace(firstName) && firstName.Contains(' '))
             {
-                var nameParts = firstName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-                firstName = nameParts.Length > 0 ? nameParts[0] : "-";
-                lastName = nameParts.Length > 1 ? nameParts[1] : "-";
+                var nameParts = firstName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (nameParts.Length >= 2)
+                {
+                    // Payroll exports often store "LastName FirstName" in a single column.
+                    firstName = nameParts[^1];
+                    lastName = string.Join(' ', nameParts[..^1]);
+                }
             }
             
             if (string.IsNullOrWhiteSpace(firstName)) firstName = "-";
             if (string.IsNullOrWhiteSpace(lastName)) lastName = "-";
 
             // Optional fields
-            var serviceUnit = GetValue(props, "واحد متبوع");
-            var currentPosition = GetValue(props, "نام پست");
+            var serviceUnit = GetValue(props, "واحد متبوع", "واحد محل کار");
+            var currentPosition = GetValue(props, "نام پست", "عنوان پست");
             var education = GetValue(props, "رشته تحصيلي");
             var appointmentPosition = GetValue(props, "پست انتصابی");
             var previousExperienceYears = ParseInt(GetValue(props, "سنوات سال"));
@@ -61,9 +66,9 @@ public class ExcelSeedService : IExcelSeedService
             int missionDays = ParseInt(GetValue(props, "مأموريت"));
             int sickLeaveDays = ParseInt(GetValue(props, "استعلاجي"));
             int paidLeaveDays = ParseInt(GetValue(props, "استحقاقي"));
-            int overtimeHours = ParseTime(GetValue(props, "اضافه واقعي"));
-            int delayAll = ParseTime(GetValue(props, "جمع تأخيروتعجيل"));
-            int hourlyLeave = ParseTime(GetValue(props, "مرخصي ساعتي مجاز"));
+            int overtimeHours = ParseTime(GetRawValue(props, "اضافه واقعي"));
+            int delayAll = ParseTime(GetRawValue(props, "جمع تأخيروتعجيل", "جمع تأخير و تعجيل"));
+            int hourlyLeave = ParseTime(GetRawValue(props, "مرخصي ساعتي مجاز"));
 
             // Parse Tax Performance Values
             // VAT
@@ -220,12 +225,20 @@ public class ExcelSeedService : IExcelSeedService
         return count;
     }
 
-    private string GetValue(IDictionary<string, object> props, string key)
+    private string GetValue(IDictionary<string, object> props, params string[] keys)
     {
-        if (props.TryGetValue(key, out var value) && value != null)
+        foreach (var key in keys)
         {
-            return value.ToString()?.Trim() ?? string.Empty;
+            if (props.TryGetValue(key, out var value) && value != null)
+            {
+                var text = value.ToString()?.Trim();
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    return text;
+                }
+            }
         }
+
         return string.Empty;
     }
 
@@ -249,42 +262,131 @@ public class ExcelSeedService : IExcelSeedService
         if (string.IsNullOrWhiteSpace(value)) return 0;
         if (decimal.TryParse(value, out var result))
         {
-            return result;
+            return result < 0 ? Math.Abs(result) : result;
         }
         return 0;
     }
 
-    private int ParseTime(string value)
+    private object? GetRawValue(IDictionary<string, object> props, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (props.TryGetValue(key, out var value) && value != null)
+            {
+                if (value is string text && string.IsNullOrWhiteSpace(text))
+                {
+                    continue;
+                }
+
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    private int ParseTime(object? value)
+    {
+        if (value == null) return 0;
+
+        return value switch
+        {
+            int intValue => intValue < 0 ? 0 : intValue,
+            long longValue => longValue < 0 ? 0 : (int)longValue,
+            double doubleValue => ParseExcelTimeFraction(doubleValue),
+            float floatValue => ParseExcelTimeFraction(floatValue),
+            decimal decimalValue => ParseExcelTimeFraction((double)decimalValue),
+            TimeSpan timeSpan => ConvertDurationToHoursFromTotalMinutes((int)Math.Round(timeSpan.TotalMinutes)),
+            DateTime dateTime => ConvertDurationToHours(dateTime.Hour, dateTime.Minute),
+            _ => ParseTimeString(value.ToString()?.Trim() ?? string.Empty)
+        };
+    }
+
+    private int ParseExcelTimeFraction(double value)
+    {
+        if (value < 0) return 0;
+
+        if (value > 0 && value < 1)
+        {
+            return ConvertDurationToHoursFromTotalMinutes((int)Math.Round(value * 24 * 60));
+        }
+
+        if (value >= 1)
+        {
+            var fractionalDay = value - Math.Floor(value);
+            if (fractionalDay > 0)
+            {
+                return ConvertDurationToHoursFromTotalMinutes((int)Math.Round(fractionalDay * 24 * 60));
+            }
+        }
+
+        return (int)Math.Round(value);
+    }
+
+    private int ParseTimeString(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return 0;
 
-        // Handle "HH:mm" format or simple integer
-        if (value.Contains(":"))
+        var daysDurationMatch = Regex.Match(
+            value,
+            @"(\d+)\s*days?,?\s*(\d+):(\d+)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        if (daysDurationMatch.Success
+            && int.TryParse(daysDurationMatch.Groups[1].Value, out var days)
+            && int.TryParse(daysDurationMatch.Groups[2].Value, out var dayHours)
+            && int.TryParse(daysDurationMatch.Groups[3].Value, out var dayMinutes))
+        {
+            return ConvertDurationToHours((days * 24) + dayHours, dayMinutes);
+        }
+
+        if (value.Contains(':'))
         {
             var parts = value.Split(':');
-            if (parts.Length > 0 && int.TryParse(parts[0], out var hours))
+            if (parts.Length > 0 && int.TryParse(parts[0].Trim(), out var hours))
             {
-                 // We only care about full hours for now as per domain int properties
-                 // Or should we round? Let's just take the hour part.
-                 if (parts.Length > 1 && int.TryParse(parts[1], out var minutes))
-                 {
-                     if (minutes >= 30) hours++; // Round up
-                 }
-                 return hours;
+                var minutes = 0;
+                if (parts.Length > 1)
+                {
+                    int.TryParse(parts[1].Trim(), out minutes);
+                }
+
+                return ConvertDurationToHours(hours, minutes);
             }
         }
-        
+
         if (int.TryParse(value, out var simpleHours))
         {
-            return simpleHours;
+            return simpleHours < 0 ? 0 : simpleHours;
         }
-        
-        // Handle decimal like 12.5 -> 13
-        if (double.TryParse(value, out var d))
+
+        if (double.TryParse(value, out var numericValue))
         {
-            return (int)Math.Round(d);
+            return ParseExcelTimeFraction(numericValue);
         }
 
         return 0;
+    }
+
+    private static int ConvertDurationToHoursFromTotalMinutes(int totalMinutes)
+    {
+        if (totalMinutes < 0) return 0;
+
+        var hours = totalMinutes / 60;
+        var minutes = totalMinutes % 60;
+        return ConvertDurationToHours(hours, minutes);
+    }
+
+    private static int ConvertDurationToHours(int hours, int minutes)
+    {
+        if (hours < 0) hours = 0;
+        if (minutes < 0) minutes = 0;
+
+        if (minutes >= 30)
+        {
+            hours++;
+        }
+
+        return hours;
     }
 }
