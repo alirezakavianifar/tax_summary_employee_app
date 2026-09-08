@@ -35,6 +35,8 @@ import {
 } from '@/types/taxRefund'
 import { DocumentsSection } from '@/components/refunds/DocumentsSection'
 import { PdfViewerModal } from '@/components/refunds/PdfViewerModal'
+import { JustificationReportSummaryCard } from '@/components/refunds/JustificationReportSummaryCard'
+import { JustificationReportEditorModal } from '@/components/refunds/JustificationReportEditorModal'
 
 const PRINT_FORMS = [
   { id: 'cheklist', title: 'چک‌لیست کنترل اسناد استردادی' },
@@ -59,6 +61,7 @@ export default function TaxRefundDetailPage() {
   const [transitioning, setTransitioning] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [directViewingDoc, setDirectViewingDoc] = useState<TaxRefundDocument | null>(null)
+  const [isReportEditorOpen, setIsReportEditorOpen] = useState(false)
 
   const fetchCase = async () => {
     try {
@@ -378,6 +381,12 @@ export default function TaxRefundDetailPage() {
           </div>
         </div>
 
+        {/* Auditor Justification Report Section */}
+        <JustificationReportSummaryCard
+          refundCase={refundCase}
+          onOpenEditor={() => setIsReportEditorOpen(true)}
+        />
+
         {/* Workflow Status Transitions & Audit History Panel */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
           <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-3">
@@ -476,6 +485,19 @@ export default function TaxRefundDetailPage() {
           caseId={refundCase.id}
           isOpen={!!directViewingDoc}
           onClose={() => setDirectViewingDoc(null)}
+        />
+
+        {/* Auditor Justification Report Editor Modal */}
+        <JustificationReportEditorModal
+          caseId={refundCase.id}
+          taxpayerName={refundCase.taxpayerName}
+          taxYear={refundCase.taxYear}
+          seniorAuditorName={refundCase.seniorAuditorName}
+          taxUnitCode={refundCase.taxUnitCode}
+          city={refundCase.city}
+          isOpen={isReportEditorOpen}
+          onClose={() => setIsReportEditorOpen(false)}
+          onSaved={fetchCase}
         />
       </div>
     </div>

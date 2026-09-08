@@ -193,6 +193,41 @@ export interface RefundCalculationResult {
   grandTotalRefundable: number
 }
 
+export interface JustificationReport {
+  reportNumber: string
+  reportDateJalali: string
+  auditExaminationFindings: string
+  legalGroundsAndReasoning: string
+  inquiriesAndDebtClearanceSummary: string
+  receiptsVerificationNotes: string
+  auditorConclusion: string
+  recommendedRefundAmount: number
+  auditorSignatureDate?: string
+  auditorUserId?: string
+  auditorUserName?: string
+  isFinalized: boolean
+  finalizedAt?: string
+  groupHeadOpinionText?: string
+  administrationHeadApprovalText?: string
+}
+
+export interface UpdateJustificationReportInput {
+  reportNumber: string
+  reportDateJalali: string
+  auditExaminationFindings: string
+  legalGroundsAndReasoning: string
+  inquiriesAndDebtClearanceSummary: string
+  receiptsVerificationNotes: string
+  auditorConclusion: string
+  recommendedRefundAmount: number
+  groupHeadOpinionText?: string
+  administrationHeadApprovalText?: string
+}
+
+export interface FinalizeJustificationReportInput {
+  signatureDateJalali?: string
+}
+
 export interface TaxRefundCase {
   id: string
   caseTrackingNumber: string
@@ -218,6 +253,7 @@ export interface TaxRefundCase {
   statusDescription: string
   assessmentInfo: TaxAssessmentInfo
   breakdown: RefundBreakdown
+  justificationReport?: JustificationReport
   receipts: TaxRefundReceipt[]
   allocations: RefundableReceiptAllocation[]
   letters: TaxRefundLetter[]
@@ -417,4 +453,5 @@ export interface PrintableDocument {
   receipts: TaxRefundReceipt[]
   allocations: RefundableReceiptAllocation[]
   letters: TaxRefundLetter[]
+  justificationReport?: JustificationReport
 }

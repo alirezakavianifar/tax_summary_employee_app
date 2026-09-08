@@ -652,7 +652,8 @@ public class TaxRefundService : ITaxRefundService
             Calculation = calc,
             Receipts = _mapper.Map<List<TaxRefundReceiptDto>>(refundCase.Receipts.OrderBy(r => r.RowIndex).ToList()),
             Allocations = _mapper.Map<List<RefundableReceiptAllocationDto>>(refundCase.Allocations.ToList()),
-            Letters = _mapper.Map<List<TaxRefundLetterDto>>(refundCase.Letters.ToList())
+            Letters = _mapper.Map<List<TaxRefundLetterDto>>(refundCase.Letters.ToList()),
+            JustificationReport = _mapper.Map<JustificationReportDto>(refundCase.JustificationReport)
         };
 
         // Extract letter numbers & dates
@@ -661,8 +662,12 @@ public class TaxRefundService : ITaxRefundService
         doc.RefundVoucherDate = voucherLetter?.LetterDateJalali;
 
         var reportLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.JustificationReport);
-        doc.JustificationReportNumber = reportLetter?.LetterNumber;
-        doc.JustificationReportDate = reportLetter?.LetterDateJalali;
+        doc.JustificationReportNumber = !string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportNumber)
+            ? refundCase.JustificationReport.ReportNumber
+            : reportLetter?.LetterNumber;
+        doc.JustificationReportDate = !string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportDateJalali)
+            ? refundCase.JustificationReport.ReportDateJalali
+            : reportLetter?.LetterDateJalali;
 
         var commitLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.OfficeCommitment);
         doc.OfficeCommitmentNumber = commitLetter?.LetterNumber;
@@ -874,6 +879,173 @@ public class TaxRefundService : ITaxRefundService
         {
             _logger.LogError(ex, "Error deleting document {DocId} for case {CaseId}", documentId, caseId);
             return Result.Failure("خطا در حذف سند پیوست");
+        }
+    }
+
+    public async Task<Result<JustificationReportDto>> GetJustificationReportAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var refundCase = await _repository.GetByIdAsync(caseId, includeDetails: true, ct);
+        if (refundCase == null)
+            return Result.Failure<JustificationReportDto>("پرونده استرداد مورد نظر یافت نشد");
+
+        if (refundCase.JustificationReport != null && !string.IsNullOrWhiteSpace(refundCase.JustificationReport.ReportNumber))
+        {
+            return Result.Success(_mapper.Map<JustificationReportDto>(refundCase.JustificationReport));
+        }
+
+        return await GenerateDefaultDraftAsync(caseId, ct);
+    }
+
+    public async Task<Result<JustificationReportDto>> GenerateDefaultDraftAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var refundCase = await _repository.GetByIdAsync(caseId, includeDetails: true, ct);
+        if (refundCase == null)
+            return Result.Failure<JustificationReportDto>("پرونده استرداد مورد نظر یافت نشد");
+
+        var calc = CalculateForCase(refundCase);
+        var todayJalali = TaxSummary.Domain.ValueObjects.JalaliDate.FromDateTime(DateTime.UtcNow).ToString();
+
+        var requestLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.InboundTaxpayerRequest);
+        var inqCollection = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.CollectionAndEnforcementInquiry);
+        var inqPayroll = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.WithholdingTaxInquiry);
+        var inqVat = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.VatInquiry);
+
+        var findings = $"۱- مودی محترم به موجب تقاضای وارده به شماره {(requestLetter?.LetterNumber ?? "..........")} مورخ {(requestLetter?.LetterDateJalali ?? todayJalali)} ثبت دبیرخانه این اداره، تقاضای استرداد اضافه پرداختی مالیات عملکرد سال {refundCase.TaxYear} خود را مطرح نموده است.\n" +
+                       $"۲- {(refundCase.AssessmentInfo.HasReturnFiled ? $"مودی اظهارنامه مالیاتی عملکرد مربوطه را تحت شماره {refundCase.AssessmentInfo.ReturnNumber ?? ".........."} مورخ {refundCase.AssessmentInfo.ReturnDateJalali ?? todayJalali} در موعد قانونی تسلیم نموده است." : "مودی نسبت به تسلیم اظهارنامه مالیاتی در موعد قانونی اقدام ننموده است.")}\n" +
+                       $"۳- پس از بررسی اسناد، دفاتر قانونی و سوابق مالیاتی، مالیات عملکرد به موجب «{TaxRefundMappingProfile.GetFinalizationMethodName(refundCase.AssessmentInfo.FinalizationMethod)}» و در مرحله قطعیت «{TaxRefundMappingProfile.GetFinalityStageName(refundCase.AssessmentInfo.FinalityStage)}» به شماره برگ قطعی {refundCase.AssessmentInfo.FinalNoticeNumber ?? ".........."} مورخ {refundCase.AssessmentInfo.FinalNoticeDateJalali ?? todayJalali} تعیین و قطعی گردیده است.";
+
+        var legalBasis = "وفق مفاد ماده ۲۴۲ قانون مالیات‌های مستقیم و تبصره‌های آن، چنانچه در اثر اشتباه در محاسبه یا واریز، مبلغی اضافه بر مالیات مقرر قطعی پرداخت شده باشد، اداره امور مالیاتی مکلف است پس از احراز اضافه دریافتی، نسبت به استرداد آن از محل وصولی‌های جاری اقدام نماید.";
+
+        var debtNarratives = new List<string>();
+        if (inqCollection != null && inqCollection.DebtAmount > 0)
+            debtNarratives.Add($"اداره وصول و اجرا (شماره {inqCollection.LetterNumber}): مبلغ {inqCollection.DebtAmount:N0} ریال بدهی قطعی سنواتی");
+        if (inqPayroll != null && inqPayroll.DebtAmount > 0)
+            debtNarratives.Add($"واحد مالیات تکلیفی و حقوق (شماره {inqPayroll.LetterNumber}): مبلغ {inqPayroll.DebtAmount:N0} ریال بدهی");
+        if (inqVat != null && inqVat.DebtAmount > 0)
+            debtNarratives.Add($"واحد مالیات بر ارزش افزوده (شماره {inqVat.LetterNumber}): مبلغ {inqVat.DebtAmount:N0} ریال بدهی");
+
+        string inquiriesSummary;
+        if (debtNarratives.Any())
+        {
+            inquiriesSummary = "بر اساس پاسخ استعلامات واصله از واحدهای مالیاتی تابعه، بدهی‌های سنواتی زیر شناسایی و از مازاد پرداختی کسر گردید:\n" +
+                               string.Join("\n", debtNarratives.Select(d => $"• {d}")) +
+                               $"\nجمع کل بدهی‌های کسر شده: {calc.TotalDiscoveredDebts:N0} ریال.";
+        }
+        else
+        {
+            inquiriesSummary = "پاسخ استعلامات واصله از کلیه واحدهای مالیاتی تابعه (وصول و اجرا، حقوق، ارزش افزوده) حاکی از عدم وجود هرگونه بدهی قطعی سنواتی برای مودی در پرونده‌های دیگر می‌باشد.";
+        }
+
+        var receiptsNotes = $"اصالت و مشخصات تعداد {calc.TotalReceiptsCount} فقره قبوض پرداختی مودی مندرج در جدول (الف) به مبلغ کل {calc.TotalPaidAmount:N0} ریال از طریق سامانه‌های بانکی و وصولی اداره کل بررسی و صحّت واریز آن احراز گردید و تایید می‌شود که قبوض مزبور قبلاً مورد استرداد یا تهاتر واقع نگردیده‌اند.";
+
+        var conclusion = $"با عنایت به مراتب فوق، مازاد پرداختی اولیه مودی مبلغ {calc.GrossSurplus:N0} ریال بوده که پس از کسر بدهی‌های مکشوفه، خالص مبلغ قابل استرداد معادل {calc.PrincipalTaxRefund:N0} ریال (به حروف: {NumberToWords(calc.PrincipalTaxRefund)}) محرز و تایید می‌گردد و جهت صدور دستور استرداد و سیر مراحل قانونی به حضور رئیس محترم گروه مالیاتی ایفاد می‌گردد.";
+
+        var reportNumber = $"{refundCase.TaxUnitCode}/استرداد/{refundCase.TaxYear}";
+
+        var dto = new JustificationReportDto
+        {
+            ReportNumber = string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportNumber) ? reportNumber : refundCase.JustificationReport.ReportNumber,
+            ReportDateJalali = string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportDateJalali) ? todayJalali : refundCase.JustificationReport.ReportDateJalali,
+            AuditExaminationFindings = string.IsNullOrWhiteSpace(refundCase.JustificationReport?.AuditExaminationFindings) ? findings : refundCase.JustificationReport.AuditExaminationFindings,
+            LegalGroundsAndReasoning = string.IsNullOrWhiteSpace(refundCase.JustificationReport?.LegalGroundsAndReasoning) ? legalBasis : refundCase.JustificationReport.LegalGroundsAndReasoning,
+            InquiriesAndDebtClearanceSummary = string.IsNullOrWhiteSpace(refundCase.JustificationReport?.InquiriesAndDebtClearanceSummary) ? inquiriesSummary : refundCase.JustificationReport.InquiriesAndDebtClearanceSummary,
+            ReceiptsVerificationNotes = string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReceiptsVerificationNotes) ? receiptsNotes : refundCase.JustificationReport.ReceiptsVerificationNotes,
+            AuditorConclusion = string.IsNullOrWhiteSpace(refundCase.JustificationReport?.AuditorConclusion) ? conclusion : refundCase.JustificationReport.AuditorConclusion,
+            RecommendedRefundAmount = refundCase.JustificationReport?.RecommendedRefundAmount > 0 ? refundCase.JustificationReport.RecommendedRefundAmount : calc.PrincipalTaxRefund,
+            AuditorSignatureDate = refundCase.JustificationReport?.AuditorSignatureDate ?? todayJalali,
+            AuditorUserId = refundCase.JustificationReport?.AuditorUserId,
+            AuditorUserName = string.IsNullOrWhiteSpace(refundCase.JustificationReport?.AuditorUserName) ? refundCase.SeniorAuditorName : refundCase.JustificationReport.AuditorUserName,
+            IsFinalized = refundCase.JustificationReport?.IsFinalized ?? false,
+            FinalizedAt = refundCase.JustificationReport?.FinalizedAt,
+            GroupHeadOpinionText = refundCase.JustificationReport?.GroupHeadOpinionText,
+            AdministrationHeadApprovalText = refundCase.JustificationReport?.AdministrationHeadApprovalText
+        };
+
+        return Result.Success(dto);
+    }
+
+    public async Task<Result<JustificationReportDto>> SaveJustificationReportAsync(
+        Guid caseId,
+        UpdateJustificationReportDto dto,
+        Guid currentUserId,
+        string currentUserName,
+        CancellationToken ct = default)
+    {
+        var refundCase = await _repository.GetByIdAsync(caseId, includeDetails: true, ct);
+        if (refundCase == null)
+            return Result.Failure<JustificationReportDto>("پرونده استرداد مورد نظر یافت نشد");
+
+        try
+        {
+            var reportInfo = JustificationReportInfo.Create(
+                dto.ReportNumber,
+                dto.ReportDateJalali,
+                dto.AuditExaminationFindings,
+                dto.LegalGroundsAndReasoning,
+                dto.InquiriesAndDebtClearanceSummary,
+                dto.ReceiptsVerificationNotes,
+                dto.AuditorConclusion,
+                dto.RecommendedRefundAmount,
+                refundCase.JustificationReport?.AuditorSignatureDate,
+                currentUserId,
+                currentUserName,
+                refundCase.JustificationReport?.IsFinalized ?? false,
+                refundCase.JustificationReport?.FinalizedAt,
+                dto.GroupHeadOpinionText,
+                dto.AdministrationHeadApprovalText);
+
+            refundCase.UpdateJustificationReport(reportInfo);
+
+            await _repository.UpdateAsync(refundCase, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            _logger.LogInformation("Justification report updated for case {CaseId} by {User}", caseId, currentUserName);
+            return Result.Success(_mapper.Map<JustificationReportDto>(refundCase.JustificationReport));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving justification report for case {CaseId}", caseId);
+            return Result.Failure<JustificationReportDto>(ex.Message);
+        }
+    }
+
+    public async Task<Result<JustificationReportDto>> FinalizeJustificationReportAsync(
+        Guid caseId,
+        FinalizeJustificationReportDto dto,
+        Guid currentUserId,
+        string currentUserName,
+        CancellationToken ct = default)
+    {
+        var refundCase = await _repository.GetByIdAsync(caseId, includeDetails: true, ct);
+        if (refundCase == null)
+            return Result.Failure<JustificationReportDto>("پرونده استرداد مورد نظر یافت نشد");
+
+        try
+        {
+            var sigDate = !string.IsNullOrWhiteSpace(dto.SignatureDateJalali)
+                ? dto.SignatureDateJalali
+                : TaxSummary.Domain.ValueObjects.JalaliDate.FromDateTime(DateTime.UtcNow).ToString();
+
+            // Fallback: if no authenticated user (dev/local mode), use the case's senior auditor identity
+            var effectiveUserId = currentUserId == Guid.Empty
+                ? (refundCase.JustificationReport?.AuditorUserId ?? new Guid("11111111-1111-1111-1111-111111111111"))
+                : currentUserId;
+            var effectiveUserName = string.IsNullOrWhiteSpace(currentUserName)
+                ? (!string.IsNullOrWhiteSpace(refundCase.SeniorAuditorName) ? refundCase.SeniorAuditorName : "کارشناس ارشد مالیاتی")
+                : currentUserName;
+
+            refundCase.FinalizeJustificationReport(effectiveUserId, effectiveUserName, sigDate);
+
+            await _repository.UpdateAsync(refundCase, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            _logger.LogInformation("Justification report finalized for case {CaseId} by {User}", caseId, currentUserName);
+            return Result.Success(_mapper.Map<JustificationReportDto>(refundCase.JustificationReport));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error finalizing justification report for case {CaseId}", caseId);
+            return Result.Failure<JustificationReportDto>(ex.Message);
         }
     }
 }

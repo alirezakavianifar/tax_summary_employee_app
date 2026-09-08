@@ -100,6 +100,26 @@ public class TaxRefundCaseConfiguration : IEntityTypeConfiguration<TaxRefundCase
             b.Property(p => p.DelayDamages).HasColumnName("Breakdown_DelayDamages").HasPrecision(18, 0);
         });
 
+        // Owned JustificationReport
+        builder.OwnsOne(c => c.JustificationReport, j =>
+        {
+            j.Property(p => p.ReportNumber).HasColumnName("JustificationReport_ReportNumber").HasMaxLength(50);
+            j.Property(p => p.ReportDateJalali).HasColumnName("JustificationReport_ReportDateJalali").HasMaxLength(15);
+            j.Property(p => p.AuditExaminationFindings).HasColumnName("JustificationReport_AuditExaminationFindings").HasMaxLength(4000);
+            j.Property(p => p.LegalGroundsAndReasoning).HasColumnName("JustificationReport_LegalGroundsAndReasoning").HasMaxLength(4000);
+            j.Property(p => p.InquiriesAndDebtClearanceSummary).HasColumnName("JustificationReport_InquiriesAndDebtClearanceSummary").HasMaxLength(4000);
+            j.Property(p => p.ReceiptsVerificationNotes).HasColumnName("JustificationReport_ReceiptsVerificationNotes").HasMaxLength(4000);
+            j.Property(p => p.AuditorConclusion).HasColumnName("JustificationReport_AuditorConclusion").HasMaxLength(4000);
+            j.Property(p => p.RecommendedRefundAmount).HasColumnName("JustificationReport_RecommendedRefundAmount").HasPrecision(18, 0);
+            j.Property(p => p.AuditorSignatureDate).HasColumnName("JustificationReport_AuditorSignatureDate").HasMaxLength(15);
+            j.Property(p => p.AuditorUserId).HasColumnName("JustificationReport_AuditorUserId");
+            j.Property(p => p.AuditorUserName).HasColumnName("JustificationReport_AuditorUserName").HasMaxLength(150);
+            j.Property(p => p.IsFinalized).HasColumnName("JustificationReport_IsFinalized");
+            j.Property(p => p.FinalizedAt).HasColumnName("JustificationReport_FinalizedAt");
+            j.Property(p => p.GroupHeadOpinionText).HasColumnName("JustificationReport_GroupHeadOpinionText").HasMaxLength(2000);
+            j.Property(p => p.AdministrationHeadApprovalText).HasColumnName("JustificationReport_AdministrationHeadApprovalText").HasMaxLength(2000);
+        });
+
         // Indexes
         builder.HasIndex(c => c.CaseTrackingNumber).IsUnique();
         builder.HasIndex(c => new { c.TaxpayerName, c.TaxYear });

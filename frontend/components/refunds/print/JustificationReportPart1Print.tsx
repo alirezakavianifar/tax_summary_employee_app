@@ -16,8 +16,8 @@ export function JustificationReportPart1Print({ data }: JustificationReportPart1
       <PrintHeader
         formTitle="گزارش استرداد اضافه مالیات (بخش اول)"
         subtitle={`مودی: ${data.taxpayerName} | عملکرد سال: ${data.taxYear}`}
-        docNumber={data.justificationReportNumber || data.caseTrackingNumber}
-        docDate={data.justificationReportDate || data.refundVoucherDate}
+        docNumber={data.justificationReport?.reportNumber || data.justificationReportNumber || data.caseTrackingNumber}
+        docDate={data.justificationReport?.reportDateJalali || data.justificationReportDate || data.refundVoucherDate}
         docketNumber={data.docketNumber}
         province={data.province}
         city={data.city}
@@ -49,52 +49,63 @@ export function JustificationReportPart1Print({ data }: JustificationReportPart1
       </div>
 
       {/* Audit Examination Narrative Steps */}
-      <div className="text-xs leading-7 space-y-2 mb-4">
-        <div className="flex items-start gap-1">
-          <span className="font-bold">۱-</span>
-          <p>
-            مودی به موجب نامه وارده به شماره{' '}
-            <span className="font-bold font-mono">{data.taxpayerRequestNumber || '..........'}</span> مورخ{' '}
-            <span className="font-bold font-mono">{data.taxpayerRequestDate || '..........'}</span> که در دبیرخانه اداره
-            امور مالیاتی به ثبت رسیده است، تقاضای استرداد اضافه پرداختی مالیات خود را مطرح نموده است.
-          </p>
+      {data.justificationReport?.auditExaminationFindings ? (
+        <div className="text-xs leading-7 space-y-2 mb-4 border border-black p-3 bg-gray-50/20">
+          <p className="whitespace-pre-line text-justify">{data.justificationReport.auditExaminationFindings}</p>
+          {data.justificationReport.legalGroundsAndReasoning && (
+            <p className="whitespace-pre-line text-justify pt-2 border-t border-gray-300 font-medium">
+              {data.justificationReport.legalGroundsAndReasoning}
+            </p>
+          )}
         </div>
+      ) : (
+        <div className="text-xs leading-7 space-y-2 mb-4">
+          <div className="flex items-start gap-1">
+            <span className="font-bold">۱-</span>
+            <p>
+              مودی به موجب نامه وارده به شماره{' '}
+              <span className="font-bold font-mono">{data.taxpayerRequestNumber || '..........'}</span> مورخ{' '}
+              <span className="font-bold font-mono">{data.taxpayerRequestDate || '..........'}</span> که در دبیرخانه اداره
+              امور مالیاتی به ثبت رسیده است، تقاضای استرداد اضافه پرداختی مالیات خود را مطرح نموده است.
+            </p>
+          </div>
 
-        <div className="flex items-start gap-1">
-          <span className="font-bold">۲-</span>
-          <p>
-            {data.assessment.hasReturnFiled ? (
-              <>
-                مودی اظهارنامه مالیاتی عملکرد مربوطه را تحت شماره{' '}
-                <span className="font-bold font-mono">{data.assessment.returnNumber || '..........'}</span> مورخ{' '}
-                <span className="font-bold font-mono">{data.assessment.returnDateJalali || '..........'}</span> در موعد
-                قانونی تسلیم نموده است.
-              </>
-            ) : (
-              <>مودی نسبت به تسلیم اظهارنامه در موعد مقرر اقدام ننموده است.</>
-            )}
-          </p>
-        </div>
+          <div className="flex items-start gap-1">
+            <span className="font-bold">۲-</span>
+            <p>
+              {data.assessment.hasReturnFiled ? (
+                <>
+                  مودی اظهارنامه مالیاتی عملکرد مربوطه را تحت شماره{' '}
+                  <span className="font-bold font-mono">{data.assessment.returnNumber || '..........'}</span> مورخ{' '}
+                  <span className="font-bold font-mono">{data.assessment.returnDateJalali || '..........'}</span> در موعد
+                  قانونی تسلیم نموده است.
+                </>
+              ) : (
+                <>مودی نسبت به تسلیم اظهارنامه در موعد مقرر اقدام ننموده است.</>
+              )}
+            </p>
+          </div>
 
-        <div className="flex items-start gap-1">
-          <span className="font-bold">۳-</span>
-          <p>
-            پس از رسیدگی‌های انجام شده توسط این واحد مالیاتی و به موجب{' '}
-            <span className="font-bold">«{data.assessment.finalizationMethodName || 'رسیدگی به دفاتر قانونی'}»</span>
-            {data.assessment.finalityStageName ? ` و در مرحله قطعیت «${data.assessment.finalityStageName}»` : ''} مالیات
-            عملکرد به شرح جدول زیر قطعی گردیده است.
-          </p>
-        </div>
+          <div className="flex items-start gap-1">
+            <span className="font-bold">۳-</span>
+            <p>
+              پس از رسیدگی‌های انجام شده توسط این واحد مالیاتی و به موجب{' '}
+              <span className="font-bold">«{data.assessment.finalizationMethodName || 'رسیدگی به دفاتر قانونی'}»</span>
+              {data.assessment.finalityStageName ? ` و در مرحله قطعیت «${data.assessment.finalityStageName}»` : ''} مالیات
+              عملکرد به شرح جدول زیر قطعی گردیده است.
+            </p>
+          </div>
 
-        <div className="flex items-start gap-1">
-          <span className="font-bold">۴-</span>
-          <p>
-            شماره برگ قطعی مالیاتی ابلاغ شده به مودی{' '}
-            <span className="font-bold font-mono">{data.assessment.finalNoticeNumber || '..........'}</span> مورخ{' '}
-            <span className="font-bold font-mono">{data.assessment.finalNoticeDateJalali || '..........'}</span> می‌باشد.
-          </p>
+          <div className="flex items-start gap-1">
+            <span className="font-bold">۴-</span>
+            <p>
+              شماره برگ قطعی مالیاتی ابلاغ شده به مودی{' '}
+              <span className="font-bold font-mono">{data.assessment.finalNoticeNumber || '..........'}</span> مورخ{' '}
+              <span className="font-bold font-mono">{data.assessment.finalNoticeDateJalali || '..........'}</span> می‌باشد.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Statutory Calculation Statement Table */}
       <div className="border border-black mb-6">

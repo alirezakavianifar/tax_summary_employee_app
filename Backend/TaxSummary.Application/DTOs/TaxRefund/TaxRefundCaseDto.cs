@@ -40,6 +40,7 @@ public class TaxRefundCaseDto
     // Owned Details
     public TaxAssessmentInfoDto AssessmentInfo { get; set; } = new();
     public RefundBreakdownDto Breakdown { get; set; } = new();
+    public JustificationReportDto JustificationReport { get; set; } = new();
 
     // Computed Figures
     public RefundCalculationResultDto Calculation { get; set; } = new();

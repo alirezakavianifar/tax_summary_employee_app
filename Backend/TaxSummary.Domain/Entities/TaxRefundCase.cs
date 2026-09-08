@@ -50,6 +50,7 @@ public class TaxRefundCase
     // Owned Complex Objects
     public TaxAssessmentInfo AssessmentInfo { get; private set; } = new();
     public RefundBreakdown Breakdown { get; private set; } = new();
+    public JustificationReportInfo JustificationReport { get; private set; } = new();
 
     // Child Collections
     public ICollection<TaxRefundReceipt> Receipts { get; private set; } = new List<TaxRefundReceipt>();
@@ -188,6 +189,28 @@ public class TaxRefundCase
         EnsureModifiable();
         Breakdown = breakdown ?? throw new ArgumentNullException(nameof(breakdown));
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateJustificationReport(JustificationReportInfo report)
+    {
+        EnsureModifiable();
+        JustificationReport = report ?? throw new ArgumentNullException(nameof(report));
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void FinalizeJustificationReport(Guid auditorUserId, string auditorName, string signatureDateJalali)
+    {
+        EnsureModifiable();
+        if (JustificationReport == null)
+            throw new InvalidOperationException("گزارش توجیهی تنظیم نشده است");
+
+        JustificationReport.Finalize(auditorUserId, auditorName, signatureDateJalali);
+        UpdatedAt = DateTime.UtcNow;
+
+        if (Status == RefundCaseStatus.Draft || Status == RefundCaseStatus.InquiriesPending)
+        {
+            TransitionStatus(RefundCaseStatus.Audited, auditorUserId, auditorName, "کارشناس ارشد مالیاتی", "تنظیم و تایید نهایی گزارش توجیهی استرداد");
+        }
     }
 
     public TaxRefundReceipt AddReceipt(

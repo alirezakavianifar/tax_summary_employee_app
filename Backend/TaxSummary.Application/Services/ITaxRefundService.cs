@@ -35,4 +35,9 @@ public interface ITaxRefundService
     Task<Result<IEnumerable<TaxRefundDocumentDto>>> GetDocumentsAsync(Guid caseId, CancellationToken ct = default);
     Task<Result<(Stream Stream, string ContentType, string FileName)>> GetDocumentStreamAsync(Guid caseId, Guid documentId, CancellationToken ct = default);
     Task<Result> DeleteDocumentAsync(Guid caseId, Guid documentId, Guid currentUserId, CancellationToken ct = default);
+
+    Task<Result<JustificationReportDto>> GetJustificationReportAsync(Guid caseId, CancellationToken ct = default);
+    Task<Result<JustificationReportDto>> GenerateDefaultDraftAsync(Guid caseId, CancellationToken ct = default);
+    Task<Result<JustificationReportDto>> SaveJustificationReportAsync(Guid caseId, UpdateJustificationReportDto dto, Guid currentUserId, string currentUserName, CancellationToken ct = default);
+    Task<Result<JustificationReportDto>> FinalizeJustificationReportAsync(Guid caseId, FinalizeJustificationReportDto dto, Guid currentUserId, string currentUserName, CancellationToken ct = default);
 }

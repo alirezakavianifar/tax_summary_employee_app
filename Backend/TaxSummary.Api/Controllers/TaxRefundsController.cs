@@ -533,6 +533,85 @@ public class TaxRefundsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Get the official Justification Report (گزارش توجیهی)
+    /// دریافت اطلاعات گزارش توجیهی پرونده
+    /// </summary>
+    [HttpGet("{id:guid}/justification-report")]
+    [ProducesResponseType(typeof(JustificationReportDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<JustificationReportDto>> GetJustificationReport(Guid id, CancellationToken ct)
+    {
+        var result = await _refundService.GetJustificationReportAsync(id, ct);
+        if (result.IsFailure)
+            return NotFound(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Auto-generate standard legal template draft for Justification Report
+    /// تولید خودکار پیش‌نویس قانونی گزارش توجیهی
+    /// </summary>
+    [HttpGet("{id:guid}/justification-report/default-draft")]
+    [ProducesResponseType(typeof(JustificationReportDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<JustificationReportDto>> GetDefaultJustificationReportDraft(Guid id, CancellationToken ct)
+    {
+        var result = await _refundService.GenerateDefaultDraftAsync(id, ct);
+        if (result.IsFailure)
+            return NotFound(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Save or update Justification Report draft
+    /// ثبت و ویرایش پیش‌نویس گزارش توجیهی
+    /// </summary>
+    [HttpPut("{id:guid}/justification-report")]
+    [ProducesResponseType(typeof(JustificationReportDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<JustificationReportDto>> SaveJustificationReport(
+        Guid id,
+        [FromBody] UpdateJustificationReportDto dto,
+        CancellationToken ct)
+    {
+        if (dto == null)
+            return BadRequest(new { error = "اطلاعات گزارش توجیهی الزامی است" });
+
+        var userId = GetCurrentUserId();
+        var userName = GetCurrentUserName();
+
+        var result = await _refundService.SaveJustificationReportAsync(id, dto, userId, userName, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Finalize Justification Report and advance case status to Audited
+    /// تایید و ثبت نهایی گزارش توجیهی توسط کارشناس ارشد
+    /// </summary>
+    [HttpPost("{id:guid}/justification-report/finalize")]
+    [ProducesResponseType(typeof(JustificationReportDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<JustificationReportDto>> FinalizeJustificationReport(
+        Guid id,
+        [FromBody] FinalizeJustificationReportDto dto,
+        CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        var userName = GetCurrentUserName();
+
+        var result = await _refundService.FinalizeJustificationReportAsync(id, dto ?? new FinalizeJustificationReportDto(), userId, userName, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
     private Guid GetCurrentUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub") ?? User.FindFirst("id");

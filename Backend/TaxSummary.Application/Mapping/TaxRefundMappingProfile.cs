@@ -24,6 +24,7 @@ public class TaxRefundMappingProfile : Profile
             .ForMember(dest => dest.FinalityStageName, opt => opt.MapFrom(src => GetFinalityStageName(src.FinalityStage)));
 
         CreateMap<RefundBreakdown, RefundBreakdownDto>().MaxDepth(5);
+        CreateMap<JustificationReportInfo, JustificationReportDto>().MaxDepth(5);
 
         CreateMap<TaxRefundApprovalAction, TaxRefundApprovalActionDto>()
             .MaxDepth(5)

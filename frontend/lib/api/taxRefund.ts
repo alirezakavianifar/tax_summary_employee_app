@@ -16,6 +16,9 @@ import type {
   PrintableDocument,
   TaxRefundDocument,
   UploadTaxRefundDocumentInput,
+  JustificationReport,
+  UpdateJustificationReportInput,
+  FinalizeJustificationReportInput,
 } from '@/types/taxRefund'
 
 export const taxRefundApi = {
@@ -250,5 +253,37 @@ export const taxRefundApi = {
    */
   async deleteDocument(caseId: string, documentId: string): Promise<void> {
     await apiClient.delete(`/tax-refunds/${caseId}/documents/${documentId}`)
+  },
+
+  /**
+   * Get official Justification Report (گزارش توجیهی)
+   */
+  async getJustificationReport(caseId: string): Promise<JustificationReport> {
+    const response = await apiClient.get<JustificationReport>(`/tax-refunds/${caseId}/justification-report`)
+    return response.data
+  },
+
+  /**
+   * Auto-generate standard legal template draft for Justification Report
+   */
+  async getDefaultJustificationReportDraft(caseId: string): Promise<JustificationReport> {
+    const response = await apiClient.get<JustificationReport>(`/tax-refunds/${caseId}/justification-report/default-draft`)
+    return response.data
+  },
+
+  /**
+   * Save or update Justification Report draft
+   */
+  async saveJustificationReport(caseId: string, input: UpdateJustificationReportInput): Promise<JustificationReport> {
+    const response = await apiClient.put<JustificationReport>(`/tax-refunds/${caseId}/justification-report`, input)
+    return response.data
+  },
+
+  /**
+   * Finalize Justification Report and advance case status to Audited
+   */
+  async finalizeJustificationReport(caseId: string, input?: FinalizeJustificationReportInput): Promise<JustificationReport> {
+    const response = await apiClient.post<JustificationReport>(`/tax-refunds/${caseId}/justification-report/finalize`, input || {})
+    return response.data
   },
 }

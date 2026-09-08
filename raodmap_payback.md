@@ -55,6 +55,14 @@ graph TD
         DOC4[Frontend: In-App PDF Viewer Modal, Drag-Drop Uploader, Grid]
     end
 
+    subgraph Phase10_JustificationReport["Phase 10: Auditor Justification Report Engine (تنظیم و تدوین گزارش توجیهی)"]
+        JR1[JustificationReportInfo Owned Value Object & Domain Methods]
+        JR2[JustificationReportDto & Smart Legal Template Auto-Generator]
+        JR3[REST Endpoints: Draft, Save, Auto-Generate Standard Draft]
+        JR4[Frontend: Interactive Persian Report Editor, Live Preview & Status Bridge]
+        JR5[Print Engine Binding: Form3 & Form4 Dynamic Narrative Injection]
+    end
+
     Phase1_Domain --> Phase2_Application
     Phase2_Application --> Phase3_Infrastructure
     Phase2_Application --> Phase4_Api
@@ -64,6 +72,12 @@ graph TD
     Phase3_Infrastructure --> Phase9_Documents
     Phase4_Api --> Phase9_Documents
     Phase5_Frontend_Wizard --> Phase9_Documents
+    Phase1_Domain --> Phase10_JustificationReport
+    Phase2_Application --> Phase10_JustificationReport
+    Phase3_Infrastructure --> Phase10_JustificationReport
+    Phase4_Api --> Phase10_JustificationReport
+    Phase5_Frontend_Wizard --> Phase10_JustificationReport
+    Phase10_JustificationReport --> Phase6_Frontend_Print
 ```
 
 ---
@@ -725,6 +739,164 @@ Create three specialized, responsive, Persian RTL components:
 
 ---
 
+## Phase 10: Auditor Justification Report Engine (`تنظیم و تدوین گزارش توجیهی`)
+
+### Goal
+Provide the Senior Tax Auditor (`کارشناس ارشد مالیاتی`) and audit team with a comprehensive, interactive workspace to compose, fine-tune, auto-generate, preview, sign, and finalize the official **"گزارش توجیهی استرداد مالیات اضافه دریافتی" (Justification Report)** for payback cases. This replaces static boilerplate text with dynamic audit findings, statutory analysis under Articles 242 & 243, debt clearance rationales, and supervisory opinions, feeding seamlessly into printable forms (`form3` and `form4`) and advancing the case status to `Audited`.
+
+> [!NOTE]
+> **Phase Prerequisite:** A dedicated Phase 10 Implementation Plan must be prepared and approved before implementing justification report domain models, service endpoints, or frontend drafting components.
+
+---
+
+### Step 10.1: Domain Layer Modeling (`TaxSummary.Domain`)
+Define the domain structures representing the auditor's structured justification report:
+1. **`JustificationReportInfo.cs` (Owned Complex Type / Value Object in `TaxSummary.Domain/Entities`):**
+   - Properties:
+     - `ReportNumber` (string - شماره رسمی گزارش توجیهی در دبیرخانه/واحد مالیاتی)
+     - `ReportDateJalali` (string - تاریخ تنظیم گزارش به شمسی)
+     - `AuditExaminationFindings` (string - شرح رسیدگی کارشناس ارشد، وضعیت دفاتر و اسناد مالی)
+     - `LegalGroundsAndReasoning` (string - مبانی قانونی استرداد و استناد به مواد ۲۴۲ و ۲۴۳ ق.م.م)
+     - `InquiriesAndDebtClearanceSummary` (string - شرح نتایج استعلامات بدهی از وصول و اجرا، حقوق و تکلیفی، ارزش افزوده)
+     - `ReceiptsVerificationNotes` (string - شرح بررسی اصالت قبوض پرداختی جدول الف و احراز عدم استرداد قبلی)
+     - `AuditorConclusion` (string - جمع‌بندی نهایی، اعلام مبلغ قطعی اضافه دریافتی و پیشنهاد استرداد)
+     - `RecommendedRefundAmount` (decimal - مبلغ خالص پیشنهادی جهت استرداد)
+     - `AuditorSignatureDate` (string? - تاریخ امضای کارشناس ارشد)
+     - `AuditorUserId` (Guid? - شناسه کارشناس ارشد تنظیم‌کننده)
+     - `AuditorUserName` (string? - نام کارشناس ارشد)
+     - `IsFinalized` (bool - وضعیت قطعیت و تایید گزارش توجیهی)
+     - `FinalizedAt` (DateTime? - تاریخ و زمان تایید نهایی)
+     - `GroupHeadOpinionText` (string? - متن اظهارنظر و تایید رئیس گروه مالیاتی)
+     - `AdministrationHeadApprovalText` (string? - متن دستور و تایید رئیس امور مالیاتی)
+   - Factory Methods:
+     - `Create(...)`
+     - `CreateDefault(...)`
+
+2. **`TaxRefundCase.cs` Aggregate Root Integration:**
+   - Property: `public JustificationReportInfo JustificationReport { get; private set; } = new();`
+   - Domain Methods:
+     - `void UpdateJustificationReport(JustificationReportInfo report)`: Updates report draft (enforces modifiability rules).
+     - `void FinalizeJustificationReport(Guid auditorUserId, string auditorName)`: Locks the report and transitions case status from `Draft` / `InquiriesPending` to `RefundCaseStatus.Audited`.
+
+#### Verification Checks for Step 10.1
+- [ ] Unit test: `TaxRefundCase.UpdateJustificationReport` updates timestamps and persists data.
+- [ ] Unit test: `TaxRefundCase.FinalizeJustificationReport` sets `IsFinalized = true` and triggers status transition to `Audited`.
+- [ ] Unit test: Attempting to edit a finalized justification report in a disbursed case throws domain exception.
+
+---
+
+### Step 10.2: Application Layer & Smart Auto-Drafting Engine (`TaxSummary.Application`)
+1. **DTOs (`TaxSummary.Application/DTOs/TaxRefund/`):**
+   - `JustificationReportDto`: View model returning all report fields, formatted numbers, and completion status.
+   - `UpdateJustificationReportDto`: Input model for editing or drafting the report.
+   - `FinalizeJustificationReportDto`: Input model for submitting and finalizing the report.
+2. **Smart Legal Template Auto-Generator Service:**
+   - Implement logic in `TaxRefundService.GenerateDefaultJustificationReportAsync(Guid caseId)`:
+     - Pulls case parameters: Taxpayer name, economic code, tax year, tax source, finality stage, final notice number/date, assessment numbers (assessed income, taxable base, assessed tax).
+     - Assembles Table A receipts summary (total count and paid amount in Rials and words).
+     - Pulls inquiry letters from Collection & Enforcement, Payroll, and VAT, summarizing discovered debts and deductions.
+     - Computes net refundable amount under Art. 242.
+     - Synthesizes professional, legally sound Persian narrative blocks for:
+       - *بند ۱: سوابق درخواست مودی و اظهارنامه*
+       - *بند ۲: نحوه رسیدگی و مرحله قطعیت پرونده*
+       - *بند ۳: صورت محاسبات و مازاد پرداختی*
+       - *بند ۴: بررسی استعلامات عدم بدهی و کسر مطالبات*
+       - *بند ۵: تایید اصالت قبوض و پیشنهاد پرداخت استرداد*
+3. **FluentValidation (`TaxSummary.Application/Validators/TaxRefund/`):**
+   - `UpdateJustificationReportValidator`: Validates non-empty report number, valid Jalali date format, and minimum narrative length.
+4. **AutoMapper Configuration (`TaxRefundMappingProfile.cs`):**
+   - Map `JustificationReportInfo` to `JustificationReportDto`.
+
+#### Verification Checks for Step 10.2
+- [ ] Unit test: `GenerateDefaultJustificationReportAsync` produces accurate Persian text reflecting sample numbers.
+- [ ] Unit test: `UpdateJustificationReportValidator` rejects empty report number or invalid dates.
+- [ ] AutoMapper configuration verification passes.
+
+---
+
+### Step 10.3: Infrastructure Persistence & EF Core Mapping (`TaxSummary.Infrastructure`)
+1. **`TaxRefundCaseConfiguration.cs` Fluent API:**
+   - Configure `builder.OwnsOne(c => c.JustificationReport, r => { ... })` with appropriate column names:
+     - `JustificationReport_ReportNumber` (max length 50)
+     - `JustificationReport_ReportDateJalali` (max length 20)
+     - `JustificationReport_AuditExaminationFindings` (max length 4000)
+     - `JustificationReport_LegalGroundsAndReasoning` (max length 4000)
+     - `JustificationReport_InquiriesAndDebtClearanceSummary` (max length 4000)
+     - `JustificationReport_ReceiptsVerificationNotes` (max length 4000)
+     - `JustificationReport_AuditorConclusion` (max length 4000)
+     - `JustificationReport_RecommendedRefundAmount` (decimal 18,2)
+     - `JustificationReport_IsFinalized` (bool)
+     - `JustificationReport_GroupHeadOpinionText` (max length 2000)
+     - `JustificationReport_AdministrationHeadApprovalText` (max length 2000)
+2. **EF Core Migration:**
+   - Generate and apply migration: `AddJustificationReportToTaxRefundCase`.
+
+#### Verification Checks for Step 10.3
+- [ ] Migration applies cleanly with zero data loss or SQL errors.
+- [ ] SQLite/SQL schema check confirms owned entity columns are added to `TaxRefundCases`.
+
+---
+
+### Step 10.4: API Layer Endpoints (`TaxSummary.Api`)
+Add dedicated endpoints in `TaxRefundsController.cs`:
+- `GET /api/tax-refunds/{id:guid}/justification-report`: Returns current justification report (or empty template if not yet drafted).
+- `GET /api/tax-refunds/{id:guid}/justification-report/default-draft`: Returns smart auto-generated draft populated with case figures and standard Persian legal text.
+- `PUT /api/tax-refunds/{id:guid}/justification-report`: Saves report draft (Auditor can draft iteratively).
+- `POST /api/tax-refunds/{id:guid}/justification-report/finalize`: Submits and finalizes the report, advancing case status to `Audited`.
+
+#### Verification Checks for Step 10.4
+- [ ] Swagger test: `GET /default-draft` returns populated Persian narrative.
+- [ ] Swagger test: `PUT` saves report text and returns HTTP 200.
+- [ ] Swagger test: `POST /finalize` sets `IsFinalized = true` and status to `Audited`.
+
+---
+
+### Step 10.5: Frontend TypeScript Types, API Client & Editor (`frontend`)
+1. **Types (`frontend/types/taxRefund.ts`):**
+   - Add `JustificationReport` and `UpdateJustificationReportInput` interfaces.
+   - Update `TaxRefundCase` interface with `justificationReport?: JustificationReport`.
+2. **API Client (`frontend/lib/api/taxRefund.ts`):**
+   - `getJustificationReport(caseId: string)`
+   - `getDefaultJustificationReportDraft(caseId: string)`
+   - `saveJustificationReport(caseId: string, input: UpdateJustificationReportInput)`
+   - `finalizeJustificationReport(caseId: string)`
+3. **Interactive Persian Editor Modal (`JustificationReportEditorModal.tsx`):**
+   - Accessible from case detail page via a prominent **"تنظیم گزارش توجیهی"** action button.
+   - **Header Toolbar:**
+     - Report Number and Jalali Date inputs.
+     - Assigned Auditor and Tax Unit badges.
+     - **"تولید خودکار پیش‌نویس قانونی" (Smart Auto-Draft)** button with sparkle icon to auto-populate all narrative sections based on real case data.
+   - **Tabbed / Accordion Editor Sections:**
+     1. `سوابق مودی و اظهارنامه` (Taxpayer petition, return filing, finality stage).
+     2. `رسیدگی مالیاتی و مبانی قانونی` (Audit methodology, Art. 242 grounds, receipts verification).
+     3. `استعلامات و کسر بدهی‌ها` (Clearance status from Collection, Payroll, VAT).
+     4. `جمع‌بندی و نتیجه‌گیری کارشناس ارشد` (Final conclusion, net refundable amount in numbers and words).
+     5. `پیش‌نمایش زنده چاپی` (Live preview of how the report renders).
+   - **Footer Action Buttons:**
+     - "ذخیره پیش‌نویس" (Save Draft without changing case status).
+     - "تایید و ثبت نهایی گزارش (ارسال به رئیس گروه)" (Finalize & advance status to `Audited`).
+
+#### Verification Checks for Step 10.5
+- [ ] Editor modal opens smoothly with auto-drafting capability.
+- [ ] Saving draft persists changes without errors.
+- [ ] Finalizing updates status banner on case details page.
+
+---
+
+### Step 10.6: Integration with Case Detail Page & Print Engine (`form3` & `form4`)
+1. **Detail Page (`frontend/app/refunds/[id]/page.tsx`):**
+   - Display a dedicated **"گزارش توجیهی حسابرسی" (Auditor Justification Report)** summary card showing report number, date, author, and preview excerpt.
+   - Add "ویرایش / مشاهده گزارش توجیهی" button.
+   - Tie the workflow status transition (`Draft -> Audited`) directly to the Justification Report finalization.
+2. **Print Components (`JustificationReportPart1Print.tsx` & `JustificationReportPart2Print.tsx`):**
+   - Update templates to dynamically render the auditor's customized `AuditExaminationFindings`, `InquiriesAndDebtClearanceSummary`, `ReceiptsVerificationNotes`, and `AuditorConclusion` instead of static fallback strings.
+
+#### Verification Checks for Step 10.6
+- [ ] Modified report text displays crisply in print preview (`form3` and `form4`).
+- [ ] Batch print includes customized justification report seamlessly.
+
+---
+
 ## Phase 7: Verification Matrix & Acceptance Criteria
 
 | Workstream | Acceptance Criteria | Automated Test / Verification Command |
@@ -737,6 +909,7 @@ Create three specialized, responsive, Persian RTL components:
 | **Print Engine** | All 8 forms render A4 RTL with Persian fonts; exact text matches sample files; `#REF!` bug eliminated. | Browser visual inspection & PDF export comparison |
 | **Excel Migration** | Uploading `tax_refund_delfi نمونه.xlsm` creates an identical case in the web application database. | API file upload test via `/api/tax-refunds/import-excel` |
 | **PDF Document System** | Uploads $\le 25\text{MB}$ PDFs; validates `%PDF-` signature; secure inline streaming; embedded modal viewer with zoom/print/download. | `dotnet test Backend/Tests/TaxSummary.Application.Tests` + Next.js build + manual upload/view check |
+| **Auditor Justification Report** | Auditor can compose, auto-generate standard legal draft, edit, preview, save draft, and finalize report; case advances to `Audited`; dynamic text injected into `form3` and `form4`. | Unit tests in Application.Tests + Next.js build + manual draft/preview verification |
 
 ---
 
@@ -764,6 +937,11 @@ gantt
     Document Entity, Storage & Endpoints:p_pdf_be, 2026-09-25, 2d
     In-App PDF Viewer & Uploader UI     :p_pdf_fe, after p_pdf_be, 2d
     End-to-End Testing & Verification   :p_e2e, after p_pdf_fe, 2d
+    section Justification Report Engine
+    Report Domain Model & Migration     :p_jr_be, 2026-10-01, 2d
+    Smart Auto-Draft Engine & API       :p_jr_api, after p_jr_be, 2d
+    Persian Editor UI & Live Preview    :p_jr_fe, after p_jr_api, 3d
+    Print Binding (Form3 & Form4)       :p_jr_pr, after p_jr_fe, 1d
 ```
 
 ### Readiness Checklist Before Proceeding
@@ -771,3 +949,4 @@ gantt
 2. **Backend build:** Verify `dotnet build Backend/TaxSummary.sln` succeeds.
 3. **Frontend build:** Verify `npm run build` in `frontend/` succeeds.
 4. **Sample files in place:** `payback_sample/` available for automated test assertions.
+

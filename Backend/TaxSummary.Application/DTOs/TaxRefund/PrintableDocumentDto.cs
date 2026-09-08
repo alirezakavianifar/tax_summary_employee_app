@@ -57,6 +57,7 @@ public class PrintableDocumentDto
     // Assessment & Deductions
     public TaxAssessmentInfoDto Assessment { get; set; } = new();
     public RefundCalculationResultDto Calculation { get; set; } = new();
+    public JustificationReportDto JustificationReport { get; set; } = new();
 
     // Tables
     public List<TaxRefundReceiptDto> Receipts { get; set; } = new();
