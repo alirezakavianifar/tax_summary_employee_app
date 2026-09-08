@@ -45,6 +45,7 @@ public class TaxRefundCaseTests
         Assert.Empty(refundCase.Allocations);
         Assert.Empty(refundCase.Letters);
         Assert.Empty(refundCase.Approvals);
+        Assert.Empty(refundCase.Documents);
     }
 
     [Fact]
@@ -181,5 +182,53 @@ public class TaxRefundCaseTests
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() =>
             refundCase.AddReceipt(1, "12345", "1403/01/01", "1403/01/01", 100_000));
+    }
+
+    [Fact]
+    public void AddDocument_AddsToCollection()
+    {
+        // Arrange
+        var refundCase = CreateSampleCase();
+        var userId = Guid.NewGuid();
+
+        // Act
+        var doc = refundCase.AddDocument(
+            documentType: TaxRefundDocumentType.AssessmentNotice,
+            title: "برگ قطعی عملکرد ۱۴۰۲",
+            originalFileName: "barghe_ghati.pdf",
+            storedFileName: "stored_ghati.pdf",
+            filePath: "uploads/stored_ghati.pdf",
+            fileSize: 2048,
+            uploadDateJalali: "1403/06/18",
+            uploadedByUserId: userId,
+            uploadedByUserName: "مهدی دلفی");
+
+        // Assert
+        Assert.Single(refundCase.Documents);
+        Assert.Equal(doc.Id, refundCase.Documents.First().Id);
+        Assert.Equal("برگ قطعی عملکرد ۱۴۰۲", refundCase.Documents.First().Title);
+    }
+
+    [Fact]
+    public void RemoveDocument_RemovesFromCollection()
+    {
+        // Arrange
+        var refundCase = CreateSampleCase();
+        var doc = refundCase.AddDocument(
+            documentType: TaxRefundDocumentType.AssessmentNotice,
+            title: "برگ قطعی عملکرد ۱۴۰۲",
+            originalFileName: "barghe_ghati.pdf",
+            storedFileName: "stored_ghati.pdf",
+            filePath: "uploads/stored_ghati.pdf",
+            fileSize: 2048,
+            uploadDateJalali: "1403/06/18",
+            uploadedByUserId: Guid.NewGuid(),
+            uploadedByUserName: "مهدی دلفی");
+
+        // Act
+        refundCase.RemoveDocument(doc.Id);
+
+        // Assert
+        Assert.Empty(refundCase.Documents);
     }
 }

@@ -29,6 +29,7 @@ public class TaxSummaryDbContext : DbContext
     public DbSet<RefundableReceiptAllocation> RefundableReceiptAllocations => Set<RefundableReceiptAllocation>();
     public DbSet<TaxRefundLetter> TaxRefundLetters => Set<TaxRefundLetter>();
     public DbSet<TaxRefundApprovalAction> TaxRefundApprovalActions => Set<TaxRefundApprovalAction>();
+    public DbSet<TaxRefundDocument> TaxRefundDocuments => Set<TaxRefundDocument>();
 
     // System & Navigation Configuration DbSets
     public DbSet<MenuSetting> MenuSettings => Set<MenuSetting>();

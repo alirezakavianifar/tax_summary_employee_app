@@ -172,3 +172,7 @@ Backend/TaxSummary.Api/wwwroot/uploads/employee-photos/*
 !Backend/TaxSummary.Api/wwwroot/uploads/employee-photos/.gitkeep
 !Backend/TaxSummary.Api/wwwroot/uploads/employee-photos/Mehdi_Kazemi_744979.jpg
 
+# Uploaded refund documents
+Backend/TaxSummary.Api/App_Data/
+App_Data/
+

@@ -18,6 +18,9 @@ public class SecurityHeadersMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         var headers = context.Response.Headers;
+        var path = context.Request.Path.Value ?? string.Empty;
+        bool isDocumentView = path.Contains("/documents/", StringComparison.OrdinalIgnoreCase) &&
+                              path.EndsWith("/view", StringComparison.OrdinalIgnoreCase);
 
         // Prevent MIME type sniffing
         if (!headers.ContainsKey("X-Content-Type-Options"))
@@ -25,8 +28,8 @@ public class SecurityHeadersMiddleware
             headers["X-Content-Type-Options"] = "nosniff";
         }
 
-        // Prevent clickjacking / framing
-        if (!headers.ContainsKey("X-Frame-Options"))
+        // Prevent clickjacking / framing (allow frontend embedding for document preview)
+        if (!headers.ContainsKey("X-Frame-Options") && !isDocumentView)
         {
             headers["X-Frame-Options"] = "SAMEORIGIN";
         }
@@ -52,7 +55,14 @@ public class SecurityHeadersMiddleware
         // Content Security Policy
         if (!headers.ContainsKey("Content-Security-Policy"))
         {
-            headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://localhost:* https://localhost:*; frame-ancestors 'self';";
+            if (isDocumentView)
+            {
+                headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'self' http://localhost:3000 http://localhost:3001 http://127.0.0.1:3000;";
+            }
+            else
+            {
+                headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://localhost:* https://localhost:*; frame-ancestors 'self';";
+            }
         }
 
         await _next(context);

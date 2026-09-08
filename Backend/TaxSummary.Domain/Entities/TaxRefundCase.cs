@@ -56,6 +56,7 @@ public class TaxRefundCase
     public ICollection<RefundableReceiptAllocation> Allocations { get; private set; } = new List<RefundableReceiptAllocation>();
     public ICollection<TaxRefundLetter> Letters { get; private set; } = new List<TaxRefundLetter>();
     public ICollection<TaxRefundApprovalAction> Approvals { get; private set; } = new List<TaxRefundApprovalAction>();
+    public ICollection<TaxRefundDocument> Documents { get; private set; } = new List<TaxRefundDocument>();
 
     // Audit Metadata
     public Guid CreatedByUserId { get; private set; }
@@ -306,6 +307,52 @@ public class TaxRefundCase
         if (letter != null)
         {
             Letters.Remove(letter);
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public TaxRefundDocument AddDocument(
+        TaxRefundDocumentType documentType,
+        string title,
+        string originalFileName,
+        string storedFileName,
+        string filePath,
+        long fileSize,
+        string uploadDateJalali,
+        Guid uploadedByUserId,
+        string uploadedByUserName,
+        string? description = null,
+        Guid? relatedReceiptId = null,
+        Guid? relatedLetterId = null,
+        string contentType = "application/pdf")
+    {
+        var document = TaxRefundDocument.Create(
+            Id,
+            documentType,
+            title,
+            originalFileName,
+            storedFileName,
+            filePath,
+            fileSize,
+            uploadDateJalali,
+            uploadedByUserId,
+            uploadedByUserName,
+            description,
+            relatedReceiptId,
+            relatedLetterId,
+            contentType);
+
+        Documents.Add(document);
+        UpdatedAt = DateTime.UtcNow;
+        return document;
+    }
+
+    public void RemoveDocument(Guid documentId)
+    {
+        var doc = Documents.FirstOrDefault(d => d.Id == documentId);
+        if (doc != null)
+        {
+            Documents.Remove(doc);
             UpdatedAt = DateTime.UtcNow;
         }
     }

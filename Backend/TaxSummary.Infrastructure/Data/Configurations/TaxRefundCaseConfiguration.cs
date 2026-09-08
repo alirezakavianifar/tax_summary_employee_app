@@ -126,5 +126,10 @@ public class TaxRefundCaseConfiguration : IEntityTypeConfiguration<TaxRefundCase
             .WithOne(a => a.TaxRefundCase)
             .HasForeignKey(a => a.TaxRefundCaseId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(c => c.Documents)
+            .WithOne(d => d.TaxRefundCase)
+            .HasForeignKey(d => d.TaxRefundCaseId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

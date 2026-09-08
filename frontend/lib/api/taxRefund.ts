@@ -14,6 +14,8 @@ import type {
   TransitionStatusInput,
   TaxRefundFilter,
   PrintableDocument,
+  TaxRefundDocument,
+  UploadTaxRefundDocumentInput,
 } from '@/types/taxRefund'
 
 export const taxRefundApi = {
@@ -168,5 +170,85 @@ export const taxRefundApi = {
       responseType: 'blob',
     })
     return response.data
+  },
+
+  /**
+   * Upload and attach a supporting PDF document to a refund case
+   */
+  async uploadDocument(
+    caseId: string,
+    file: File,
+    meta: UploadTaxRefundDocumentInput
+  ): Promise<TaxRefundDocument> {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('title', meta.title)
+    formData.append('documentType', meta.documentType.toString())
+    if (meta.description) formData.append('description', meta.description)
+    if (meta.relatedReceiptId) formData.append('relatedReceiptId', meta.relatedReceiptId)
+    if (meta.relatedLetterId) formData.append('relatedLetterId', meta.relatedLetterId)
+
+    const response = await apiClient.post<TaxRefundDocument>(
+      `/tax-refunds/${caseId}/documents`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+    return response.data
+  },
+
+  /**
+   * Get all attached documents for a refund case
+   */
+  async getDocuments(caseId: string): Promise<TaxRefundDocument[]> {
+    const response = await apiClient.get<TaxRefundDocument[]>(`/tax-refunds/${caseId}/documents`)
+    return response.data
+  },
+
+  /**
+   * Get direct view URL for inline streaming of a PDF document with optional auth token
+   */
+  getDocumentViewUrl(caseId: string, documentId: string, token?: string | null): string {
+    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+    const query = token ? `?token=${encodeURIComponent(token)}` : ''
+    return `${base}/tax-refunds/${caseId}/documents/${documentId}/view${query}`
+  },
+
+  /**
+   * Fetch PDF document as a binary Blob using authenticated client
+   */
+  async getDocumentBlob(caseId: string, documentId: string): Promise<Blob> {
+    const response = await apiClient.get(
+      `/tax-refunds/${caseId}/documents/${documentId}/view`,
+      { responseType: 'blob' }
+    )
+    return new Blob([response.data], { type: 'application/pdf' })
+  },
+
+  /**
+   * Download PDF document file directly
+   */
+  async downloadDocument(caseId: string, documentId: string, fileName: string): Promise<void> {
+    const response = await apiClient.get(`/tax-refunds/${caseId}/documents/${documentId}/download`, {
+      responseType: 'blob',
+    })
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName || 'document.pdf'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  },
+
+  /**
+   * Delete an attached document
+   */
+  async deleteDocument(caseId: string, documentId: string): Promise<void> {
+    await apiClient.delete(`/tax-refunds/${caseId}/documents/${documentId}`)
   },
 }

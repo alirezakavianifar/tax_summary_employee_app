@@ -201,10 +201,64 @@ export interface TaxRefundCase {
   allocations: RefundableReceiptAllocation[]
   letters: TaxRefundLetter[]
   approvals: TaxRefundApprovalAction[]
+  documents: TaxRefundDocument[]
   calculation?: RefundCalculationResult
   createdByUserId: string
   createdAt: string
   updatedAt: string
+}
+
+export enum TaxRefundDocumentType {
+  TaxpayerPetition = 1,
+  ReceiptProof = 2,
+  AssessmentNotice = 3,
+  InquiryResponse = 4,
+  JustificationReport = 5,
+  OfficeCommitment = 6,
+  DisbursementReceipt = 7,
+  IdentityProof = 8,
+  Other = 9,
+}
+
+export const TaxRefundDocumentTypeLabels: Record<TaxRefundDocumentType, { label: string; color: string }> = {
+  [TaxRefundDocumentType.TaxpayerPetition]: { label: 'درخواست استرداد مودی', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  [TaxRefundDocumentType.ReceiptProof]: { label: 'تصویر فیش/قبض پرداختی', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  [TaxRefundDocumentType.AssessmentNotice]: { label: 'برگ تشخیص/برگ قطعی', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+  [TaxRefundDocumentType.InquiryResponse]: { label: 'پاسخ استعلام عدم بدهی', color: 'bg-amber-100 text-amber-800 border-amber-200' },
+  [TaxRefundDocumentType.JustificationReport]: { label: 'گزارش توجیهی حسابرسی', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+  [TaxRefundDocumentType.OfficeCommitment]: { label: 'تعهدنامه کارشناس ارشد', color: 'bg-rose-100 text-rose-800 border-rose-200' },
+  [TaxRefundDocumentType.DisbursementReceipt]: { label: 'رسید پرداخت ذیحسابی', color: 'bg-teal-100 text-teal-800 border-teal-200' },
+  [TaxRefundDocumentType.IdentityProof]: { label: 'مدارک هویتی و ثبتی', color: 'bg-slate-100 text-slate-800 border-slate-200' },
+  [TaxRefundDocumentType.Other]: { label: 'سایر مدارک و ضمائم', color: 'bg-gray-100 text-gray-800 border-gray-200' },
+}
+
+export interface TaxRefundDocument {
+  id: string
+  taxRefundCaseId: string
+  documentType: TaxRefundDocumentType
+  documentTypeDescription: string
+  title: string
+  originalFileName: string
+  fileSize: number
+  fileSizeFormatted: string
+  contentType: string
+  uploadDateJalali: string
+  uploadedByUserId: string
+  uploadedByUserName: string
+  description?: string
+  relatedReceiptId?: string
+  relatedLetterId?: string
+  createdAt: string
+  viewUrl: string
+  downloadUrl: string
+}
+
+export interface UploadTaxRefundDocumentInput {
+  title: string
+  documentType: TaxRefundDocumentType
+  description?: string
+  relatedReceiptId?: string
+  relatedLetterId?: string
 }
 
 export interface TaxRefundCaseSummary {

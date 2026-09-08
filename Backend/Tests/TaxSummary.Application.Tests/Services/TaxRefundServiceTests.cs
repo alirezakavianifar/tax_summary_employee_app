@@ -16,6 +16,7 @@ public class TaxRefundServiceTests
     private readonly Mock<IUnitOfWork> _mockUow;
     private readonly IMapper _mapper;
     private readonly RefundCalculationEngine _calcEngine;
+    private readonly Mock<IRefundDocumentStorageService> _mockDocStorage;
     private readonly Mock<ILogger<TaxRefundService>> _mockLogger;
     private readonly TaxRefundService _service;
 
@@ -23,6 +24,7 @@ public class TaxRefundServiceTests
     {
         _mockRepo = new Mock<ITaxRefundRepository>();
         _mockUow = new Mock<IUnitOfWork>();
+        _mockDocStorage = new Mock<IRefundDocumentStorageService>();
 
         var config = new MapperConfiguration(cfg =>
         {
@@ -38,6 +40,7 @@ public class TaxRefundServiceTests
             _mockUow.Object,
             _mapper,
             _calcEngine,
+            _mockDocStorage.Object,
             _mockLogger.Object);
     }
 
@@ -261,5 +264,49 @@ public class TaxRefundServiceTests
         Assert.Equal(receipt.Id, result.Value!.TaxRefundReceiptId);
         Assert.Equal("RCPT-999", result.Value.ReceiptNumber);
         Assert.Equal(40_000_000, result.Value.RefundableAmount);
+    }
+
+    [Fact]
+    public async Task UploadDocumentAsync_WithValidFile_SuccessfullyAttachesDocument()
+    {
+        // Arrange
+        var testCase = TaxRefundCase.Create(
+            "REF-1402-TEST", "10", "مودی نمونه", "1234567890", "1234",
+            "تهران", "تهران", "خیابان آزادی", "ملی", "IR123456789012345678901234",
+            1402, 1, TaxSourceType.CorporateIncome, "اضافه پرداختی",
+            "مدیر", "رئیس گروه", "ممیز", Guid.NewGuid());
+        _mockRepo.Setup(r => r.GetByIdAsync(testCase.Id, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testCase);
+        _mockUow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var mockFile = new Mock<Microsoft.AspNetCore.Http.IFormFile>();
+        mockFile.Setup(f => f.FileName).Returns("darkhast_taxpayer.pdf");
+        mockFile.Setup(f => f.Length).Returns(50000);
+
+        _mockDocStorage.Setup(s => s.SavePdfAsync(mockFile.Object, testCase.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(("stored_123.pdf", "App_Data/uploads/stored_123.pdf", 50000));
+
+        var dto = new UploadTaxRefundDocumentDto
+        {
+            Title = "درخواست مودی جهت استرداد",
+            DocumentType = TaxRefundDocumentType.TaxpayerPetition,
+            Description = "ثبت شده در دبیرخانه"
+        };
+
+        // Act
+        var result = await _service.UploadDocumentAsync(
+            testCase.Id,
+            mockFile.Object,
+            dto,
+            Guid.NewGuid(),
+            "کارشناس ارشد");
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal("درخواست مودی جهت استرداد", result.Value!.Title);
+        Assert.Equal(TaxRefundDocumentType.TaxpayerPetition, result.Value.DocumentType);
+        Assert.Equal("darkhast_taxpayer.pdf", result.Value.OriginalFileName);
+        Assert.Single(testCase.Documents);
     }
 }

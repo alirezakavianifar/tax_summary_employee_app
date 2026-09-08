@@ -29,6 +29,11 @@ public class TaxRefundMappingProfile : Profile
             .ForMember(dest => dest.FromStatusName, opt => opt.MapFrom(src => GetStatusName(src.FromStatus)))
             .ForMember(dest => dest.ToStatusName, opt => opt.MapFrom(src => GetStatusName(src.ToStatus)));
 
+        CreateMap<TaxRefundDocument, TaxRefundDocumentDto>()
+            .MaxDepth(5)
+            .ForMember(dest => dest.DocumentTypeDescription, opt => opt.MapFrom(src => GetDocumentTypeName(src.DocumentType)))
+            .ForMember(dest => dest.FileSizeFormatted, opt => opt.MapFrom(src => FormatFileSize(src.FileSize)));
+
         CreateMap<TaxRefundCase, TaxRefundCaseDto>()
             .MaxDepth(5)
             .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => GetStatusName(src.Status)))
@@ -93,4 +98,25 @@ public class TaxRefundMappingProfile : Profile
         TaxRefundLetterType.TreasuryLetter => "نامه ذیحسابی",
         _ => letterType.ToString()
     };
+
+    public static string GetDocumentTypeName(TaxRefundDocumentType docType) => docType switch
+    {
+        TaxRefundDocumentType.TaxpayerPetition => "درخواست استرداد مودی",
+        TaxRefundDocumentType.ReceiptProof => "تصویر فیش/قبض پرداختی",
+        TaxRefundDocumentType.AssessmentNotice => "برگ تشخیص/قطعی",
+        TaxRefundDocumentType.InquiryResponse => "پاسخ استعلام عدم بدهی",
+        TaxRefundDocumentType.JustificationReport => "گزارش توجیهی حسابرسی",
+        TaxRefundDocumentType.OfficeCommitment => "تعهدنامه کارشناس ارشد",
+        TaxRefundDocumentType.DisbursementReceipt => "رسید پرداخت ذیحسابی",
+        TaxRefundDocumentType.IdentityProof => "مدارک هویتی و ثبتی",
+        TaxRefundDocumentType.Other => "سایر مدارک و ضمائم",
+        _ => docType.ToString()
+    };
+
+    public static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
 }

@@ -62,6 +62,15 @@ public class JalaliDate : ValueObject, IComparable<JalaliDate>
 
     public static JalaliDate Create(int year, int month, int day) => new($"{year:0000}/{month:00}/{day:00}");
 
+    public static JalaliDate FromDateTime(DateTime dateTime)
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        var year = pc.GetYear(dateTime);
+        var month = pc.GetMonth(dateTime);
+        var day = pc.GetDayOfMonth(dateTime);
+        return new JalaliDate($"{year:0000}/{month:00}/{day:00}");
+    }
+
     public int CompareTo(JalaliDate? other)
     {
         if (other is null) return 1;

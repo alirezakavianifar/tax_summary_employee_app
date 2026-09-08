@@ -49,6 +49,7 @@ public class TaxRefundCaseDto
     public List<RefundableReceiptAllocationDto> Allocations { get; set; } = new();
     public List<TaxRefundLetterDto> Letters { get; set; } = new();
     public List<TaxRefundApprovalActionDto> Approvals { get; set; } = new();
+    public List<TaxRefundDocumentDto> Documents { get; set; } = new();
 
     // Audit Info
     public Guid CreatedByUserId { get; set; }

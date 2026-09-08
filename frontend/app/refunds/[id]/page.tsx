@@ -26,11 +26,14 @@ import {
 import { taxRefundApi } from '@/lib/api/taxRefund'
 import {
   TaxRefundCase,
+  TaxRefundDocument,
   RefundCaseStatus,
   RefundCaseStatusLabels,
   TaxRefundLetterTypeLabels,
   FinalizationMethodLabels,
 } from '@/types/taxRefund'
+import { DocumentsSection } from '@/components/refunds/DocumentsSection'
+import { PdfViewerModal } from '@/components/refunds/PdfViewerModal'
 
 const PRINT_FORMS = [
   { id: 'cheklist', title: 'چک‌لیست کنترل اسناد استردادی' },
@@ -54,6 +57,7 @@ export default function TaxRefundDetailPage() {
   const [transitionNotes, setTransitionNotes] = useState('')
   const [transitioning, setTransitioning] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [directViewingDoc, setDirectViewingDoc] = useState<TaxRefundDocument | null>(null)
 
   const fetchCase = async () => {
     try {
@@ -276,13 +280,21 @@ export default function TaxRefundDetailPage() {
           </div>
         </div>
 
+        {/* Supporting Documents (PDF) Repository */}
+        <DocumentsSection refundCase={refundCase} onRefresh={fetchCase} />
+
         {/* Schedules Tables (Table A & Table B) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Table A */}
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="p-4 bg-gray-50 border-b border-gray-200 font-bold text-xs text-gray-900 flex items-center gap-2">
-              <Receipt className="w-4 h-4 text-purple-700" />
-              جدول (الف): قبوض پرداختی مودی ({refundCase.receipts.length} فقره)
+            <div className="p-4 bg-gray-50 border-b border-gray-200 font-bold text-xs text-gray-900 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-purple-700" />
+                <span>جدول (الف): قبوض پرداختی مودی ({refundCase.receipts.length} فقره)</span>
+              </div>
+              <span className="text-[11px] text-gray-500">
+                جمع: {formatNumber(refundCase.receipts.reduce((s, r) => s + r.amountRials, 0))} ریال
+              </span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-right text-xs">
@@ -292,17 +304,35 @@ export default function TaxRefundDetailPage() {
                     <th className="p-2.5">شماره قبض</th>
                     <th className="p-2.5 text-center">تاریخ صدور</th>
                     <th className="p-2.5">مبلغ (ریال)</th>
+                    <th className="p-2.5 text-center">پیوست</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {refundCase.receipts.map((r) => (
-                    <tr key={r.id}>
-                      <td className="p-2.5 font-bold text-gray-500">{r.rowIndex}</td>
-                      <td className="p-2.5 font-mono font-bold text-gray-900">{r.receiptNumber}</td>
-                      <td className="p-2.5 text-center font-mono text-gray-600">{r.issueDateJalali}</td>
-                      <td className="p-2.5 font-bold text-purple-900">{formatNumber(r.amountRials)}</td>
-                    </tr>
-                  ))}
+                  {refundCase.receipts.map((r) => {
+                    const linkedDoc = refundCase.documents?.find((d) => d.relatedReceiptId === r.id)
+                    return (
+                      <tr key={r.id}>
+                        <td className="p-2.5 font-bold text-gray-500">{r.rowIndex}</td>
+                        <td className="p-2.5 font-mono font-bold text-gray-900">{r.receiptNumber}</td>
+                        <td className="p-2.5 text-center font-mono text-gray-600">{r.issueDateJalali}</td>
+                        <td className="p-2.5 font-bold text-purple-900">{formatNumber(r.amountRials)}</td>
+                        <td className="p-2.5 text-center">
+                          {linkedDoc ? (
+                            <button
+                              onClick={() => setDirectViewingDoc(linkedDoc)}
+                              className="px-2 py-0.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
+                              title={`مشاهده فایل: ${linkedDoc.title}`}
+                            >
+                              <FileText className="w-3 h-3" />
+                              <span>PDF</span>
+                            </button>
+                          ) : (
+                            <span className="text-gray-300">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -436,6 +466,14 @@ export default function TaxRefundDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Direct PDF Viewer Modal (when preview is clicked from Table A) */}
+        <PdfViewerModal
+          document={directViewingDoc}
+          caseId={refundCase.id}
+          isOpen={!!directViewingDoc}
+          onClose={() => setDirectViewingDoc(null)}
+        />
       </div>
     </div>
   )

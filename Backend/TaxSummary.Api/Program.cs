@@ -80,6 +80,13 @@ builder.Services.AddAuthentication(options =>
                 // If not, try to get from cookie (for refresh token scenarios)
                 context.Token = context.Request.Cookies["accessToken"];
             }
+
+            // Also check query string for token (useful for direct file preview/streaming)
+            if (string.IsNullOrEmpty(context.Token) && context.Request.Query.TryGetValue("token", out var queryToken))
+            {
+                context.Token = queryToken;
+            }
+
             return Task.CompletedTask;
         }
     };

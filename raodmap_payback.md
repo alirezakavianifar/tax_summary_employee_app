@@ -48,11 +48,22 @@ graph TD
         R3[1-Click Batch Collated PDF Print]
     end
 
+    subgraph Phase9_Documents["Phase 9: PDF Document Management & Viewer (Backend & Frontend)"]
+        DOC1[TaxRefundDocument Entity & Enums]
+        DOC2[RefundDocumentStorageService: %PDF- Validation & Secure Storage]
+        DOC3[REST Endpoints: Upload, View Inline, Download, Delete]
+        DOC4[Frontend: In-App PDF Viewer Modal, Drag-Drop Uploader, Grid]
+    end
+
     Phase1_Domain --> Phase2_Application
     Phase2_Application --> Phase3_Infrastructure
     Phase2_Application --> Phase4_Api
     Phase4_Api --> Phase5_Frontend_Wizard
     Phase5_Frontend_Wizard --> Phase6_Frontend_Print
+    Phase1_Domain --> Phase9_Documents
+    Phase3_Infrastructure --> Phase9_Documents
+    Phase4_Api --> Phase9_Documents
+    Phase5_Frontend_Wizard --> Phase9_Documents
 ```
 
 ---
@@ -494,17 +505,224 @@ Create specialized print views in `frontend/components/refunds/print/`:
 
 ---
 
+## Phase 9: PDF Document Management & Secure In-App Viewer Engine
+
+### Goal
+Provide an enterprise-grade, secure PDF document management subsystem for tax refund cases. Enables tax officials and examiners to upload, categorize, validate, securely stream, preview in-browser, download, and delete supporting documents (taxpayer petitions, bank payment slips/receipts, assessment and final notices, inter-departmental debt clearances, justification reports, treasury disbursement receipts).
+
+> [!NOTE]
+> **Phase Prerequisite:** A dedicated Phase 9 Implementation Plan must be prepared and approved before implementing document domain entities, storage services, API endpoints, or frontend viewer components.
+
+---
+
+### Step 9.1: Domain Layer Modeling (`TaxSummary.Domain`)
+Create core document domain models:
+1. **`TaxRefundDocumentType.cs` (نوع سند پیوست):**
+   - `TaxpayerPetition = 1` (درخواست مودی / برگ تقاضای استرداد)
+   - `ReceiptProof = 2` (تصویر فیش یا قبض پرداخت بانکی)
+   - `AssessmentNotice = 3` (برگ تشخیص / برگ قطعی مالیات)
+   - `InquiryResponse = 4` (پاسخ استعلام وصول و اجرا یا عدم بدهی)
+   - `JustificationReport = 5` (گزارش توجیهی حسابرسی و تاییدات)
+   - `OfficeCommitment = 6` (فرم تعهد رسمی کارشناس ارشد)
+   - `DisbursementReceipt = 7` (رسید پرداخت و حواله ذیحسابی)
+   - `IdentityProof = 8` (مدارک شناسایی، وکالت‌نامه یا روزنامه رسمی)
+   - `Other = 9` (سایر مدارک و ضمائم پرونده)
+
+2. **`TaxRefundDocument.cs` (موجودیت سند پرونده استرداد):**
+   - Properties:
+     - `Id` (Guid)
+     - `TaxRefundCaseId` (Guid)
+     - `DocumentType` (TaxRefundDocumentType)
+     - `Title` (string - عنوان مشخص سند)
+     - `OriginalFileName` (string - نام فایل بارگذاری شده)
+     - `StoredFileName` (string - نام یکتا ذخیره شده در دیسک)
+     - `FilePath` (string - مسیر فایل امن)
+     - `FileSize` (long - حجم به بایت)
+     - `ContentType` (string - "application/pdf")
+     - `UploadDateJalali` (string - تاریخ بارگذاری شمسی)
+     - `UploadedByUserId` (Guid)
+     - `UploadedByUserName` (string)
+     - `Description` (string? - توضیحات اختیاری)
+     - `RelatedReceiptId` (Guid? - ارتباط اختیاری با قبض مشخص در جدول الف)
+     - `RelatedLetterId` (Guid? - ارتباط اختیاری با استعلام مشخص در جدول استعلامات)
+     - `CreatedAt` (DateTime)
+   - Methods: `Create(...)`, `UpdateDetails(...)`
+
+3. **`TaxRefundCase.cs` Aggregate Root Updates:**
+   - Collection: `public ICollection<TaxRefundDocument> Documents { get; private set; } = new List<TaxRefundDocument>();`
+   - Domain methods:
+     - `TaxRefundDocument AddDocument(...)`
+     - `void RemoveDocument(Guid documentId)`
+
+#### Verification Checks for Step 9.1
+- [ ] Unit tests in `TaxSummary.Domain.Tests`:
+  - `TaxRefundDocument.Create` rejects empty titles, invalid CaseId, or negative file sizes.
+  - `TaxRefundCase.AddDocument` attaches document and updates aggregate timestamp.
+  - `TaxRefundCase.RemoveDocument` removes specified document from collection.
+
+---
+
+### Step 9.2: Application Layer & Storage Abstraction (`TaxSummary.Application`)
+1. **DTOs (`TaxSummary.Application/DTOs/TaxRefund/`):**
+   - `TaxRefundDocumentDto`: View model including `DocumentTypeDescription`, formatted file size (`1.8 MB`), `DownloadUrl`, and `ViewUrl`.
+   - `UploadTaxRefundDocumentDto`: Input model containing `Title`, `DocumentType`, `Description`, `RelatedReceiptId`, `RelatedLetterId`.
+2. **FluentValidation (`TaxSummary.Application/Validators/TaxRefund/`):**
+   - `UploadTaxRefundDocumentValidator`: Validates non-empty title (max 200 chars), valid DocumentType enum range, and optional description length.
+3. **AutoMapper Configuration (`TaxRefundMappingProfile.cs`):**
+   - Maps `TaxRefundDocument` to `TaxRefundDocumentDto` with Persian label resolvers and size formatting.
+4. **Storage Service Interface (`IRefundDocumentStorageService.cs`):**
+   ```csharp
+   public interface IRefundDocumentStorageService
+   {
+       Task<(string StoredFileName, string RelativePath, long FileSize)> SavePdfAsync(IFormFile file, Guid caseId, CancellationToken ct = default);
+       Task<(Stream Stream, string ContentType, string FileName)> GetPdfStreamAsync(string relativePath, string originalFileName, CancellationToken ct = default);
+       Task<bool> DeletePdfAsync(string relativePath, CancellationToken ct = default);
+   }
+   ```
+5. **Service Methods (`ITaxRefundService` & `TaxRefundService`):**
+   - `UploadDocumentAsync(Guid caseId, IFormFile file, UploadTaxRefundDocumentDto dto, Guid userId, string userName, CancellationToken ct)`
+   - `GetDocumentStreamAsync(Guid caseId, Guid documentId, CancellationToken ct)`
+   - `GetDocumentsAsync(Guid caseId, CancellationToken ct)`
+   - `DeleteDocumentAsync(Guid caseId, Guid documentId, Guid userId, CancellationToken ct)`
+
+#### Verification Checks for Step 9.2
+- [ ] Unit tests in `TaxSummary.Application.Tests`:
+  - `UploadTaxRefundDocumentValidatorTests`: Validates required fields and rejection of invalid enum values.
+  - `TaxRefundServiceTests.UploadDocumentAsync`: Successfully coordinates storage service and repository persistence.
+  - AutoMapper test verifying `TaxRefundDocument` maps cleanly to `TaxRefundDocumentDto`.
+
+---
+
+### Step 9.3: Infrastructure Persistence & Secure File Storage (`TaxSummary.Infrastructure`)
+1. **EF Core Configuration (`TaxRefundDocumentConfiguration.cs`):**
+   - Table: `TaxRefundDocuments`
+   - Foreign key to `TaxRefundCase` with `DeleteBehavior.Cascade`
+   - Indexes on `TaxRefundCaseId`, `DocumentType`, `RelatedReceiptId`, `RelatedLetterId`
+   - String length constraints and required fields
+2. **`TaxSummaryDbContext.cs` Registration:**
+   - Register `DbSet<TaxRefundDocument> TaxRefundDocuments => Set<TaxRefundDocument>();`
+3. **`TaxRefundRepository.cs` Update:**
+   - Add `.Include(c => c.Documents)` in `GetByIdAsync` and `GetByTrackingNumberAsync`.
+4. **Storage Service Implementation (`RefundDocumentStorageService.cs`):**
+   - Secure storage folder: `App_Data/uploads/refund-documents/{caseId}/` (isolated from public webroot to prevent unauthorized direct URL downloads).
+   - Strict binary magic bytes verification: validates `%PDF-` header signature (`0x25, 0x50, 0x44, 0x46, 0x2D`).
+   - File size ceiling: enforces 25MB maximum per PDF upload.
+   - File extension and MIME type validation (`.pdf` and `application/pdf`).
+   - Randomized GUID-based stored filename to eliminate path traversal vulnerabilities.
+5. **EF Core Migration:**
+   - Run `dotnet ef migrations add AddTaxRefundDocumentsTable --project Backend/TaxSummary.Infrastructure --startup-project Backend/TaxSummary.Api`.
+
+#### Verification Checks for Step 9.3
+- [ ] Migration applies cleanly with `dotnet ef database update`.
+- [ ] Non-PDF file or corrupted file with `.pdf` extension is rejected by magic byte validator.
+- [ ] File above 25MB throws size exceeded validation exception with Persian error message.
+
+---
+
+### Step 9.4: API Layer REST Endpoints (`TaxSummary.Api`)
+Add document management endpoints to `TaxRefundsController.cs`:
+- `POST /api/tax-refunds/{id:guid}/documents`
+  - Accepts `[FromForm]` with `IFormFile file` and `UploadTaxRefundDocumentDto`.
+  - Returns `TaxRefundDocumentDto` (Status 201 Created).
+- `GET /api/tax-refunds/{id:guid}/documents`
+  - Returns list of all attached documents for the case.
+- `GET /api/tax-refunds/{id:guid}/documents/{documentId:guid}/view`
+  - Streams PDF file with `Content-Disposition: inline` for seamless in-browser and iframe rendering.
+- `GET /api/tax-refunds/{id:guid}/documents/{documentId:guid}/download`
+  - Streams PDF file with `Content-Disposition: attachment; filename="<original_name>.pdf"`.
+- `DELETE /api/tax-refunds/{id:guid}/documents/{documentId:guid}`
+  - Removes document from database and deletes physical file from storage.
+- **Audit Logging:** Logs `TaxRefundDocumentUploaded` and `TaxRefundDocumentDeleted` events with actor ID and document title.
+
+#### Verification Checks for Step 9.4
+- [ ] Test endpoints in Swagger UI (`http://localhost:5000`).
+- [ ] Uploading valid sample PDF returns HTTP 201 with document metadata.
+- [ ] Accessing `/view` endpoint returns stream with `Content-Type: application/pdf`.
+- [ ] Deleting document removes record from database and verifies file is unlinked on disk.
+
+---
+
+### Step 9.5: Frontend TypeScript Types & API Client (`frontend`)
+1. **Types (`frontend/types/taxRefund.ts`):**
+   - `TaxRefundDocumentType` enum & `TaxRefundDocumentTypeLabels` with Persian translations.
+   - `TaxRefundDocument` interface (metadata, URLs, sizes, dates).
+   - `UploadTaxRefundDocumentInput` interface.
+   - Update `TaxRefundCase` to include `documents: TaxRefundDocument[]`.
+2. **API Client (`frontend/lib/api/taxRefund.ts`):**
+   - `uploadDocument(caseId, file, meta): Promise<TaxRefundDocument>`
+   - `getDocuments(caseId): Promise<TaxRefundDocument[]>`
+   - `getDocumentViewUrl(caseId, documentId): string`
+   - `downloadDocument(caseId, documentId, fileName): Promise<void>`
+   - `deleteDocument(caseId, documentId): Promise<void>`
+
+#### Verification Checks for Step 9.5
+- [ ] `npm run build` or `npx tsc --noEmit` succeeds with zero TypeScript compilation errors.
+
+---
+
+### Step 9.6: Frontend PDF Viewer & Upload UI Components (`frontend/components/refunds/`)
+Create three specialized, responsive, Persian RTL components:
+1. **`PdfViewerModal.tsx` (نمایشگر تخصصی اسناد PDF درون‌برنامه‌ای):**
+   - Modal overlay with animated backdrop and full-screen toggle.
+   - Header toolbar:
+     - Document title, Persian type badge, upload date, uploader, formatted size.
+     - Action buttons: چاپ (Print), دانلود مستقیم (Download), باز کردن در تب جدید (Open New Tab), تمام‌صفحه (Fullscreen), بستن (Close).
+   - Body: responsive embedded PDF iframe viewer displaying `/api/tax-refunds/{caseId}/documents/{docId}/view`.
+   - Fallback message for mobile or browsers without inline PDF rendering support with direct open/download fallback button.
+2. **`DocumentUploadModal.tsx` (مودال هوشمند بارگذاری اسناد پیوست):**
+   - Modern drag & drop dropzone with PDF visual indicator and file preview.
+   - Real-time client file validation (validates `.pdf` extension and $\le 25\text{MB}$ size).
+   - Form fields:
+     - عنوان سند (Document Title - mandatory)
+     - نوع مدرک (Document Type dropdown with color badges and icons)
+     - قبض مرتبط (Optional Table A receipt dropdown to link proof directly to a receipt)
+     - استعلام مرتبط (Optional letter dropdown to link clearance document)
+     - توضیحات تکمیلی (Optional notes)
+   - Upload progress bar, loader spinner, and Persian error banners.
+3. **`DocumentsSection.tsx` (بخش مدیریت و مشاهده مدارک در صفحه پرونده):**
+   - Badge counter showing total attached documents.
+   - Filter pills by category (همه، قبوض پرداختی، استعلامات عدم بدهی، احکام و آراء، سایر).
+   - Instant search input (by title or filename).
+   - Card grid layout:
+     - PDF icon with rose accent and document type badge.
+     - Document title, filename, formatted size, Jalali date, uploader.
+     - Action buttons: مشاهده (View), دانلود (Download), حذف (Delete with confirm dialog).
+   - "بارگذاری مدرک جدید (PDF)" primary button triggering the upload modal.
+
+#### Verification Checks for Step 9.6
+- [ ] Component renders smoothly in desktop and mobile screen resolutions.
+- [ ] Modal open, close, and esc-key shortcuts function reliably.
+- [ ] Document filter tabs instantly filter displayed cards without page reload.
+
+---
+
+### Step 9.7: Integration into Tax Refund Detail Page & Wizard
+1. **Detail Page (`frontend/app/refunds/[id]/page.tsx`):**
+   - Add `DocumentsSection` component below the print forms bar.
+   - Link badges on Table A receipts and Letters: if a document is linked to a receipt or inquiry, display a clickable PDF badge that opens the viewer modal directly for that item.
+2. **Wizard Step Integration (Optional Initial Upload):**
+   - Provide examiners the ability to attach initial taxpayer petitions and receipt scans during case creation or initial auditing.
+
+#### Verification Checks for Step 9.7
+- [ ] Upload a test PDF in `/refunds/[id]`; verify it immediately appears in the documents grid.
+- [ ] Click "مشاهده سند" on the uploaded document; verify the in-app PDF viewer modal opens and displays the PDF crisply.
+- [ ] Test downloading the PDF; verify the downloaded file is identical to the uploaded file.
+- [ ] Test deleting the document; confirm it disappears from the UI and cannot be accessed via URL.
+
+---
+
 ## Phase 7: Verification Matrix & Acceptance Criteria
 
 | Workstream | Acceptance Criteria | Automated Test / Verification Command |
 | :--- | :--- | :--- |
-| **Domain Layer** | Clean compile; zero external dependencies; Sheba & Economic Code value object validations pass. | `dotnet test Backend/Tests/TaxSummary.Domain.Tests` |
+| **Domain Layer** | Clean compile; zero external dependencies; Sheba, Economic Code, and Document value validations pass. | `dotnet test Backend/Tests/TaxSummary.Domain.Tests` |
 | **Calculation Engine** | Exact mathematical match with `tax_refund_delfi نمونه.xlsm` (Surplus `-65M`, Net Refund `65M`); debts offset verified. | `dotnet test Backend/Tests/TaxSummary.Application.Tests --filter "RefundCalculationEngine"` |
-| **Database & EF Core** | Schema migrations apply cleanly; cascade deletes function for receipts/letters; indexes verified. | `dotnet ef database update` + SQLite/SQL query check |
+| **Database & EF Core** | Schema migrations apply cleanly; cascade deletes function for receipts/letters/documents; indexes verified. | `dotnet ef database update` + SQLite/SQL query check |
 | **REST Endpoints** | All endpoints return HTTP 200/201 with standard Result envelope; Swagger documentation complete. | Automated API integration tests or Postman/REST test runner |
 | **Frontend Wizard** | Multi-step form validates inputs; reactive calculation updates instantly; Table A paste works. | Next.js build (`npm run build`) + Playwright E2E form test |
 | **Print Engine** | All 8 forms render A4 RTL with Persian fonts; exact text matches sample files; `#REF!` bug eliminated. | Browser visual inspection & PDF export comparison |
 | **Excel Migration** | Uploading `tax_refund_delfi نمونه.xlsm` creates an identical case in the web application database. | API file upload test via `/api/tax-refunds/import-excel` |
+| **PDF Document System** | Uploads $\le 25\text{MB}$ PDFs; validates `%PDF-` signature; secure inline streaming; embedded modal viewer with zoom/print/download. | `dotnet test Backend/Tests/TaxSummary.Application.Tests` + Next.js build + manual upload/view check |
 
 ---
 
@@ -528,7 +746,10 @@ gantt
     section Print & Interop
     A4 CSS Layout & 8 Form Components   :p_frm, after f_app, 4d
     Excel Import & Export Bridge        :p_xls, after p_frm, 2d
-    End-to-End Testing & Verification   :p_e2e, after p_xls, 2d
+    section PDF Documents Subsystem
+    Document Entity, Storage & Endpoints:p_pdf_be, 2026-09-25, 2d
+    In-App PDF Viewer & Uploader UI     :p_pdf_fe, after p_pdf_be, 2d
+    End-to-End Testing & Verification   :p_e2e, after p_pdf_fe, 2d
 ```
 
 ### Readiness Checklist Before Proceeding

@@ -17,6 +17,7 @@ public class TaxRefundService : ITaxRefundService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly RefundCalculationEngine _calculationEngine;
+    private readonly IRefundDocumentStorageService _documentStorageService;
     private readonly ILogger<TaxRefundService> _logger;
 
     public TaxRefundService(
@@ -24,12 +25,14 @@ public class TaxRefundService : ITaxRefundService
         IUnitOfWork unitOfWork,
         IMapper mapper,
         RefundCalculationEngine calculationEngine,
+        IRefundDocumentStorageService documentStorageService,
         ILogger<TaxRefundService> logger)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _calculationEngine = calculationEngine;
+        _documentStorageService = documentStorageService;
         _logger = logger;
     }
 
@@ -731,5 +734,130 @@ public class TaxRefundService : ITaxRefundService
     {
         if (number == 0) return "صفر ریال";
         return $"{number:N0} ریال";
+    }
+
+    public async Task<Result<TaxRefundDocumentDto>> UploadDocumentAsync(
+        Guid caseId,
+        Microsoft.AspNetCore.Http.IFormFile file,
+        UploadTaxRefundDocumentDto dto,
+        Guid currentUserId,
+        string currentUserName,
+        CancellationToken ct = default)
+    {
+        if (file == null || file.Length == 0)
+            return Result.Failure<TaxRefundDocumentDto>("لطفاً فایل PDF سند را انتخاب نمایید");
+
+        var refundCase = await _repository.GetByIdAsync(caseId, includeDetails: true, ct);
+        if (refundCase == null)
+            return Result.Failure<TaxRefundDocumentDto>("پرونده استرداد مورد نظر یافت نشد");
+
+        try
+        {
+            var (storedFileName, relativePath, fileSize) = await _documentStorageService.SavePdfAsync(file, caseId, ct);
+            var jalaliDate = TaxSummary.Domain.ValueObjects.JalaliDate.FromDateTime(DateTime.UtcNow).ToString();
+
+            var document = refundCase.AddDocument(
+                dto.DocumentType,
+                dto.Title,
+                file.FileName,
+                storedFileName,
+                relativePath,
+                fileSize,
+                jalaliDate,
+                currentUserId,
+                currentUserName,
+                dto.Description,
+                dto.RelatedReceiptId,
+                dto.RelatedLetterId,
+                "application/pdf");
+
+            await _repository.UpdateAsync(refundCase, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+            _logger.LogInformation("Document {DocTitle} uploaded successfully for refund case {CaseId}", dto.Title, caseId);
+
+            var documentDto = _mapper.Map<TaxRefundDocumentDto>(document);
+            return Result.Success(documentDto);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Validation error during document upload for case {CaseId}", caseId);
+            return Result.Failure<TaxRefundDocumentDto>(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error uploading document for case {CaseId}", caseId);
+            return Result.Failure<TaxRefundDocumentDto>("خطای سیستمی در ذخیره‌سازی فایل پیوست");
+        }
+    }
+
+    public async Task<Result<IEnumerable<TaxRefundDocumentDto>>> GetDocumentsAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var refundCase = await _repository.GetByIdAsync(caseId, includeDetails: true, ct);
+        if (refundCase == null)
+            return Result.Failure<IEnumerable<TaxRefundDocumentDto>>("پرونده استرداد مورد نظر یافت نشد");
+
+        var dtos = _mapper.Map<IEnumerable<TaxRefundDocumentDto>>(refundCase.Documents.OrderByDescending(d => d.CreatedAt));
+        return Result.Success(dtos);
+    }
+
+    public async Task<Result<(Stream Stream, string ContentType, string FileName)>> GetDocumentStreamAsync(
+        Guid caseId,
+        Guid documentId,
+        CancellationToken ct = default)
+    {
+        var refundCase = await _repository.GetByIdAsync(caseId, includeDetails: true, ct);
+        if (refundCase == null)
+            return Result.Failure<(Stream Stream, string ContentType, string FileName)>("پرونده استرداد مورد نظر یافت نشد");
+
+        var document = refundCase.Documents.FirstOrDefault(d => d.Id == documentId);
+        if (document == null)
+            return Result.Failure<(Stream Stream, string ContentType, string FileName)>("سند پیوست مورد نظر یافت نشد");
+
+        try
+        {
+            var streamResult = await _documentStorageService.GetPdfStreamAsync(document.FilePath, document.OriginalFileName, ct);
+            return Result.Success(streamResult);
+        }
+        catch (FileNotFoundException)
+        {
+            _logger.LogWarning("Physical document file not found: {Path}", document.FilePath);
+            return Result.Failure<(Stream Stream, string ContentType, string FileName)>("فایل فیزیکی سند در سرور یافت نشد");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading document stream {DocId} for case {CaseId}", documentId, caseId);
+            return Result.Failure<(Stream Stream, string ContentType, string FileName)>("خطا در بارگذاری فایل سند");
+        }
+    }
+
+    public async Task<Result> DeleteDocumentAsync(
+        Guid caseId,
+        Guid documentId,
+        Guid currentUserId,
+        CancellationToken ct = default)
+    {
+        var refundCase = await _repository.GetByIdAsync(caseId, includeDetails: true, ct);
+        if (refundCase == null)
+            return Result.Failure("پرونده استرداد مورد نظر یافت نشد");
+
+        var document = refundCase.Documents.FirstOrDefault(d => d.Id == documentId);
+        if (document == null)
+            return Result.Failure("سند پیوست مورد نظر یافت نشد");
+
+        try
+        {
+            await _documentStorageService.DeletePdfAsync(document.FilePath, ct);
+            refundCase.RemoveDocument(documentId);
+            await _repository.UpdateAsync(refundCase, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            _logger.LogInformation("Document {DocId} removed from refund case {CaseId}", documentId, caseId);
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting document {DocId} for case {CaseId}", documentId, caseId);
+            return Result.Failure("خطا در حذف سند پیوست");
+        }
     }
 }

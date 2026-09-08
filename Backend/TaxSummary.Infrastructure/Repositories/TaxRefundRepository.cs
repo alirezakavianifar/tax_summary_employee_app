@@ -27,7 +27,8 @@ public class TaxRefundRepository : ITaxRefundRepository
                 .Include(c => c.Receipts)
                 .Include(c => c.Allocations)
                 .Include(c => c.Letters)
-                .Include(c => c.Approvals);
+                .Include(c => c.Approvals)
+                .Include(c => c.Documents);
         }
 
         return await query.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
@@ -40,6 +41,7 @@ public class TaxRefundRepository : ITaxRefundRepository
             .Include(c => c.Allocations)
             .Include(c => c.Letters)
             .Include(c => c.Approvals)
+            .Include(c => c.Documents)
             .FirstOrDefaultAsync(c => c.CaseTrackingNumber == trackingNumber, cancellationToken);
     }
 
@@ -126,8 +128,15 @@ public class TaxRefundRepository : ITaxRefundRepository
             foreach (var approval in refundCase.Approvals)
             {
                 var apEntry = _context.Entry(approval);
-                if (apEntry.State == EntityState.Detached || (apEntry.State == EntityState.Modified && !_context.TaxRefundApprovalActions.Any(a => a.Id == approval.Id)))
+                if (apEntry.State == EntityState.Detached || (apEntry.State == EntityState.Modified && !_context.TaxRefundApprovalActions.Any(ap => ap.Id == approval.Id)))
                     apEntry.State = EntityState.Added;
+            }
+
+            foreach (var doc in refundCase.Documents)
+            {
+                var dEntry = _context.Entry(doc);
+                if (dEntry.State == EntityState.Detached || (dEntry.State == EntityState.Modified && !_context.TaxRefundDocuments.Any(d => d.Id == doc.Id)))
+                    dEntry.State = EntityState.Added;
             }
         }
 

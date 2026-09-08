@@ -183,7 +183,7 @@ export default function AuditLogsPage() {
   }, [parsedOldValues, parsedNewValues])
 
   return (
-    <ProtectedRoute allowedRoles={['Admin']}>
+    <ProtectedRoute requiredRoles={['Admin']}>
       <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header Banner */}
@@ -647,7 +647,9 @@ export default function AuditLogsPage() {
                                 <td className="py-2 px-3 font-sans font-bold text-gray-800">
                                   <div className="flex items-center gap-1.5">
                                     {isRedacted && (
-                                      <Lock className="w-3 h-3 text-amber-500" title="فیلد محرمانه پنهان‌سازی شده" />
+                                      <span title="فیلد محرمانه پنهان‌سازی شده">
+                                        <Lock className="w-3 h-3 text-amber-500" />
+                                      </span>
                                     )}
                                     <span>{key}</span>
                                   </div>

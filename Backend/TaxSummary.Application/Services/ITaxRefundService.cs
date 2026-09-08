@@ -30,4 +30,9 @@ public interface ITaxRefundService
     Task<Result<RefundCalculationResultDto>> CalculateSandboxAsync(CalculateRefundRequestDto dto, CancellationToken ct = default);
     Task<Result> TransitionStatusAsync(Guid id, TransitionStatusDto dto, Guid currentUserId, string actorName, string actorRole, CancellationToken ct = default);
     Task<Result<PrintableDocumentDto>> GetPrintableDocumentAsync(Guid id, string formType, CancellationToken ct = default);
+
+    Task<Result<TaxRefundDocumentDto>> UploadDocumentAsync(Guid caseId, Microsoft.AspNetCore.Http.IFormFile file, UploadTaxRefundDocumentDto dto, Guid currentUserId, string currentUserName, CancellationToken ct = default);
+    Task<Result<IEnumerable<TaxRefundDocumentDto>>> GetDocumentsAsync(Guid caseId, CancellationToken ct = default);
+    Task<Result<(Stream Stream, string ContentType, string FileName)>> GetDocumentStreamAsync(Guid caseId, Guid documentId, CancellationToken ct = default);
+    Task<Result> DeleteDocumentAsync(Guid caseId, Guid documentId, Guid currentUserId, CancellationToken ct = default);
 }

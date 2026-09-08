@@ -59,11 +59,13 @@ public class TaxRefundEndToEndTests : IDisposable
         _calcEngine = new RefundCalculationEngine();
 
         var mockServiceLogger = new Mock<ILogger<TaxRefundService>>();
+        var mockDocStorage = new Mock<IRefundDocumentStorageService>();
         _service = new TaxRefundService(
             _repository,
             _unitOfWork,
             _mapper,
             _calcEngine,
+            mockDocStorage.Object,
             mockServiceLogger.Object);
 
         var mockEnv = new Mock<IHostEnvironment>();

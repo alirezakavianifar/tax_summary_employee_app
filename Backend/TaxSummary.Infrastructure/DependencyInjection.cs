@@ -83,6 +83,7 @@ public static class DependencyInjection
         // Register Tax Refund Services
         services.AddScoped<ITaxRefundRepository, TaxRefundRepository>();
         services.AddScoped<RefundCalculationEngine>();
+        services.AddScoped<IRefundDocumentStorageService, RefundDocumentStorageService>();
         services.AddScoped<ITaxRefundService, TaxRefundService>();
         services.AddScoped<ITaxRefundExcelService, TaxRefundExcelService>();
 

@@ -426,6 +426,113 @@ public class TaxRefundsController : ControllerBase
         return File(result.Value!, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename);
     }
 
+    /// <summary>
+    /// Upload and attach an official PDF document to a tax refund case
+    /// بارگذاری و پیوست سند رسمی PDF به پرونده استرداد
+    /// </summary>
+    [HttpPost("{id:guid}/documents")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(TaxRefundDocumentDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<TaxRefundDocumentDto>> UploadDocument(
+        Guid id,
+        IFormFile file,
+        [FromForm] UploadTaxRefundDocumentDto dto,
+        CancellationToken ct)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = "لطفاً فایل PDF سند را انتخاب نمایید" });
+
+        if (dto == null)
+            dto = new UploadTaxRefundDocumentDto { Title = Path.GetFileNameWithoutExtension(file.FileName) };
+
+        var userId = GetCurrentUserId();
+        var userName = GetCurrentUserName();
+
+        var result = await _refundService.UploadDocumentAsync(id, file, dto, userId, userName, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return CreatedAtAction(nameof(GetDocuments), new { id }, result.Value);
+    }
+
+    /// <summary>
+    /// Retrieve all attached PDF documents for a tax refund case
+    /// دریافت فهرست اسناد و مدارک پیوست پرونده استرداد
+    /// </summary>
+    [HttpGet("{id:guid}/documents")]
+    [ProducesResponseType(typeof(IEnumerable<TaxRefundDocumentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IEnumerable<TaxRefundDocumentDto>>> GetDocuments(
+        Guid id,
+        CancellationToken ct)
+    {
+        var result = await _refundService.GetDocumentsAsync(id, ct);
+        if (result.IsFailure)
+            return NotFound(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Stream PDF document for inline in-browser / embedded viewing
+    /// مشاهده مستقیم و درون‌برنامه‌ای فایل PDF سند پیوست
+    /// </summary>
+    [HttpGet("{id:guid}/documents/{documentId:guid}/view")]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ViewDocument(
+        Guid id,
+        Guid documentId,
+        CancellationToken ct)
+    {
+        var result = await _refundService.GetDocumentStreamAsync(id, documentId, ct);
+        if (result.IsFailure)
+            return NotFound(new { error = result.Error });
+
+        Response.Headers.Append("Content-Disposition", "inline");
+        return File(result.Value.Stream, result.Value.ContentType);
+    }
+
+    /// <summary>
+    /// Download PDF document as an attachment
+    /// دانلود مستقیم فایل PDF سند پیوست
+    /// </summary>
+    [HttpGet("{id:guid}/documents/{documentId:guid}/download")]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadDocument(
+        Guid id,
+        Guid documentId,
+        CancellationToken ct)
+    {
+        var result = await _refundService.GetDocumentStreamAsync(id, documentId, ct);
+        if (result.IsFailure)
+            return NotFound(new { error = result.Error });
+
+        return File(result.Value.Stream, result.Value.ContentType, result.Value.FileName);
+    }
+
+    /// <summary>
+    /// Delete an attached PDF document
+    /// حذف سند پیوست از پرونده استرداد
+    /// </summary>
+    [HttpDelete("{id:guid}/documents/{documentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteDocument(
+        Guid id,
+        Guid documentId,
+        CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        var result = await _refundService.DeleteDocumentAsync(id, documentId, userId, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return NoContent();
+    }
+
     private Guid GetCurrentUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub") ?? User.FindFirst("id");
