@@ -13,6 +13,7 @@ public class MenuSettingDto
     public string? IconName { get; set; }
     public bool IsVisible { get; set; }
     public bool AdminOnly { get; set; }
+    public List<string> AllowedRoles { get; set; } = new();
     public int DisplayOrder { get; set; }
     public string? Description { get; set; }
     public List<MenuSettingDto> Children { get; set; } = new();
@@ -26,6 +27,7 @@ public class UpdateMenuSettingItemDto
     public string MenuKey { get; set; } = string.Empty;
     public bool IsVisible { get; set; }
     public bool AdminOnly { get; set; }
+    public List<string>? AllowedRoles { get; set; }
     public int? DisplayOrder { get; set; }
 }
 

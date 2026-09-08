@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaxSummary.Application.DTOs.Payroll;
 using TaxSummary.Application.Services;
+using TaxSummary.Api.Attributes;
 using TaxSummary.Domain.Entities;
 
 namespace TaxSummary.Api.Controllers;
@@ -10,6 +11,7 @@ namespace TaxSummary.Api.Controllers;
 /// API controller for payroll processing operations
 /// </summary>
 [Authorize]
+[RequireModuleAccess("module_payroll")]
 [ApiController]
 [Route("api/payroll")]
 [Produces("application/json")]

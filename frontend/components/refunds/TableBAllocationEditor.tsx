@@ -66,14 +66,16 @@ export default function TableBAllocationEditor({
     onChange(newAllocations)
   }
 
+  const effectiveReceiptNo = selectedReceiptNo || receipts[0]?.receiptNumber || ''
+
   const handleManualAdd = () => {
     setError(null)
-    if (!selectedReceiptNo) {
+    if (!effectiveReceiptNo) {
       setError('قبض مورد نظر را انتخاب نمایید')
       return
     }
 
-    const receipt = receipts.find((r) => r.receiptNumber === selectedReceiptNo)
+    const receipt = receipts.find((r) => r.receiptNumber === effectiveReceiptNo)
     if (!receipt) return
 
     const parsedAmount = parseFloat(allocAmount.replace(/,/g, ''))
@@ -88,7 +90,7 @@ export default function TableBAllocationEditor({
     }
 
     // Replace or add allocation for this receipt
-    const filtered = allocations.filter((a) => a.receiptNumber !== selectedReceiptNo)
+    const filtered = allocations.filter((a) => a.receiptNumber !== effectiveReceiptNo)
     const newAllocation: AllocationItem = {
       taxRefundReceiptId: receipt.id,
       receiptNumber: receipt.receiptNumber,
@@ -175,7 +177,7 @@ export default function TableBAllocationEditor({
             <div>
               <label className="block text-[11px] text-gray-600 mb-1">انتخاب قبض از جدول (الف):</label>
               <select
-                value={selectedReceiptNo}
+                value={effectiveReceiptNo}
                 onChange={(e) => {
                   setSelectedReceiptNo(e.target.value)
                   const r = receipts.find((x) => x.receiptNumber === e.target.value)

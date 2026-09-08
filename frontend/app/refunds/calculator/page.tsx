@@ -13,6 +13,7 @@ import {
   Layers,
 } from 'lucide-react'
 import LiveCalculationCard from '@/components/refunds/LiveCalculationCard'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function CalculatorPage() {
   const [totalPaidStr, setTotalPaidStr] = useState('315,000,000')
@@ -66,7 +67,8 @@ export default function CalculatorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8" dir="rtl">
+    <ProtectedRoute requiredModule="module_tax_refund">
+      <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8" dir="rtl">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -285,5 +287,6 @@ export default function CalculatorPage() {
         </div>
       </div>
     </div>
+    </ProtectedRoute>
   )
 }

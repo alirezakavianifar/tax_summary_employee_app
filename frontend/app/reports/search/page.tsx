@@ -6,6 +6,7 @@ import { reportsApi } from '@/lib/api/reports'
 import type { EmployeeDto } from '@/lib/api/types'
 import { useAuth } from '@/contexts/AuthContext'
 import { Settings, Sparkles } from 'lucide-react'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function SearchReportsPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -76,7 +77,8 @@ export default function SearchReportsPage() {
   }
 
   return (
-    <div className="min-h-screen p-8 bg-gray-50">
+    <ProtectedRoute requiredModule="module_evaluation">
+      <div className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -289,5 +291,6 @@ export default function SearchReportsPage() {
         )}
       </div>
     </div>
+    </ProtectedRoute>
   )
 }

@@ -43,6 +43,11 @@ public class MenuSetting
     public bool AdminOnly { get; private set; }
 
     /// <summary>
+    /// Comma-separated list of allowed role names (e.g. "Admin,Manager,Employee").
+    /// </summary>
+    public string AllowedRoles { get; private set; } = "Admin,Manager,Employee";
+
+    /// <summary>
     /// Display sequence order in the navigation bar.
     /// </summary>
     public int DisplayOrder { get; private set; }
@@ -80,13 +85,31 @@ public class MenuSetting
         bool adminOnly = false,
         int displayOrder = 0,
         string? description = null,
-        Guid? updatedByUserId = null)
+        Guid? updatedByUserId = null,
+        string? allowedRoles = null)
     {
         if (string.IsNullOrWhiteSpace(menuKey))
             throw new ArgumentException("شناسه یکتای منو الزامی است", nameof(menuKey));
 
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("عنوان منو الزامی است", nameof(title));
+
+        string resolvedRoles;
+        if (!string.IsNullOrWhiteSpace(allowedRoles))
+        {
+            resolvedRoles = NormalizeRoles(allowedRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        }
+        else if (adminOnly)
+        {
+            resolvedRoles = "Admin";
+        }
+        else
+        {
+            resolvedRoles = "Admin,OfficeHead,GroupHead,Expert,ITSpecialist,Manager,Employee";
+        }
+
+        bool isActuallyAdminOnly = adminOnly || !resolvedRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(r => !string.Equals(r, "Admin", StringComparison.OrdinalIgnoreCase));
 
         return new MenuSetting
         {
@@ -95,9 +118,10 @@ public class MenuSetting
             ParentKey = string.IsNullOrWhiteSpace(parentKey) ? null : parentKey.Trim().ToLowerInvariant(),
             Title = title.Trim(),
             Route = string.IsNullOrWhiteSpace(route) ? "/" : route.Trim(),
-            IconName = iconName?.Trim(),
+            IconName = string.IsNullOrWhiteSpace(iconName) ? null : iconName.Trim(),
             IsVisible = isVisible,
-            AdminOnly = adminOnly,
+            AdminOnly = isActuallyAdminOnly,
+            AllowedRoles = resolvedRoles,
             DisplayOrder = displayOrder,
             Description = description?.Trim(),
             CreatedAt = DateTime.UtcNow,
@@ -106,10 +130,57 @@ public class MenuSetting
         };
     }
 
-    public void UpdateVisibility(bool isVisible, bool adminOnly, int? displayOrder = null, Guid? updatedByUserId = null)
+    public bool IsRoleAllowed(string? role)
+    {
+        if (string.IsNullOrWhiteSpace(role))
+            return false;
+
+        // Admin always has full access
+        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (string.IsNullOrWhiteSpace(AllowedRoles))
+            return false;
+
+        var roles = AllowedRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public void UpdateRoles(IEnumerable<string> roles, Guid? updatedByUserId = null)
+    {
+        AllowedRoles = NormalizeRoles(roles);
+        AdminOnly = !AllowedRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(r => !string.Equals(r, "Admin", StringComparison.OrdinalIgnoreCase));
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedByUserId = updatedByUserId;
+    }
+
+    public void UpdateVisibility(
+        bool isVisible,
+        bool adminOnly,
+        int? displayOrder = null,
+        Guid? updatedByUserId = null,
+        IEnumerable<string>? allowedRoles = null)
     {
         IsVisible = isVisible;
-        AdminOnly = adminOnly;
+        if (allowedRoles != null && allowedRoles.Any())
+        {
+            UpdateRoles(allowedRoles, updatedByUserId);
+        }
+        else
+        {
+            AdminOnly = adminOnly;
+            if (adminOnly)
+            {
+                AllowedRoles = "Admin";
+            }
+            else if (!AllowedRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(r => !string.Equals(r, "Admin", StringComparison.OrdinalIgnoreCase)))
+            {
+                AllowedRoles = "Admin,OfficeHead,GroupHead,Expert,ITSpecialist,Manager,Employee";
+            }
+        }
+
         if (displayOrder.HasValue)
         {
             DisplayOrder = displayOrder.Value;
@@ -128,5 +199,16 @@ public class MenuSetting
         Description = description?.Trim();
         UpdatedAt = DateTime.UtcNow;
         UpdatedByUserId = updatedByUserId;
+    }
+
+    private static string NormalizeRoles(IEnumerable<string> roles)
+    {
+        var distinctRoles = roles
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Select(r => r.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        var list = distinctRoles.ToList();
+        return list.Count == 0 ? "Admin" : string.Join(",", list);
     }
 }

@@ -142,17 +142,34 @@ public class AuthService : IAuthService
             return Result.Failure<UserDto>("این ایمیل قبلاً استفاده شده است");
         }
 
+        // Validate role
+        if (string.IsNullOrWhiteSpace(request.Role) || !User.ValidRoles.Contains(request.Role, StringComparer.OrdinalIgnoreCase))
+        {
+            return Result.Failure<UserDto>("نقش کاربری نامعتبر است");
+        }
+
+        // Default password to username (National ID) if not provided
+        var rawPassword = string.IsNullOrWhiteSpace(request.Password) ? request.Username.Trim() : request.Password;
+
         // Hash password
-        var passwordHash = _passwordHasher.HashPassword(request.Password);
+        var passwordHash = _passwordHasher.HashPassword(rawPassword);
 
         // Create user entity
-        var user = User.Create(
-            username: request.Username,
-            email: request.Email,
-            passwordHash: passwordHash,
-            role: request.Role,
-            employeeId: request.EmployeeId
-        );
+        User user;
+        try
+        {
+            user = User.Create(
+                username: request.Username,
+                email: request.Email,
+                passwordHash: passwordHash,
+                role: request.Role,
+                employeeId: request.EmployeeId
+            );
+        }
+        catch (ArgumentException ex)
+        {
+            return Result.Failure<UserDto>(ex.Message);
+        }
 
         // Save user
         var createResult = await _userRepository.CreateAsync(user, cancellationToken);

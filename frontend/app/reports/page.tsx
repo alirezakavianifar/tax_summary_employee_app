@@ -178,7 +178,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredModule="module_evaluation">
       <div className="min-h-screen p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-6">

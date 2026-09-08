@@ -5,6 +5,7 @@ using TaxSummary.Application.Services;
 using TaxSummary.Application.Validators;
 using TaxSummary.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
+using TaxSummary.Api.Attributes;
 
 namespace TaxSummary.Api.Controllers;
 
@@ -12,6 +13,7 @@ namespace TaxSummary.Api.Controllers;
 /// API controller for employee report operations
 /// </summary>
 [Authorize]
+[RequireModuleAccess("module_evaluation")]
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]

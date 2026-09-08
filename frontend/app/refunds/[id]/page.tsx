@@ -37,6 +37,7 @@ import { DocumentsSection } from '@/components/refunds/DocumentsSection'
 import { PdfViewerModal } from '@/components/refunds/PdfViewerModal'
 import { JustificationReportSummaryCard } from '@/components/refunds/JustificationReportSummaryCard'
 import { JustificationReportEditorModal } from '@/components/refunds/JustificationReportEditorModal'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 const PRINT_FORMS = [
   { id: 'cheklist', title: 'چک‌لیست کنترل اسناد استردادی' },
@@ -153,7 +154,8 @@ export default function TaxRefundDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8" dir="rtl">
+    <ProtectedRoute requiredModule="module_tax_refund">
+      <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Navigation Breadcrumbs */}
         <div className="flex items-center justify-between">
@@ -501,5 +503,6 @@ export default function TaxRefundDetailPage() {
         />
       </div>
     </div>
+    </ProtectedRoute>
   )
 }

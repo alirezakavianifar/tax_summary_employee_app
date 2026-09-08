@@ -21,22 +21,46 @@ public class MenuSettingsRepository : IMenuSettingsRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<MenuSetting>> GetVisibleAsync(bool isAdmin, CancellationToken cancellationToken = default)
+    public async Task<List<MenuSetting>> GetVisibleAsync(string? role, CancellationToken cancellationToken = default)
     {
-        var query = _context.MenuSettings.AsQueryable();
+        var allVisible = await _context.MenuSettings
+            .Where(m => m.IsVisible)
+            .OrderBy(m => m.DisplayOrder)
+            .ToListAsync(cancellationToken);
 
+        bool isAdmin = string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
+
+        // 1. Role-based filtering
+        List<MenuSetting> roleFiltered;
         if (isAdmin)
         {
-            query = query.Where(m => m.IsVisible);
+            roleFiltered = allVisible;
         }
         else
         {
-            query = query.Where(m => m.IsVisible && !m.AdminOnly);
+            roleFiltered = allVisible
+                .Where(m => !m.AdminOnly && m.IsRoleAllowed(role))
+                .ToList();
         }
 
-        return await query
+        // 2. Parent-child hierarchy verification:
+        // Exclude children whose parent module is not present in roleFiltered (parent is hidden or not allowed)
+        var allowedParentKeys = roleFiltered
+            .Where(m => string.IsNullOrEmpty(m.ParentKey))
+            .Select(m => m.MenuKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var finalItems = roleFiltered
+            .Where(m => string.IsNullOrEmpty(m.ParentKey) || allowedParentKeys.Contains(m.ParentKey))
             .OrderBy(m => m.DisplayOrder)
-            .ToListAsync(cancellationToken);
+            .ToList();
+
+        return finalItems;
+    }
+
+    public Task<List<MenuSetting>> GetVisibleAsync(bool isAdmin, CancellationToken cancellationToken = default)
+    {
+        return GetVisibleAsync(isAdmin ? "Admin" : null, cancellationToken);
     }
 
     public async Task<MenuSetting?> GetByKeyAsync(string menuKey, CancellationToken cancellationToken = default)

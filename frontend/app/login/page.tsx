@@ -53,7 +53,7 @@ export default function LoginPage() {
                         {/* Username */}
                         <div>
                             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2 text-right">
-                                نام کاربری
+                                نام کاربری (کد ملی)
                             </label>
                             <input
                                 id="username"
@@ -62,7 +62,7 @@ export default function LoginPage() {
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-right"
-                                placeholder="نام کاربری خود را وارد کنید"
+                                placeholder="کد ملی ۱۰ رقمی (یا نام کاربری)"
                                 disabled={isLoading}
                             />
                         </div>

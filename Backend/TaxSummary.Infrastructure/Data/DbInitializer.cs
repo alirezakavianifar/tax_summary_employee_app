@@ -117,11 +117,11 @@ public static class DbInitializer
         var hashedPassword = passwordHasher.HashPassword(defaultPassword);
 
         // Admin User
-        if (!await context.Users.AnyAsync(u => u.Username == "admin"))
+        var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "admin");
+        if (adminUser == null)
         {
-            var adminUser = User.Create(
+            adminUser = User.Create(
                 username: "admin",
-                email: "admin@taxsummary.ir",
                 passwordHash: hashedPassword,
                 role: "Admin",
                 employeeId: adminEmployee.Id
@@ -131,11 +131,11 @@ public static class DbInitializer
         }
 
         // Manager User
-        if (!await context.Users.AnyAsync(u => u.Username == "manager"))
+        var managerUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "manager");
+        if (managerUser == null)
         {
-            var managerUser = User.Create(
+            managerUser = User.Create(
                 username: "manager",
-                email: "manager@taxsummary.ir",
                 passwordHash: hashedPassword,
                 role: "Manager",
                 employeeId: managerEmployee.Id
@@ -145,17 +145,24 @@ public static class DbInitializer
         }
 
         // Employee User
-        if (!await context.Users.AnyAsync(u => u.Username == "employee"))
+        var employeeUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "employee");
+        if (employeeUser == null)
         {
-            var employeeUser = User.Create(
+            employeeUser = User.Create(
                 username: "employee",
-                email: "employee@taxsummary.ir",
                 passwordHash: hashedPassword,
                 role: "Employee",
                 employeeId: employeeRecord.Id
             );
             context.Users.Add(employeeUser);
             employeeRecord.AssociateWithUser(employeeUser.Id);
+        }
+
+        // Clear email from any existing users
+        var usersWithEmail = await context.Users.Where(u => u.Email != null).ToListAsync();
+        foreach (var u in usersWithEmail)
+        {
+            u.UpdateDetails(null, u.Role, u.IsActive, u.EmployeeId);
         }
 
         await context.SaveChangesAsync();
@@ -381,6 +388,20 @@ public static class DbInitializer
         if (missingMenus.Any())
         {
             await context.MenuSettings.AddRangeAsync(missingMenus);
+            await context.SaveChangesAsync();
+        }
+
+        // Ensure admin-only menu items are properly restricted
+        var adminItems = await context.MenuSettings
+            .Where(m => m.AdminOnly && m.AllowedRoles != "Admin")
+            .ToListAsync();
+
+        if (adminItems.Any())
+        {
+            foreach (var item in adminItems)
+            {
+                item.UpdateRoles(new[] { "Admin" });
+            }
             await context.SaveChangesAsync();
         }
     }

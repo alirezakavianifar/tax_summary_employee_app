@@ -1,9 +1,10 @@
 import { apiClient } from './client'
-import { User, RegisterRequest } from '@/types/auth'
+import { User, RegisterRequest, UserRole } from '@/types/auth'
 
 export interface UpdateUserRequest {
-    email: string
-    role: 'Admin' | 'Manager' | 'Employee'
+    username?: string
+    email?: string
+    role: UserRole
     isActive: boolean
     employeeId?: string
 }

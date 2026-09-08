@@ -41,10 +41,34 @@ public class User
     public bool MustChangePassword { get; private set; }
 
     /// <summary>
+    /// Supported system and organizational roles
+    /// </summary>
+    public static readonly string[] ValidRoles = new[]
+    {
+        "Admin",
+        "OfficeHead",
+        "GroupHead",
+        "Expert",
+        "ITSpecialist",
+        "Manager",
+        "Employee"
+    };
+
+    /// <summary>
     /// Update user details
     /// </summary>
-    public void UpdateDetails(string? email, string role, bool isActive, Guid? employeeId)
+    public void UpdateDetails(string? email, string role, bool isActive, Guid? employeeId, string? username = null)
     {
+        if (string.IsNullOrWhiteSpace(role))
+            throw new ArgumentException("نقش کاربر نمی‌تواند خالی باشد", nameof(role));
+
+        if (!ValidRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", ValidRoles)}", nameof(role));
+
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            Username = username.Trim().ToLowerInvariant();
+        }
         Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant();
         Role = role;
         IsActive = isActive;
@@ -109,14 +133,13 @@ public class User
         if (string.IsNullOrWhiteSpace(role))
             throw new ArgumentException("نقش کاربر نمی‌تواند خالی باشد", nameof(role));
 
-        var validRoles = new[] { "Admin", "Manager", "Employee" };
-        if (!validRoles.Contains(role))
-            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", validRoles)}", nameof(role));
+        if (!ValidRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", ValidRoles)}", nameof(role));
 
         var user = new User
         {
             Id = Guid.NewGuid(),
-            Username = username.Trim(),
+            Username = username.Trim().ToLowerInvariant(),
             Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant(),
             PasswordHash = passwordHash,
             Role = role,
@@ -229,9 +252,11 @@ public class User
     /// </summary>
     public void UpdateRole(string newRole)
     {
-        var validRoles = new[] { "Admin", "Manager", "Employee" };
-        if (!validRoles.Contains(newRole))
-            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", validRoles)}", nameof(newRole));
+        if (string.IsNullOrWhiteSpace(newRole))
+            throw new ArgumentException("نقش کاربر نمی‌تواند خالی باشد", nameof(newRole));
+
+        if (!ValidRoles.Contains(newRole, StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", ValidRoles)}", nameof(newRole));
 
         Role = newRole;
         UpdatedAt = DateTime.UtcNow;

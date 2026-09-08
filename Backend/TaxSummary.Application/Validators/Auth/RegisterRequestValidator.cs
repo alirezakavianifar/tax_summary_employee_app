@@ -27,19 +27,21 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequestDto>
             .When(x => !string.IsNullOrWhiteSpace(x.Email));
 
         RuleFor(x => x.Password)
-            .NotEmpty()
-            .WithMessage("رمز عبور الزامی است")
-            .MinimumLength(8)
-            .WithMessage("رمز عبور باید حداقل 8 کاراکتر باشد")
-            .Must(HaveComplexity)
-            .WithMessage("رمز عبور باید شامل حداقل یک حرف بزرگ، یک حرف کوچک، یک عدد و یک کاراکتر خاص باشد");
+            .MinimumLength(6)
+            .WithMessage("رمز عبور باید حداقل 6 کاراکتر باشد")
+            .When(x => !string.IsNullOrWhiteSpace(x.Password));
 
         RuleFor(x => x.Role)
             .NotEmpty()
             .WithMessage("نقش کاربری الزامی است")
             .Must(BeValidRole)
-            .WithMessage("نقش کاربری باید یکی از مقادیر Admin، Manager یا Employee باشد");
+            .WithMessage("نقش کاربری نامعتبر است. نقش‌های معتبر: Admin، OfficeHead، GroupHead، Expert، ITSpecialist");
     }
+
+    private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Admin", "OfficeHead", "GroupHead", "Expert", "ITSpecialist", "Manager", "Employee"
+    };
 
     private bool HaveComplexity(string password)
     {
@@ -56,6 +58,6 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequestDto>
 
     private bool BeValidRole(string role)
     {
-        return role == "Admin" || role == "Manager" || role == "Employee";
+        return ValidRoles.Contains(role);
     }
 }

@@ -30,8 +30,7 @@ public class MenuSettingsService : IMenuSettingsService
 
     public async Task<List<MenuSettingDto>> GetVisibleSettingsForRoleAsync(string? role, CancellationToken cancellationToken = default)
     {
-        bool isAdmin = string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
-        var settings = await _repository.GetVisibleAsync(isAdmin, cancellationToken);
+        var settings = await _repository.GetVisibleAsync(role, cancellationToken);
         return MapAndBuildHierarchy(settings);
     }
 
@@ -58,7 +57,8 @@ public class MenuSettingsService : IMenuSettingsService
                     updateItem.IsVisible,
                     updateItem.AdminOnly,
                     updateItem.DisplayOrder,
-                    currentUserId);
+                    currentUserId,
+                    updateItem.AllowedRoles);
                 modified.Add(existingSetting);
             }
             else
@@ -95,6 +95,9 @@ public class MenuSettingsService : IMenuSettingsService
             IconName = e.IconName,
             IsVisible = e.IsVisible,
             AdminOnly = e.AdminOnly,
+            AllowedRoles = e.AllowedRoles
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList(),
             DisplayOrder = e.DisplayOrder,
             Description = e.Description,
             Children = new List<MenuSettingDto>()

@@ -42,6 +42,11 @@ public class MenuSettingConfiguration : IEntityTypeConfiguration<MenuSetting>
         builder.Property(m => m.AdminOnly)
             .IsRequired();
 
+        builder.Property(m => m.AllowedRoles)
+            .IsRequired()
+            .HasMaxLength(200)
+            .HasDefaultValue("Admin,Manager,Employee");
+
         builder.Property(m => m.DisplayOrder)
             .IsRequired();
 

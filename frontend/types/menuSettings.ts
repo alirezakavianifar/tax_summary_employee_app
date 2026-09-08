@@ -7,6 +7,7 @@ export interface MenuSettingItem {
   iconName: string | null;
   isVisible: boolean;
   adminOnly: boolean;
+  allowedRoles: string[];
   displayOrder: number;
   description: string | null;
   children: MenuSettingItem[];
@@ -16,6 +17,7 @@ export interface UpdateMenuSettingItem {
   menuKey: string;
   isVisible: boolean;
   adminOnly: boolean;
+  allowedRoles?: string[];
   displayOrder?: number;
 }
 

@@ -55,6 +55,16 @@ public class UserService : IUserService
 
         var user = userResult.Value;
 
+        // Check username uniqueness if changed
+        if (!string.IsNullOrWhiteSpace(request.Username) && !string.Equals(user.Username, request.Username, StringComparison.OrdinalIgnoreCase))
+        {
+            var normalizedUsername = request.Username.Trim().ToLowerInvariant();
+            if (await _userRepository.UsernameExistsAsync(normalizedUsername, cancellationToken))
+            {
+                return Result.Failure("این نام کاربری (کد ملی) قبلاً ثبت شده است");
+            }
+        }
+
         // Check email uniqueness if changed
         var normalizedRequestEmail = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim().ToLowerInvariant();
         if (user.Email != normalizedRequestEmail)
@@ -64,11 +74,12 @@ public class UserService : IUserService
         }
 
         // Validate role
-        if (!new[] { "Admin", "Manager", "Employee" }.Contains(request.Role))
+        var validRoles = new[] { "Admin", "OfficeHead", "GroupHead", "Expert", "ITSpecialist", "Manager", "Employee" };
+        if (!validRoles.Contains(request.Role, StringComparer.OrdinalIgnoreCase))
             return Result.Failure("نقش کاربری نامعتبر است");
 
         // Update user
-        user.UpdateDetails(request.Email, request.Role, request.IsActive, request.EmployeeId);
+        user.UpdateDetails(request.Email, request.Role, request.IsActive, request.EmployeeId, request.Username);
 
         return await _userRepository.UpdateAsync(user, cancellationToken);
     }

@@ -98,6 +98,16 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
     return dict
   }, [settings])
 
+  const isRolePermitted = useCallback((item: MenuSettingItem): boolean => {
+    if (isAdmin) return true
+    if (!item.isVisible) return false
+    if (item.adminOnly) return false
+    if (item.allowedRoles && item.allowedRoles.length > 0) {
+      return !!user?.role && item.allowedRoles.some((r) => r.toLowerCase() === user.role.toLowerCase())
+    }
+    return true
+  }, [isAdmin, user?.role])
+
   const isModuleVisible = useCallback(
     (moduleIdOrKey: string): boolean => {
       if (settings.length === 0) return true
@@ -107,11 +117,9 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
       if (!item) return true
 
       if (!item.isVisible) return false
-      if (item.adminOnly && !isAdmin) return false
-
-      return true
+      return isRolePermitted(item)
     },
-    [settings.length, settingsByKey, isAdmin]
+    [settings.length, settingsByKey, isRolePermitted]
   )
 
   const isActionVisible = useCallback(
@@ -134,20 +142,17 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
       if (!item) return true
 
       if (!item.isVisible) return false
-      if (item.adminOnly && !isAdmin) return false
+      if (!isRolePermitted(item)) return false
 
       // Also verify item.parentKey if present
       if (item.parentKey) {
-        const parentItem = settingsByKey[item.parentKey.toLowerCase()]
-        if (parentItem) {
-          if (!parentItem.isVisible) return false
-          if (parentItem.adminOnly && !isAdmin) return false
-        }
+        const parentVisible = isModuleVisible(item.parentKey)
+        if (!parentVisible) return false
       }
 
       return true
     },
-    [settings.length, settingsByKey, settingsByRoute, isModuleVisible, isAdmin]
+    [settings.length, settingsByKey, settingsByRoute, isModuleVisible, isRolePermitted]
   )
 
   const updateSettings = useCallback(

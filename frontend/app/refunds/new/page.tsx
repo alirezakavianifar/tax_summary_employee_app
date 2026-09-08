@@ -32,6 +32,7 @@ import LiveCalculationCard from '@/components/refunds/LiveCalculationCard'
 import ReceiptsTableEditor, { ReceiptItem } from '@/components/refunds/ReceiptsTableEditor'
 import InquiriesEditor, { LetterItem } from '@/components/refunds/InquiriesEditor'
 import TableBAllocationEditor, { AllocationItem } from '@/components/refunds/TableBAllocationEditor'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 const WIZARD_STEPS = [
   { id: 1, title: 'مشخصات عمومی و مودی', icon: Building },
@@ -49,89 +50,53 @@ export default function NewTaxRefundCasePage() {
   const [stepError, setStepError] = useState<string | null>(null)
 
   // Step 1: General & Taxpayer Info
-  const [taxpayerName, setTaxpayerName] = useState('شرکت نمونه')
-  const [economicCode, setEconomicCode] = useState('1234567890')
-  const [nationalId, setNationalId] = useState('10100000000')
-  const [taxUnitCode, setTaxUnitCode] = useState('160300')
-  const [province, setProvince] = useState('خوزستان')
-  const [city, setCity] = useState('اهواز')
-  const [address, setAddress] = useState('اهواز کیانپارس خ 17')
-  const [bankName, setBankName] = useState('ملی')
-  const [shebaNumber, setShebaNumber] = useState('IR160120000000001234567890')
-  const [taxYear, setTaxYear] = useState<number>(1402)
+  const [taxpayerName, setTaxpayerName] = useState('')
+  const [economicCode, setEconomicCode] = useState('')
+  const [nationalId, setNationalId] = useState('')
+  const [taxUnitCode, setTaxUnitCode] = useState('')
+  const [province, setProvince] = useState('')
+  const [city, setCity] = useState('')
+  const [address, setAddress] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [shebaNumber, setShebaNumber] = useState('')
+  const [taxYear, setTaxYear] = useState<number | ''>('')
   const [period, setPeriod] = useState<number>(1)
   const [taxSource, setTaxSource] = useState<TaxSourceType>(TaxSourceType.CorporateIncome)
-  const [refundReason, setRefundReason] = useState('اشتباه واریزی و اضافه پرداختی عملکرد')
-  const [docketNumber, setDocketNumber] = useState('87')
-  const [adminHeadName, setAdminHeadName] = useState('غلامرضا اسلامی')
-  const [groupHeadName, setGroupHeadName] = useState('مسعود بصیر')
-  const [seniorAuditorName, setSeniorAuditorName] = useState('مهدی دلفی')
+  const [refundReason, setRefundReason] = useState('')
+  const [docketNumber, setDocketNumber] = useState('')
+  const [adminHeadName, setAdminHeadName] = useState('')
+  const [groupHeadName, setGroupHeadName] = useState('')
+  const [seniorAuditorName, setSeniorAuditorName] = useState('')
 
   // Step 2: Table A Receipts
-  const [receipts, setReceipts] = useState<ReceiptItem[]>([
-    {
-      rowIndex: 1,
-      receiptNumber: '987654321',
-      issueDateJalali: '1403/05/01',
-      paymentDateJalali: '1403/05/01',
-      amountRials: 300_000_000,
-      bankBranch: 'اهواز',
-      city: 'اهواز',
-      revenueLedgerRow: 'ردیف 1',
-    },
-    {
-      rowIndex: 2,
-      receiptNumber: '654321987',
-      issueDateJalali: '1403/05/02',
-      paymentDateJalali: '1403/05/02',
-      amountRials: 15_000_000,
-      bankBranch: 'اهواز',
-      city: 'اهواز',
-      revenueLedgerRow: 'ردیف 2',
-    },
-  ])
+  const [receipts, setReceipts] = useState<ReceiptItem[]>([])
 
   // Step 3: Inquiries & Letters
-  const [petitionNumber, setPetitionNumber] = useState('526314')
-  const [petitionDate, setPetitionDate] = useState('1405/01/25')
-  const [letters, setLetters] = useState<LetterItem[]>([
-    {
-      letterType: 2, // CollectionAndEnforcementInquiry
-      letterNumber: '1235465',
-      letterDateJalali: '1405/02/01',
-      debtAmount: 0,
-      description: 'استعلام وصول و اجرا',
-    },
-    {
-      letterType: 3, // WithholdingTaxInquiry
-      letterNumber: '6532487',
-      letterDateJalali: '1405/02/01',
-      debtAmount: 0,
-      description: 'استعلام مالیات تکلیفی و حقوق',
-    },
-  ])
+  const [petitionNumber, setPetitionNumber] = useState('')
+  const [petitionDate, setPetitionDate] = useState('')
+  const [letters, setLetters] = useState<LetterItem[]>([])
 
   // Step 4: Assessment & Finalization
   const [hasReturnFiled, setHasReturnFiled] = useState(true)
-  const [returnNumber, setReturnNumber] = useState('654321987')
-  const [returnDateJalali, setReturnDateJalali] = useState('1403/04/31')
+  const [returnNumber, setReturnNumber] = useState('')
+  const [returnDateJalali, setReturnDateJalali] = useState('')
   const [finalizationMethod, setFinalizationMethod] = useState<FinalizationMethod>(FinalizationMethod.AliRas)
   const [finalityStage, setFinalityStage] = useState<FinalityStage>(FinalityStage.Tamkin)
-  const [finalNoticeNumber, setFinalNoticeNumber] = useState('326541789')
-  const [finalNoticeDateJalali, setFinalNoticeDateJalali] = useState('1403/10/20')
-  const [assessedIncomeStr, setAssessedIncomeStr] = useState('1,000,000,000')
-  const [exemptionsStr, setExemptionsStr] = useState('0')
-  const [assessedTaxStr, setAssessedTaxStr] = useState('250,000,000')
-  const [nonWaivablePenaltiesStr, setNonWaivablePenaltiesStr] = useState('0')
-  const [timelyPaymentBonusStr, setTimelyPaymentBonusStr] = useState('0')
+  const [finalNoticeNumber, setFinalNoticeNumber] = useState('')
+  const [finalNoticeDateJalali, setFinalNoticeDateJalali] = useState('')
+  const [assessedIncomeStr, setAssessedIncomeStr] = useState('')
+  const [exemptionsStr, setExemptionsStr] = useState('')
+  const [assessedTaxStr, setAssessedTaxStr] = useState('')
+  const [nonWaivablePenaltiesStr, setNonWaivablePenaltiesStr] = useState('')
+  const [timelyPaymentBonusStr, setTimelyPaymentBonusStr] = useState('')
 
   // Step 5: Table B Allocations
   const [allocations, setAllocations] = useState<AllocationItem[]>([])
 
   // Step 6: Additional Items & Delay
-  const [stampDutyStr, setStampDutyStr] = useState('0')
-  const [otherStr, setOtherStr] = useState('0')
-  const [penaltiesStr, setPenaltiesStr] = useState('0')
+  const [stampDutyStr, setStampDutyStr] = useState('')
+  const [otherStr, setOtherStr] = useState('')
+  const [penaltiesStr, setPenaltiesStr] = useState('')
   const [delayMonths, setDelayMonths] = useState<number>(0)
 
   // Derived numerical values for calculation
@@ -161,11 +126,47 @@ export default function NewTaxRefundCasePage() {
         return false
       }
       if (!economicCode.trim() || economicCode.trim().length < 10) {
-        setStepError('شماره اقتصادی باید حداقل ۱۰ رقم باشد')
+        setStepError('شماره اقتصادی باید بین ۱۰ تا ۱۴ رقم باشد')
         return false
       }
-      if (!shebaNumber.trim() || !shebaNumber.trim().toUpperCase().startsWith('IR')) {
-        setStepError('شماره شبا باید با IR آغاز شود')
+      if (!taxYear || Number(taxYear) < 1300 || Number(taxYear) > 1500) {
+        setStepError('سال استرداد باید بین ۱۳۰۰ تا ۱۵۰۰ باشد')
+        return false
+      }
+      if (!taxUnitCode.trim()) {
+        setStepError('کد واحد مالیاتی الزامی است')
+        return false
+      }
+      if (!province.trim()) {
+        setStepError('استان الزامی است')
+        return false
+      }
+      if (!city.trim()) {
+        setStepError('شهرستان الزامی است')
+        return false
+      }
+      if (!bankName.trim()) {
+        setStepError('نام بانک مودی الزامی است')
+        return false
+      }
+      if (!shebaNumber.trim() || !shebaNumber.trim().toUpperCase().startsWith('IR') || shebaNumber.trim().length < 20) {
+        setStepError('شماره شبا باید با IR آغاز شده و حداقل ۲۰ کاراکتر باشد')
+        return false
+      }
+      if (!refundReason.trim()) {
+        setStepError('علت درخواست استرداد الزامی است')
+        return false
+      }
+      if (!adminHeadName.trim()) {
+        setStepError('نام رئیس امور مالیاتی الزامی است')
+        return false
+      }
+      if (!groupHeadName.trim()) {
+        setStepError('نام رئیس گروه مالیاتی الزامی است')
+        return false
+      }
+      if (!seniorAuditorName.trim()) {
+        setStepError('نام کارشناس ارشد مالیاتی الزامی است')
         return false
       }
     }
@@ -180,6 +181,10 @@ export default function NewTaxRefundCasePage() {
     if (step === 3) {
       if (!petitionNumber.trim()) {
         setStepError('شماره ثبت وارده درخواست مودی در دبیرخانه الزامی است')
+        return false
+      }
+      if (!petitionDate.trim()) {
+        setStepError('تاریخ ثبت وارده درخواست مودی در دبیرخانه الزامی است')
         return false
       }
     }
@@ -198,18 +203,25 @@ export default function NewTaxRefundCasePage() {
     if (validateStep(currentStep)) {
       // If moving from step 4 to step 5, auto-generate default allocation if empty
       if (currentStep === 4 && allocations.length === 0 && receipts.length > 0 && principalRefund > 0) {
-        const first = receipts[0]
-        setAllocations([
-          {
-            taxRefundReceiptId: first.id,
-            receiptNumber: first.receiptNumber,
-            totalReceiptAmount: first.amountRials,
-            refundableAmount: Math.min(principalRefund, first.amountRials),
-            bankBranch: first.bankBranch,
-            city: first.city,
-            revenueLedgerRow: first.revenueLedgerRow,
-          },
-        ])
+        let remaining = principalRefund
+        const autoAlloc: AllocationItem[] = []
+        for (const r of receipts) {
+          if (remaining <= 0) break
+          const toRefund = Math.min(remaining, r.amountRials)
+          if (toRefund > 0) {
+            autoAlloc.push({
+              taxRefundReceiptId: r.id,
+              receiptNumber: r.receiptNumber,
+              totalReceiptAmount: r.amountRials,
+              refundableAmount: toRefund,
+              bankBranch: r.bankBranch,
+              city: r.city,
+              revenueLedgerRow: r.revenueLedgerRow,
+            })
+            remaining -= toRefund
+          }
+        }
+        setAllocations(autoAlloc)
       }
       setCurrentStep((prev) => Math.min(prev + 1, 6))
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -233,7 +245,7 @@ export default function NewTaxRefundCasePage() {
         allLetters.push({
           letterType: 1, // InboundTaxpayerRequest
           letterNumber: petitionNumber.trim(),
-          letterDateJalali: petitionDate.trim() || '1405/01/25',
+          letterDateJalali: petitionDate.trim(),
           description: 'درخواست استرداد مودی ثبت شده در دبیرخانه',
         })
       }
@@ -260,7 +272,7 @@ export default function NewTaxRefundCasePage() {
         address: address.trim(),
         bankName: bankName.trim(),
         shebaNumber: shebaNumber.trim().toUpperCase(),
-        taxYear,
+        taxYear: Number(taxYear),
         period,
         taxSource,
         refundReason: refundReason.trim(),
@@ -325,7 +337,8 @@ export default function NewTaxRefundCasePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8" dir="rtl">
+    <ProtectedRoute requiredModule="module_tax_refund">
+      <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -402,7 +415,7 @@ export default function NewTaxRefundCasePage() {
                       type="text"
                       value={taxpayerName}
                       onChange={(e) => setTaxpayerName(e.target.value)}
-                      placeholder="مثال: شرکت پتروشیمی نمونه"
+                      placeholder="مثال: شرکت پتروشیمی کارون"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
@@ -413,7 +426,7 @@ export default function NewTaxRefundCasePage() {
                       type="text"
                       value={economicCode}
                       onChange={(e) => setEconomicCode(e.target.value)}
-                      placeholder="۱۲۳۴۵۶۷۸۹۰"
+                      placeholder="مثال: ۴۱۱۳۹۵۷۶۸۵۳۱"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
@@ -424,7 +437,7 @@ export default function NewTaxRefundCasePage() {
                       type="text"
                       value={nationalId}
                       onChange={(e) => setNationalId(e.target.value)}
-                      placeholder="۱۰۱۰۰۰۰۰۰۰۰"
+                      placeholder="مثال: ۱۰۱۰۲۳۴۵۶۷۸"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
                     />
                   </div>
@@ -445,7 +458,8 @@ export default function NewTaxRefundCasePage() {
                     <input
                       type="number"
                       value={taxYear}
-                      onChange={(e) => setTaxYear(Number(e.target.value))}
+                      onChange={(e) => setTaxYear(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="مثال: ۱۴۰۲"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
                     />
                   </div>
@@ -464,21 +478,34 @@ export default function NewTaxRefundCasePage() {
                   </div>
 
                   <div>
-                    <label className="block text-gray-700 font-bold mb-1">استان</label>
+                    <label className="block text-gray-700 font-bold mb-1">کد واحد مالیاتی *</label>
+                    <input
+                      type="text"
+                      value={taxUnitCode}
+                      onChange={(e) => setTaxUnitCode(e.target.value)}
+                      placeholder="مثال: ۱۶۰۳۰۰"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">استان *</label>
                     <input
                       type="text"
                       value={province}
                       onChange={(e) => setProvince(e.target.value)}
+                      placeholder="مثال: خوزستان"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-gray-700 font-bold mb-1">شهرستان</label>
+                    <label className="block text-gray-700 font-bold mb-1">شهرستان *</label>
                     <input
                       type="text"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
+                      placeholder="مثال: اهواز"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                     />
                   </div>
@@ -489,7 +516,7 @@ export default function NewTaxRefundCasePage() {
                       type="text"
                       value={bankName}
                       onChange={(e) => setBankName(e.target.value)}
-                      placeholder="ملی، ملت، صادرات..."
+                      placeholder="مثال: ملی، ملت، صادرات..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                     />
                   </div>
@@ -500,7 +527,7 @@ export default function NewTaxRefundCasePage() {
                       type="text"
                       value={shebaNumber}
                       onChange={(e) => setShebaNumber(e.target.value.toUpperCase())}
-                      placeholder="IR160120000000001234567890"
+                      placeholder="IR..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono uppercase"
                     />
                   </div>
@@ -511,16 +538,18 @@ export default function NewTaxRefundCasePage() {
                       type="text"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
+                      placeholder="مثال: اهواز، کیانپارس، خیابان ۱۷..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                     />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-gray-700 font-bold mb-1">علت درخواست استرداد</label>
+                    <label className="block text-gray-700 font-bold mb-1">علت درخواست استرداد *</label>
                     <input
                       type="text"
                       value={refundReason}
                       onChange={(e) => setRefundReason(e.target.value)}
+                      placeholder="مثال: اشتباه واریزی و اضافه پرداختی عملکرد"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                     />
                   </div>
@@ -531,29 +560,32 @@ export default function NewTaxRefundCasePage() {
                   <h4 className="text-xs font-bold text-gray-700 mb-3">مقامات مسئول پرونده:</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                     <div>
-                      <label className="block text-gray-500 mb-1">رئیس امور مالیاتی</label>
+                      <label className="block text-gray-500 mb-1">رئیس امور مالیاتی *</label>
                       <input
                         type="text"
                         value={adminHeadName}
                         onChange={(e) => setAdminHeadName(e.target.value)}
+                        placeholder="نام و نام خانوادگی"
                         className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                       />
                     </div>
                     <div>
-                      <label className="block text-gray-500 mb-1">رئیس گروه مالیاتی</label>
+                      <label className="block text-gray-500 mb-1">رئیس گروه مالیاتی *</label>
                       <input
                         type="text"
                         value={groupHeadName}
                         onChange={(e) => setGroupHeadName(e.target.value)}
+                        placeholder="نام و نام خانوادگی"
                         className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                       />
                     </div>
                     <div>
-                      <label className="block text-gray-500 mb-1">کارشناس ارشد مالیاتی</label>
+                      <label className="block text-gray-500 mb-1">کارشناس ارشد مالیاتی *</label>
                       <input
                         type="text"
                         value={seniorAuditorName}
                         onChange={(e) => setSeniorAuditorName(e.target.value)}
+                        placeholder="نام و نام خانوادگی"
                         className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                       />
                     </div>
@@ -643,6 +675,7 @@ export default function NewTaxRefundCasePage() {
                       type="text"
                       value={returnNumber}
                       onChange={(e) => setReturnNumber(e.target.value)}
+                      placeholder="مثال: ۶۵۴۳۲۱۹۸۷"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
                     />
                   </div>
@@ -664,6 +697,7 @@ export default function NewTaxRefundCasePage() {
                       type="text"
                       value={finalNoticeNumber}
                       onChange={(e) => setFinalNoticeNumber(e.target.value)}
+                      placeholder="مثال: ۳۲۶۵۴۱۷۸۹"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
                     />
                   </div>
@@ -692,6 +726,7 @@ export default function NewTaxRefundCasePage() {
                         const v = e.target.value.replace(/[^0-9]/g, '')
                         setAssessedIncomeStr(v ? Number(v).toLocaleString() : '')
                       }}
+                      placeholder="مثال: ۱,۰۰۰,۰۰۰,۰۰۰"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-bold"
                     />
                   </div>
@@ -703,8 +738,9 @@ export default function NewTaxRefundCasePage() {
                       value={exemptionsStr}
                       onChange={(e) => {
                         const v = e.target.value.replace(/[^0-9]/g, '')
-                        setExemptionsStr(v ? Number(v).toLocaleString() : '0')
+                        setExemptionsStr(v ? Number(v).toLocaleString() : '')
                       }}
+                      placeholder="۰"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-bold"
                     />
                   </div>
@@ -718,6 +754,7 @@ export default function NewTaxRefundCasePage() {
                         const v = e.target.value.replace(/[^0-9]/g, '')
                         setAssessedTaxStr(v ? Number(v).toLocaleString() : '')
                       }}
+                      placeholder="مثال: ۲۵۰,۰۰۰,۰۰۰"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-black text-purple-900"
                     />
                   </div>
@@ -729,8 +766,9 @@ export default function NewTaxRefundCasePage() {
                       value={nonWaivablePenaltiesStr}
                       onChange={(e) => {
                         const v = e.target.value.replace(/[^0-9]/g, '')
-                        setNonWaivablePenaltiesStr(v ? Number(v).toLocaleString() : '0')
+                        setNonWaivablePenaltiesStr(v ? Number(v).toLocaleString() : '')
                       }}
+                      placeholder="۰"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-bold"
                     />
                   </div>
@@ -742,8 +780,9 @@ export default function NewTaxRefundCasePage() {
                       value={timelyPaymentBonusStr}
                       onChange={(e) => {
                         const v = e.target.value.replace(/[^0-9]/g, '')
-                        setTimelyPaymentBonusStr(v ? Number(v).toLocaleString() : '0')
+                        setTimelyPaymentBonusStr(v ? Number(v).toLocaleString() : '')
                       }}
+                      placeholder="۰"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-bold"
                     />
                   </div>
@@ -798,8 +837,9 @@ export default function NewTaxRefundCasePage() {
                       value={stampDutyStr}
                       onChange={(e) => {
                         const v = e.target.value.replace(/[^0-9]/g, '')
-                        setStampDutyStr(v ? Number(v).toLocaleString() : '0')
+                        setStampDutyStr(v ? Number(v).toLocaleString() : '')
                       }}
+                      placeholder="۰"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                     />
                   </div>
@@ -811,8 +851,9 @@ export default function NewTaxRefundCasePage() {
                       value={penaltiesStr}
                       onChange={(e) => {
                         const v = e.target.value.replace(/[^0-9]/g, '')
-                        setPenaltiesStr(v ? Number(v).toLocaleString() : '0')
+                        setPenaltiesStr(v ? Number(v).toLocaleString() : '')
                       }}
+                      placeholder="۰"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                     />
                   </div>
@@ -824,8 +865,9 @@ export default function NewTaxRefundCasePage() {
                       value={otherStr}
                       onChange={(e) => {
                         const v = e.target.value.replace(/[^0-9]/g, '')
-                        setOtherStr(v ? Number(v).toLocaleString() : '0')
+                        setOtherStr(v ? Number(v).toLocaleString() : '')
                       }}
+                      placeholder="۰"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                     />
                   </div>
@@ -835,7 +877,7 @@ export default function NewTaxRefundCasePage() {
                 <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl">
                   <div className="text-xs font-bold text-purple-900 mb-2">خلاصه گزارش استرداد:</div>
                   <ul className="text-xs text-purple-800 space-y-1.5 list-disc list-inside">
-                    <li>مودی: <span className="font-bold">{taxpayerName}</span> (کد اقتصادی: {economicCode})</li>
+                    <li>مودی: <span className="font-bold">{taxpayerName || '-'}</span> (کد اقتصادی: {economicCode || '-'})</li>
                     <li>جمع قبوض پرداختی مودی: <span className="font-bold">{formatNumber(totalPaid)} ریال</span> ({receipts.length} فقره)</li>
                     <li>مالیات و جرایم تشخیصی قطعی: <span className="font-bold">{formatNumber(totalAssessed)} ریال</span></li>
                     <li>مازاد پرداختی ناخالص: <span className="font-bold text-emerald-700">{formatNumber(grossSurplus)} ریال</span></li>
@@ -910,5 +952,6 @@ export default function NewTaxRefundCasePage() {
         </div>
       </div>
     </div>
+    </ProtectedRoute>
   )
 }

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using TaxSummary.Api.Attributes;
 using TaxSummary.Application.DTOs.TaxRefund;
 using TaxSummary.Application.Services;
 
@@ -12,6 +13,7 @@ namespace TaxSummary.Api.Controllers;
 /// سیستم استرداد مالیات اضافه دریافتی (موضوع مواد ۲۴۲ و ۲۴۳ ق.م.م)
 /// </summary>
 [Authorize]
+[RequireModuleAccess("module_tax_refund")]
 [ApiController]
 [Route("api/tax-refunds")]
 [Produces("application/json")]

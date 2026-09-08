@@ -33,7 +33,7 @@ export default function InquiriesEditor({
 }: InquiriesEditorProps) {
   const [newType, setNewType] = useState<TaxRefundLetterType>(TaxRefundLetterType.CollectionAndEnforcementInquiry)
   const [newNumber, setNewNumber] = useState('')
-  const [newDate, setNewDate] = useState('1405/02/01')
+  const [newDate, setNewDate] = useState('')
   const [newDebt, setNewDebt] = useState<string>('0')
   const [newYear, setNewYear] = useState('')
   const [newDesc, setNewDesc] = useState('')
@@ -54,6 +54,7 @@ export default function InquiriesEditor({
 
     onLettersChange([...letters, newLetter])
     setNewNumber('')
+    setNewDate('')
     setNewDebt('0')
     setNewDesc('')
   }

@@ -27,11 +27,11 @@ export default function ReceiptsTableEditor({
   disabled = false,
 }: ReceiptsTableEditorProps) {
   const [newReceiptNumber, setNewReceiptNumber] = useState('')
-  const [newIssueDate, setNewIssueDate] = useState('1403/05/01')
-  const [newPaymentDate, setNewPaymentDate] = useState('1403/05/01')
+  const [newIssueDate, setNewIssueDate] = useState('')
+  const [newPaymentDate, setNewPaymentDate] = useState('')
   const [newAmount, setNewAmount] = useState<string>('')
   const [newBankBranch, setNewBankBranch] = useState('')
-  const [newCity, setNewCity] = useState('اهواز')
+  const [newCity, setNewCity] = useState('')
   const [newLedgerRow, setNewLedgerRow] = useState('')
   const [inputError, setInputError] = useState<string | null>(null)
 
@@ -40,6 +40,11 @@ export default function ReceiptsTableEditor({
 
     if (!newReceiptNumber.trim()) {
       setInputError('شماره قبض الزامی است')
+      return
+    }
+
+    if (!newIssueDate.trim()) {
+      setInputError('تاریخ صدور قبض الزامی است')
       return
     }
 

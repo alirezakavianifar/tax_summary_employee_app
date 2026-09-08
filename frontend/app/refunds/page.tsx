@@ -30,6 +30,7 @@ import {
   RefundCaseStatusLabels,
 } from '@/types/taxRefund'
 import ExcelImportModal from '@/components/refunds/ExcelImportModal'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function RefundsDashboardPage() {
   const [cases, setCases] = useState<TaxRefundCaseSummary[]>([])
@@ -104,7 +105,8 @@ export default function RefundsDashboardPage() {
   const disbursedCount = cases.filter((c) => c.status === RefundCaseStatus.TreasuryDisbursed).length
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8" dir="rtl">
+    <ProtectedRoute requiredModule="module_tax_refund">
+      <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Top Header Banner */}
         <div className="bg-gradient-to-r from-purple-800 via-indigo-800 to-purple-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
@@ -477,5 +479,6 @@ export default function RefundsDashboardPage() {
         }}
       />
     </div>
+    </ProtectedRoute>
   )
 }

@@ -1,9 +1,11 @@
 // Authentication types
+export type UserRole = 'Admin' | 'OfficeHead' | 'GroupHead' | 'Expert' | 'ITSpecialist' | 'Manager' | 'Employee';
+
 export interface User {
     id: string;
     username: string;
     email?: string | null;
-    role: 'Admin' | 'Manager' | 'Employee';
+    role: UserRole;
     isActive: boolean;
     employeeId?: string;
     employee?: any; // Can be typed more specifically if needed
@@ -30,7 +32,7 @@ export interface RegisterRequest {
     username: string;
     email?: string;
     password: string;
-    role: 'Admin' | 'Manager' | 'Employee';
+    role: UserRole;
     employeeId?: string;
 }
 

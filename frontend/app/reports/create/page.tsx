@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { reportsApi } from '@/lib/api/reports'
 import type { CreateEmployeeReportDto } from '@/lib/api/types'
 import { PhotoUpload } from '@/components/PhotoUpload'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function CreateReportPage() {
   const router = useRouter()
@@ -74,7 +75,8 @@ export default function CreateReportPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <ProtectedRoute requiredModule="module_evaluation">
+      <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">ثبت فرم جدید</h1>
 
@@ -584,5 +586,6 @@ export default function CreateReportPage() {
         </form>
       </div >
     </div >
+    </ProtectedRoute>
   )
 }

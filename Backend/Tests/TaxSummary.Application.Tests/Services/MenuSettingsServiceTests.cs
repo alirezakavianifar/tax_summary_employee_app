@@ -45,40 +45,60 @@ public class MenuSettingsServiceTests
     }
 
     [Fact]
-    public async Task GetVisibleSettingsForRoleAsync_WhenUserIsAdmin_CallsRepoWithIsAdminTrue()
+    public async Task GetVisibleSettingsForRoleAsync_WhenUserIsAdmin_CallsRepoWithAdminRole()
     {
         // Arrange
         var sampleSettings = DefaultMenuSettings.GetDefaults();
-        _mockRepo.Setup(r => r.GetVisibleAsync(true, It.IsAny<CancellationToken>()))
+        _mockRepo.Setup(r => r.GetVisibleAsync("Admin", It.IsAny<CancellationToken>()))
             .ReturnsAsync(sampleSettings);
 
         // Act
         var result = await _service.GetVisibleSettingsForRoleAsync("Admin");
 
         // Assert
-        _mockRepo.Verify(r => r.GetVisibleAsync(true, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepo.Verify(r => r.GetVisibleAsync("Admin", It.IsAny<CancellationToken>()), Times.Once);
         Assert.NotNull(result);
+        Assert.Contains(result, s => s.AllowedRoles.Contains("Admin"));
     }
 
     [Fact]
-    public async Task GetVisibleSettingsForRoleAsync_WhenUserIsRegular_CallsRepoWithIsAdminFalse()
+    public async Task GetVisibleSettingsForRoleAsync_WhenUserIsManager_CallsRepoWithManagerRole()
+    {
+        // Arrange
+        var managerSettings = DefaultMenuSettings.GetDefaults()
+            .Where(s => s.IsRoleAllowed("Manager"))
+            .ToList();
+        _mockRepo.Setup(r => r.GetVisibleAsync("Manager", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(managerSettings);
+
+        // Act
+        var result = await _service.GetVisibleSettingsForRoleAsync("Manager");
+
+        // Assert
+        _mockRepo.Verify(r => r.GetVisibleAsync("Manager", It.IsAny<CancellationToken>()), Times.Once);
+        Assert.NotNull(result);
+        Assert.DoesNotContain(result, s => s.MenuKey == "module_admin");
+    }
+
+    [Fact]
+    public async Task GetVisibleSettingsForRoleAsync_WhenUserIsEmployee_CallsRepoWithEmployeeRole()
     {
         // Arrange
         var regularSettings = DefaultMenuSettings.GetDefaults().Where(s => !s.AdminOnly).ToList();
-        _mockRepo.Setup(r => r.GetVisibleAsync(false, It.IsAny<CancellationToken>()))
+        _mockRepo.Setup(r => r.GetVisibleAsync("Employee", It.IsAny<CancellationToken>()))
             .ReturnsAsync(regularSettings);
 
         // Act
         var result = await _service.GetVisibleSettingsForRoleAsync("Employee");
 
         // Assert
-        _mockRepo.Verify(r => r.GetVisibleAsync(false, It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepo.Verify(r => r.GetVisibleAsync("Employee", It.IsAny<CancellationToken>()), Times.Once);
         Assert.NotNull(result);
         Assert.DoesNotContain(result, s => s.AdminOnly);
     }
 
     [Fact]
-    public async Task UpdateSettingsAsync_UpdatesMatchingSettings()
+    public async Task UpdateSettingsAsync_UpdatesMatchingSettings_IncludingAllowedRoles()
     {
         // Arrange
         var settings = DefaultMenuSettings.GetDefaults();
@@ -92,8 +112,9 @@ public class MenuSettingsServiceTests
                 new()
                 {
                     MenuKey = "module_payroll",
-                    IsVisible = false,
-                    AdminOnly = true
+                    IsVisible = true,
+                    AdminOnly = false,
+                    AllowedRoles = new List<string> { "Admin", "Manager" }
                 }
             }
         };
@@ -105,13 +126,16 @@ public class MenuSettingsServiceTests
 
         // Assert
         _mockRepo.Verify(r => r.UpdateRangeAsync(
-            It.Is<IEnumerable<MenuSetting>>(list => list.Any(s => s.MenuKey == "module_payroll" && !s.IsVisible && s.AdminOnly)),
+            It.Is<IEnumerable<MenuSetting>>(list => list.Any(s =>
+                s.MenuKey == "module_payroll" &&
+                s.AllowedRoles == "Admin,Manager")),
             It.IsAny<CancellationToken>()), Times.Once);
 
         var updatedPayroll = result.FirstOrDefault(s => s.MenuKey == "module_payroll");
         Assert.NotNull(updatedPayroll);
-        Assert.False(updatedPayroll.IsVisible);
-        Assert.True(updatedPayroll.AdminOnly);
+        Assert.True(updatedPayroll.IsVisible);
+        Assert.Contains("Manager", updatedPayroll.AllowedRoles);
+        Assert.DoesNotContain("Employee", updatedPayroll.AllowedRoles);
     }
 
     [Fact]
