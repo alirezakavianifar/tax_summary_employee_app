@@ -11,9 +11,9 @@ public class RegisterRequestDto
     public string Username { get; set; } = string.Empty;
 
     /// <summary>
-    /// Email address
+    /// Optional email address
     /// </summary>
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     /// <summary>
     /// Password (minimum 8 characters with complexity requirements)

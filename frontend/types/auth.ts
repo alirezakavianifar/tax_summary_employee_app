@@ -2,11 +2,14 @@
 export interface User {
     id: string;
     username: string;
-    email: string;
+    email?: string | null;
     role: 'Admin' | 'Manager' | 'Employee';
     isActive: boolean;
     employeeId?: string;
     employee?: any; // Can be typed more specifically if needed
+    lockoutEnd?: string | null;
+    failedLoginAttempts?: number;
+    mustChangePassword?: boolean;
     createdAt: string;
 }
 
@@ -25,7 +28,7 @@ export interface LoginResponse {
 
 export interface RegisterRequest {
     username: string;
-    email: string;
+    email?: string;
     password: string;
     role: 'Admin' | 'Manager' | 'Employee';
     employeeId?: string;

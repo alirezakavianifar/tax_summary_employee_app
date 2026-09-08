@@ -34,6 +34,39 @@ public class PhotoUploadValidator
         if (string.IsNullOrWhiteSpace(file.FileName))
             return Result.Failure("نام فایل معتبر نیست");
 
+        // Validate magic bytes (binary file signature)
+        try
+        {
+            using var stream = file.OpenReadStream();
+            var headerBytes = new byte[8];
+            var bytesRead = stream.Read(headerBytes, 0, headerBytes.Length);
+            if (bytesRead < 8)
+                return Result.Failure("محتوای فایل ارسالی برای اعتبارسنجی تصویر کافی نیست");
+
+            if (extension == ".jpg" || extension == ".jpeg")
+            {
+                if (headerBytes[0] != 0xFF || headerBytes[1] != 0xD8 || headerBytes[2] != 0xFF)
+                {
+                    return Result.Failure("محتوای فایل ارسالی با فرمت تصویر JPEG همخوانی ندارد");
+                }
+            }
+            else if (extension == ".png")
+            {
+                byte[] pngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+                for (int i = 0; i < pngSignature.Length; i++)
+                {
+                    if (headerBytes[i] != pngSignature[i])
+                    {
+                        return Result.Failure("محتوای فایل ارسالی با فرمت تصویر PNG همخوانی ندارد");
+                    }
+                }
+            }
+        }
+        catch (Exception)
+        {
+            return Result.Failure("خطا در بررسی ساختار فایل تصویر");
+        }
+
         return Result.Success();
     }
 }

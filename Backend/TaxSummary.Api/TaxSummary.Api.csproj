@@ -22,4 +22,10 @@
     <ProjectReference Include="..\TaxSummary.Infrastructure\TaxSummary.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="payback_sample\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

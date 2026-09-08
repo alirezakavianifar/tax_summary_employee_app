@@ -10,10 +10,12 @@ export const apiClient = axios.create({
   timeout: 60000, // 60 second timeout - allow time for database queries
 })
 
-// Request interceptor for logging
+import { tokenManager } from './tokenManager'
+
+// Request interceptor for attaching token and logging
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken')
+    const token = tokenManager.getAccessToken() || (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null)
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -38,20 +40,23 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        // Import dynamically to avoid circular dependency if auth.ts imports client.ts in future
+        // Import dynamically to avoid circular dependency
         const { refreshToken } = await import('./auth')
-        await refreshToken()
+        const refreshData = await refreshToken()
 
-        const token = localStorage.getItem('accessToken')
+        const token = tokenManager.getAccessToken() || refreshData.accessToken
         if (token) {
           originalRequest.headers.Authorization = `Bearer ${token}`
         }
         return apiClient(originalRequest)
       } catch (refreshError) {
-        // Refresh failed, redirect to login
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('user')
-        window.location.href = '/login'
+        // Refresh failed, clear in-memory token and redirect to login
+        tokenManager.clearAccessToken()
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('user')
+          window.location.href = '/login'
+        }
         return Promise.reject(refreshError)
       }
     }

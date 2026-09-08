@@ -221,8 +221,11 @@ public class UserRepository : IUserRepository
             .AnyAsync(u => u.Username == username, cancellationToken);
     }
 
-    public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<bool> EmailExistsAsync(string? email, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
         return await _context.Users
             .AnyAsync(u => u.Email == email.ToLowerInvariant(), cancellationToken);
     }

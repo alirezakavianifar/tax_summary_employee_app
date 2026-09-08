@@ -17,7 +17,6 @@ import { usersApi } from '@/lib/api/users';
 
 interface CreateUserForm {
     username: string;
-    email: string;
     password: string;
     role: 'Admin' | 'Manager' | 'Employee';
 }
@@ -73,22 +72,6 @@ export default function CreateUserPage() {
                                         className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                     />
                                     {errors.username && <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                                    ایمیل
-                                </label>
-                                <div className="mt-1">
-                                    <input
-                                        id="email"
-                                        type="email"
-                                        autoComplete="email"
-                                        {...register('email', { required: 'ایمیل الزامی است' })}
-                                        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                                    />
-                                    {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
                                 </div>
                             </div>
 

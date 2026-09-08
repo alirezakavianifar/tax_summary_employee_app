@@ -20,7 +20,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(50);
 
         builder.Property(u => u.Email)
-            .IsRequired()
+            .IsRequired(false)
             .HasMaxLength(100);
 
         builder.Property(u => u.PasswordHash)
@@ -34,6 +34,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.IsActive)
             .IsRequired()
             .HasDefaultValue(true);
+
+        builder.Property(u => u.MustChangePassword)
+            .IsRequired()
+            .HasDefaultValue(false);
 
         builder.Property(u => u.FailedLoginAttempts)
             .IsRequired()
@@ -58,6 +62,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(u => u.Email)
             .IsUnique()
+            .HasFilter("\"Email\" IS NOT NULL")
             .HasDatabaseName("IX_Users_Email");
 
         builder.HasIndex(u => u.EmployeeId)

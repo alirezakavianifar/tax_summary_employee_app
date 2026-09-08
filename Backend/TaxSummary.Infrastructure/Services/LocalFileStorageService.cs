@@ -52,6 +52,30 @@ public class LocalFileStorageService : IFileStorageService
         if (!allowedContentTypes.Contains(file.ContentType.ToLowerInvariant()))
             throw new ArgumentException("Invalid image content type");
 
+        // Validate magic bytes (binary file signature)
+        using (var checkStream = file.OpenReadStream())
+        {
+            var headerBytes = new byte[8];
+            var bytesRead = checkStream.Read(headerBytes, 0, headerBytes.Length);
+            if (bytesRead < 8)
+                throw new ArgumentException("File content is too small to be a valid image");
+
+            if (extension == ".jpg" || extension == ".jpeg")
+            {
+                if (headerBytes[0] != 0xFF || headerBytes[1] != 0xD8 || headerBytes[2] != 0xFF)
+                    throw new ArgumentException("File content does not match JPEG signature");
+            }
+            else if (extension == ".png")
+            {
+                byte[] pngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+                for (int i = 0; i < pngSignature.Length; i++)
+                {
+                    if (headerBytes[i] != pngSignature[i])
+                        throw new ArgumentException("File content does not match PNG signature");
+                }
+            }
+        }
+
         // Ensure upload directory exists
         var fullUploadPath = Path.IsPathRooted(_uploadPath) 
             ? _uploadPath 

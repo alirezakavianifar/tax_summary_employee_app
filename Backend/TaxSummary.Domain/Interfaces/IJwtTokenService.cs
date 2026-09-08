@@ -27,4 +27,9 @@ public interface IJwtTokenService
     /// Get user ID from token
     /// </summary>
     Guid? GetUserIdFromToken(string token);
+
+    /// <summary>
+    /// Computes a cryptographically secure SHA-256 hash of a refresh token for storage at rest
+    /// </summary>
+    string HashRefreshToken(string refreshToken);
 }

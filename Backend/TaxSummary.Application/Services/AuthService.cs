@@ -91,12 +91,13 @@ public class AuthService : IAuthService
 
         // Generate tokens
         var accessToken = _jwtTokenService.GenerateAccessToken(user);
-        var refreshTokenString = _jwtTokenService.GenerateRefreshToken();
+        var rawRefreshTokenString = _jwtTokenService.GenerateRefreshToken();
+        var hashedRefreshToken = _jwtTokenService.HashRefreshToken(rawRefreshTokenString);
 
-        // Create refresh token entity (store token as plain text - it's already cryptographically secure)
+        // Create refresh token entity (store SHA-256 hash at rest)
         var refreshToken = RefreshToken.Create(
             userId: user.Id,
-            tokenHash: refreshTokenString, // TokenHash field now stores plain token
+            tokenHash: hashedRefreshToken,
             expiresAt: DateTime.UtcNow.AddDays(request.RememberMe ? _refreshTokenExpirationDays * 2 : _refreshTokenExpirationDays),
             ipAddress: ipAddress,
             userAgent: userAgent
@@ -118,7 +119,8 @@ public class AuthService : IAuthService
             AccessToken = accessToken,
             TokenType = "Bearer",
             ExpiresIn = _accessTokenExpirationMinutes * 60, // Convert to seconds
-            User = userDto
+            User = userDto,
+            RefreshToken = rawRefreshTokenString
         };
 
         return Result.Success(response);
@@ -134,8 +136,8 @@ public class AuthService : IAuthService
             return Result.Failure<UserDto>("این نام کاربری قبلاً استفاده شده است");
         }
 
-        // Check if email already exists
-        if (await _userRepository.EmailExistsAsync(request.Email, cancellationToken))
+        // Check if email already exists (if provided)
+        if (!string.IsNullOrWhiteSpace(request.Email) && await _userRepository.EmailExistsAsync(request.Email, cancellationToken))
         {
             return Result.Failure<UserDto>("این ایمیل قبلاً استفاده شده است");
         }
@@ -178,8 +180,9 @@ public class AuthService : IAuthService
         string? userAgent,
         CancellationToken cancellationToken = default)
     {
-        // Get token from database (stored as plain text since it's already cryptographically secure)
-        var tokenResult = await _userRepository.GetRefreshTokenAsync(refreshToken, cancellationToken);
+        // Hash incoming refresh token from cookie to look up in database
+        var hashedRefreshToken = _jwtTokenService.HashRefreshToken(refreshToken);
+        var tokenResult = await _userRepository.GetRefreshTokenAsync(hashedRefreshToken, cancellationToken);
         if (tokenResult.IsFailure)
         {
             return Result.Failure<LoginResponseDto>("توکن نامعتبر یا منقضی شده است");
@@ -216,19 +219,20 @@ public class AuthService : IAuthService
 
         // Generate new tokens
         var accessToken = _jwtTokenService.GenerateAccessToken(user);
-        var newRefreshTokenString = _jwtTokenService.GenerateRefreshToken();
+        var newRawRefreshTokenString = _jwtTokenService.GenerateRefreshToken();
+        var newHashedRefreshTokenString = _jwtTokenService.HashRefreshToken(newRawRefreshTokenString);
 
         // Create new refresh token entity
         var newRefreshToken = RefreshToken.Create(
             userId: user.Id,
-            tokenHash: newRefreshTokenString, // Store as plain text
+            tokenHash: newHashedRefreshTokenString,
             expiresAt: DateTime.UtcNow.AddDays(_refreshTokenExpirationDays),
             ipAddress: ipAddress,
             userAgent: userAgent
         );
 
         // Revoke old token and replace with new one
-        await _userRepository.RevokeRefreshTokenAsync(refreshToken, newRefreshTokenString, cancellationToken);
+        await _userRepository.RevokeRefreshTokenAsync(hashedRefreshToken, newHashedRefreshTokenString, cancellationToken);
 
         // Save new token
         var saveResult = await _userRepository.SaveRefreshTokenAsync(newRefreshToken, cancellationToken);
@@ -246,7 +250,8 @@ public class AuthService : IAuthService
             AccessToken = accessToken,
             TokenType = "Bearer",
             ExpiresIn = _accessTokenExpirationMinutes * 60,
-            User = userDto
+            User = userDto,
+            RefreshToken = newRawRefreshTokenString
         };
 
         return Result.Success(response);
@@ -256,8 +261,8 @@ public class AuthService : IAuthService
         string refreshToken,
         CancellationToken cancellationToken = default)
     {
-        // Get token from database
-        var tokenResult = await _userRepository.GetRefreshTokenAsync(refreshToken, cancellationToken);
+        var hashedRefreshToken = _jwtTokenService.HashRefreshToken(refreshToken);
+        var tokenResult = await _userRepository.GetRefreshTokenAsync(hashedRefreshToken, cancellationToken);
         if (tokenResult.IsFailure)
         {
             // Token not found or already revoked - this is okay for logout
@@ -265,7 +270,7 @@ public class AuthService : IAuthService
         }
 
         // Revoke the token
-        await _userRepository.RevokeRefreshTokenAsync(refreshToken, cancellationToken: cancellationToken);
+        await _userRepository.RevokeRefreshTokenAsync(hashedRefreshToken, cancellationToken: cancellationToken);
 
         return Result.Success();
     }

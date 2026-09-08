@@ -17,10 +17,15 @@ import {
   Menu,
   X,
   Sparkles,
+  Sliders,
+  KeyRound,
+  History,
 } from 'lucide-react'
+import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth()
+  const { isModuleVisible, isActionVisible } = useMenuSettings()
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -29,6 +34,7 @@ export default function Navbar() {
   const pathname = usePathname()
 
   const modules = getAuthorizedPortalModules(user?.role)
+  const visibleModules = modules.filter((mod) => isModuleVisible(mod.id))
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -89,25 +95,31 @@ export default function Navbar() {
             {/* Desktop Modular Navigation */}
             <div className="hidden lg:flex items-center space-x-1 space-x-reverse">
               {/* Home */}
-              <Link
-                href="/"
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
-                  pathname === '/'
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <Home className="w-4 h-4" />
-                خانه
-              </Link>
+              {isModuleVisible('nav_home') && (
+                <Link
+                  href="/"
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                    pathname === '/'
+                      ? 'bg-primary-50 text-primary-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <Home className="w-4 h-4" />
+                  خانه
+                </Link>
+              )}
 
               {/* Dynamic Extensible Modules Dropdowns */}
               {isAuthenticated &&
-                modules.map((mod) => {
+                visibleModules.map((mod) => {
                   const Icon = mod.icon
                   const active = isModuleActive(mod.id)
                   const isOpen = openDropdown === mod.id
-                  const actions = mod.getAuthorizedActions(user?.role)
+                  const actions = mod
+                    .getAuthorizedActions(user?.role)
+                    .filter((a) => isActionVisible(a.href, mod.id))
+
+                  if (actions.length === 0) return null
 
                   return (
                     <div key={mod.id} className="relative">
@@ -188,7 +200,7 @@ export default function Navbar() {
                 })}
 
               {/* Admin Management Dropdown */}
-              {isAuthenticated && user?.role === 'Admin' && (
+              {isAuthenticated && user?.role === 'Admin' && isModuleVisible('module_admin') && (
                 <div className="relative">
                   <button
                     onClick={() => toggleDropdown('admin')}
@@ -215,45 +227,93 @@ export default function Navbar() {
                         <span className="text-xs font-bold text-gray-900">پنل راهبری و مدیریت سیستم</span>
                       </div>
                       <div className="p-1.5 space-y-1">
-                        <Link
-                          href="/admin/users"
-                          onClick={() => setOpenDropdown(null)}
-                          className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
-                            pathname === '/admin/users'
-                              ? 'bg-purple-50 text-purple-800 font-bold'
-                              : 'hover:bg-gray-50 text-gray-700'
-                          }`}
-                        >
-                          <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
-                            <Users className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold block">فهرست و مدیریت کاربران</span>
-                            <span className="text-[11px] text-gray-400 font-normal">
-                              تعیین نقش‌ها و ادارات سازمانی
-                            </span>
-                          </div>
-                        </Link>
+                        {isActionVisible('/admin/users', 'admin') && (
+                          <Link
+                            href="/admin/users"
+                            onClick={() => setOpenDropdown(null)}
+                            className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
+                              pathname === '/admin/users'
+                                ? 'bg-purple-50 text-purple-800 font-bold'
+                                : 'hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
+                              <Users className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold block">فهرست و مدیریت کاربران</span>
+                              <span className="text-[11px] text-gray-400 font-normal">
+                                تعیین نقش‌ها و ادارات سازمانی
+                              </span>
+                            </div>
+                          </Link>
+                        )}
 
-                        <Link
-                          href="/admin/users/create"
-                          onClick={() => setOpenDropdown(null)}
-                          className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
-                            pathname === '/admin/users/create'
-                              ? 'bg-purple-50 text-purple-800 font-bold'
-                              : 'hover:bg-gray-50 text-gray-700'
-                          }`}
-                        >
-                          <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
-                            <UserPlus className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold block">تعریف کاربر جدید</span>
-                            <span className="text-[11px] text-gray-400 font-normal">
-                              افزودن دسترسی کاربری جدید
-                            </span>
-                          </div>
-                        </Link>
+                        {isActionVisible('/admin/users/create', 'admin') && (
+                          <Link
+                            href="/admin/users/create"
+                            onClick={() => setOpenDropdown(null)}
+                            className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
+                              pathname === '/admin/users/create'
+                                ? 'bg-purple-50 text-purple-800 font-bold'
+                                : 'hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
+                              <UserPlus className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold block">تعریف کاربر جدید</span>
+                              <span className="text-[11px] text-gray-400 font-normal">
+                                افزودن دسترسی کاربری جدید
+                              </span>
+                            </div>
+                          </Link>
+                        )}
+
+                        {isActionVisible('/admin/menu-settings', 'admin') && (
+                          <Link
+                            href="/admin/menu-settings"
+                            onClick={() => setOpenDropdown(null)}
+                            className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
+                              pathname === '/admin/menu-settings'
+                                ? 'bg-purple-50 text-purple-800 font-bold'
+                                : 'hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
+                              <Sliders className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold block">مدیریت منوها و دسترسی‌ها</span>
+                              <span className="text-[11px] text-gray-400 font-normal">
+                                پیکربندی نمایش و مخفی‌سازی گزینه‌های منو
+                              </span>
+                            </div>
+                          </Link>
+                        )}
+
+                        {isActionVisible('/admin/audit-logs', 'admin') && (
+                          <Link
+                            href="/admin/audit-logs"
+                            onClick={() => setOpenDropdown(null)}
+                            className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
+                              pathname === '/admin/audit-logs'
+                                ? 'bg-purple-50 text-purple-800 font-bold'
+                                : 'hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
+                              <History className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold block">لاگ‌ها و رویدادهای امنیتی</span>
+                              <span className="text-[11px] text-gray-400 font-normal">
+                                پایش تاریخچه تغییرات و رویدادهای سامانه
+                              </span>
+                            </div>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   )}
@@ -289,6 +349,15 @@ export default function Navbar() {
                       <span className="text-xs font-bold text-gray-800 block">{user?.username}</span>
                       <span className="text-[11px] text-primary-600 font-medium">نقش سازمانی: {user?.role}</span>
                     </div>
+
+                    <Link
+                      href="/change-password"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 font-medium transition-colors border-b border-gray-100"
+                    >
+                      <KeyRound className="w-4 h-4 text-gray-500" />
+                      تغییر رمز عبور
+                    </Link>
 
                     <button
                       onClick={() => {
@@ -328,23 +397,29 @@ export default function Navbar() {
       {/* Mobile Drawer Navigation */}
       {isMobileMenuOpen && (
         <div className="lg:hidden border-t border-gray-200 bg-white px-4 pt-3 pb-6 space-y-3">
-          <Link
-            href="/"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${
-              pathname === '/' ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
-            }`}
-          >
-            <Home className="w-4 h-4" />
-            صفحه اصلی پرتال
-          </Link>
+          {isModuleVisible('nav_home') && (
+            <Link
+              href="/"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${
+                pathname === '/' ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
+              }`}
+            >
+              <Home className="w-4 h-4" />
+              صفحه اصلی پرتال
+            </Link>
+          )}
 
           {isAuthenticated && (
             <div className="space-y-2">
-              {modules.map((mod) => {
+              {visibleModules.map((mod) => {
                 const Icon = mod.icon
                 const isExpanded = mobileExpandedModule === mod.id
-                const actions = mod.getAuthorizedActions(user?.role)
+                const actions = mod
+                  .getAuthorizedActions(user?.role)
+                  .filter((a) => isActionVisible(a.href, mod.id))
+
+                if (actions.length === 0) return null
 
                 return (
                   <div key={mod.id} className="border border-gray-100 rounded-xl overflow-hidden">
@@ -383,7 +458,7 @@ export default function Navbar() {
                 )
               })}
 
-              {user?.role === 'Admin' && (
+              {user?.role === 'Admin' && isModuleVisible('module_admin') && (
                 <div className="border border-purple-100 rounded-xl overflow-hidden">
                   <button
                     onClick={() =>
@@ -404,22 +479,46 @@ export default function Navbar() {
 
                   {mobileExpandedModule === 'admin' && (
                     <div className="p-2 space-y-1 bg-white">
-                      <Link
-                        href="/admin/users"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
-                      >
-                        <Users className="w-4 h-4 text-purple-500" />
-                        <span>فهرست و مدیریت کاربران</span>
-                      </Link>
-                      <Link
-                        href="/admin/users/create"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
-                      >
-                        <UserPlus className="w-4 h-4 text-purple-500" />
-                        <span>تعریف کاربر جدید</span>
-                      </Link>
+                      {isActionVisible('/admin/users', 'admin') && (
+                        <Link
+                          href="/admin/users"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
+                        >
+                          <Users className="w-4 h-4 text-purple-500" />
+                          <span>فهرست و مدیریت کاربران</span>
+                        </Link>
+                      )}
+                      {isActionVisible('/admin/users/create', 'admin') && (
+                        <Link
+                          href="/admin/users/create"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
+                        >
+                          <UserPlus className="w-4 h-4 text-purple-500" />
+                          <span>تعریف کاربر جدید</span>
+                        </Link>
+                      )}
+                      {isActionVisible('/admin/menu-settings', 'admin') && (
+                        <Link
+                          href="/admin/menu-settings"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
+                        >
+                          <Sliders className="w-4 h-4 text-purple-500" />
+                          <span>مدیریت منوها و دسترسی‌ها</span>
+                        </Link>
+                      )}
+                      {isActionVisible('/admin/audit-logs', 'admin') && (
+                        <Link
+                          href="/admin/audit-logs"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
+                        >
+                          <History className="w-4 h-4 text-purple-500" />
+                          <span>لاگ‌ها و رویدادهای امنیتی</span>
+                        </Link>
+                      )}
                     </div>
                   )}
                 </div>

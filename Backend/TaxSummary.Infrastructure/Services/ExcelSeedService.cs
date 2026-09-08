@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using MiniExcelLibs;
 using TaxSummary.Application.Services;
+using TaxSummary.Domain.Common;
 using TaxSummary.Domain.Entities;
 using TaxSummary.Domain.Interfaces;
 
@@ -234,7 +235,7 @@ public class ExcelSeedService : IExcelSeedService
                 var text = value.ToString()?.Trim();
                 if (!string.IsNullOrWhiteSpace(text))
                 {
-                    return text;
+                    return FormulaInjectionSanitizer.SanitizeForImport(text);
                 }
             }
         }

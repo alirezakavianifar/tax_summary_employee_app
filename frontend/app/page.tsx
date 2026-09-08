@@ -12,11 +12,15 @@ import {
   HelpCircle,
   LogIn,
   Layers,
+  Sliders,
 } from 'lucide-react'
+import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth()
+  const { isModuleVisible, isActionVisible } = useMenuSettings()
   const modules = getAuthorizedPortalModules(user?.role)
+  const visibleModules = modules.filter((m) => isModuleVisible(m.id))
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-100/50 py-10 px-4 sm:px-6 lg:px-8">
@@ -126,13 +130,13 @@ export default function HomePage() {
             </p>
           </div>
           <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-            {modules.length} سامانه اصلی
+            {visibleModules.length} سامانه اصلی
           </span>
         </div>
 
         {/* Extensible Modules Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {modules.map((module) => (
+          {visibleModules.map((module) => (
             <ModuleCard key={module.id} module={module} userRole={user?.role} />
           ))}
         </div>
@@ -145,7 +149,24 @@ export default function HomePage() {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {user?.role === 'Admin' && (
+            {user?.role === 'Admin' && isActionVisible('/admin/menu-settings', 'admin') && (
+              <Link
+                href="/admin/menu-settings"
+                className="p-4 rounded-xl bg-purple-50/60 hover:bg-purple-50 border border-purple-200 hover:border-purple-300 transition-all flex items-center gap-3 group"
+              >
+                <div className="p-2.5 bg-white rounded-lg border border-purple-200 group-hover:border-purple-300 shadow-xs">
+                  <Sliders className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-gray-900 block group-hover:text-purple-700">
+                    مدیریت منوها و دسترسی‌ها
+                  </span>
+                  <span className="text-[11px] text-gray-500">پیکربندی نمایش و پنهان‌سازی بخش‌ها</span>
+                </div>
+              </Link>
+            )}
+
+            {user?.role === 'Admin' && isActionVisible('/admin/users', 'admin') && (
               <Link
                 href="/admin/users"
                 className="p-4 rounded-xl bg-gray-50 hover:bg-primary-50/50 border border-gray-200 hover:border-primary-300 transition-all flex items-center gap-3 group"
@@ -162,20 +183,22 @@ export default function HomePage() {
               </Link>
             )}
 
-            <Link
-              href="/reports/search"
-              className="p-4 rounded-xl bg-gray-50 hover:bg-primary-50/50 border border-gray-200 hover:border-primary-300 transition-all flex items-center gap-3 group"
-            >
-              <div className="p-2.5 bg-white rounded-lg border border-gray-200 group-hover:border-primary-200 shadow-xs">
-                <Users className="w-5 h-5 text-indigo-600" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-gray-900 block group-hover:text-primary-700">
-                  بانک سوابق و جستجوی پرسنل
-                </span>
-                <span className="text-[11px] text-gray-500">فیلتر و مشاهده پرونده کارکنان</span>
-              </div>
-            </Link>
+            {isActionVisible('/reports/search', 'employee-evaluation') && (
+              <Link
+                href="/reports/search"
+                className="p-4 rounded-xl bg-gray-50 hover:bg-primary-50/50 border border-gray-200 hover:border-primary-300 transition-all flex items-center gap-3 group"
+              >
+                <div className="p-2.5 bg-white rounded-lg border border-gray-200 group-hover:border-primary-200 shadow-xs">
+                  <Users className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-gray-900 block group-hover:text-primary-700">
+                    بانک سوابق و جستجوی پرسنل
+                  </span>
+                  <span className="text-[11px] text-gray-500">فیلتر و مشاهده پرونده کارکنان</span>
+                </div>
+              </Link>
+            )}
 
             <Link
               href="/about"

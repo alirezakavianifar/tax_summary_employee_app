@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TaxSummary.Application.DTOs;
 using TaxSummary.Application.Services;
 using TaxSummary.Application.Validators;
@@ -14,6 +15,7 @@ namespace TaxSummary.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[EnableRateLimiting("GeneralPolicy")]
 public class EmployeeReportsController : ControllerBase
 {
     private readonly IEmployeeReportService _reportService;
@@ -40,12 +42,23 @@ public class EmployeeReportsController : ControllerBase
     /// <returns>Complete employee report</returns>
     [HttpGet("{employeeId:guid}")]
     [ProducesResponseType(typeof(EmployeeReportDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<EmployeeReportDto>> GetReport(
         Guid employeeId,
         CancellationToken cancellationToken)
     {
+        // Enforce ownership for Employee role
+        if (!User.IsInRole("Admin") && !User.IsInRole("Manager"))
+        {
+            var callerEmployeeId = User.FindFirst("employeeId")?.Value;
+            if (string.IsNullOrEmpty(callerEmployeeId) || callerEmployeeId != employeeId.ToString())
+            {
+                return Forbid();
+            }
+        }
+
         _logger.LogInformation("Getting report for employee {EmployeeId}", employeeId);
 
         var result = await _reportService.GetReportAsync(employeeId, cancellationToken);
@@ -83,6 +96,16 @@ public class EmployeeReportsController : ControllerBase
             return NotFound(new { error = result.Error });
         }
 
+        // Enforce ownership for Employee role
+        if (!User.IsInRole("Admin") && !User.IsInRole("Manager"))
+        {
+            var callerEmployeeId = User.FindFirst("employeeId")?.Value;
+            if (string.IsNullOrEmpty(callerEmployeeId) || callerEmployeeId != result.Value.Employee.Id.ToString())
+            {
+                return Forbid();
+            }
+        }
+
         return Ok(result.Value);
     }
 
@@ -93,6 +116,7 @@ public class EmployeeReportsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Created employee ID</returns>
     [HttpPost]
+    [Authorize(Roles = "Admin,Manager")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -125,6 +149,7 @@ public class EmployeeReportsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>No content on success</returns>
     [HttpPut("{employeeId:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -159,6 +184,7 @@ public class EmployeeReportsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>No content on success</returns>
     [HttpDelete("{employeeId:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -323,6 +349,7 @@ public class EmployeeReportsController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Photo upload response with URL</returns>
     [HttpPost("{employeeId:guid}/photo")]
+    [Authorize(Roles = "Admin,Manager")]
     [ProducesResponseType(typeof(PhotoUploadResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

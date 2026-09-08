@@ -24,4 +24,10 @@ public class LoginResponseDto
     /// Authenticated user information
     /// </summary>
     public UserDto User { get; set; } = null!;
+
+    /// <summary>
+    /// Raw refresh token for HttpOnly cookie delivery (excluded from JSON body)
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? RefreshToken { get; set; }
 }

@@ -23,6 +23,19 @@ public class TaxSummaryDbContext : DbContext
     public DbSet<PayrollDepartmentEntry> PayrollDepartmentEntries => Set<PayrollDepartmentEntry>();
     public DbSet<PayrollEmployeeItem> PayrollEmployeeItems => Set<PayrollEmployeeItem>();
 
+    // Tax Refund System DbSets
+    public DbSet<TaxRefundCase> TaxRefundCases => Set<TaxRefundCase>();
+    public DbSet<TaxRefundReceipt> TaxRefundReceipts => Set<TaxRefundReceipt>();
+    public DbSet<RefundableReceiptAllocation> RefundableReceiptAllocations => Set<RefundableReceiptAllocation>();
+    public DbSet<TaxRefundLetter> TaxRefundLetters => Set<TaxRefundLetter>();
+    public DbSet<TaxRefundApprovalAction> TaxRefundApprovalActions => Set<TaxRefundApprovalAction>();
+
+    // System & Navigation Configuration DbSets
+    public DbSet<MenuSetting> MenuSettings => Set<MenuSetting>();
+
+    // Audit Logging
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

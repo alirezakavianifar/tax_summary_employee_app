@@ -73,6 +73,70 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.ToTable("AdministrativeStatuses", (string)null);
                 });
 
+            modelBuilder.Entity("TaxSummary.Domain.Entities.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AffectedColumns")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NewValues")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OldValues")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Username")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Action");
+
+                    b.HasIndex("EntityName");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EntityName", "EntityId");
+
+                    b.ToTable("AuditLogs", (string)null);
+                });
+
             modelBuilder.Entity("TaxSummary.Domain.Entities.Employee", b =>
                 {
                     b.Property<Guid>("Id")
@@ -162,6 +226,69 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .HasDatabaseName("IX_Employees_LastName_FirstName");
 
                     b.ToTable("Employees", (string)null);
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.MenuSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("AdminOnly")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("IconName")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsVisible")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MenuKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ParentKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Route")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisplayOrder");
+
+                    b.HasIndex("MenuKey")
+                        .IsUnique();
+
+                    b.HasIndex("ParentKey");
+
+                    b.ToTable("MenuSettings", (string)null);
                 });
 
             modelBuilder.Entity("TaxSummary.Domain.Entities.PayrollCycle", b =>
@@ -580,6 +707,310 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.ToTable("RefreshTokens", (string)null);
                 });
 
+            modelBuilder.Entity("TaxSummary.Domain.Entities.RefundableReceiptAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BankBranch")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReceiptNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("RefundableAmount")
+                        .HasPrecision(18)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RevenueLedgerRow")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TaxRefundCaseId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TaxRefundReceiptId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TotalReceiptAmount")
+                        .HasPrecision(18)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaxRefundReceiptId");
+
+                    b.HasIndex("TaxRefundCaseId", "TaxRefundReceiptId");
+
+                    b.ToTable("RefundableReceiptAllocations", (string)null);
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.TaxRefundApprovalAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ActionDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActorRole")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("FromStatus")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TaxRefundCaseId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ToStatus")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaxRefundCaseId", "ActionDate");
+
+                    b.ToTable("TaxRefundApprovalActions", (string)null);
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.TaxRefundCase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AdministrationHeadName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BankName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CaseTrackingNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DocketNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EconomicCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("FinalizedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GroupHeadName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NationalId")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Period")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Province")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RefundReason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SeniorAuditorName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ShebaNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TaxSource")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TaxUnitCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TaxYear")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TaxpayerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CaseTrackingNumber")
+                        .IsUnique();
+
+                    b.HasIndex("EconomicCode");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TaxYear");
+
+                    b.HasIndex("TaxpayerName", "TaxYear");
+
+                    b.ToTable("TaxRefundCases", (string)null);
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.TaxRefundLetter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("DebtAmount")
+                        .HasPrecision(18)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DebtYear")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LetterDateJalali")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LetterNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LetterType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("TaxRefundCaseId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaxRefundCaseId", "LetterType");
+
+                    b.ToTable("TaxRefundLetters", (string)null);
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.TaxRefundReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("AmountRials")
+                        .HasPrecision(18)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BankBranch")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IssueDateJalali")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentDateJalali")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReceiptNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RevenueLedgerRow")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RowIndex")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("TaxRefundCaseId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiptNumber");
+
+                    b.HasIndex("TaxRefundCaseId", "RowIndex");
+
+                    b.ToTable("TaxRefundReceipts", (string)null);
+                });
+
             modelBuilder.Entity("TaxSummary.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -590,7 +1021,6 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Email")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
@@ -609,6 +1039,11 @@ namespace TaxSummary.Infrastructure.Data.Migrations
 
                     b.Property<DateTime?>("LockoutEnd")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("MustChangePassword")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -632,7 +1067,8 @@ namespace TaxSummary.Infrastructure.Data.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique()
-                        .HasDatabaseName("IX_Users_Email");
+                        .HasDatabaseName("IX_Users_Email")
+                        .HasFilter("\"Email\" IS NOT NULL");
 
                     b.HasIndex("EmployeeId")
                         .IsUnique()
@@ -741,6 +1177,171 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("TaxSummary.Domain.Entities.RefundableReceiptAllocation", b =>
+                {
+                    b.HasOne("TaxSummary.Domain.Entities.TaxRefundCase", "TaxRefundCase")
+                        .WithMany("Allocations")
+                        .HasForeignKey("TaxRefundCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaxSummary.Domain.Entities.TaxRefundReceipt", "TaxRefundReceipt")
+                        .WithMany()
+                        .HasForeignKey("TaxRefundReceiptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TaxRefundCase");
+
+                    b.Navigation("TaxRefundReceipt");
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.TaxRefundApprovalAction", b =>
+                {
+                    b.HasOne("TaxSummary.Domain.Entities.TaxRefundCase", "TaxRefundCase")
+                        .WithMany("Approvals")
+                        .HasForeignKey("TaxRefundCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TaxRefundCase");
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.TaxRefundCase", b =>
+                {
+                    b.OwnsOne("TaxSummary.Domain.Entities.RefundBreakdown", "Breakdown", b1 =>
+                        {
+                            b1.Property<Guid>("TaxRefundCaseId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<decimal>("DelayDamages")
+                                .HasPrecision(18)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Breakdown_DelayDamages");
+
+                            b1.Property<decimal>("OtherRefund")
+                                .HasPrecision(18)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Breakdown_OtherRefund");
+
+                            b1.Property<decimal>("PenaltiesRefund")
+                                .HasPrecision(18)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Breakdown_PenaltiesRefund");
+
+                            b1.Property<decimal>("PrincipalTaxRefund")
+                                .HasPrecision(18)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Breakdown_PrincipalTaxRefund");
+
+                            b1.Property<decimal>("StampDutyRefund")
+                                .HasPrecision(18)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Breakdown_StampDutyRefund");
+
+                            b1.HasKey("TaxRefundCaseId");
+
+                            b1.ToTable("TaxRefundCases");
+
+                            b1.WithOwner()
+                                .HasForeignKey("TaxRefundCaseId");
+                        });
+
+                    b.OwnsOne("TaxSummary.Domain.Entities.TaxAssessmentInfo", "AssessmentInfo", b1 =>
+                        {
+                            b1.Property<Guid>("TaxRefundCaseId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<decimal>("AssessedIncome")
+                                .HasPrecision(18)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Assessment_AssessedIncome");
+
+                            b1.Property<decimal>("AssessedTax")
+                                .HasPrecision(18)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Assessment_AssessedTax");
+
+                            b1.Property<decimal>("Exemptions")
+                                .HasPrecision(18)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Assessment_Exemptions");
+
+                            b1.Property<string>("FinalNoticeDateJalali")
+                                .HasMaxLength(15)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Assessment_FinalNoticeDateJalali");
+
+                            b1.Property<string>("FinalNoticeNumber")
+                                .HasMaxLength(50)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Assessment_FinalNoticeNumber");
+
+                            b1.Property<int>("FinalizationMethod")
+                                .HasColumnType("INTEGER")
+                                .HasColumnName("Assessment_FinalizationMethod");
+
+                            b1.Property<bool>("HasReturnFiled")
+                                .HasColumnType("INTEGER")
+                                .HasColumnName("Assessment_HasReturnFiled");
+
+                            b1.Property<decimal>("NonWaivablePenalties")
+                                .HasPrecision(18)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Assessment_NonWaivablePenalties");
+
+                            b1.Property<string>("ReturnDateJalali")
+                                .HasMaxLength(15)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Assessment_ReturnDateJalali");
+
+                            b1.Property<string>("ReturnNumber")
+                                .HasMaxLength(50)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Assessment_ReturnNumber");
+
+                            b1.Property<decimal>("TimelyPaymentBonus")
+                                .HasPrecision(18)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Assessment_TimelyPaymentBonus");
+
+                            b1.HasKey("TaxRefundCaseId");
+
+                            b1.ToTable("TaxRefundCases");
+
+                            b1.WithOwner()
+                                .HasForeignKey("TaxRefundCaseId");
+                        });
+
+                    b.Navigation("AssessmentInfo")
+                        .IsRequired();
+
+                    b.Navigation("Breakdown")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.TaxRefundLetter", b =>
+                {
+                    b.HasOne("TaxSummary.Domain.Entities.TaxRefundCase", "TaxRefundCase")
+                        .WithMany("Letters")
+                        .HasForeignKey("TaxRefundCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TaxRefundCase");
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.TaxRefundReceipt", b =>
+                {
+                    b.HasOne("TaxSummary.Domain.Entities.TaxRefundCase", "TaxRefundCase")
+                        .WithMany("Receipts")
+                        .HasForeignKey("TaxRefundCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TaxRefundCase");
+                });
+
             modelBuilder.Entity("TaxSummary.Domain.Entities.User", b =>
                 {
                     b.HasOne("TaxSummary.Domain.Entities.Employee", "Employee")
@@ -768,6 +1369,17 @@ namespace TaxSummary.Infrastructure.Data.Migrations
             modelBuilder.Entity("TaxSummary.Domain.Entities.PayrollDepartmentEntry", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.TaxRefundCase", b =>
+                {
+                    b.Navigation("Allocations");
+
+                    b.Navigation("Approvals");
+
+                    b.Navigation("Letters");
+
+                    b.Navigation("Receipts");
                 });
 
             modelBuilder.Entity("TaxSummary.Domain.Entities.User", b =>

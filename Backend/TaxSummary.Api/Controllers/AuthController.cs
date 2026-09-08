@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TaxSummary.Application.DTOs.Auth;
 using TaxSummary.Application.Services;
 
@@ -11,6 +12,7 @@ namespace TaxSummary.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[EnableRateLimiting("AuthPolicy")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -48,7 +50,10 @@ public class AuthController : ControllerBase
         _logger.LogInformation("User {Username} logged in successfully", request.Username);
 
         // Set refresh token in HTTP-only cookie
-        SetRefreshTokenCookie(result.Value!.AccessToken); // Placeholder - will store actual refresh token
+        if (!string.IsNullOrEmpty(result.Value!.RefreshToken))
+        {
+            SetRefreshTokenCookie(result.Value.RefreshToken);
+        }
 
         return Ok(result.Value);
     }
@@ -105,7 +110,10 @@ public class AuthController : ControllerBase
         }
 
         // Update refresh token cookie
-        SetRefreshTokenCookie(refreshToken); // Will be replaced with new token
+        if (!string.IsNullOrEmpty(result.Value!.RefreshToken))
+        {
+            SetRefreshTokenCookie(result.Value.RefreshToken);
+        }
 
         return Ok(result.Value);
     }

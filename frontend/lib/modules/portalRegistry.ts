@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   History,
+  Scale,
 } from 'lucide-react'
 import { BasePortalModule, PortalAction } from '@/types/portal'
 
@@ -125,6 +126,59 @@ export class CollaborativePayrollModule extends BasePortalModule {
 }
 
 /**
+ * Module 3: Tax Refund Management System (Articles 242 and 243)
+ */
+export class TaxRefundPortalModule extends BasePortalModule {
+  public readonly id = 'tax-refund'
+  public readonly title = 'سامانه جامع استرداد مالیات اضافه دریافتی'
+  public readonly navTitle = 'استرداد مالیات'
+  public readonly subtitle = 'مدیریت مکانیزه پرونده‌های استرداد موضوع مواد ۲۴۲ و ۲۴۳ ق.م.م'
+  public readonly description =
+    'ثبت قبوض پرداختی (جدول الف)، استعلامات بین‌حوزه‌ای، قطعی‌سازی پرونده، تخصیص هوشمند استرداد (جدول ب)، شبیه‌ساز خسارت تاخیر و صدور فرم‌های ۸گانه چاپی.'
+  public readonly badgeText = 'حسابرسی و حقوقی مالیاتی'
+  public readonly icon = Scale
+  public readonly gradient = 'from-violet-600 to-purple-800'
+  public readonly accentColor = 'text-purple-600'
+  public readonly borderHoverColor = 'hover:border-purple-400'
+  public readonly iconBgColor = 'bg-purple-50 text-purple-600'
+
+  public readonly actions: PortalAction[] = [
+    {
+      id: 'refunds-list',
+      title: 'کارپوشه و مدیریت پرونده‌ها',
+      href: '/refunds',
+      description: 'مشاهده سوابق، گردش کار تاییدات و پیگیری',
+      icon: FileSpreadsheet,
+      variant: 'primary',
+    },
+    {
+      id: 'refunds-new',
+      title: 'ثبت پرونده استرداد جدید (جادوگر)',
+      href: '/refunds/new',
+      description: 'ورود مشخصات، قبوض و محاسبه سیستمی اضافه پرداختی',
+      icon: PlusCircle,
+      variant: 'secondary',
+    },
+    {
+      id: 'refunds-calculator',
+      title: 'شبیه‌ساز و محاسبه‌گر برخط',
+      href: '/refunds/calculator',
+      description: 'آزمون آنی فرمول‌های مواد ۲۴۲ و ۲۴۳ قانون مالیات‌ها',
+      icon: Calculator,
+      variant: 'outline',
+    },
+  ]
+
+  public readonly highlights = [
+    'ثبت هوشمند قبوض جدول الف و تخصیص به جدول ب',
+    'محاسبه آنی اضافه پرداختی و کسر بدهی‌های کشف شده',
+    'محاسبه دقیق خسارت تاخیر ماده ۲۴۳ (۱.۵ درصد ماهانه)',
+    'صدور چک‌لیست و فرم‌های ۱ تا ۷ استاندارد با قابلیت چاپ مستقیم',
+    'ورود و خروج اکسل ۹ برگه‌ای هماهنگ با الگوی دلفی',
+  ]
+}
+
+/**
  * Global Registry of all portal modules.
  * In the future, any new distinct functional module simply extends BasePortalModule
  * and is added to this registry array.
@@ -132,6 +186,7 @@ export class CollaborativePayrollModule extends BasePortalModule {
 export const PORTAL_MODULES: BasePortalModule[] = [
   new EmployeeEvaluationModule(),
   new CollaborativePayrollModule(),
+  new TaxRefundPortalModule(),
 ]
 
 /**

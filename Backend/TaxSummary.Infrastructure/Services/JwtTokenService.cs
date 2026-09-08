@@ -21,8 +21,9 @@ public class JwtTokenService : IJwtTokenService
 
     public JwtTokenService(IConfiguration configuration)
     {
-        _secretKey = configuration["JwtSettings:SecretKey"] 
-            ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+        _secretKey = configuration["JWT_SECRET_KEY"]
+            ?? configuration["JwtSettings:SecretKey"] 
+            ?? throw new InvalidOperationException("JWT SecretKey is not configured. Set JWT_SECRET_KEY environment variable or configure JwtSettings:SecretKey.");
         _issuer = configuration["JwtSettings:Issuer"] ?? "TaxSummaryApi";
         _audience = configuration["JwtSettings:Audience"] ?? "TaxSummaryClient";
         _accessTokenExpirationMinutes = int.Parse(
@@ -43,7 +44,7 @@ public class JwtTokenService : IJwtTokenService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
             new Claim(ClaimTypes.Role, user.Role),
             new Claim("employeeId", user.EmployeeId?.ToString() ?? string.Empty)
         };
@@ -117,5 +118,19 @@ public class JwtTokenService : IJwtTokenService
             return null;
 
         return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
+    /// <summary>
+    /// Computes a cryptographically secure SHA-256 hash of a refresh token for storage at rest
+    /// </summary>
+    public string HashRefreshToken(string refreshToken)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return string.Empty;
+
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(refreshToken);
+        var hashBytes = sha256.ComputeHash(bytes);
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 }

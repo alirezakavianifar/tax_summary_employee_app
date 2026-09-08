@@ -4,6 +4,8 @@ import { LoginRequest, LoginResponse, RegisterRequest, ChangePasswordRequest, Us
 
 import { API_URL, BASE_URL } from './config';
 
+import { tokenManager } from './tokenManager';
+
 // Create axios instance with default config
 const authApi = axios.create({
     baseURL: `${API_URL}/api/auth`,
@@ -16,7 +18,7 @@ const authApi = axios.create({
 // Add request interceptor to include access token
 authApi.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('accessToken');
+        const token = tokenManager.getAccessToken() || (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null);
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -41,17 +43,21 @@ authApi.interceptors.response.use(
             originalRequest._retry = true;
 
             try {
-                await refreshToken();
-                const token = localStorage.getItem('accessToken');
+                const refreshData = await refreshToken();
+                const token = tokenManager.getAccessToken() || refreshData.accessToken;
                 if (token && originalRequest.headers) {
                     originalRequest.headers.Authorization = `Bearer ${token}`;
                 }
                 return authApi(originalRequest);
             } catch (refreshError) {
-                // Refresh failed, redirect to login
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
+                // Refresh failed, clear session and redirect to login
+                tokenManager.clearAccessToken();
+                if (typeof window !== 'undefined') {
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('user');
+                    Cookies.remove('accessToken', { path: '/' });
+                    window.location.href = '/login';
+                }
                 return Promise.reject(refreshError);
             }
         }
@@ -65,6 +71,12 @@ authApi.interceptors.response.use(
  */
 export async function login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await authApi.post<LoginResponse>('/login', credentials);
+    if (response.data?.accessToken) {
+        tokenManager.setAccessToken(response.data.accessToken);
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('accessToken'); // Do not persist in localStorage
+        }
+    }
     return response.data;
 }
 
@@ -81,17 +93,23 @@ export async function register(data: RegisterRequest): Promise<User> {
  */
 export async function refreshToken(): Promise<LoginResponse> {
     const response = await authApi.post<LoginResponse>('/refresh');
-    const apiUrl = BASE_URL;
     const { accessToken, user } = response.data;
 
-    // Update local storage and cookie to ensure client.ts and middleware have latest token
     if (accessToken) {
-        localStorage.setItem('accessToken', accessToken);
-        // Set cookie for 15 minutes (matching token lifetime)
-        Cookies.set('accessToken', accessToken, { expires: 1 / 96, secure: process.env.NODE_ENV === 'production' });
+        tokenManager.setAccessToken(accessToken);
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('accessToken'); // Never store raw JWT in localStorage
+            // Set cookie for 60 minutes for Next.js middleware SSR routing
+            Cookies.set('accessToken', accessToken, {
+                expires: 1 / 24,
+                secure: window.location.protocol === 'https:',
+                sameSite: 'lax',
+                path: '/',
+            });
+        }
     }
 
-    if (user) {
+    if (user && typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(user));
     }
 
@@ -102,6 +120,12 @@ export async function refreshToken(): Promise<LoginResponse> {
  * Logout and revoke tokens
  */
 export async function logout(): Promise<void> {
+    tokenManager.clearAccessToken();
+    if (typeof window !== 'undefined') {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('user');
+        Cookies.remove('accessToken', { path: '/' });
+    }
     await authApi.post('/logout');
 }
 

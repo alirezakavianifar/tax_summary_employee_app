@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TaxSummary.Application.DTOs;
 using TaxSummary.Application.DTOs.Auth;
 using TaxSummary.Application.Services;
@@ -9,6 +10,7 @@ namespace TaxSummary.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "Admin")]
+[EnableRateLimiting("GeneralPolicy")]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -97,5 +99,34 @@ public class UsersController : ControllerBase
             return BadRequest(new { error = result.Error });
             
         return Ok(new { message = "کاربر با موفقیت حذف شد" });
+    }
+
+    /// <summary>
+    /// Reset user password (Admin only)
+    /// </summary>
+    [HttpPost("{id}/reset-password")]
+    public async Task<IActionResult> ResetPassword(Guid id, [FromBody] ResetPasswordRequestDto request, CancellationToken cancellationToken)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.NewPassword))
+            return BadRequest(new { error = "رمز عبور جدید الزامی است" });
+
+        var result = await _userService.ResetPasswordAsync(id, request.NewPassword, cancellationToken);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(new { message = "رمز عبور با موفقیت بازنشانی شد" });
+    }
+
+    /// <summary>
+    /// Unlock locked user account (Admin only)
+    /// </summary>
+    [HttpPost("{id}/unlock")]
+    public async Task<IActionResult> Unlock(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _userService.UnlockUserAsync(id, cancellationToken);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(new { message = "قفل حساب کاربری با موفقیت باز شد" });
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TaxSummary.Application.Services;
 using TaxSummary.Domain.Interfaces;
 using TaxSummary.Infrastructure.Data;
+using TaxSummary.Infrastructure.Data.Interceptors;
 using TaxSummary.Infrastructure.Repositories;
 using TaxSummary.Infrastructure.Services;
 
@@ -22,9 +23,17 @@ public static class DependencyInjection
         var useInMemory = configuration.GetConnectionString("UseInMemoryDatabase");
         var useInMemoryDb = !string.IsNullOrEmpty(useInMemory) && bool.Parse(useInMemory);
 
+        // Register HTTP context and Current User service
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<AuditLogInterceptor>();
+
         // Add DbContext
-        services.AddDbContext<TaxSummaryDbContext>(options =>
+        services.AddDbContext<TaxSummaryDbContext>((sp, options) =>
         {
+            // Register Audit Log Interceptor
+            options.AddInterceptors(sp.GetRequiredService<AuditLogInterceptor>());
+
             if (useInMemoryDb)
             {
                 // Use in-memory database for testing/development without SQL Server
@@ -70,6 +79,16 @@ public static class DependencyInjection
         services.AddScoped<IPayrollService, PayrollService>();
         services.AddScoped<IPayrollCycleService, PayrollCycleService>();
         services.AddScoped<IPayrollExcelExportService, PayrollExcelExportService>();
+
+        // Register Tax Refund Services
+        services.AddScoped<ITaxRefundRepository, TaxRefundRepository>();
+        services.AddScoped<RefundCalculationEngine>();
+        services.AddScoped<ITaxRefundService, TaxRefundService>();
+        services.AddScoped<ITaxRefundExcelService, TaxRefundExcelService>();
+
+        // Register Menu Settings Services
+        services.AddScoped<IMenuSettingsRepository, MenuSettingsRepository>();
+        services.AddScoped<IMenuSettingsService, MenuSettingsService>();
 
         return services;
     }

@@ -13,8 +13,9 @@ public class MappingProfile : Profile
     public MappingProfile()
     {
         // Employee mappings
-        CreateMap<Employee, EmployeeDto>();
+        CreateMap<Employee, EmployeeDto>().MaxDepth(5);
         CreateMap<EmployeeDto, Employee>()
+            .MaxDepth(5)
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
@@ -22,22 +23,25 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.PerformanceCapabilities, opt => opt.Ignore());
 
         // Administrative Status mappings
-        CreateMap<AdministrativeStatus, AdministrativeStatusDto>();
+        CreateMap<AdministrativeStatus, AdministrativeStatusDto>().MaxDepth(5);
         CreateMap<AdministrativeStatusDto, AdministrativeStatus>()
+            .MaxDepth(5)
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.Employee, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
 
         // Performance Capability mappings
-        CreateMap<PerformanceCapability, PerformanceCapabilityDto>();
+        CreateMap<PerformanceCapability, PerformanceCapabilityDto>().MaxDepth(5);
         CreateMap<PerformanceCapabilityDto, PerformanceCapability>()
+            .MaxDepth(5)
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.Employee, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
 
         CreateMap<CreatePerformanceCapabilityDto, PerformanceCapability>()
+            .MaxDepth(5)
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.EmployeeId, opt => opt.Ignore())
             .ForMember(dest => dest.Employee, opt => opt.Ignore())
@@ -46,14 +50,16 @@ public class MappingProfile : Profile
 
         // Employee Report mappings
         CreateMap<Employee, EmployeeReportDto>()
+            .MaxDepth(5)
             .ForMember(dest => dest.Employee, opt => opt.MapFrom(src => src))
             .ForMember(dest => dest.AdminStatus, opt => opt.MapFrom(src => src.AdministrativeStatus))
             .ForMember(dest => dest.Capabilities, opt => opt.MapFrom(src => src.PerformanceCapabilities));
 
         // User mappings
-        CreateMap<User, UserDto>();
+        CreateMap<User, UserDto>().MaxDepth(5);
         
         CreateMap<RegisterRequestDto, User>()
+            .MaxDepth(5)
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.PasswordHash, opt => opt.Ignore()) // Handled by AuthService
             .ForMember(dest => dest.IsActive, opt => opt.Ignore())

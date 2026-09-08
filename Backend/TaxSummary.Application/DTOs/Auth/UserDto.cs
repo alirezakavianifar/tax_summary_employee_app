@@ -18,9 +18,9 @@ public class UserDto
     public string Username { get; set; } = string.Empty;
 
     /// <summary>
-    /// Email address
+    /// Email address (optional)
     /// </summary>
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     /// <summary>
     /// User role
@@ -41,6 +41,21 @@ public class UserDto
     /// Associated employee information (if any)
     /// </summary>
     public EmployeeDto? Employee { get; set; }
+
+    /// <summary>
+    /// Account lockout expiration (null if not locked)
+    /// </summary>
+    public DateTime? LockoutEnd { get; set; }
+
+    /// <summary>
+    /// Consecutive failed login attempts
+    /// </summary>
+    public int FailedLoginAttempts { get; set; }
+
+    /// <summary>
+    /// Whether the user is required to change password on next login
+    /// </summary>
+    public bool MustChangePassword { get; set; }
 
     /// <summary>
     /// Account creation date

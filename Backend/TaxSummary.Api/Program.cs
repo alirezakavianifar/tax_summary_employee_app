@@ -1,7 +1,9 @@
 using System.Text;
 using System.Text.Json;
+using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using TaxSummary.Api.Middleware;
@@ -44,7 +46,9 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateEmployeeReportValidat
 
 // Add JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+var secretKey = builder.Configuration["JWT_SECRET_KEY"] 
+    ?? jwtSettings["SecretKey"] 
+    ?? throw new InvalidOperationException("JWT SecretKey is not configured. Set JWT_SECRET_KEY environment variable or configure JwtSettings:SecretKey.");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -84,15 +88,73 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // Add CORS
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:3000", "http://localhost:3001" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.SetIsOriginAllowed(origin => true) // Allow any origin
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials(); // Support cookies/credentials
     });
+});
+
+// Add Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Strict policy for authentication endpoints (mitigates brute-force attacks)
+    options.AddPolicy("AuthPolicy", httpContext =>
+    {
+        var clientIp = httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+            ?? "anonymous";
+
+        return RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: clientIp,
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 6,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
+
+    // General rate limit for standard API endpoints (100 requests per minute)
+    options.AddPolicy("GeneralPolicy", httpContext =>
+    {
+        var clientIp = httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+            ?? "anonymous";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: clientIp,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "application/json; charset=utf-8";
+        await context.HttpContext.Response.WriteAsync(
+            JsonSerializer.Serialize(new
+            {
+                success = false,
+                message = "تعداد درخواست‌های ارسالی بیش از حد مجاز است. لطفاً پس از یک دقیقه مجدداً تلاش نمایید."
+            }), token);
+    };
 });
 
 // Add API documentation
@@ -172,6 +234,9 @@ if (app.Environment.IsDevelopment())
 // Use custom exception handling middleware
 app.UseExceptionHandlingMiddleware();
 
+// Use security headers middleware
+app.UseSecurityHeaders();
+
 // Use HTTPS redirection - Disabled for simpler local network deployment
 // if (!app.Environment.IsDevelopment())
 // {
@@ -183,6 +248,9 @@ app.UseStaticFiles();
 
 // Use CORS
 app.UseCors("AllowFrontend");
+
+// Use Rate Limiting
+app.UseRateLimiter();
 
 // Use authentication and authorization
 app.UseAuthentication();

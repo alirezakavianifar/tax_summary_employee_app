@@ -4,6 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { BasePortalModule } from '@/types/portal'
 import { CheckCircle2, ChevronLeft, ArrowUpRight } from 'lucide-react'
+import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 
 interface ModuleCardProps {
   module: BasePortalModule
@@ -26,7 +27,10 @@ const THEME_MAP: Record<string, { header: string; primaryBtn: string; hoverBorde
 }
 
 export default function ModuleCard({ module, userRole }: ModuleCardProps) {
-  const actions = module.getAuthorizedActions(userRole)
+  const { isActionVisible } = useMenuSettings()
+  const actions = module
+    .getAuthorizedActions(userRole)
+    .filter((a) => isActionVisible(a.href, module.id))
   const Icon = module.icon
   const theme = THEME_MAP[module.id] || {
     header: 'bg-gradient-to-r from-slate-800 to-slate-900 text-white',

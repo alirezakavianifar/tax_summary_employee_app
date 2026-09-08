@@ -165,6 +165,7 @@ coverage/
 *.temp
 *.rar
 *.zip
+scratch/
 
 # Uploaded employee photos (except .gitkeep and test image)
 Backend/TaxSummary.Api/wwwroot/uploads/employee-photos/*

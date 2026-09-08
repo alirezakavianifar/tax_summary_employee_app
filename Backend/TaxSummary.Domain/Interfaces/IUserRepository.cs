@@ -71,5 +71,5 @@ public interface IUserRepository
     /// <summary>
     /// Check if email already exists
     /// </summary>
-    Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default);
+    Task<bool> EmailExistsAsync(string? email, CancellationToken cancellationToken = default);
 }

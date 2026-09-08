@@ -31,5 +31,15 @@ export const usersApi = {
 
     deleteUser: async (id: string) => {
         await apiClient.delete(`/users/${id}`)
+    },
+
+    resetPassword: async (id: string, newPassword: string) => {
+        const response = await apiClient.post<{ message: string }>(`/users/${id}/reset-password`, { newPassword })
+        return response.data
+    },
+
+    unlockUser: async (id: string) => {
+        const response = await apiClient.post<{ message: string }>(`/users/${id}/unlock`)
+        return response.data
     }
 }

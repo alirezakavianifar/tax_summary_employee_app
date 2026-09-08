@@ -16,9 +16,9 @@ public class User
     public string Username { get; private set; }
 
     /// <summary>
-    /// Email address (unique)
+    /// Email address (optional)
     /// </summary>
-    public string Email { get; private set; }
+    public string? Email { get; private set; }
 
     /// <summary>
     /// Hashed password (BCrypt)
@@ -36,11 +36,16 @@ public class User
     public bool IsActive { get; private set; }
 
     /// <summary>
+    /// Indicates whether user is required to change password on next login
+    /// </summary>
+    public bool MustChangePassword { get; private set; }
+
+    /// <summary>
     /// Update user details
     /// </summary>
-    public void UpdateDetails(string email, string role, bool isActive, Guid? employeeId)
+    public void UpdateDetails(string? email, string role, bool isActive, Guid? employeeId)
     {
-        Email = email.ToLowerInvariant();
+        Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant();
         Role = role;
         IsActive = isActive;
         EmployeeId = employeeId;
@@ -90,16 +95,13 @@ public class User
     /// </summary>
     public static User Create(
         string username,
-        string email,
-        string passwordHash,
-        string role,
+        string? email = null,
+        string passwordHash = "",
+        string role = "Employee",
         Guid? employeeId = null)
     {
         if (string.IsNullOrWhiteSpace(username))
             throw new ArgumentException("نام کاربری نمی‌تواند خالی باشد", nameof(username));
-
-        if (string.IsNullOrWhiteSpace(email))
-            throw new ArgumentException("ایمیل نمی‌تواند خالی باشد", nameof(email));
 
         if (string.IsNullOrWhiteSpace(passwordHash))
             throw new ArgumentException("رمز عبور نمی‌تواند خالی باشد", nameof(passwordHash));
@@ -115,10 +117,11 @@ public class User
         {
             Id = Guid.NewGuid(),
             Username = username.Trim(),
-            Email = email.Trim().ToLowerInvariant(),
+            Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant(),
             PasswordHash = passwordHash,
             Role = role,
             IsActive = true,
+            MustChangePassword = false,
             FailedLoginAttempts = 0,
             LockoutEnd = null,
             CreatedAt = DateTime.UtcNow,
@@ -130,7 +133,7 @@ public class User
     }
 
     /// <summary>
-    /// Update password hash
+    /// Update password hash and reset MustChangePassword flag
     /// </summary>
     public void UpdatePassword(string newPasswordHash)
     {
@@ -138,6 +141,16 @@ public class User
             throw new ArgumentException("رمز عبور نمی‌تواند خالی باشد", nameof(newPasswordHash));
 
         PasswordHash = newPasswordHash;
+        MustChangePassword = false;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Force user to change password on next login
+    /// </summary>
+    public void RequirePasswordChange()
+    {
+        MustChangePassword = true;
         UpdatedAt = DateTime.UtcNow;
     }
 

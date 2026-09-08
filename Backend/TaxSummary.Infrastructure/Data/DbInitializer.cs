@@ -28,13 +28,17 @@ public static class DbInitializer
         }
 
         // Check if we already have both employees and users
-        if (await context.Employees.AnyAsync() && await context.Users.AnyAsync())
+        if (!await context.Employees.AnyAsync() || !await context.Users.AnyAsync())
         {
-            return; // Database has been fully seeded
+            // Seed sample data
+            await SeedSampleDataAsync(context);
         }
 
-        // Seed sample data
-        await SeedSampleDataAsync(context);
+        // Seed Tax Refund benchmark case
+        await SeedTaxRefundDataAsync(context);
+
+        // Seed Menu & Module Visibility Settings
+        await SeedMenuSettingsAsync(context);
     }
 
     private static async Task SeedSampleDataAsync(TaxSummaryDbContext context)
@@ -190,5 +194,194 @@ public static class DbInitializer
             .Include(e => e.AdministrativeStatus)
             .Include(e => e.PerformanceCapabilities)
             .FirstOrDefaultAsync(e => e.PersonnelNumber == personnelNumber);
+    }
+
+    private static async Task SeedTaxRefundDataAsync(TaxSummaryDbContext context)
+    {
+        if (await context.TaxRefundCases.AnyAsync())
+        {
+            return;
+        }
+
+        var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "admin");
+        var adminUserId = adminUser?.Id ?? Guid.NewGuid();
+
+        var refundCase = TaxRefundCase.Create(
+            caseTrackingNumber: "TRC-1403-0001",
+            docketNumber: "87",
+            taxpayerName: "شرکت نمونه",
+            economicCode: "1234567890",
+            taxUnitCode: "160300",
+            province: "خوزستان",
+            city: "اهواز",
+            address: "اهواز کیانپارس خ 17",
+            bankName: "ملی",
+            shebaNumber: "IR160120000000001234567890",
+            taxYear: 1402,
+            period: 1,
+            taxSource: TaxSourceType.CorporateIncome,
+            refundReason: "اشتباه واریزی و اضافه پرداختی عملکرد سال 1402",
+            administrationHeadName: "غلامرضا اسلامی",
+            groupHeadName: "مسعود بصیر",
+            seniorAuditorName: "مهدی دلفی",
+            createdByUserId: adminUserId,
+            nationalId: "10100000000"
+        );
+
+        // Assessment Info
+        var assessment = TaxAssessmentInfo.Create(
+            hasReturnFiled: true,
+            returnNumber: "654321987",
+            returnDateJalali: "1403/04/31",
+            finalizationMethod: FinalizationMethod.AliRas,
+            finalNoticeNumber: "326541789",
+            finalNoticeDateJalali: "1403/10/20",
+            assessedIncome: 1_000_000_000,
+            exemptions: 0,
+            assessedTax: 250_000_000,
+            nonWaivablePenalties: 0,
+            timelyPaymentBonus: 0
+        );
+        refundCase.UpdateAssessmentInfo(assessment);
+
+        // Breakdown
+        var breakdown = RefundBreakdown.Create(
+            principalTaxRefund: 65_000_000,
+            stampDutyRefund: 0,
+            otherRefund: 0,
+            penaltiesRefund: 0,
+            delayDamages: 0
+        );
+        refundCase.UpdateBreakdown(breakdown);
+
+        // Receipts (Table A)
+        var receipt1 = refundCase.AddReceipt(
+            rowIndex: 1,
+            receiptNumber: "987654321",
+            issueDateJalali: "1403/05/01",
+            paymentDateJalali: "1403/05/01",
+            amountRials: 300_000_000,
+            bankBranch: "اهواز",
+            city: "اهواز",
+            revenueLedgerRow: "ردیف 1"
+        );
+
+        var receipt2 = refundCase.AddReceipt(
+            rowIndex: 2,
+            receiptNumber: "654321987",
+            issueDateJalali: "1403/05/02",
+            paymentDateJalali: "1403/05/02",
+            amountRials: 15_000_000,
+            bankBranch: "اهواز",
+            city: "اهواز",
+            revenueLedgerRow: "ردیف 2"
+        );
+
+        // Allocations (Table B) - Refunding from receipt 1
+        refundCase.AddAllocation(
+            taxRefundReceiptId: receipt1.Id,
+            receiptNumber: receipt1.ReceiptNumber,
+            totalReceiptAmount: receipt1.AmountRials,
+            refundableAmount: 65_000_000,
+            bankBranch: receipt1.BankBranch,
+            city: receipt1.City,
+            revenueLedgerRow: receipt1.RevenueLedgerRow
+        );
+
+        // Official Letters
+        refundCase.AddLetter(
+            letterType: TaxRefundLetterType.InboundTaxpayerRequest,
+            letterNumber: "526314",
+            letterDateJalali: "1405/01/25",
+            description: "درخواست استرداد مودی همراه با مدارک مثبته و تاییدیه حساب بانکی"
+        );
+
+        refundCase.AddLetter(
+            letterType: TaxRefundLetterType.CollectionAndEnforcementInquiry,
+            letterNumber: "1235465",
+            letterDateJalali: "1405/02/01",
+            description: "استعلام بدهی از واحد وصول و اجرا - فاقد بدهی قطعی",
+            debtAmount: 0
+        );
+
+        refundCase.AddLetter(
+            letterType: TaxRefundLetterType.WithholdingTaxInquiry,
+            letterNumber: "6532487",
+            letterDateJalali: "1405/02/01",
+            description: "استعلام بدهی از واحد مالیات تکلیفی و حقوق - فاقد بدهی قطعی",
+            debtAmount: 0
+        );
+
+        refundCase.AddLetter(
+            letterType: TaxRefundLetterType.RefundVoucher,
+            letterNumber: "526",
+            letterDateJalali: "1405/02/01",
+            description: "برگ استرداد صادره موضوع ماده ۲۴۲ قانون مالیات‌های مستقیم"
+        );
+
+        refundCase.AddLetter(
+            letterType: TaxRefundLetterType.JustificationReport,
+            letterNumber: "123456",
+            letterDateJalali: "1405/02/01",
+            description: "گزارش توجیه استرداد اضافه دریافتی اداره امور مالیاتی"
+        );
+
+        refundCase.AddLetter(
+            letterType: TaxRefundLetterType.OfficeCommitment,
+            letterNumber: "123456",
+            letterDateJalali: "1405/02/01",
+            description: "فرم تعهد کارشناس ارشد امور مالیاتی موضوع عدم استرداد قبلی قبوض"
+        );
+
+        refundCase.AddLetter(
+            letterType: TaxRefundLetterType.TreasuryLetter,
+            letterNumber: "4444412",
+            letterDateJalali: "1405/02/05",
+            description: "نامه ارسالی به ذیحسابی و اداره کل امور مالی جهت پرداخت وجه استرداد"
+        );
+
+        // Approval History (Workflow Actions)
+        refundCase.TransitionStatus(
+            RefundCaseStatus.Audited,
+            adminUserId,
+            "مهدی دلفی",
+            "کارشناس ارشد مالیاتی",
+            "رسیدگی انجام و مازاد پرداختی ۶۵،۰۰۰،۰۰۰ ریال تایید گردید."
+        );
+
+        refundCase.TransitionStatus(
+            RefundCaseStatus.GroupHeadApproved,
+            adminUserId,
+            "مسعود بصیر",
+            "رئیس گروه مالیاتی",
+            "گزارش استرداد و مستندات قبوض و استعلامات بررسی و مورد موافقت است."
+        );
+
+        context.TaxRefundCases.Add(refundCase);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedMenuSettingsAsync(TaxSummaryDbContext context)
+    {
+        var defaultMenus = TaxSummary.Domain.Common.DefaultMenuSettings.GetDefaults();
+
+        if (!await context.MenuSettings.AnyAsync())
+        {
+            await context.MenuSettings.AddRangeAsync(defaultMenus);
+            await context.SaveChangesAsync();
+            return;
+        }
+
+        // Add any newly introduced default menu items that are not yet in the database
+        var existingKeys = await context.MenuSettings.Select(m => m.MenuKey.ToLower()).ToListAsync();
+        var missingMenus = defaultMenus
+            .Where(m => !existingKeys.Contains(m.MenuKey.ToLower()))
+            .ToList();
+
+        if (missingMenus.Any())
+        {
+            await context.MenuSettings.AddRangeAsync(missingMenus);
+            await context.SaveChangesAsync();
+        }
     }
 }

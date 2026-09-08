@@ -20,12 +20,11 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequestDto>
             .WithMessage("نام کاربری فقط می‌تواند شامل حروف انگلیسی، اعداد، نقطه، خط تیره و زیرخط باشد");
 
         RuleFor(x => x.Email)
-            .NotEmpty()
-            .WithMessage("ایمیل الزامی است")
             .EmailAddress()
             .WithMessage("فرمت ایمیل معتبر نیست")
             .MaximumLength(100)
-            .WithMessage("ایمیل نباید بیشتر از 100 کاراکتر باشد");
+            .WithMessage("ایمیل نباید بیشتر از 100 کاراکتر باشد")
+            .When(x => !string.IsNullOrWhiteSpace(x.Email));
 
         RuleFor(x => x.Password)
             .NotEmpty()
