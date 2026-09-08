@@ -80,7 +80,8 @@ export function JustificationReportPart1Print({ data }: JustificationReportPart1
           <span className="font-bold">۳-</span>
           <p>
             پس از رسیدگی‌های انجام شده توسط این واحد مالیاتی و به موجب{' '}
-            <span className="font-bold">«{data.assessment.finalizationMethod || 'رسیدگی به دفاتر قانونی'}»</span> مالیات
+            <span className="font-bold">«{data.assessment.finalizationMethodName || 'رسیدگی به دفاتر قانونی'}»</span>
+            {data.assessment.finalityStageName ? ` و در مرحله قطعیت «${data.assessment.finalityStageName}»` : ''} مالیات
             عملکرد به شرح جدول زیر قطعی گردیده است.
           </p>
         </div>

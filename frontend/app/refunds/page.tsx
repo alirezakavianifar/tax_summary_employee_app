@@ -70,14 +70,25 @@ export default function RefundsDashboardPage() {
     fetchCases()
   }
 
-  const handleDeleteCase = async (id: string, name: string) => {
-    if (!confirm(`آیا از حذف پرونده استرداد «${name}» اطمینان دارید؟`)) return
+  const [deletingCase, setDeletingCase] = useState<{ id: string; name: string; trackingNumber: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCase) return
 
     try {
-      await taxRefundApi.deleteCase(id)
-      fetchCases()
+      setIsDeleting(true)
+      setError(null)
+      await taxRefundApi.deleteCase(deletingCase.id)
+      setCases((prev) => prev.filter((c) => c.id !== deletingCase.id))
+      setSuccessMessage(`پرونده استرداد «${deletingCase.name}» (${deletingCase.trackingNumber}) با موفقیت حذف گردید.`)
+      setDeletingCase(null)
+      setTimeout(() => setSuccessMessage(null), 5000)
     } catch (err: any) {
-      alert(err.message || 'خطا در حذف پرونده')
+      setError(err.message || 'خطا در حذف پرونده')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -237,6 +248,22 @@ export default function RefundsDashboardPage() {
           </form>
         </div>
 
+        {/* Success Alert */}
+        {successMessage && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 text-xs font-bold flex items-center justify-between shadow-sm animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+              <span>{successMessage}</span>
+            </div>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="text-emerald-700 hover:text-emerald-900 text-xs px-2 py-1 rounded-lg hover:bg-emerald-100 transition-colors"
+            >
+              بستن
+            </button>
+          </div>
+        )}
+
         {/* Cases Data Table */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
@@ -350,13 +377,24 @@ export default function RefundsDashboardPage() {
                               <Download className="w-4 h-4" />
                             </button>
 
-                            {c.status === RefundCaseStatus.Draft && (
+                            {(c.status === RefundCaseStatus.Draft || c.status === RefundCaseStatus.Rejected) && (
                               <button
-                                onClick={() => handleDeleteCase(c.id, c.taxpayerName)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="حذف پیش‌نویس"
+                                onClick={() =>
+                                  setDeletingCase({
+                                    id: c.id,
+                                    name: c.taxpayerName,
+                                    trackingNumber: c.caseTrackingNumber,
+                                  })
+                                }
+                                disabled={isDeleting && deletingCase?.id === c.id}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                title="حذف پرونده"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                {isDeleting && deletingCase?.id === c.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
                               </button>
                             )}
                           </div>
@@ -370,6 +408,64 @@ export default function RefundsDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deletingCase && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          dir="rtl"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border border-gray-100 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200/80 text-rose-600 flex items-center justify-center mx-auto shadow-sm">
+              <Trash2 className="w-7 h-7" />
+            </div>
+
+            <div className="text-center space-y-2">
+              <h3 className="text-base font-black text-gray-900">
+                حذف پرونده استرداد
+              </h3>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                آیا از حذف پرونده استرداد متعلق به{' '}
+                <strong className="text-purple-950 font-bold">«{deletingCase.name}»</strong>{' '}
+                با شماره پیگیری{' '}
+                <strong className="text-purple-900 font-bold font-mono">
+                  {deletingCase.trackingNumber}
+                </strong>{' '}
+                اطمینان دارید؟
+              </p>
+
+              <div className="p-3 bg-rose-50/80 border border-rose-200 rounded-2xl text-[11px] text-rose-900 text-right mt-2 leading-relaxed">
+                ⚠️ <strong>توجه مهم:</strong> با حذف این پرونده، تمامی قبوض پرداختی، استعلامات و اسناد پیوست مرتبط با آن به صورت کامل از پایگاه داده حذف خواهند شد و این عملیات قابل بازگشت نیست.
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>در حال حذف پرونده...</span>
+                  </>
+                ) : (
+                  <span>حذف قطعی پرونده</span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setDeletingCase(null)}
+                disabled={isDeleting}
+                className="py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-colors"
+              >
+                انصراف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Excel Import Modal */}
       <ExcelImportModal

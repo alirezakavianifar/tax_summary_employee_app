@@ -11,7 +11,7 @@ Based on the legal, mathematical, and procedural specifications in [payback.md](
 graph TD
     subgraph Phase1_Domain["Phase 1: Domain Layer (TaxSummary.Domain)"]
         D1[Entities: TaxRefundCase, Receipts, Allocations, Letters]
-        D2[Enums: TaxSourceType, FinalizationMethod, RefundCaseStatus]
+        D2[Enums: TaxSourceType, FinalizationMethod, FinalityStage, RefundCaseStatus]
         D3[Value Objects: ShebaNumber, EconomicCode, NationalId]
     end
 
@@ -101,13 +101,20 @@ Create the core domain primitives in [TaxSummary.Domain](file:///e:/projects/tax
    - `PropertyRental` (اجاره املاک)
    - `PropertyTransfer` (نقل و انتقال املاک)
    - `Vehicles` (خودرو)
-2. **`FinalizationMethod`:**
+2. **`FinalizationMethod` (نحوه رسیدگی / مبنای تشخیص):**
    - `ReturnAccepted` (تایید اظهارنامه)
    - `AuditBooks` (رسیدگی به دفاتر)
    - `AliRas` (علی‌الراس)
    - `TaxExemption` (معافیت مالیاتی)
    - `LossAccepted` (قبول زیان)
-3. **`RefundCaseStatus`:**
+3. **`FinalityStage` (مرحله قطعیت پرونده مالیاتی):**
+   - `Tamkin` (تمکین)
+   - `TaxOfficeAgreement` (توافق در اداره امور مالیاتی)
+   - `PrimaryBoardRuling` (رای هیات بدوی)
+   - `AppellateBoardRuling` (رای هیات تجدید نظر)
+   - `Article251` (251 - هیأت موضوع ماده ۲۵۱ مکرر)
+   - `Article216` (216 - هیأت حل اختلاف ماده ۲۱۶)
+4. **`RefundCaseStatus`:**
    - `Draft` (پیش‌نویس)
    - `InquiriesPending` (در انتظار پاسخ استعلامات)
    - `Audited` (گزارش توجیهی تنظیم شده)
@@ -115,7 +122,7 @@ Create the core domain primitives in [TaxSummary.Domain](file:///e:/projects/tax
    - `AdministrationHeadApproved` (دستور استرداد صادر شده - تایید رئیس امور)
    - `TreasuryDisbursed` (پرداخت شده توسط ذیحسابی)
    - `Rejected` (رد شده)
-4. **Value Objects (`TaxSummary.Domain/ValueObjects/`):**
+5. **Value Objects (`TaxSummary.Domain/ValueObjects/`):**
    - `ShebaNumber.cs`: Validates `IR` prefix + 24 digits + MOD-97 ISO 7064 checksum.
    - `EconomicCode.cs`: Validates 10-12 digit Iranian tax economic codes.
    - `JalaliDate.cs`: Validates `YYYY/MM/DD` Shamsi format and leap-year boundaries.
@@ -154,7 +161,7 @@ Create `TaxRefundCase.cs` in [TaxSummary.Domain/Entities](file:///e:/projects/ta
 3. **`TaxRefundLetter.cs` (جدول نامه‌ها و استعلامات):**
    - Properties: `LetterType` (استعلام وصول و اجرا, استعلام حقوق, درخواست مودی, برگ استرداد, نامه ذیحسابی, تعهد اداره, گزارش توجیهی), `LetterNumber`, `LetterDateJalali`, `Description`, `DebtAmount`, `DebtYear`.
 4. **`TaxAssessmentInfo.cs` (فرآیند قطعی‌سازی پرونده):**
-   - Properties: `HasReturnFiled` (bool), `ReturnNumber`, `ReturnDateJalali`, `FinalizationMethod`, `FinalNoticeNumber`, `FinalNoticeDateJalali`, `AssessedIncome`, `Exemptions`, `AssessedTax`, `NonWaivablePenalties`, `TimelyPaymentBonus`.
+   - Properties: `HasReturnFiled` (bool), `ReturnNumber`, `ReturnDateJalali`, `FinalizationMethod` (نحوه قطعی شدن), `FinalityStage` (مرحله قطعیت: تمکین، توافق در اداره امور مالیاتی، رای هیات بدوی، رای هیات تجدید نظر، 251، 216), `FinalNoticeNumber`, `FinalNoticeDateJalali`, `AssessedIncome`, `Exemptions`, `AssessedTax`, `NonWaivablePenalties`, `TimelyPaymentBonus`.
 5. **`RefundBreakdown.cs` (شرح مبالغ قابل استرداد):**
    - Properties: `PrincipalTaxRefund`, `StampDutyRefund`, `OtherRefund`, `PenaltiesRefund`, `DelayDamages`, `GrandTotalRefundable`.
 
@@ -433,6 +440,13 @@ Interactive circulars panel:
 
 ### Step 5.6: Step 4 & 5 - Tax Assessment & Live Reactive Calculation Mirror
 - Inputs for Return Filing (Yes/No, Number, Date), Finalization Method (Ali-al-Ras, Books, etc.), Final Notice No./Date.
+- **مرحله قطعیت (Assessment Finality Stage):** Dropdown with 6 legal stages:
+  1. `تمکین` (Tamkin)
+  2. `توافق در اداره امور مالیاتی` (Tax Office Agreement - Art. 238)
+  3. `رای هیات بدوی` (Primary Board Ruling)
+  4. `رای هیات تجدید نظر` (Appellate Board Ruling)
+  5. `251` (Article 251 bis)
+  6. `216` (Article 216)
 - Financial entries: Assessed Income, Exemptions, Assessed Tax, Non-waivable Penalties, Timely Bonus.
 - **Client-Side Reactive Calculation Card (Sticky sidebar or bottom summary):**
   - Displays live calculation of:

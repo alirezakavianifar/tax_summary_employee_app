@@ -57,6 +57,9 @@ public class TaxAssessmentInfoValidator : AbstractValidator<UpdateTaxAssessmentI
 
         RuleFor(x => x.TimelyPaymentBonus)
             .GreaterThanOrEqualTo(0).WithMessage("جایزه خوش‌حسابی نمی‌تواند منفی باشد");
+
+        RuleFor(x => x.FinalityStage)
+            .IsInEnum().WithMessage("مرحله قطعیت پرونده نامعتبر است");
     }
 }
 

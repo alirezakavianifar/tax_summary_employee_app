@@ -108,6 +108,8 @@ public class TaxRefundExcelService : ITaxRefundExcelService
             var finalizationMethod = ParseFinalizationMethod(finalMethodText);
             var finalNoticeNumber = GetString(sheet, "E42");
             var finalNoticeDate = GetString(sheet, "E44");
+            var finalStageText = GetString(sheet, "E41");
+            var finalityStage = ParseFinalityStage(finalStageText);
             var assessedIncome = GetDecimal(sheet, "E46");
             var exemptions = GetDecimal(sheet, "E48");
             var assessedTax = GetDecimal(sheet, "E52");
@@ -125,7 +127,8 @@ public class TaxRefundExcelService : ITaxRefundExcelService
                 exemptions,
                 assessedTax,
                 nonWaivablePenalties,
-                timelyBonus);
+                timelyBonus,
+                finalityStage);
             refundCase.UpdateAssessmentInfo(assessment);
 
             // 3. Refund Breakdown
@@ -487,6 +490,29 @@ public class TaxRefundExcelService : ITaxRefundExcelService
         FinalizationMethod.TaxExemption => "معافیت قانونی",
         FinalizationMethod.LossAccepted => "قبول زیان",
         _ => "علی‌الراس"
+    };
+
+    private static FinalityStage ParseFinalityStage(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return FinalityStage.Tamkin;
+        if (text.Contains("توافق")) return FinalityStage.TaxOfficeAgreement;
+        if (text.Contains("بدوی")) return FinalityStage.PrimaryBoardRuling;
+        if (text.Contains("تجدید")) return FinalityStage.AppellateBoardRuling;
+        if (text.Contains("251") || text.Contains("۲۵۱")) return FinalityStage.Article251;
+        if (text.Contains("216") || text.Contains("۲۱۶")) return FinalityStage.Article216;
+        if (text.Contains("تمکین")) return FinalityStage.Tamkin;
+        return FinalityStage.Tamkin;
+    }
+
+    private static string GetFinalityStagePersian(FinalityStage stage) => stage switch
+    {
+        FinalityStage.Tamkin => "تمکین",
+        FinalityStage.TaxOfficeAgreement => "توافق در اداره امور مالیاتی",
+        FinalityStage.PrimaryBoardRuling => "رای هیات بدوی",
+        FinalityStage.AppellateBoardRuling => "رای هیات تجدید نظر",
+        FinalityStage.Article251 => "251",
+        FinalityStage.Article216 => "216",
+        _ => "تمکین"
     };
 
     private static string NormalizeOrFallbackSheba(string? rawSheba)

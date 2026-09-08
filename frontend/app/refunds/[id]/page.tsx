@@ -31,6 +31,7 @@ import {
   RefundCaseStatusLabels,
   TaxRefundLetterTypeLabels,
   FinalizationMethodLabels,
+  FinalityStageLabels,
 } from '@/types/taxRefund'
 import { DocumentsSection } from '@/components/refunds/DocumentsSection'
 import { PdfViewerModal } from '@/components/refunds/PdfViewerModal'
@@ -196,6 +197,8 @@ export default function TaxRefundDetailPage() {
                 <span>سال مالیاتی: <strong className="font-mono text-gray-800">{refundCase.taxYear}</strong></span>
                 <span>منبع: <strong className="text-gray-800">{refundCase.taxSourceDescription}</strong></span>
                 <span>واحد مالیاتی: <strong className="font-mono text-gray-800">{refundCase.taxUnitCode} ({refundCase.city})</strong></span>
+                <span>مرحله قطعیت: <strong className="text-purple-900 font-bold bg-purple-100/70 px-2 py-0.5 rounded-lg">{FinalityStageLabels[refundCase.assessmentInfo?.finalityStage] || refundCase.assessmentInfo?.finalityStageName || 'تمکین'}</strong></span>
+                <span>نحوه رسیدگی: <strong className="text-gray-800">{FinalizationMethodLabels[refundCase.assessmentInfo?.finalizationMethod] || refundCase.assessmentInfo?.finalizationMethodName || 'علی‌الراس'}</strong></span>
               </div>
             </div>
 

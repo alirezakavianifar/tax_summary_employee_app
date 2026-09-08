@@ -145,7 +145,14 @@ public class TaxRefundRepository : ITaxRefundRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var refundCase = await _context.TaxRefundCases.FindAsync(new object[] { id }, cancellationToken);
+        var refundCase = await _context.TaxRefundCases
+            .Include(c => c.Receipts)
+            .Include(c => c.Allocations)
+            .Include(c => c.Letters)
+            .Include(c => c.Approvals)
+            .Include(c => c.Documents)
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
         if (refundCase != null)
         {
             _context.TaxRefundCases.Remove(refundCase);

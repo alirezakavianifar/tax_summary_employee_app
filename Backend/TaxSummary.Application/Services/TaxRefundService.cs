@@ -178,7 +178,8 @@ public class TaxRefundService : ITaxRefundService
                     dto.AssessmentInfo.Exemptions,
                     dto.AssessmentInfo.AssessedTax,
                     dto.AssessmentInfo.NonWaivablePenalties,
-                    dto.AssessmentInfo.TimelyPaymentBonus));
+                    dto.AssessmentInfo.TimelyPaymentBonus,
+                    dto.AssessmentInfo.FinalityStage));
             }
 
             // Perform calculation and store breakdown
@@ -257,11 +258,25 @@ public class TaxRefundService : ITaxRefundService
         if (refundCase == null)
             return Result.Failure("پرونده استرداد یافت نشد");
 
-        if (refundCase.Status != RefundCaseStatus.Draft)
-            return Result.Failure("فقط پرونده‌های در وضعیت پیش‌نویس قابل حذف هستند");
+        if (refundCase.Status != RefundCaseStatus.Draft && refundCase.Status != RefundCaseStatus.Rejected)
+            return Result.Failure("فقط پرونده‌های در وضعیت پیش‌نویس یا رد شده قابل حذف هستند");
 
         await _repository.DeleteAsync(id, ct);
         await _unitOfWork.SaveChangesAsync(ct);
+
+        try
+        {
+            var uploadsFolder = Path.Combine(AppContext.BaseDirectory, "App_Data", "uploads", "refund-documents", id.ToString());
+            if (Directory.Exists(uploadsFolder))
+            {
+                Directory.Delete(uploadsFolder, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to clean up refund documents directory for case {CaseId}", id);
+        }
+
         return Result.Success();
     }
 
@@ -451,7 +466,8 @@ public class TaxRefundService : ITaxRefundService
                 dto.Exemptions,
                 dto.AssessedTax,
                 dto.NonWaivablePenalties,
-                dto.TimelyPaymentBonus);
+                dto.TimelyPaymentBonus,
+                dto.FinalityStage);
 
             refundCase.UpdateAssessmentInfo(assessment);
             RecalculateAndStoreBreakdown(refundCase);

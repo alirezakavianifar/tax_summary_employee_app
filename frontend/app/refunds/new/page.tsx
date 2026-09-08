@@ -24,6 +24,8 @@ import {
   TaxSourceLabels,
   FinalizationMethod,
   FinalizationMethodLabels,
+  FinalityStage,
+  FinalityStageLabels,
   CreateTaxRefundCaseInput,
 } from '@/types/taxRefund'
 import LiveCalculationCard from '@/components/refunds/LiveCalculationCard'
@@ -114,6 +116,7 @@ export default function NewTaxRefundCasePage() {
   const [returnNumber, setReturnNumber] = useState('654321987')
   const [returnDateJalali, setReturnDateJalali] = useState('1403/04/31')
   const [finalizationMethod, setFinalizationMethod] = useState<FinalizationMethod>(FinalizationMethod.AliRas)
+  const [finalityStage, setFinalityStage] = useState<FinalityStage>(FinalityStage.Tamkin)
   const [finalNoticeNumber, setFinalNoticeNumber] = useState('326541789')
   const [finalNoticeDateJalali, setFinalNoticeDateJalali] = useState('1403/10/20')
   const [assessedIncomeStr, setAssessedIncomeStr] = useState('1,000,000,000')
@@ -281,6 +284,7 @@ export default function NewTaxRefundCasePage() {
           returnNumber: returnNumber.trim() || undefined,
           returnDateJalali: returnDateJalali.trim() || undefined,
           finalizationMethod,
+          finalityStage,
           finalNoticeNumber: finalNoticeNumber.trim() || undefined,
           finalNoticeDateJalali: finalNoticeDateJalali.trim() || undefined,
           assessedIncome,
@@ -615,6 +619,19 @@ export default function NewTaxRefundCasePage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white"
                     >
                       {Object.entries(FinalizationMethodLabels).map(([k, lbl]) => (
+                        <option key={k} value={k}>{lbl}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">مرحله قطعیت *</label>
+                    <select
+                      value={finalityStage}
+                      onChange={(e) => setFinalityStage(Number(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white"
+                    >
+                      {Object.entries(FinalityStageLabels).map(([k, lbl]) => (
                         <option key={k} value={k}>{lbl}</option>
                       ))}
                     </select>

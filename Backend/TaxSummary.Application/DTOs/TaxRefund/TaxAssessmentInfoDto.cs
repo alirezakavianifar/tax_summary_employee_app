@@ -9,6 +9,8 @@ public class TaxAssessmentInfoDto
     public string? ReturnDateJalali { get; set; }
     public FinalizationMethod FinalizationMethod { get; set; }
     public string FinalizationMethodName { get; set; } = string.Empty;
+    public FinalityStage FinalityStage { get; set; } = FinalityStage.Tamkin;
+    public string FinalityStageName { get; set; } = string.Empty;
     public string? FinalNoticeNumber { get; set; }
     public string? FinalNoticeDateJalali { get; set; }
     public decimal AssessedIncome { get; set; }
@@ -26,6 +28,7 @@ public class UpdateTaxAssessmentInfoDto
     public string? ReturnNumber { get; set; }
     public string? ReturnDateJalali { get; set; }
     public FinalizationMethod FinalizationMethod { get; set; }
+    public FinalityStage FinalityStage { get; set; } = FinalityStage.Tamkin;
     public string? FinalNoticeNumber { get; set; }
     public string? FinalNoticeDateJalali { get; set; }
     public decimal AssessedIncome { get; set; }

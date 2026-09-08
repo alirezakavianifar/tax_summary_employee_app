@@ -171,3 +171,40 @@ public enum TaxRefundLetterType
     /// </summary>
     TreasuryLetter = 10
 }
+
+/// <summary>
+/// Stage at which the tax assessment became final
+/// مرحله قطعیت پرونده مالیاتی
+/// </summary>
+public enum FinalityStage
+{
+    /// <summary>
+    /// تمکین
+    /// </summary>
+    Tamkin = 1,
+
+    /// <summary>
+    /// توافق در اداره امور مالیاتی
+    /// </summary>
+    TaxOfficeAgreement = 2,
+
+    /// <summary>
+    /// رای هیات بدوی
+    /// </summary>
+    PrimaryBoardRuling = 3,
+
+    /// <summary>
+    /// رای هیات تجدید نظر
+    /// </summary>
+    AppellateBoardRuling = 4,
+
+    /// <summary>
+    /// 251 (ماده ۲۵۱ مکرر)
+    /// </summary>
+    Article251 = 5,
+
+    /// <summary>
+    /// 216 (ماده ۲۱۶)
+    /// </summary>
+    Article216 = 6
+}

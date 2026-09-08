@@ -10,6 +10,7 @@ public class TaxAssessmentInfo
     public string? ReturnNumber { get; private set; }
     public string? ReturnDateJalali { get; private set; }
     public FinalizationMethod FinalizationMethod { get; private set; }
+    public FinalityStage FinalityStage { get; private set; } = FinalityStage.Tamkin;
     public string? FinalNoticeNumber { get; private set; }
     public string? FinalNoticeDateJalali { get; private set; }
 
@@ -62,7 +63,8 @@ public class TaxAssessmentInfo
         decimal exemptions = 0,
         decimal assessedTax = 0,
         decimal nonWaivablePenalties = 0,
-        decimal timelyPaymentBonus = 0)
+        decimal timelyPaymentBonus = 0,
+        FinalityStage finalityStage = FinalityStage.Tamkin)
     {
         if (assessedIncome < 0)
             throw new ArgumentException("درآمد تشخیصی نمی‌تواند منفی باشد", nameof(assessedIncome));
@@ -85,6 +87,7 @@ public class TaxAssessmentInfo
             ReturnNumber = returnNumber?.Trim(),
             ReturnDateJalali = returnDateJalali?.Trim(),
             FinalizationMethod = finalizationMethod,
+            FinalityStage = finalityStage,
             FinalNoticeNumber = finalNoticeNumber?.Trim(),
             FinalNoticeDateJalali = finalNoticeDateJalali?.Trim(),
             AssessedIncome = assessedIncome,

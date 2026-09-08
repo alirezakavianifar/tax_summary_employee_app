@@ -135,4 +135,36 @@ public class TaxRefundValidatorsTests
         var result = _assessmentValidator.TestValidate(dto);
         result.ShouldHaveValidationErrorFor(x => x.AssessedIncome);
     }
+
+    [Fact]
+    public void TaxAssessmentInfoValidator_InvalidFinalityStage_ShouldHaveError()
+    {
+        var dto = new UpdateTaxAssessmentInfoDto
+        {
+            AssessedIncome = 1_000_000,
+            FinalityStage = (FinalityStage)999
+        };
+
+        var result = _assessmentValidator.TestValidate(dto);
+        result.ShouldHaveValidationErrorFor(x => x.FinalityStage);
+    }
+
+    [Theory]
+    [InlineData(FinalityStage.Tamkin)]
+    [InlineData(FinalityStage.TaxOfficeAgreement)]
+    [InlineData(FinalityStage.PrimaryBoardRuling)]
+    [InlineData(FinalityStage.AppellateBoardRuling)]
+    [InlineData(FinalityStage.Article251)]
+    [InlineData(FinalityStage.Article216)]
+    public void TaxAssessmentInfoValidator_ValidFinalityStage_ShouldNotHaveError(FinalityStage stage)
+    {
+        var dto = new UpdateTaxAssessmentInfoDto
+        {
+            AssessedIncome = 1_000_000,
+            FinalityStage = stage
+        };
+
+        var result = _assessmentValidator.TestValidate(dto);
+        result.ShouldNotHaveValidationErrorFor(x => x.FinalityStage);
+    }
 }

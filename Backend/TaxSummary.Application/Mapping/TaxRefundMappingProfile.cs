@@ -20,7 +20,8 @@ public class TaxRefundMappingProfile : Profile
 
         CreateMap<TaxAssessmentInfo, TaxAssessmentInfoDto>()
             .MaxDepth(5)
-            .ForMember(dest => dest.FinalizationMethodName, opt => opt.MapFrom(src => GetFinalizationMethodName(src.FinalizationMethod)));
+            .ForMember(dest => dest.FinalizationMethodName, opt => opt.MapFrom(src => GetFinalizationMethodName(src.FinalizationMethod)))
+            .ForMember(dest => dest.FinalityStageName, opt => opt.MapFrom(src => GetFinalityStageName(src.FinalityStage)));
 
         CreateMap<RefundBreakdown, RefundBreakdownDto>().MaxDepth(5);
 
@@ -82,6 +83,17 @@ public class TaxRefundMappingProfile : Profile
         FinalizationMethod.TaxExemption => "معافیت مالیاتی",
         FinalizationMethod.LossAccepted => "قبول زیان",
         _ => method.ToString()
+    };
+
+    public static string GetFinalityStageName(FinalityStage stage) => stage switch
+    {
+        FinalityStage.Tamkin => "تمکین",
+        FinalityStage.TaxOfficeAgreement => "توافق در اداره امور مالیاتی",
+        FinalityStage.PrimaryBoardRuling => "رای هیات بدوی",
+        FinalityStage.AppellateBoardRuling => "رای هیات تجدید نظر",
+        FinalityStage.Article251 => "251",
+        FinalityStage.Article216 => "216",
+        _ => stage.ToString()
     };
 
     public static string GetLetterTypeName(TaxRefundLetterType letterType) => letterType switch

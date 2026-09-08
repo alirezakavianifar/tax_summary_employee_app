@@ -34,6 +34,24 @@ export const FinalizationMethodLabels: Record<FinalizationMethod, string> = {
   [FinalizationMethod.LossAccepted]: 'قبول زیان',
 }
 
+export enum FinalityStage {
+  Tamkin = 1,
+  TaxOfficeAgreement = 2,
+  PrimaryBoardRuling = 3,
+  AppellateBoardRuling = 4,
+  Article251 = 5,
+  Article216 = 6,
+}
+
+export const FinalityStageLabels: Record<FinalityStage, string> = {
+  [FinalityStage.Tamkin]: 'تمکین',
+  [FinalityStage.TaxOfficeAgreement]: 'توافق در اداره امور مالیاتی',
+  [FinalityStage.PrimaryBoardRuling]: 'رای هیات بدوی',
+  [FinalityStage.AppellateBoardRuling]: 'رای هیات تجدید نظر',
+  [FinalityStage.Article251]: '251',
+  [FinalityStage.Article216]: '216',
+}
+
 export enum RefundCaseStatus {
   Draft = 0,
   InquiriesPending = 1,
@@ -85,6 +103,9 @@ export interface TaxAssessmentInfo {
   returnNumber?: string
   returnDateJalali?: string
   finalizationMethod: FinalizationMethod
+  finalizationMethodName?: string
+  finalityStage: FinalityStage
+  finalityStageName?: string
   finalNoticeNumber?: string
   finalNoticeDateJalali?: string
   assessedIncome: number
