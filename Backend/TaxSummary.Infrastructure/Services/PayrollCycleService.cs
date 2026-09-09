@@ -14,6 +14,7 @@ public class PayrollCycleService : IPayrollCycleService
     private readonly IPayrollCycleRepository _cycleRepository;
     private readonly IEmployeeRepository _employeeRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IPositionMappingService _positionMappingService;
     private readonly IUnitOfWork _unitOfWork;
 
     static PayrollCycleService()
@@ -25,11 +26,13 @@ public class PayrollCycleService : IPayrollCycleService
         IPayrollCycleRepository cycleRepository,
         IEmployeeRepository employeeRepository,
         IUserRepository userRepository,
+        IPositionMappingService positionMappingService,
         IUnitOfWork unitOfWork)
     {
         _cycleRepository = cycleRepository;
         _employeeRepository = employeeRepository;
         _userRepository = userRepository;
+        _positionMappingService = positionMappingService;
         _unitOfWork = unitOfWork;
     }
 
@@ -74,14 +77,42 @@ public class PayrollCycleService : IPayrollCycleService
                 seenNumbers.Add(num);
 
                 var dept = deptLookup.TryGetValue(num, out var d) ? d : "نامشخص";
-                var bonusBase = bonusLookup.TryGetValue(NormalizeKey(dept), out var b)
-                    ? GetDouble(b, "سرانه پاداش") : null;
+                bonusLookup.TryGetValue(NormalizeKey(dept), out var b);
+                var bonusBase = b != null ? GetDouble(b, "سرانه پاداش") : null;
 
                 var name = GetStr(n, "نام کارمند");
-                if (employeeLookup.TryGetValue(num, out var emp))
+                employeeLookup.TryGetValue(num, out var emp);
+                if (emp != null)
                 {
                     name = $"{emp.FirstName} {emp.LastName}".Trim();
                 }
+
+                // Standardize and join position from nim file's 'پست' column with master mapping table
+                var rawPost = GetStr(n, "پست");
+                if (string.IsNullOrWhiteSpace(rawPost)) rawPost = GetStr(n, "عنوان پست");
+                if (string.IsNullOrWhiteSpace(rawPost) && emp != null) rawPost = emp.CurrentPosition ?? emp.AppointmentPosition;
+
+                var standardizedPost = _positionMappingService.GetStandardizedPosition(rawPost);
+                n["پست"] = standardizedPost;
+
+                var isLabor = IsLaborPosition(emp);
+                var tier = _positionMappingService.ResolveTierFromPosition(standardizedPost);
+
+                // Tier caps: from file or standard multipliers
+                var groupHeadCap = b != null ? (GetDouble(b, "سرانه رئیس گروه") ?? GetDouble(b, "سقف رئیس گروه")) : null;
+                var seniorExpertCap = b != null ? (GetDouble(b, "سرانه کارشناس ارشد") ?? GetDouble(b, "سقف کارشناس ارشد")) : null;
+                var otherStaffCap = b != null ? (GetDouble(b, "سرانه سایر") ?? GetDouble(b, "سقف سایر")) : null;
+
+                groupHeadCap ??= (bonusBase.HasValue ? Math.Round(bonusBase.Value * 1.3, 0) : null);
+                seniorExpertCap ??= (bonusBase.HasValue ? Math.Round(bonusBase.Value * 1.15, 0) : null);
+                otherStaffCap ??= bonusBase;
+
+                var itemBonusLimit = tier switch
+                {
+                    PositionTier.GroupHead => groupHeadCap,
+                    PositionTier.SeniorExpert => seniorExpertCap,
+                    _ => otherStaffCap
+                };
 
                 if (!deptGroups.TryGetValue(dept, out var list))
                 {
@@ -94,7 +125,11 @@ public class PayrollCycleService : IPayrollCycleService
                     Guid.Empty,
                     num,
                     name,
-                    baseBonusAmount: bonusBase
+                    baseBonusAmount: bonusBase,
+                    isLaborPosition: isLabor,
+                    positionTier: tier,
+                    maxBonusLimit: itemBonusLimit,
+                    positionTitle: standardizedPost
                 );
                 list.Add(item);
             }
@@ -102,17 +137,41 @@ public class PayrollCycleService : IPayrollCycleService
             foreach (var kvp in deptGroups)
             {
                 var deptName = kvp.Key;
-                var bonusCap = bonusLookup.TryGetValue(NormalizeKey(deptName), out var b)
-                    ? GetDouble(b, "سرانه پاداش") : null;
+                bonusLookup.TryGetValue(NormalizeKey(deptName), out var b);
+                var bonusBase = b != null ? GetDouble(b, "سرانه پاداش") : null;
 
-                var deptEntry = PayrollDepartmentEntry.Create(cycle.Id, deptName, baseBonusCap: bonusCap);
+                var totalBonusCap = b != null
+                    ? (GetDouble(b, "جمع سرانه پاداش") ?? GetDouble(b, "سقف پاداش") ?? GetDouble(b, "جمع پاداش"))
+                    : null;
+                totalBonusCap ??= (bonusBase.HasValue ? bonusBase.Value * kvp.Value.Count : null);
+
+                var groupHeadCap = b != null ? (GetDouble(b, "سرانه رئیس گروه") ?? GetDouble(b, "سقف رئیس گروه")) : null;
+                var seniorExpertCap = b != null ? (GetDouble(b, "سرانه کارشناس ارشد") ?? GetDouble(b, "سقف کارشناس ارشد")) : null;
+                var otherStaffCap = b != null ? (GetDouble(b, "سرانه سایر") ?? GetDouble(b, "سقف سایر")) : null;
+
+                groupHeadCap ??= (bonusBase.HasValue ? Math.Round(bonusBase.Value * 1.3, 0) : null);
+                seniorExpertCap ??= (bonusBase.HasValue ? Math.Round(bonusBase.Value * 1.15, 0) : null);
+                otherStaffCap ??= bonusBase;
+
+                var deptEntry = PayrollDepartmentEntry.Create(
+                    cycle.Id,
+                    deptName,
+                    baseBonusCap: totalBonusCap,
+                    groupHeadBonusCap: groupHeadCap,
+                    seniorExpertBonusCap: seniorExpertCap,
+                    otherStaffBonusCap: otherStaffCap);
+
                 foreach (var item in kvp.Value)
                 {
                     var boundItem = PayrollEmployeeItem.Create(
                         deptEntry.Id,
                         item.PersonnelNumber,
                         item.EmployeeName,
-                        baseBonusAmount: item.BaseBonusAmount
+                        baseBonusAmount: item.BaseBonusAmount,
+                        isLaborPosition: item.IsLaborPosition,
+                        positionTier: item.PositionTier,
+                        maxBonusLimit: item.MaxBonusLimit,
+                        positionTitle: item.PositionTitle
                     );
                     deptEntry.Items.Add(boundItem);
                 }
@@ -152,10 +211,15 @@ public class PayrollCycleService : IPayrollCycleService
                 }
 
                 var name = GetStr(e, "نام کارمند");
-                if (employeeLookup.TryGetValue(num, out var emp))
+                employeeLookup.TryGetValue(num, out var emp);
+                if (emp != null)
                 {
                     name = $"{emp.FirstName} {emp.LastName}".Trim();
                 }
+
+                var isLabor = IsLaborPosition(emp);
+                var tier = ResolvePositionTier(emp);
+                var maxOt = isLabor ? PayrollBusinessRules.MaxOvertimeHoursLabor : PayrollBusinessRules.MaxOvertimeHoursStandard;
 
                 long? calcOvertime = null;
                 long? calcWelfare = null;
@@ -182,7 +246,10 @@ public class PayrollCycleService : IPayrollCycleService
                     baseOvertimeAmount: baseOvertime,
                     baseWelfareAmount: baseWelfare,
                     calculatedOvertimeAmount: calcOvertime,
-                    calculatedWelfareAmount: calcWelfare
+                    calculatedWelfareAmount: calcWelfare,
+                    isLaborPosition: isLabor,
+                    positionTier: tier,
+                    maxOvertimeLimit: maxOt
                 );
                 list.Add(item);
             }
@@ -206,10 +273,15 @@ public class PayrollCycleService : IPayrollCycleService
                 }
 
                 var name = string.Empty;
-                if (employeeLookup.TryGetValue(num, out var emp))
+                employeeLookup.TryGetValue(num, out var emp);
+                if (emp != null)
                 {
                     name = $"{emp.FirstName} {emp.LastName}".Trim();
                 }
+
+                var isLabor = IsLaborPosition(emp);
+                var tier = ResolvePositionTier(emp);
+                var maxOt = isLabor ? PayrollBusinessRules.MaxOvertimeHoursLabor : PayrollBusinessRules.MaxOvertimeHoursStandard;
 
                 long? calcWelfare = null;
                 if (isRated && baseWelfare.HasValue && welfareRate.HasValue)
@@ -232,7 +304,10 @@ public class PayrollCycleService : IPayrollCycleService
                     baseOvertimeAmount: baseOvertime,
                     baseWelfareAmount: baseWelfare,
                     calculatedOvertimeAmount: null,
-                    calculatedWelfareAmount: calcWelfare
+                    calculatedWelfareAmount: calcWelfare,
+                    isLaborPosition: isLabor,
+                    positionTier: tier,
+                    maxOvertimeLimit: maxOt
                 );
                 list.Add(item);
             }
@@ -242,13 +317,21 @@ public class PayrollCycleService : IPayrollCycleService
                 var deptName = kvp.Key;
                 double? baseOvertime = null;
                 double? baseWelfare = null;
+                double? totalOvertimeCap = null;
+                double? totalWelfareCap = null;
+
                 if (coefLookup.TryGetValue(NormalizeKey(deptName), out var coef))
                 {
                     baseOvertime = GetDouble(coef, "سرانه اضافه کار");
                     baseWelfare = GetDouble(coef, "سرانه رفاهی");
+                    totalOvertimeCap = GetDouble(coef, "سقف اضافه کار") ?? GetDouble(coef, "جمع اضافه کار") ?? GetDouble(coef, "جمع سرانه اضافه کار");
+                    totalWelfareCap = GetDouble(coef, "سقف رفاهی") ?? GetDouble(coef, "جمع رفاهی") ?? GetDouble(coef, "جمع سرانه رفاهی");
                 }
 
-                var deptEntry = PayrollDepartmentEntry.Create(cycle.Id, deptName, baseOvertime, baseWelfare);
+                totalOvertimeCap ??= (baseOvertime.HasValue ? baseOvertime.Value * kvp.Value.Count : null);
+                totalWelfareCap ??= (baseWelfare.HasValue ? baseWelfare.Value * kvp.Value.Count : null);
+
+                var deptEntry = PayrollDepartmentEntry.Create(cycle.Id, deptName, totalOvertimeCap, totalWelfareCap);
                 foreach (var item in kvp.Value)
                 {
                     var boundItem = PayrollEmployeeItem.Create(
@@ -261,7 +344,10 @@ public class PayrollCycleService : IPayrollCycleService
                         item.BaseWelfareAmount,
                         null,
                         item.CalculatedOvertimeAmount,
-                        item.CalculatedWelfareAmount
+                        item.CalculatedWelfareAmount,
+                        item.IsLaborPosition,
+                        item.PositionTier,
+                        item.MaxOvertimeLimit
                     );
                     deptEntry.Items.Add(boundItem);
                 }
@@ -359,7 +445,8 @@ public class PayrollCycleService : IPayrollCycleService
                     itemUpdate.AdjustedWelfareRate,
                     itemUpdate.OfficerNotes,
                     itemUpdate.IsExcluded,
-                    isRated
+                    isRated,
+                    itemUpdate.AdjustedBonusAmount
                 );
             }
         }
@@ -383,6 +470,7 @@ public class PayrollCycleService : IPayrollCycleService
         await ValidateDepartmentAccessAsync(dept.DepartmentName, currentUserId, currentUserRole, cancellationToken);
 
         var isRated = dept.PayrollCycle?.ProcessType == "OvertimeWelfareRated";
+        var processType = dept.PayrollCycle?.ProcessType ?? "OvertimeWelfareRated";
 
         if (dto.Items != null && dto.Items.Any())
         {
@@ -396,11 +484,15 @@ public class PayrollCycleService : IPayrollCycleService
                         itemUpdate.AdjustedWelfareRate,
                         itemUpdate.OfficerNotes,
                         itemUpdate.IsExcluded,
-                        isRated
+                        isRated,
+                        itemUpdate.AdjustedBonusAmount
                     );
                 }
             }
         }
+
+        // Validate that department limits/caps are not exceeded
+        dept.ValidateDepartmentLimits(processType);
 
         dept.Submit(currentUserId, dto.Notes);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -411,7 +503,7 @@ public class PayrollCycleService : IPayrollCycleService
     public async Task<PayrollDepartmentEntryDto> ReviewDepartmentAsync(
         Guid departmentEntryId,
         ReviewDepartmentDto dto,
-        Guid adminUserId,
+        Guid reviewerUserId,
         CancellationToken cancellationToken = default)
     {
         var dept = await _cycleRepository.GetDepartmentEntryByIdAsync(departmentEntryId, includeItems: true, cancellationToken);
@@ -419,11 +511,21 @@ public class PayrollCycleService : IPayrollCycleService
 
         if (dto.Approve)
         {
-            dept.Approve(adminUserId);
+            // Two-tier approval flow:
+            // 1. If currently Submitted -> Deputy approves -> moves to DeputyApproved
+            // 2. If currently DeputyApproved (or Manager/Admin final approval) -> moves to Approved
+            if (dto.ReviewStage == "Deputy" || (dept.Status == PayrollDepartmentStatus.Submitted && dto.ReviewStage != "Manager"))
+            {
+                dept.ApproveByDeputy(reviewerUserId);
+            }
+            else
+            {
+                dept.Approve(reviewerUserId);
+            }
         }
         else
         {
-            dept.Reject(dto.RejectionReason ?? "عدم تایید توسط مدیر سیستم");
+            dept.Reject(dto.RejectionReason ?? "عدم تایید توسط مسوول مربوطه");
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -481,7 +583,7 @@ public class PayrollCycleService : IPayrollCycleService
         int headerRow = 4;
         if (isBonus)
         {
-            var cols = new[] { "شماره کارمند", "نام کارمند", "سرانه پاداش", "توضیحات" };
+            var cols = new[] { "شماره کارمند", "نام کارمند", "پست", "سرانه پاداش", "توضیحات" };
             for (int c = 0; c < cols.Length; c++)
             {
                 ws.Cells[headerRow, c + 1].Value = cols[c];
@@ -493,8 +595,9 @@ public class PayrollCycleService : IPayrollCycleService
             {
                 ws.Cells[rowIdx, 1].Value = item.PersonnelNumber;
                 ws.Cells[rowIdx, 2].Value = item.EmployeeName;
-                ws.Cells[rowIdx, 3].Value = item.BaseBonusAmount;
-                ws.Cells[rowIdx, 4].Value = item.OfficerNotes;
+                ws.Cells[rowIdx, 3].Value = item.PositionTitle ?? "حسابرس";
+                ws.Cells[rowIdx, 4].Value = item.BaseBonusAmount;
+                ws.Cells[rowIdx, 5].Value = item.OfficerNotes;
                 rowIdx++;
             }
         }
@@ -572,58 +675,95 @@ public class PayrollCycleService : IPayrollCycleService
         if (cycle == null) throw new KeyNotFoundException("دوره محاسبه یافت نشد");
 
         using var package = new ExcelPackage();
+        var isBonus = cycle.ProcessType == "HalfPercentBonus";
 
         foreach (var dept in cycle.DepartmentEntries.OrderBy(d => d.DepartmentName))
         {
             var ws = package.Workbook.Worksheets.Add(SafeSheetName(dept.DepartmentName));
             ws.View.RightToLeft = true;
 
-            const string headerText =
-                "کاربرگ نهایی اضافه کار و رفاهی اداره\r\n" +
-                "اطلاعات زیر توسط رییس اداره تکمیل و به تایید رسیده است.";
+            var headerText = isBonus
+                ? "کاربرگ تجمیعی پاداش نیم درصد اداره\r\nاطلاعات زیر بر اساس سقف‌های مصوب سمت‌ها تفکیک شده است."
+                : "کاربرگ نهایی اضافه کار و رفاهی اداره\r\nاطلاعات زیر توسط رییس اداره تکمیل و به تایید رسیده است.";
 
             ws.Cells["A1:J3"].Merge = true;
             ws.Cells["A1"].Value = headerText;
             var headerCell = ws.Cells["A1"];
             headerCell.Style.Font.Bold = true;
-            headerCell.Style.Font.Color.SetColor(Color.Red);
+            headerCell.Style.Font.Color.SetColor(isBonus ? Color.Purple : Color.Red);
             headerCell.Style.WrapText = true;
             headerCell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             headerCell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
             int headerRow = 4;
-            var cols = new[] { "اداره", "شماره کارمند", "نام کارمند", "نرخ اضافه کار اولیه", "نرخ اضافه کار نهایی", "نرخ رفاهی اولیه", "نرخ رفاهی نهایی", "مبلغ اضافه کار", "مبلغ رفاهی", "وضعیت/توضیحات" };
-            for (int c = 0; c < cols.Length; c++)
+            if (isBonus)
             {
-                ws.Cells[headerRow, c + 1].Value = cols[c];
-                ws.Cells[headerRow, c + 1].Style.Font.Bold = true;
-            }
+                var cols = new[] { "اداره", "شماره کارمند", "نام کارمند", "پست", "رده سمت", "سرانه پاداش پایه", "مبلغ پاداش پرداختی", "توضیحات" };
+                for (int c = 0; c < cols.Length; c++)
+                {
+                    ws.Cells[headerRow, c + 1].Value = cols[c];
+                    ws.Cells[headerRow, c + 1].Style.Font.Bold = true;
+                }
 
-            int rowIdx = 5;
-            foreach (var item in dept.Items)
-            {
-                ws.Cells[rowIdx, 1].Value = dept.DepartmentName;
-                ws.Cells[rowIdx, 2].Value = item.PersonnelNumber;
-                ws.Cells[rowIdx, 3].Value = item.EmployeeName;
-                ws.Cells[rowIdx, 4].Value = item.InitialOvertimeRate;
-                ws.Cells[rowIdx, 5].Value = item.AdjustedOvertimeRate;
-                ws.Cells[rowIdx, 6].Value = item.InitialWelfareRate;
-                ws.Cells[rowIdx, 7].Value = item.AdjustedWelfareRate;
-                ws.Cells[rowIdx, 8].Value = item.CalculatedOvertimeAmount;
-                ws.Cells[rowIdx, 9].Value = item.CalculatedWelfareAmount;
-                ws.Cells[rowIdx, 10].Value = item.IsExcluded ? "محروم / مستثنی" : item.OfficerNotes;
-                rowIdx++;
-            }
+                int rowIdx = 5;
+                foreach (var item in dept.Items)
+                {
+                    ws.Cells[rowIdx, 1].Value = dept.DepartmentName;
+                    ws.Cells[rowIdx, 2].Value = item.PersonnelNumber;
+                    ws.Cells[rowIdx, 3].Value = item.EmployeeName;
+                    ws.Cells[rowIdx, 4].Value = item.PositionTitle ?? "حسابرس";
+                    ws.Cells[rowIdx, 5].Value = PositionTier.GetDisplayName(item.PositionTier);
+                    ws.Cells[rowIdx, 6].Value = item.BaseBonusAmount;
+                    ws.Cells[rowIdx, 7].Value = item.AdjustedBonusAmount ?? item.BaseBonusAmount;
+                    ws.Cells[rowIdx, 8].Value = item.IsExcluded ? "محروم / مستثنی" : item.OfficerNotes;
+                    rowIdx++;
+                }
 
-            // Summary row
-            ws.Cells[rowIdx, 1].Value = "جمع کل";
-            ws.Cells[rowIdx, 1].Style.Font.Bold = true;
-            if (rowIdx > 5)
+                // Summary row
+                ws.Cells[rowIdx, 1].Value = "جمع کل";
+                ws.Cells[rowIdx, 1].Style.Font.Bold = true;
+                if (rowIdx > 5)
+                {
+                    ws.Cells[rowIdx, 7].Formula = $"SUM(G5:G{rowIdx - 1})";
+                    ws.Cells[rowIdx, 7].Style.Font.Bold = true;
+                }
+            }
+            else
             {
-                ws.Cells[rowIdx, 8].Formula = $"SUM(H5:H{rowIdx - 1})";
-                ws.Cells[rowIdx, 8].Style.Font.Bold = true;
-                ws.Cells[rowIdx, 9].Formula = $"SUM(I5:I{rowIdx - 1})";
-                ws.Cells[rowIdx, 9].Style.Font.Bold = true;
+                var cols = new[] { "اداره", "شماره کارمند", "نام کارمند", "پست", "نرخ اضافه کار اولیه", "نرخ اضافه کار نهایی", "نرخ رفاهی اولیه", "نرخ رفاهی نهایی", "مبلغ اضافه کار", "مبلغ رفاهی", "وضعیت/توضیحات" };
+                for (int c = 0; c < cols.Length; c++)
+                {
+                    ws.Cells[headerRow, c + 1].Value = cols[c];
+                    ws.Cells[headerRow, c + 1].Style.Font.Bold = true;
+                }
+
+                int rowIdx = 5;
+                foreach (var item in dept.Items)
+                {
+                    ws.Cells[rowIdx, 1].Value = dept.DepartmentName;
+                    ws.Cells[rowIdx, 2].Value = item.PersonnelNumber;
+                    ws.Cells[rowIdx, 3].Value = item.EmployeeName;
+                    ws.Cells[rowIdx, 4].Value = item.PositionTitle ?? "حسابرس";
+                    ws.Cells[rowIdx, 5].Value = item.InitialOvertimeRate;
+                    ws.Cells[rowIdx, 6].Value = item.AdjustedOvertimeRate;
+                    ws.Cells[rowIdx, 7].Value = item.InitialWelfareRate;
+                    ws.Cells[rowIdx, 8].Value = item.AdjustedWelfareRate;
+                    ws.Cells[rowIdx, 9].Value = item.CalculatedOvertimeAmount;
+                    ws.Cells[rowIdx, 10].Value = item.CalculatedWelfareAmount;
+                    ws.Cells[rowIdx, 11].Value = item.IsExcluded ? "محروم / مستثنی" : item.OfficerNotes;
+                    rowIdx++;
+                }
+
+                // Summary row
+                ws.Cells[rowIdx, 1].Value = "جمع کل";
+                ws.Cells[rowIdx, 1].Style.Font.Bold = true;
+                if (rowIdx > 5)
+                {
+                    ws.Cells[rowIdx, 9].Formula = $"SUM(I5:I{rowIdx - 1})";
+                    ws.Cells[rowIdx, 9].Style.Font.Bold = true;
+                    ws.Cells[rowIdx, 10].Formula = $"SUM(J5:J{rowIdx - 1})";
+                    ws.Cells[rowIdx, 10].Style.Font.Bold = true;
+                }
             }
 
             ws.Cells.AutoFitColumns();
@@ -670,14 +810,14 @@ public class PayrollCycleService : IPayrollCycleService
             Status = c.Status,
             Deadline = c.Deadline,
             CreatedAt = c.CreatedAt,
-            CreatedByUsername = c.CreatedBy?.Username ?? "سیستم",
+            CreatedByUsername = c.CreatedBy?.Username ?? "مدیر سیستم",
             TotalDepartments = depts.Count,
             SubmittedDepartments = depts.Count(d => d.Status == PayrollDepartmentStatus.Submitted || d.Status == PayrollDepartmentStatus.Approved),
             ApprovedDepartments = depts.Count(d => d.Status == PayrollDepartmentStatus.Approved),
             TotalEmployees = allItems.Count,
             TotalOvertimeAmount = allItems.Sum(i => i.CalculatedOvertimeAmount ?? 0),
             TotalWelfareAmount = allItems.Sum(i => i.CalculatedWelfareAmount ?? 0),
-            TotalBonusAmount = allItems.Sum(i => i.BaseBonusAmount ?? 0)
+            TotalBonusAmount = allItems.Sum(i => i.AdjustedBonusAmount ?? i.BaseBonusAmount ?? 0)
         };
     }
 
@@ -693,12 +833,17 @@ public class PayrollCycleService : IPayrollCycleService
             BaseOvertimeCap = d.BaseOvertimeCap,
             BaseWelfareCap = d.BaseWelfareCap,
             BaseBonusCap = d.BaseBonusCap,
+            GroupHeadBonusCap = d.GroupHeadBonusCap,
+            SeniorExpertBonusCap = d.SeniorExpertBonusCap,
+            OtherStaffBonusCap = d.OtherStaffBonusCap,
             EmployeeCount = items.Count,
             TotalOvertimeAmount = items.Sum(i => i.CalculatedOvertimeAmount ?? 0),
             TotalWelfareAmount = items.Sum(i => i.CalculatedWelfareAmount ?? 0),
-            TotalBonusAmount = items.Sum(i => i.BaseBonusAmount ?? 0),
+            TotalBonusAmount = items.Sum(i => i.AdjustedBonusAmount ?? i.BaseBonusAmount ?? 0),
             SubmittedByUsername = d.SubmittedBy?.Username,
             SubmittedAt = d.SubmittedAt,
+            DeputyApprovedByUsername = d.DeputyApprovedBy?.Username,
+            DeputyApprovedAt = d.DeputyApprovedAt,
             ApprovedByUsername = d.ApprovedBy?.Username,
             ApprovedAt = d.ApprovedAt,
             RejectionReason = d.RejectionReason,
@@ -722,8 +867,13 @@ public class PayrollCycleService : IPayrollCycleService
             BaseOvertimeCap = d.BaseOvertimeCap,
             BaseWelfareCap = d.BaseWelfareCap,
             BaseBonusCap = d.BaseBonusCap,
+            GroupHeadBonusCap = d.GroupHeadBonusCap,
+            SeniorExpertBonusCap = d.SeniorExpertBonusCap,
+            OtherStaffBonusCap = d.OtherStaffBonusCap,
             SubmittedByUsername = d.SubmittedBy?.Username,
             SubmittedAt = d.SubmittedAt,
+            DeputyApprovedByUsername = d.DeputyApprovedBy?.Username,
+            DeputyApprovedAt = d.DeputyApprovedAt,
             ApprovedByUsername = d.ApprovedBy?.Username,
             ApprovedAt = d.ApprovedAt,
             RejectionReason = d.RejectionReason,
@@ -731,13 +881,14 @@ public class PayrollCycleService : IPayrollCycleService
             EmployeeCount = items.Count,
             TotalOvertimeAmount = items.Sum(i => i.CalculatedOvertimeAmount ?? 0),
             TotalWelfareAmount = items.Sum(i => i.CalculatedWelfareAmount ?? 0),
-            TotalBonusAmount = items.Sum(i => i.BaseBonusAmount ?? 0),
+            TotalBonusAmount = items.Sum(i => i.AdjustedBonusAmount ?? i.BaseBonusAmount ?? 0),
             Items = items.Select(i => new PayrollEmployeeItemDto
             {
                 Id = i.Id,
                 DepartmentEntryId = i.DepartmentEntryId,
                 PersonnelNumber = i.PersonnelNumber,
                 EmployeeName = i.EmployeeName,
+                PositionTitle = i.PositionTitle ?? "حسابرس",
                 InitialOvertimeRate = i.InitialOvertimeRate,
                 AdjustedOvertimeRate = i.AdjustedOvertimeRate,
                 InitialWelfareRate = i.InitialWelfareRate,
@@ -745,12 +896,36 @@ public class PayrollCycleService : IPayrollCycleService
                 BaseOvertimeAmount = i.BaseOvertimeAmount,
                 BaseWelfareAmount = i.BaseWelfareAmount,
                 BaseBonusAmount = i.BaseBonusAmount,
+                AdjustedBonusAmount = i.AdjustedBonusAmount ?? i.BaseBonusAmount,
                 CalculatedOvertimeAmount = i.CalculatedOvertimeAmount,
                 CalculatedWelfareAmount = i.CalculatedWelfareAmount,
+                IsLaborPosition = i.IsLaborPosition,
+                PositionTier = i.PositionTier,
+                PositionTierDisplayName = PositionTier.GetDisplayName(i.PositionTier),
+                MaxOvertimeLimit = i.MaxOvertimeLimit ?? (i.IsLaborPosition ? PayrollBusinessRules.MaxOvertimeHoursLabor : PayrollBusinessRules.MaxOvertimeHoursStandard),
+                MaxBonusLimit = i.MaxBonusLimit,
                 OfficerNotes = i.OfficerNotes,
                 IsExcluded = i.IsExcluded
             }).ToList()
         };
+    }
+
+    private static bool IsLaborPosition(Employee? emp)
+    {
+        if (emp == null) return false;
+        var pos = $"{emp.CurrentPosition} {emp.AppointmentPosition}".Trim();
+        return pos.Contains("کارگر") || pos.Contains("کارگری") || pos.Contains("خدمات عمومی") || pos.Contains("راننده") || pos.Contains("تاسیسات");
+    }
+
+    private static string ResolvePositionTier(Employee? emp)
+    {
+        if (emp == null) return PositionTier.OtherStaff;
+        var pos = $"{emp.CurrentPosition} {emp.AppointmentPosition}".Trim();
+        if (pos.Contains("رئیس گروه") || pos.Contains("رییس گروه") || pos.Contains("سرپرست گروه"))
+            return PositionTier.GroupHead;
+        if (pos.Contains("کارشناس ارشد"))
+            return PositionTier.SeniorExpert;
+        return PositionTier.OtherStaff;
     }
 
     private static List<IDictionary<string, object>> ReadExcel(Stream stream)

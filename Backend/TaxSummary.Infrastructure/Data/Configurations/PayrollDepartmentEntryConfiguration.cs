@@ -31,6 +31,11 @@ public class PayrollDepartmentEntryConfiguration : IEntityTypeConfiguration<Payr
             .HasForeignKey(d => d.SubmittedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(d => d.DeputyApprovedBy)
+            .WithMany()
+            .HasForeignKey(d => d.DeputyApprovedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(d => d.ApprovedBy)
             .WithMany()
             .HasForeignKey(d => d.ApprovedByUserId)

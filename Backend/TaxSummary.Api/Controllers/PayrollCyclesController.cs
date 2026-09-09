@@ -209,7 +209,7 @@ public class PayrollCyclesController : ControllerBase
     /// Review (Approve or Reject) department entry (Admin only)
     /// </summary>
     [HttpPost("departments/{departmentEntryId:guid}/review")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager,OfficeHead")]
     [ProducesResponseType(typeof(PayrollDepartmentEntryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PayrollDepartmentEntryDto>> ReviewDepartment(

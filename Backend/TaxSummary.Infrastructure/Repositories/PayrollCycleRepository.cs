@@ -34,6 +34,8 @@ public class PayrollCycleRepository : IPayrollCycleRepository
                 .Include(c => c.DepartmentEntries)
                     .ThenInclude(d => d.SubmittedBy)
                 .Include(c => c.DepartmentEntries)
+                    .ThenInclude(d => d.DeputyApprovedBy)
+                .Include(c => c.DepartmentEntries)
                     .ThenInclude(d => d.ApprovedBy)
                 .Include(c => c.DepartmentEntries)
                     .ThenInclude(d => d.Items);
@@ -56,6 +58,7 @@ public class PayrollCycleRepository : IPayrollCycleRepository
         var query = _context.PayrollDepartmentEntries
             .Include(d => d.PayrollCycle)
             .Include(d => d.SubmittedBy)
+            .Include(d => d.DeputyApprovedBy)
             .Include(d => d.ApprovedBy)
             .AsQueryable();
 
@@ -72,6 +75,7 @@ public class PayrollCycleRepository : IPayrollCycleRepository
         var query = _context.PayrollDepartmentEntries
             .Include(d => d.PayrollCycle)
             .Include(d => d.SubmittedBy)
+            .Include(d => d.DeputyApprovedBy)
             .Include(d => d.ApprovedBy)
             .Where(d => d.PayrollCycleId == cycleId && d.DepartmentName == departmentName)
             .AsQueryable();

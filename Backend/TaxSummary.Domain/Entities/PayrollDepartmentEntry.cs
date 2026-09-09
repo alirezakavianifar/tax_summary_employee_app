@@ -15,8 +15,16 @@ public class PayrollDepartmentEntry
     public double? BaseWelfareCap { get; private set; }
     public double? BaseBonusCap { get; private set; }
 
+    // Position-specific bonus caps for 0.5%
+    public double? GroupHeadBonusCap { get; private set; }
+    public double? SeniorExpertBonusCap { get; private set; }
+    public double? OtherStaffBonusCap { get; private set; }
+
     public Guid? SubmittedByUserId { get; private set; }
     public DateTime? SubmittedAt { get; private set; }
+
+    public Guid? DeputyApprovedByUserId { get; private set; }
+    public DateTime? DeputyApprovedAt { get; private set; }
 
     public Guid? ApprovedByUserId { get; private set; }
     public DateTime? ApprovedAt { get; private set; }
@@ -30,6 +38,7 @@ public class PayrollDepartmentEntry
     // Navigation properties
     public PayrollCycle? PayrollCycle { get; private set; }
     public User? SubmittedBy { get; private set; }
+    public User? DeputyApprovedBy { get; private set; }
     public User? ApprovedBy { get; private set; }
     public ICollection<PayrollEmployeeItem> Items { get; private set; } = new List<PayrollEmployeeItem>();
 
@@ -40,7 +49,10 @@ public class PayrollDepartmentEntry
         string departmentName,
         double? baseOvertimeCap = null,
         double? baseWelfareCap = null,
-        double? baseBonusCap = null)
+        double? baseBonusCap = null,
+        double? groupHeadBonusCap = null,
+        double? seniorExpertBonusCap = null,
+        double? otherStaffBonusCap = null)
     {
         if (string.IsNullOrWhiteSpace(departmentName))
             throw new ArgumentException("نام اداره نمی‌تواند خالی باشد", nameof(departmentName));
@@ -55,6 +67,9 @@ public class PayrollDepartmentEntry
             BaseOvertimeCap = baseOvertimeCap,
             BaseWelfareCap = baseWelfareCap,
             BaseBonusCap = baseBonusCap,
+            GroupHeadBonusCap = groupHeadBonusCap,
+            SeniorExpertBonusCap = seniorExpertBonusCap,
+            OtherStaffBonusCap = otherStaffBonusCap,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -83,6 +98,15 @@ public class PayrollDepartmentEntry
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void ApproveByDeputy(Guid deputyUserId)
+    {
+        Status = PayrollDepartmentStatus.DeputyApproved;
+        DeputyApprovedByUserId = deputyUserId;
+        DeputyApprovedAt = DateTime.UtcNow;
+        RejectionReason = null;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void Approve(Guid approvedByUserId)
     {
         Status = PayrollDepartmentStatus.Approved;
@@ -99,8 +123,51 @@ public class PayrollDepartmentEntry
 
         Status = PayrollDepartmentStatus.Rejected;
         RejectionReason = reason.Trim();
+        DeputyApprovedByUserId = null;
+        DeputyApprovedAt = null;
         ApprovedByUserId = null;
         ApprovedAt = null;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ValidateDepartmentLimits(string processType)
+    {
+        var nonExcluded = Items.Where(i => !i.IsExcluded).ToList();
+
+        if (processType == "HalfPercentBonus")
+        {
+            if (BaseBonusCap.HasValue && BaseBonusCap.Value > 0)
+            {
+                var totalBonus = nonExcluded.Sum(i => i.AdjustedBonusAmount ?? i.BaseBonusAmount ?? 0);
+                if (totalBonus > BaseBonusCap.Value)
+                {
+                    throw new InvalidOperationException(
+                        $"مجموع پاداش نیم درصد تخصیص داده شده ({totalBonus:N0} ریال) از سقف بودجه مصوب اداره ({BaseBonusCap.Value:N0} ریال) بیشتر است.");
+                }
+            }
+        }
+        else
+        {
+            // Overtime and Welfare
+            if (BaseOvertimeCap.HasValue && BaseOvertimeCap.Value > 0)
+            {
+                var totalOvertime = nonExcluded.Sum(i => i.CalculatedOvertimeAmount ?? (long)Math.Ceiling(i.AdjustedOvertimeRate ?? 0));
+                if (totalOvertime > BaseOvertimeCap.Value)
+                {
+                    throw new InvalidOperationException(
+                        $"مجموع اضافه کار تخصیص داده شده ({totalOvertime:N0}) از سقف مجاز اداره ({BaseOvertimeCap.Value:N0}) فراتر رفته است.");
+                }
+            }
+
+            if (BaseWelfareCap.HasValue && BaseWelfareCap.Value > 0)
+            {
+                var totalWelfare = nonExcluded.Sum(i => i.CalculatedWelfareAmount ?? 0);
+                if (totalWelfare > BaseWelfareCap.Value)
+                {
+                    throw new InvalidOperationException(
+                        $"مجموع رفاهی تخصیص داده شده ({totalWelfare:N0}) از سقف مجاز اداره ({BaseWelfareCap.Value:N0}) فراتر رفته است.");
+                }
+            }
+        }
     }
 }

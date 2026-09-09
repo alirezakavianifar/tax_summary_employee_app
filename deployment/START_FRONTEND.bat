@@ -4,10 +4,10 @@ REM Default port: 3000
 REM Note: Make sure the backend is running first
 
 setlocal enabledelayedexpansion
-cd /d "%~dp0frontend\.next\standalone"
+cd /d "%~dp0frontend"
 
 REM Add node to PATH
-set "PATH=%~dp0..\node;%PATH%"
+set "PATH=%~dp0node;%PATH%"
 
 echo.
 echo Starting Tax Summary Frontend...

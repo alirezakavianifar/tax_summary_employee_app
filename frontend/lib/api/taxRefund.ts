@@ -222,7 +222,10 @@ export const taxRefundApi = {
    * Get direct view URL for inline streaming of a PDF document with optional auth token
    */
   getDocumentViewUrl(caseId: string, documentId: string, token?: string | null): string {
-    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+    const base =
+      typeof window !== 'undefined'
+        ? `http://${window.location.hostname}:5000/api`
+        : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api')
     const query = token ? `?token=${encodeURIComponent(token)}` : ''
     return `${base}/tax-refunds/${caseId}/documents/${documentId}/view${query}`
   },

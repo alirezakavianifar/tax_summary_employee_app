@@ -46,12 +46,17 @@ public class PayrollDepartmentEntrySummaryDto
     public double? BaseOvertimeCap { get; set; }
     public double? BaseWelfareCap { get; set; }
     public double? BaseBonusCap { get; set; }
+    public double? GroupHeadBonusCap { get; set; }
+    public double? SeniorExpertBonusCap { get; set; }
+    public double? OtherStaffBonusCap { get; set; }
     public int EmployeeCount { get; set; }
     public double TotalOvertimeAmount { get; set; }
     public double TotalWelfareAmount { get; set; }
     public double TotalBonusAmount { get; set; }
     public string? SubmittedByUsername { get; set; }
     public DateTime? SubmittedAt { get; set; }
+    public string? DeputyApprovedByUsername { get; set; }
+    public DateTime? DeputyApprovedAt { get; set; }
     public string? ApprovedByUsername { get; set; }
     public DateTime? ApprovedAt { get; set; }
     public string? RejectionReason { get; set; }
@@ -71,8 +76,13 @@ public class PayrollDepartmentEntryDto
     public double? BaseOvertimeCap { get; set; }
     public double? BaseWelfareCap { get; set; }
     public double? BaseBonusCap { get; set; }
+    public double? GroupHeadBonusCap { get; set; }
+    public double? SeniorExpertBonusCap { get; set; }
+    public double? OtherStaffBonusCap { get; set; }
     public string? SubmittedByUsername { get; set; }
     public DateTime? SubmittedAt { get; set; }
+    public string? DeputyApprovedByUsername { get; set; }
+    public DateTime? DeputyApprovedAt { get; set; }
     public string? ApprovedByUsername { get; set; }
     public DateTime? ApprovedAt { get; set; }
     public string? RejectionReason { get; set; }
@@ -97,8 +107,15 @@ public class PayrollEmployeeItemDto
     public double? BaseOvertimeAmount { get; set; }
     public double? BaseWelfareAmount { get; set; }
     public double? BaseBonusAmount { get; set; }
+    public double? AdjustedBonusAmount { get; set; }
     public long? CalculatedOvertimeAmount { get; set; }
     public long? CalculatedWelfareAmount { get; set; }
+    public bool IsLaborPosition { get; set; }
+    public string PositionTier { get; set; } = string.Empty;
+    public string PositionTierDisplayName { get; set; } = string.Empty;
+    public string? PositionTitle { get; set; }
+    public double? MaxOvertimeLimit { get; set; }
+    public double? MaxBonusLimit { get; set; }
     public string? OfficerNotes { get; set; }
     public bool IsExcluded { get; set; }
 }
@@ -114,6 +131,7 @@ public class UpdateEmployeeItemAdjustmentDto
     public Guid Id { get; set; }
     public double? AdjustedOvertimeRate { get; set; }
     public double? AdjustedWelfareRate { get; set; }
+    public double? AdjustedBonusAmount { get; set; }
     public string? OfficerNotes { get; set; }
     public bool IsExcluded { get; set; }
 }
@@ -127,5 +145,6 @@ public class SubmitDepartmentDto
 public class ReviewDepartmentDto
 {
     public bool Approve { get; set; }
+    public string? ReviewStage { get; set; } // "Deputy" or "Manager"
     public string? RejectionReason { get; set; }
 }

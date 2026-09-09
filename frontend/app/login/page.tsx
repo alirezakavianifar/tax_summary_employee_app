@@ -117,22 +117,6 @@ export default function LoginPage() {
                             )}
                         </button>
                     </form>
-
-                    {/* Demo Credentials */}
-                    <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-600 text-center mb-2 font-medium">حساب‌های آزمایشی:</p>
-                        <div className="space-y-1 text-xs text-gray-600">
-                            <p className="text-center">
-                                <span className="font-semibold">مدیر:</span> admin / Admin@123
-                            </p>
-                            <p className="text-center">
-                                <span className="font-semibold">مدیر میانی:</span> manager / Admin@123
-                            </p>
-                            <p className="text-center">
-                                <span className="font-semibold">کارمند:</span> employee / Admin@123
-                            </p>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

@@ -24,7 +24,7 @@ timeout /t 3 /nobreak
 REM Start frontend in a new window
 echo Starting Frontend Web App...
 set "PATH=%~dp0node;%PATH%"
-start "Tax Summary Frontend" cmd /k "cd /d "%~dp0frontend\.next\standalone" && "%~dp0node\node.exe" server.js"
+start "Tax Summary Frontend" cmd /k "cd /d "%~dp0frontend" && "%~dp0node\node.exe" server.js"
 
 echo.
 echo Both services are starting. Check the respective console windows for status.

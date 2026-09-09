@@ -389,9 +389,21 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DeputyApprovedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeputyApprovedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("GroupHeadBonusCap")
+                        .HasColumnType("REAL");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("OtherStaffBonusCap")
+                        .HasColumnType("REAL");
 
                     b.Property<Guid>("PayrollCycleId")
                         .HasColumnType("TEXT");
@@ -399,6 +411,9 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("SeniorExpertBonusCap")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -418,6 +433,8 @@ namespace TaxSummary.Infrastructure.Data.Migrations
 
                     b.HasIndex("ApprovedByUserId");
 
+                    b.HasIndex("DeputyApprovedByUserId");
+
                     b.HasIndex("Status");
 
                     b.HasIndex("SubmittedByUserId");
@@ -433,6 +450,9 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("AdjustedBonusAmount")
+                        .HasColumnType("REAL");
 
                     b.Property<double?>("AdjustedOvertimeRate")
                         .HasColumnType("REAL");
@@ -475,6 +495,15 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.Property<bool>("IsExcluded")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsLaborPosition")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("MaxBonusLimit")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("MaxOvertimeLimit")
+                        .HasColumnType("REAL");
+
                     b.Property<string>("OfficerNotes")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
@@ -482,6 +511,15 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.Property<string>("PersonnelNumber")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PositionTier")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PositionTitle")
+                        .HasMaxLength(150)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -1203,6 +1241,11 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .HasForeignKey("ApprovedByUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("TaxSummary.Domain.Entities.User", "DeputyApprovedBy")
+                        .WithMany()
+                        .HasForeignKey("DeputyApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("TaxSummary.Domain.Entities.PayrollCycle", "PayrollCycle")
                         .WithMany("DepartmentEntries")
                         .HasForeignKey("PayrollCycleId")
@@ -1215,6 +1258,8 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ApprovedBy");
+
+                    b.Navigation("DeputyApprovedBy");
 
                     b.Navigation("PayrollCycle");
 

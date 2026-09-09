@@ -22,6 +22,12 @@ public class PayrollEmployeeItemConfiguration : IEntityTypeConfiguration<Payroll
         builder.Property(i => i.OfficerNotes)
             .HasMaxLength(500);
 
+        builder.Property(i => i.PositionTier)
+            .HasMaxLength(50);
+
+        builder.Property(i => i.PositionTitle)
+            .HasMaxLength(150);
+
         builder.HasIndex(i => new { i.DepartmentEntryId, i.PersonnelNumber });
     }
 }

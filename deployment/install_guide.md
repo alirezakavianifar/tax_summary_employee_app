@@ -26,9 +26,9 @@ The database is now included in the deployment package as `taxsummary.db` (SQLit
 
 ## 4. Frontend Deployment
 1. Double-click `START_FRONTEND.bat` in the root deployment folder, OR
-2. Navigate to `frontend\.next\standalone` and run:
+2. Navigate to `frontend` and run:
    ```cmd
-   ..\..\node\node.exe server.js
+   ..\node\node.exe server.js
    ```
 3. The frontend will be accessible at `http://localhost:3000`
 

@@ -51,6 +51,9 @@ export default function DepartmentWorkspacePage() {
   const [isDirty, setIsDirty] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [reviewing, setReviewing] = useState(false)
 
   const loadData = async () => {
     setLoading(true)
@@ -76,16 +79,16 @@ export default function DepartmentWorkspacePage() {
   const isReadOnly = useMemo(() => {
     if (!dept) return true
     if (dept.cycleStatus === 'Finalized') return true
-    // If submitted or approved, only Admin can edit or officer must wait for rejection
     if (dept.status === 'Approved') return true
-    if (dept.status === 'Submitted' && user?.role !== 'Admin') return true
+    // If submitted or deputy-approved, officer cannot edit unless rejected or user is Admin
+    if ((dept.status === 'Submitted' || dept.status === 'DeputyApproved') && user?.role !== 'Admin') return true
     return false
   }, [dept, user])
 
   // Real-time calculation helpers
   const handleRateChange = (
     itemId: string,
-    field: 'adjustedOvertimeRate' | 'adjustedWelfareRate' | 'officerNotes' | 'isExcluded',
+    field: 'adjustedOvertimeRate' | 'adjustedWelfareRate' | 'adjustedBonusAmount' | 'officerNotes' | 'isExcluded',
     val: any
   ) => {
     setIsDirty(true)
@@ -117,18 +120,62 @@ export default function DepartmentWorkspacePage() {
 
   // Live aggregated totals
   const totalOvertimeLive = useMemo(() => {
-    return items.reduce((sum, i) => sum + (i.calculatedOvertimeAmount || 0), 0)
+    return items.filter((i) => !i.isExcluded).reduce((sum, i) => sum + (i.calculatedOvertimeAmount || 0), 0)
   }, [items])
 
   const totalWelfareLive = useMemo(() => {
-    return items.reduce((sum, i) => sum + (i.calculatedWelfareAmount || 0), 0)
+    return items.filter((i) => !i.isExcluded).reduce((sum, i) => sum + (i.calculatedWelfareAmount || 0), 0)
   }, [items])
+
+  const totalBonusLive = useMemo(() => {
+    return items.filter((i) => !i.isExcluded).reduce((sum, i) => sum + (i.adjustedBonusAmount ?? i.baseBonusAmount ?? 0), 0)
+  }, [items])
+
+  // Budget violations check
+  const isOvertimeOverBudget = useMemo(() => {
+    if (!dept || dept.processType === 'HalfPercentBonus') return false
+    return dept.baseOvertimeCap ? totalOvertimeLive > dept.baseOvertimeCap : false
+  }, [dept, totalOvertimeLive])
+
+  const isWelfareOverBudget = useMemo(() => {
+    if (!dept || dept.processType === 'HalfPercentBonus') return false
+    return dept.baseWelfareCap ? totalWelfareLive > dept.baseWelfareCap : false
+  }, [dept, totalWelfareLive])
+
+  const isBonusOverBudget = useMemo(() => {
+    if (!dept || dept.processType !== 'HalfPercentBonus') return false
+    return dept.baseBonusCap ? totalBonusLive > dept.baseBonusCap : false
+  }, [dept, totalBonusLive])
+
+  // Individual item rule validation
+  const individualValidationErrors = useMemo(() => {
+    const errs: string[] = []
+    for (const item of items) {
+      if (item.isExcluded) continue
+      if (item.adjustedWelfareRate != null && (item.adjustedWelfareRate < 0 || item.adjustedWelfareRate > 100)) {
+        errs.push(`درصد رفاهی برای «${item.employeeName}» (${item.adjustedWelfareRate}٪) فراتر از سقف مجاز ۱۰۰٪ است.`)
+      }
+      const maxOt = item.maxOvertimeLimit ?? (item.isLaborPosition ? 120 : 175)
+      if (item.adjustedOvertimeRate != null && (item.adjustedOvertimeRate < 0 || item.adjustedOvertimeRate > maxOt)) {
+        const posLabel = item.isLaborPosition ? 'مشاغل کارگری' : 'سایر کارکنان'
+        errs.push(`ساعت اضافه کار «${item.employeeName}» (${item.adjustedOvertimeRate} ساعت) فراتر از سقف ${posLabel} (${maxOt} ساعت) است.`)
+      }
+      if (item.adjustedBonusAmount != null && item.maxBonusLimit != null && item.adjustedBonusAmount > item.maxBonusLimit) {
+        errs.push(`مبلغ پاداش «${item.employeeName}» (${item.positionTierDisplayName || 'پرسنل'}) فراتر از سقف مجاز سمت (${item.maxBonusLimit.toLocaleString('fa-IR')} ریال) است.`)
+      }
+    }
+    return errs
+  }, [items])
+
+  const hasBudgetViolation = isOvertimeOverBudget || isWelfareOverBudget || isBonusOverBudget
+  const canSubmit = !hasBudgetViolation && individualValidationErrors.length === 0
 
   const handleSaveDraft = async () => {
     const payloadItems: UpdateEmployeeItemAdjustmentDto[] = items.map((i) => ({
       id: i.id,
       adjustedOvertimeRate: i.adjustedOvertimeRate,
       adjustedWelfareRate: i.adjustedWelfareRate,
+      adjustedBonusAmount: i.adjustedBonusAmount ?? i.baseBonusAmount,
       officerNotes: i.officerNotes,
       isExcluded: i.isExcluded,
     }))
@@ -152,9 +199,14 @@ export default function DepartmentWorkspacePage() {
   }
 
   const handleSubmitFinal = async () => {
+    if (!canSubmit) {
+      alert('امکان ارسال نهایی وجود ندارد. لطفاً ابتدا مبالغ مازاد بر سقف بودجه اداره یا سقف‌های فردی را اصلاح فرمایید.')
+      return
+    }
+
     if (
       !confirm(
-        'آیا از ارسال نهایی اطلاعات به مدیریت اطمینان دارید؟ پس از ارسال، کاربرگ شما قفل خواهد شد.'
+        'آیا از ارسال نهایی اطلاعات کاربرگ به معاونت اداره اطمینان دارید؟ پس از ارسال، کاربرگ شما جهت بررسی معاونت قفل خواهد شد.'
       )
     )
       return
@@ -163,6 +215,7 @@ export default function DepartmentWorkspacePage() {
       id: i.id,
       adjustedOvertimeRate: i.adjustedOvertimeRate,
       adjustedWelfareRate: i.adjustedWelfareRate,
+      adjustedBonusAmount: i.adjustedBonusAmount ?? i.baseBonusAmount,
       officerNotes: i.officerNotes,
       isExcluded: i.isExcluded,
     }))
@@ -176,7 +229,7 @@ export default function DepartmentWorkspacePage() {
       setDept(updated)
       setItems(updated.items)
       setIsDirty(false)
-      alert('کاربرگ اداره با موفقیت ارسال شد و در انتظار تایید مدیریت قرار گرفت.')
+      alert('کاربرگ اداره با موفقیت ارسال شد و در انتظار بررسی و تایید معاونت اداره قرار گرفت.')
     } catch (err: any) {
       alert(err?.response?.data?.error || err.message || 'خطا در ارسال نهایی')
     } finally {
@@ -219,13 +272,51 @@ export default function DepartmentWorkspacePage() {
     }
   }
 
+  const canReview = user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'OfficeHead'
+
+  const handleReview = async (approve: boolean, stage: 'Deputy' | 'Manager' = 'Deputy') => {
+    if (approve) {
+      const confirmMsg =
+        stage === 'Deputy'
+          ? 'آیا از تایید این کاربرگ در مرحله معاونت اداره و ارجاع به دفتر مدیریت اطمینان دارید؟'
+          : 'آیا از تایید نهایی این کاربرگ توسط دفتر مدیریت اطمینان دارید؟'
+      if (!confirm(confirmMsg)) return
+    }
+
+    setReviewing(true)
+    try {
+      const updated = await payrollCyclesApi.reviewDepartment(deptId, {
+        approve,
+        reviewStage: stage,
+        rejectionReason: !approve ? rejectionReason.trim() : undefined,
+      })
+      setDept(updated)
+      setItems(updated.items)
+      setRejectModalOpen(false)
+      setRejectionReason('')
+      setSuccessMsg(
+        approve
+          ? stage === 'Deputy'
+            ? 'کاربرگ با موفقیت توسط معاونت تایید شد و به دفتر مدیریت ارسال گردید.'
+            : 'کاربرگ با موفقیت توسط دفتر مدیریت تایید نهایی گردید.'
+          : 'کاربرگ جهت اصلاح به رییس اداره عودت داده شد.'
+      )
+      setTimeout(() => setSuccessMsg(null), 5000)
+    } catch (err: any) {
+      alert(err?.response?.data?.error || err.message || 'خطا در ثبت بررسی')
+    } finally {
+      setReviewing(false)
+    }
+  }
+
   const filteredItems = useMemo(() => {
     if (!searchTerm.trim()) return items
     const term = searchTerm.trim().toLowerCase()
     return items.filter(
       (i) =>
         i.personnelNumber.toLowerCase().includes(term) ||
-        i.employeeName.toLowerCase().includes(term)
+        i.employeeName.toLowerCase().includes(term) ||
+        (i.positionTitle && i.positionTitle.toLowerCase().includes(term))
     )
   }, [items, searchTerm])
 
@@ -273,10 +364,35 @@ export default function DepartmentWorkspacePage() {
             <div>
               <h4 className="font-bold text-sm">کاربرگ نیازمند اصلاح و بازنگری است</h4>
               <p className="text-xs mt-1 text-red-700">
-                <strong>علت عدم تایید:</strong> {dept.rejectionReason}
+                <strong>علت عودت:</strong> {dept.rejectionReason}
               </p>
               <p className="text-xs mt-1 text-red-600">
-                لطفاً پس از اعمال اصلاحات، مجدداً دکمه «ارسال نهایی به مدیریت» را بزنید.
+                لطفاً پس از اعمال اصلاحات لازم، مجدداً دکمه «ارسال نهایی به معاونت اداره» را بزنید.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {dept.status === 'Submitted' && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <div>
+              <h4 className="font-bold text-sm">کاربرگ در انتظار بررسی و تایید معاونت اداره می‌باشد</h4>
+              <p className="text-xs mt-0.5 text-blue-700">
+                اطلاعات توسط رییس اداره نهایی شده و جهت تایید اولیه به معاونت مربوطه ارسال گردیده است.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {dept.status === 'DeputyApproved' && (
+          <div className="mb-6 p-4 bg-purple-50 border border-purple-200 text-purple-800 rounded-xl flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-purple-600 flex-shrink-0" />
+            <div>
+              <h4 className="font-bold text-sm">کاربرگ توسط معاونت اداره تایید شده و در انتظار تایید نهایی دفتر مدیریت است</h4>
+              <p className="text-xs mt-0.5 text-purple-700">
+                تایید شده توسط {dept.deputyApprovedByUsername || 'معاونت اداره'}
+                {dept.deputyApprovedAt && ` در تاریخ ${new Date(dept.deputyApprovedAt).toLocaleDateString('fa-IR')}`}
               </p>
             </div>
           </div>
@@ -286,8 +402,41 @@ export default function DepartmentWorkspacePage() {
           <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
             <span className="text-sm font-medium">
-              کاربرگ این اداره توسط مدیریت تایید نهایی شده است.
+              کاربرگ این اداره توسط دفتر مدیریت تایید نهایی گردیده و قفل شده است.
             </span>
+          </div>
+        )}
+
+        {/* Budget & Rule Violations Warning Banner */}
+        {(!isReadOnly && (hasBudgetViolation || individualValidationErrors.length > 0)) && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl">
+            <div className="flex items-center gap-2 font-bold text-sm mb-2 text-red-800">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              هشدار: عدم رعایت سقف‌های مصوب بودجه اداره یا سقف‌های فردی
+            </div>
+            <ul className="list-disc list-inside text-xs space-y-1 text-amber-900">
+              {isOvertimeOverBudget && (
+                <li>
+                  <strong>تخطی از سقف اضافه کار اداره:</strong> مجموع اضافه کار محاسبه شده ({formatNumber(totalOvertimeLive)} ریال) از سقف مصوب اداره ({formatNumber(dept.baseOvertimeCap)} ریال) بیشتر است.
+                </li>
+              )}
+              {isWelfareOverBudget && (
+                <li>
+                  <strong>تخطی از سقف رفاهی اداره:</strong> مجموع رفاهی محاسبه شده ({formatNumber(totalWelfareLive)} ریال) از سقف مصوب اداره ({formatNumber(dept.baseWelfareCap)} ریال) بیشتر است.
+                </li>
+              )}
+              {isBonusOverBudget && (
+                <li>
+                  <strong>تخطی از سقف پاداش نیم درصد اداره:</strong> مجموع پاداش تخصیص داده شده ({formatNumber(totalBonusLive)} ریال) از سقف مصوب بودجه اداره ({formatNumber(dept.baseBonusCap)} ریال) بیشتر است.
+                </li>
+              )}
+              {individualValidationErrors.map((err, idx) => (
+                <li key={idx}>{err}</li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-red-700 mt-2 font-medium">
+              * تا زمان رفع موارد فوق، امکان «ارسال نهایی به معاونت اداره» غیرفعال خواهد بود.
+            </p>
           </div>
         )}
 
@@ -318,7 +467,7 @@ export default function DepartmentWorkspacePage() {
                 کاربرگ اختصاصی {dept.departmentName}
               </h1>
               <p className="text-xs text-gray-500 mt-1">
-                تکمیل و بازبینی ساعت/نرخ اضافه کار و درصد رفاهی کارکنان اداره
+                تکمیل و بازبینی ساعت/نرخ اضافه کار، درصد رفاهی و پاداش نیم درصد کارکنان اداره
               </p>
             </div>
 
@@ -361,33 +510,92 @@ export default function DepartmentWorkspacePage() {
           </div>
 
           {/* Department Budget Caps & Live Totals */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6">
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-              <span className="text-xs text-gray-500 block mb-1">تعداد کارکنان اداره</span>
-              <span className="text-xl font-bold text-gray-900">{formatNumber(dept.employeeCount)} نفر</span>
-            </div>
+          {isBonus ? (
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-6">
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <span className="text-xs text-gray-500 block mb-1">تعداد کارکنان اداره</span>
+                <span className="text-xl font-bold text-gray-900">{formatNumber(dept.employeeCount)} نفر</span>
+              </div>
 
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-              <span className="text-xs text-gray-500 block mb-1">سرانه اضافه کار مصوب</span>
-              <span className="text-lg font-bold text-gray-900">
-                {dept.baseOvertimeCap ? `${formatNumber(dept.baseOvertimeCap)} ریال` : '—'}
-              </span>
-            </div>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <span className="text-xs text-gray-500 block mb-1">سقف بودجه پاداش اداره</span>
+                <span className="text-lg font-bold text-gray-900">
+                  {dept.baseBonusCap ? `${formatNumber(dept.baseBonusCap)} ریال` : '—'}
+                </span>
+              </div>
 
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-              <span className="text-xs text-gray-500 block mb-1">مجموع اضافه کار محاسبه شده</span>
-              <span className="text-lg font-bold text-primary-700">
-                {formatNumber(totalOvertimeLive)} ریال
-              </span>
-            </div>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <span className="text-xs text-gray-500 block mb-1">سقف‌های مصوب سمت‌ها</span>
+                <div className="text-[11px] space-y-0.5 text-gray-700">
+                  <div>رئیس گروه: <strong className="text-gray-900">{formatNumber(dept.groupHeadBonusCap)}</strong> ریال</div>
+                  <div>کارشناس ارشد: <strong className="text-gray-900">{formatNumber(dept.seniorExpertBonusCap)}</strong> ریال</div>
+                  <div>سایر کارکنان: <strong className="text-gray-900">{formatNumber(dept.otherStaffBonusCap)}</strong> ریال</div>
+                </div>
+              </div>
 
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-              <span className="text-xs text-gray-500 block mb-1">مجموع رفاهی محاسبه شده</span>
-              <span className="text-lg font-bold text-emerald-700">
-                {formatNumber(totalWelfareLive)} ریال
-              </span>
+              <div className={`rounded-xl p-4 border ${isBonusOverBudget ? 'bg-red-50 border-red-200' : 'bg-purple-50 border-purple-200'}`}>
+                <span className="text-xs text-gray-500 block mb-1">مجموع پاداش تخصیص‌یافته</span>
+                <span className={`text-lg font-bold ${isBonusOverBudget ? 'text-red-700' : 'text-purple-700'}`}>
+                  {formatNumber(totalBonusLive)} ریال
+                </span>
+                {isBonusOverBudget && (
+                  <span className="block text-[10px] text-red-600 font-bold mt-1">تخطی از سقف بودجه اداره</span>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6">
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <span className="text-xs text-gray-500 block mb-1">تعداد کارکنان اداره</span>
+                <span className="text-xl font-bold text-gray-900">{formatNumber(dept.employeeCount)} نفر</span>
+              </div>
+
+              <div className={`rounded-xl p-4 border ${isOvertimeOverBudget ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-100'}`}>
+                <div className="flex justify-between items-start">
+                  <span className="text-xs text-gray-500 block mb-1">سقف اضافه کار مصوب</span>
+                  {dept.baseOvertimeCap && (
+                    <span className="text-[10px] text-gray-400">سقف: {formatNumber(dept.baseOvertimeCap)}</span>
+                  )}
+                </div>
+                <span className={`text-lg font-bold ${isOvertimeOverBudget ? 'text-red-700' : 'text-primary-700'}`}>
+                  {formatNumber(totalOvertimeLive)} ریال
+                </span>
+                {isOvertimeOverBudget && (
+                  <span className="block text-[10px] text-red-600 font-bold mt-1">مازاد بر سقف بودجه اداره</span>
+                )}
+              </div>
+
+              <div className={`rounded-xl p-4 border ${isWelfareOverBudget ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-100'}`}>
+                <div className="flex justify-between items-start">
+                  <span className="text-xs text-gray-500 block mb-1">سقف رفاهی مصوب</span>
+                  {dept.baseWelfareCap && (
+                    <span className="text-[10px] text-gray-400">سقف: {formatNumber(dept.baseWelfareCap)}</span>
+                  )}
+                </div>
+                <span className={`text-lg font-bold ${isWelfareOverBudget ? 'text-red-700' : 'text-emerald-700'}`}>
+                  {formatNumber(totalWelfareLive)} ریال
+                </span>
+                {isWelfareOverBudget && (
+                  <span className="block text-[10px] text-red-600 font-bold mt-1">مازاد بر سقف بودجه اداره</span>
+                )}
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex flex-col justify-center">
+                <span className="text-xs text-gray-500 block mb-1">وضعیت رعایت سقف‌ها</span>
+                {canSubmit ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    کلیه سقف‌ها رعایت شده است
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-red-700">
+                    <XCircle className="w-4 h-4 text-red-600" />
+                    نیازمند اصلاح مقادیر مازاد
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Interactive Live Editable Table */}
@@ -414,139 +622,244 @@ export default function DepartmentWorkspacePage() {
               <thead>
                 <tr className="bg-primary-50/80 border-b border-gray-200 text-gray-700 font-bold">
                   <th className="px-3 py-3">شماره کارمند</th>
-                  <th className="px-3 py-3">نام و نام خانوادگی</th>
+                  <th className="px-3 py-3">نام و رده شغلی</th>
                   {!isBonus && (
                     <>
-                      <th className="px-2 py-3 text-center">نرخ پایه</th>
+                      <th className="px-2 py-3 text-center">ساعت/نرخ پایه</th>
                       <th className="px-2 py-3 text-center bg-primary-100/60 font-black">
-                        نرخ اضافه کار نهایی
+                        ساعت اضافه کار نهایی
                       </th>
                       <th className="px-2 py-3 text-center">رفاهی پایه</th>
                       <th className="px-2 py-3 text-center bg-primary-100/60 font-black">
-                        درصد رفاهی نهایی
+                        درصد رفاهی نهایی (سقف ۱۰۰٪)
                       </th>
                       <th className="px-3 py-3 text-left">مبلغ اضافه کار (ریال)</th>
                       <th className="px-3 py-3 text-left">مبلغ رفاهی (ریال)</th>
                     </>
                   )}
-                  {isBonus && <th className="px-3 py-3 text-left">سرانه پاداش (ریال)</th>}
+                  {isBonus && (
+                    <>
+                      <th className="px-3 py-3 text-center">سمت و سقف مجاز</th>
+                      <th className="px-3 py-3 text-left bg-purple-50 font-black">مبلغ پاداش نیم درصد (ریال)</th>
+                    </>
+                  )}
                   <th className="px-2 py-3 text-center">محروم</th>
                   <th className="px-3 py-3">توضیحات و دلایل اصلاح</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredItems.map((item, idx) => (
-                  <tr
-                    key={item.id}
-                    className={`${item.isExcluded ? 'bg-gray-100 text-gray-400' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-primary-50/30 transition-colors`}
-                  >
-                    <td className="px-3 py-2 font-mono font-medium text-gray-900">
-                      {item.personnelNumber}
-                    </td>
+                {filteredItems.map((item, idx) => {
+                  const maxOt = item.maxOvertimeLimit ?? (item.isLaborPosition ? 120 : 175)
+                  const isOtExceeded = (item.adjustedOvertimeRate || 0) > maxOt
+                  const isWelfareExceeded = (item.adjustedWelfareRate || 0) > 100
+                  const isBonusExceeded = isBonus && item.maxBonusLimit != null && ((item.adjustedBonusAmount ?? item.baseBonusAmount ?? 0) > item.maxBonusLimit)
 
-                    <td className="px-3 py-2 font-medium text-gray-900">{item.employeeName}</td>
-
-                    {!isBonus && (
-                      <>
-                        <td className="px-2 py-2 text-center text-gray-500">
-                          {formatNumber(item.initialOvertimeRate)}
-                        </td>
-
-                        <td className="px-2 py-2 text-center bg-primary-50/40">
-                          {isReadOnly ? (
-                            <span className="font-bold text-primary-800">
-                              {formatNumber(item.adjustedOvertimeRate)}
-                            </span>
-                          ) : (
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              max="10"
-                              disabled={item.isExcluded}
-                              value={item.adjustedOvertimeRate ?? ''}
-                              onChange={(e) =>
-                                handleRateChange(
-                                  item.id,
-                                  'adjustedOvertimeRate',
-                                  e.target.value === '' ? null : parseFloat(e.target.value)
-                                )
-                              }
-                              className="w-16 px-2 py-1 text-center font-bold text-xs bg-white border border-primary-300 rounded focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                            />
-                          )}
-                        </td>
-
-                        <td className="px-2 py-2 text-center text-gray-500">
-                          {formatNumber(item.initialWelfareRate)}%
-                        </td>
-
-                        <td className="px-2 py-2 text-center bg-primary-50/40">
-                          {isReadOnly ? (
-                            <span className="font-bold text-primary-800">
-                              {formatNumber(item.adjustedWelfareRate)}%
-                            </span>
-                          ) : (
-                            <input
-                              type="number"
-                              step="1"
-                              min="0"
-                              max="200"
-                              disabled={item.isExcluded}
-                              value={item.adjustedWelfareRate ?? ''}
-                              onChange={(e) =>
-                                handleRateChange(
-                                  item.id,
-                                  'adjustedWelfareRate',
-                                  e.target.value === '' ? null : parseFloat(e.target.value)
-                                )
-                              }
-                              className="w-16 px-2 py-1 text-center font-bold text-xs bg-white border border-primary-300 rounded focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                            />
-                          )}
-                        </td>
-
-                        <td className="px-3 py-2 text-left font-semibold text-gray-900">
-                          {formatNumber(item.calculatedOvertimeAmount)}
-                        </td>
-
-                        <td className="px-3 py-2 text-left font-semibold text-gray-900">
-                          {formatNumber(item.calculatedWelfareAmount)}
-                        </td>
-                      </>
-                    )}
-
-                    {isBonus && (
-                      <td className="px-3 py-2 text-left font-semibold text-gray-900">
-                        {formatNumber(item.baseBonusAmount)}
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`${item.isExcluded ? 'bg-gray-100 text-gray-400' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-primary-50/30 transition-colors`}
+                    >
+                      <td className="px-3 py-2 font-mono font-medium text-gray-900">
+                        {item.personnelNumber}
                       </td>
-                    )}
 
-                    <td className="px-2 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        disabled={isReadOnly}
-                        checked={item.isExcluded}
-                        onChange={(e) => handleRateChange(item.id, 'isExcluded', e.target.checked)}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
-                    </td>
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-gray-900">{item.employeeName}</div>
+                        {isBonus && (
+                          <div className="mt-0.5 text-[11px] text-purple-700 font-semibold flex items-center gap-1">
+                            <span className="text-gray-400 font-normal">پست:</span>
+                            <span className="bg-purple-50 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200 text-[10px]">
+                              {item.positionTitle || 'حسابرس'}
+                            </span>
+                          </div>
+                        )}
+                        {!isBonus && (
+                          <div className="mt-0.5">
+                            {item.isLaborPosition ? (
+                              <span className="inline-block px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800">
+                                مشاغل کارگری (سقف ۱۲۰ ساعت)
+                              </span>
+                            ) : (
+                              <span className="inline-block px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-600">
+                                سایر کارکنان (سقف ۱۷۵ ساعت)
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
 
-                    <td className="px-3 py-2">
-                      {isReadOnly ? (
-                        <span className="text-gray-600">{item.officerNotes || '—'}</span>
-                      ) : (
-                        <input
-                          type="text"
-                          placeholder="توضیح دلایل تغییر نرخ..."
-                          value={item.officerNotes ?? ''}
-                          onChange={(e) => handleRateChange(item.id, 'officerNotes', e.target.value)}
-                          className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-primary-500 focus:outline-none"
-                        />
+                      {!isBonus && (
+                        <>
+                          <td className="px-2 py-2 text-center text-gray-500">
+                            {formatNumber(item.initialOvertimeRate)}
+                          </td>
+
+                          <td className="px-2 py-2 text-center bg-primary-50/40">
+                            {isReadOnly ? (
+                              <span className={`font-bold ${isOtExceeded ? 'text-red-600' : 'text-primary-800'}`}>
+                                {formatNumber(item.adjustedOvertimeRate)}
+                              </span>
+                            ) : (
+                              <div className="flex flex-col items-center">
+                                <input
+                                  type="number"
+                                  step="1"
+                                  min="0"
+                                  max={maxOt}
+                                  disabled={item.isExcluded}
+                                  value={item.adjustedOvertimeRate ?? ''}
+                                  onChange={(e) =>
+                                    handleRateChange(
+                                      item.id,
+                                      'adjustedOvertimeRate',
+                                      e.target.value === '' ? null : parseFloat(e.target.value)
+                                    )
+                                  }
+                                  className={`w-20 px-2 py-1 text-center font-bold text-xs bg-white border rounded focus:ring-2 focus:outline-none ${
+                                    isOtExceeded
+                                      ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-300'
+                                      : 'border-primary-300 focus:ring-primary-500'
+                                  }`}
+                                />
+                                {isOtExceeded && (
+                                  <span className="text-[10px] text-red-600 font-bold mt-0.5">
+                                    حداکثر {maxOt}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-2 py-2 text-center text-gray-500">
+                            {formatNumber(item.initialWelfareRate)}%
+                          </td>
+
+                          <td className="px-2 py-2 text-center bg-primary-50/40">
+                            {isReadOnly ? (
+                              <span className={`font-bold ${isWelfareExceeded ? 'text-red-600' : 'text-primary-800'}`}>
+                                {formatNumber(item.adjustedWelfareRate)}%
+                              </span>
+                            ) : (
+                              <div className="flex flex-col items-center">
+                                <input
+                                  type="number"
+                                  step="1"
+                                  min="0"
+                                  max="100"
+                                  disabled={item.isExcluded}
+                                  value={item.adjustedWelfareRate ?? ''}
+                                  onChange={(e) =>
+                                    handleRateChange(
+                                      item.id,
+                                      'adjustedWelfareRate',
+                                      e.target.value === '' ? null : parseFloat(e.target.value)
+                                    )
+                                  }
+                                  className={`w-16 px-2 py-1 text-center font-bold text-xs bg-white border rounded focus:ring-2 focus:outline-none ${
+                                    isWelfareExceeded
+                                      ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-300'
+                                      : 'border-primary-300 focus:ring-primary-500'
+                                  }`}
+                                />
+                                {isWelfareExceeded && (
+                                  <span className="text-[10px] text-red-600 font-bold mt-0.5">
+                                    حداکثر ۱۰۰٪
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-3 py-2 text-left font-semibold text-gray-900">
+                            {formatNumber(item.calculatedOvertimeAmount)}
+                          </td>
+
+                          <td className="px-3 py-2 text-left font-semibold text-gray-900">
+                            {formatNumber(item.calculatedWelfareAmount)}
+                          </td>
+                        </>
                       )}
-                    </td>
-                  </tr>
-                ))}
+
+                      {isBonus && (
+                        <>
+                          <td className="px-3 py-2 text-center">
+                            <div className="font-bold text-xs text-gray-900">
+                              {item.positionTitle || 'حسابرس'}
+                            </div>
+                            <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded bg-purple-100 text-purple-800 mt-0.5">
+                              {item.positionTierDisplayName || 'سایر کارکنان'}
+                            </span>
+                            {item.maxBonusLimit && (
+                              <div className="text-[10px] text-gray-500 mt-0.5">
+                                سقف: {formatNumber(item.maxBonusLimit)} ریال
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-3 py-2 text-left bg-purple-50/40">
+                            {isReadOnly ? (
+                              <span className={`font-bold ${isBonusExceeded ? 'text-red-600' : 'text-gray-900'}`}>
+                                {formatNumber(item.adjustedBonusAmount ?? item.baseBonusAmount)}
+                              </span>
+                            ) : (
+                              <div className="flex flex-col">
+                                <input
+                                  type="number"
+                                  step="100000"
+                                  min="0"
+                                  max={item.maxBonusLimit ?? undefined}
+                                  disabled={item.isExcluded}
+                                  value={item.adjustedBonusAmount ?? item.baseBonusAmount ?? ''}
+                                  onChange={(e) =>
+                                    handleRateChange(
+                                      item.id,
+                                      'adjustedBonusAmount',
+                                      e.target.value === '' ? null : parseFloat(e.target.value)
+                                    )
+                                  }
+                                  className={`w-32 px-2 py-1 text-left font-bold text-xs bg-white border rounded focus:ring-2 focus:outline-none ${
+                                    isBonusExceeded
+                                      ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-300'
+                                      : 'border-purple-300 focus:ring-purple-500'
+                                  }`}
+                                />
+                                {isBonusExceeded && (
+                                  <span className="text-[10px] text-red-600 font-bold mt-0.5">
+                                    بیش از سقف سمت ({formatNumber(item.maxBonusLimit)})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </>
+                      )}
+
+                      <td className="px-2 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          disabled={isReadOnly}
+                          checked={item.isExcluded}
+                          onChange={(e) => handleRateChange(item.id, 'isExcluded', e.target.checked)}
+                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      </td>
+
+                      <td className="px-3 py-2">
+                        {isReadOnly ? (
+                          <span className="text-gray-600">{item.officerNotes || '—'}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            placeholder="توضیح دلایل تغییر نرخ..."
+                            value={item.officerNotes ?? ''}
+                            onChange={(e) => handleRateChange(item.id, 'officerNotes', e.target.value)}
+                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-primary-500 focus:outline-none"
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -556,7 +869,7 @@ export default function DepartmentWorkspacePage() {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="w-full sm:w-1/2">
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              یادداشت و توضیحات رییس اداره به مدیریت
+              یادداشت و توضیحات رییس اداره به معاونت
             </label>
             <input
               type="text"
@@ -566,12 +879,12 @@ export default function DepartmentWorkspacePage() {
                 setNotes(e.target.value)
                 setIsDirty(true)
               }}
-              placeholder="توضیحات کلی در خصوص اضافه کار این ماه..."
+              placeholder="توضیحات کلی در خصوص مبالغ این ماه..."
               className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
             />
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 w-full sm:w-auto justify-end">
             {!isReadOnly && (
               <>
                 <button
@@ -583,28 +896,162 @@ export default function DepartmentWorkspacePage() {
                   ذخیره موقت پیش‌نویس
                 </button>
 
-                <button
-                  onClick={handleSubmitFinal}
-                  disabled={submitting}
-                  className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
+                <div className="flex flex-col items-end">
+                  <button
+                    onClick={handleSubmitFinal}
+                    disabled={submitting || !canSubmit}
+                    className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={!canSubmit ? 'به دلیل تخطی از سقف‌های بودجه یا سقف‌های فردی غیرفعال است' : 'ارسال نهایی به معاونت'}
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    ارسال نهایی به معاونت اداره
+                  </button>
+                  {!canSubmit && (
+                    <span className="text-[10px] text-red-600 font-bold mt-1">
+                      سقف‌های بودجه یا فردی رعایت نشده است
+                    </span>
                   )}
-                  ارسال نهایی به مدیریت
-                </button>
+                </div>
               </>
             )}
 
-            {isReadOnly && (
+            {canReview && dept.status === 'Submitted' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleReview(true, 'Deputy')}
+                  disabled={reviewing}
+                  className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50"
+                  title="تایید در مرحله معاونت اداره و ارجاع به دفتر مدیریت"
+                >
+                  {reviewing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  تایید معاونت اداره و ارجاع به مدیریت
+                </button>
+                <button
+                  onClick={() => setRejectModalOpen(true)}
+                  disabled={reviewing}
+                  className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
+                  title="عدم تایید و عودت جهت اصلاح به رییس اداره"
+                >
+                  <XCircle className="w-4 h-4" />
+                  عدم تایید و عودت جهت اصلاح
+                </button>
+              </div>
+            )}
+
+            {canReview && dept.status === 'DeputyApproved' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleReview(true, 'Manager')}
+                  disabled={reviewing}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50"
+                  title="تایید نهایی دفتر مدیریت"
+                >
+                  {reviewing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  تایید نهایی دفتر مدیریت
+                </button>
+                <button
+                  onClick={() => setRejectModalOpen(true)}
+                  disabled={reviewing}
+                  className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
+                  title="عدم تایید و عودت جهت اصلاح"
+                >
+                  <XCircle className="w-4 h-4" />
+                  عدم تایید و عودت جهت اصلاح
+                </button>
+              </div>
+            )}
+
+            {canReview && dept.status === 'Approved' && (
+              <button
+                onClick={() => setRejectModalOpen(true)}
+                disabled={reviewing}
+                className="px-4 py-2.5 bg-gray-50 hover:bg-red-50 text-gray-600 hover:text-red-700 border border-gray-300 hover:border-red-200 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                title="عودت پرونده جهت اصلاح مجدد"
+              >
+                <XCircle className="w-4 h-4" />
+                عودت پرونده جهت اصلاح مجدد
+              </button>
+            )}
+
+            {isReadOnly && !canReview && (
               <span className="text-xs text-gray-500 italic">
                 کاربرگ در حالت فقط خواندنی قرار دارد ({statusInfo.label}).
               </span>
             )}
           </div>
         </div>
+
+        {/* Rejection Modal */}
+        {rejectModalOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl">
+              <div className="flex justify-between items-center pb-3 border-b border-gray-200 mb-4">
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <XCircle className="w-5 h-5 text-red-600" />
+                  عدم تایید و عودت جهت اصلاح: {dept.departmentName}
+                </h3>
+                <button
+                  onClick={() => setRejectModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (!rejectionReason.trim()) {
+                    alert('لطفاً دلیل عدم تایید را وارد نمایید.')
+                    return
+                  }
+                  handleReview(false)
+                }}
+                className="space-y-4"
+              >
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  با ثبت عودت، کاربرگ به وضعیت «نیازمند اصلاح» تغییر یافته و رییس اداره می‌تواند پس از اعمال اصلاحات لازم، مجدداً آن را ارسال نماید.
+                </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    دلایل و توضیحات عدم تایید <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="مثال: سقف ساعت اضافه کار پرسنل واحد ... رعایت نشده است؛ لطفاً اصلاح گردد."
+                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setRejectModalOpen(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                  >
+                    انصراف
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={reviewing}
+                    className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm disabled:opacity-50"
+                  >
+                    {reviewing ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                    ثبت عودت به اداره
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   )

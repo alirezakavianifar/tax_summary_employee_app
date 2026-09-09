@@ -139,6 +139,7 @@ dist/
 /frontend/.next/
 /frontend/out/
 /frontend/build
+deployment_update/
 
 # Environment files
 .env

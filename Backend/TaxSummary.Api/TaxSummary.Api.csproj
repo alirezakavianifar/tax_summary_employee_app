@@ -26,6 +26,8 @@
     <None Update="payback_sample\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Content Update="wwwroot/**/*.rar" CopyToPublishDirectory="Never" />
+    <Content Update="wwwroot/**/*.zip" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>

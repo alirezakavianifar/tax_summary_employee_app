@@ -103,11 +103,15 @@ export default function CycleDetailPage() {
     }
   }
 
-  const handleQuickApprove = async (deptId: string) => {
-    if (!confirm('آیا از تایید اطلاعات ارسالی این اداره اطمینان دارید؟')) return
+  const handleQuickApprove = async (deptId: string, stage: 'Deputy' | 'Manager' = 'Manager') => {
+    const confirmMsg =
+      stage === 'Deputy'
+        ? 'آیا از تایید این کاربرگ در مرحله معاونت اداره و ارجاع به دفتر مدیریت اطمینان دارید؟'
+        : 'آیا از تایید نهایی این کاربرگ توسط دفتر مدیریت اطمینان دارید؟'
+    if (!confirm(confirmMsg)) return
 
     try {
-      await payrollCyclesApi.reviewDepartment(deptId, { approve: true })
+      await payrollCyclesApi.reviewDepartment(deptId, { approve: true, reviewStage: stage })
       await loadCycle()
     } catch (err: any) {
       alert(err?.response?.data?.error || 'خطا در تایید اداره')
@@ -139,6 +143,7 @@ export default function CycleDetailPage() {
   }
 
   const isAdmin = user?.role === 'Admin'
+  const canReview = user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'OfficeHead'
 
   if (loading) {
     return (
@@ -169,14 +174,17 @@ export default function CycleDetailPage() {
     color: 'bg-gray-100 text-gray-800 border-gray-200',
   }
 
+  const isBonus = cycle.processType === 'HalfPercentBonus'
   const totalDepts = cycle.departmentEntries.length
   const submittedDepts = cycle.departmentEntries.filter(
-    (d) => d.status === 'Submitted' || d.status === 'Approved'
+    (d) => d.status === 'Submitted' || d.status === 'DeputyApproved' || d.status === 'Approved'
   ).length
+  const deputyApprovedDepts = cycle.departmentEntries.filter((d) => d.status === 'DeputyApproved').length
   const approvedDepts = cycle.departmentEntries.filter((d) => d.status === 'Approved').length
   const totalEmployees = cycle.departmentEntries.reduce((sum, d) => sum + d.employeeCount, 0)
   const totalOvertime = cycle.departmentEntries.reduce((sum, d) => sum + d.totalOvertimeAmount, 0)
   const totalWelfare = cycle.departmentEntries.reduce((sum, d) => sum + d.totalWelfareAmount, 0)
+  const totalBonus = cycle.departmentEntries.reduce((sum, d) => sum + (d.totalBonusAmount || 0), 0)
 
   return (
     <ProtectedRoute>
@@ -254,7 +262,7 @@ export default function CycleDetailPage() {
               </span>
               <span className="text-xl font-bold text-gray-900">{formatNumber(totalDepts)} اداره</span>
               <span className="text-xs text-emerald-600 block mt-1 font-medium">
-                {formatNumber(approvedDepts)} تایید شده / {formatNumber(submittedDepts)} ارسال شده
+                {formatNumber(approvedDepts)} تایید نهایی / {formatNumber(deputyApprovedDepts)} تایید معاونت
               </span>
             </div>
 
@@ -267,23 +275,36 @@ export default function CycleDetailPage() {
               <span className="text-xs text-gray-400 block mt-1">در کلیه واحدهای سازمانی</span>
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-              <span className="text-xs text-gray-500 block mb-1 flex items-center gap-1">
-                <DollarSign className="w-3.5 h-3.5 text-primary-600" />
-                مجموع مبلغ اضافه کار
-              </span>
-              <span className="text-lg font-bold text-gray-900">{formatNumber(totalOvertime)} ریال</span>
-              <span className="text-xs text-gray-400 block mt-1">محاسبه شده طبق ضرایب</span>
-            </div>
+            {isBonus ? (
+              <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 col-span-2">
+                <span className="text-xs text-purple-700 block mb-1 flex items-center gap-1">
+                  <DollarSign className="w-3.5 h-3.5 text-purple-600" />
+                  مجموع مبلغ پاداش نیم درصد کلیه ادارات
+                </span>
+                <span className="text-xl font-bold text-purple-900">{formatNumber(totalBonus)} ریال</span>
+                <span className="text-xs text-purple-600 block mt-1">محاسبه شده بر اساس سقف‌های مصوب سمت‌ها</span>
+              </div>
+            ) : (
+              <>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <span className="text-xs text-gray-500 block mb-1 flex items-center gap-1">
+                    <DollarSign className="w-3.5 h-3.5 text-primary-600" />
+                    مجموع مبلغ اضافه کار
+                  </span>
+                  <span className="text-lg font-bold text-gray-900">{formatNumber(totalOvertime)} ریال</span>
+                  <span className="text-xs text-gray-400 block mt-1">محاسبه شده طبق ضرایب</span>
+                </div>
 
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-              <span className="text-xs text-gray-500 block mb-1 flex items-center gap-1">
-                <DollarSign className="w-3.5 h-3.5 text-primary-600" />
-                مجموع مبلغ رفاهی
-              </span>
-              <span className="text-lg font-bold text-gray-900">{formatNumber(totalWelfare)} ریال</span>
-              <span className="text-xs text-gray-400 block mt-1">محاسبه شده طبق درصدها</span>
-            </div>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <span className="text-xs text-gray-500 block mb-1 flex items-center gap-1">
+                    <DollarSign className="w-3.5 h-3.5 text-primary-600" />
+                    مجموع مبلغ رفاهی
+                  </span>
+                  <span className="text-lg font-bold text-gray-900">{formatNumber(totalWelfare)} ریال</span>
+                  <span className="text-xs text-gray-400 block mt-1">محاسبه شده طبق درصدها</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -308,10 +329,19 @@ export default function CycleDetailPage() {
                   <th className="px-6 py-3.5">نام اداره / کاربرگ</th>
                   <th className="px-4 py-3.5">وضعیت</th>
                   <th className="px-4 py-3.5">تعداد نفرات</th>
-                  <th className="px-4 py-3.5">سرانه پایه</th>
-                  <th className="px-4 py-3.5">جمع اضافه کار (ریال)</th>
-                  <th className="px-4 py-3.5">جمع رفاهی (ریال)</th>
-                  <th className="px-4 py-3.5">ارسال‌کننده / زمان</th>
+                  {isBonus ? (
+                    <>
+                      <th className="px-4 py-3.5">سقف بودجه اداره (ریال)</th>
+                      <th className="px-4 py-3.5">جمع پاداش تخصیصی (ریال)</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="px-4 py-3.5">سرانه پایه</th>
+                      <th className="px-4 py-3.5">جمع اضافه کار (ریال)</th>
+                      <th className="px-4 py-3.5">جمع رفاهی (ریال)</th>
+                    </>
+                  )}
+                  <th className="px-4 py-3.5">ارسال و تاییدات</th>
                   <th className="px-6 py-3.5 text-center">عملیات</th>
                 </tr>
               </thead>
@@ -353,31 +383,59 @@ export default function CycleDetailPage() {
                         {formatNumber(dept.employeeCount)} نفر
                       </td>
 
-                      <td className="px-4 py-4 text-gray-600">
-                        {dept.baseOvertimeCap ? formatNumber(dept.baseOvertimeCap) : '—'}
-                      </td>
-
-                      <td className="px-4 py-4 font-semibold text-gray-900">
-                        {formatNumber(dept.totalOvertimeAmount)}
-                      </td>
-
-                      <td className="px-4 py-4 font-semibold text-gray-900">
-                        {formatNumber(dept.totalWelfareAmount)}
-                      </td>
+                      {isBonus ? (
+                        <>
+                          <td className="px-4 py-4 text-gray-600">
+                            {dept.baseBonusCap ? formatNumber(dept.baseBonusCap) : '—'}
+                          </td>
+                          <td className="px-4 py-4 font-semibold text-purple-900">
+                            {formatNumber(dept.totalBonusAmount)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-4 text-gray-600">
+                            {dept.baseOvertimeCap ? formatNumber(dept.baseOvertimeCap) : '—'}
+                          </td>
+                          <td className="px-4 py-4 font-semibold text-gray-900">
+                            {formatNumber(dept.totalOvertimeAmount)}
+                          </td>
+                          <td className="px-4 py-4 font-semibold text-gray-900">
+                            {formatNumber(dept.totalWelfareAmount)}
+                          </td>
+                        </>
+                      )}
 
                       <td className="px-4 py-4 text-xs text-gray-500">
                         {dept.submittedByUsername ? (
-                          <>
-                            <span className="font-medium text-gray-700 block">{dept.submittedByUsername}</span>
-                            <span>{dept.submittedAt ? new Date(dept.submittedAt).toLocaleDateString('fa-IR') : ''}</span>
-                          </>
+                          <div className="space-y-1">
+                            <div>
+                              <span className="text-gray-400">ارسال: </span>
+                              <span className="font-medium text-gray-700">{dept.submittedByUsername}</span>
+                              {dept.submittedAt && (
+                                <span className="text-[10px] text-gray-400 block">
+                                  {new Date(dept.submittedAt).toLocaleDateString('fa-IR')}
+                                </span>
+                              )}
+                            </div>
+                            {dept.deputyApprovedByUsername && (
+                              <div className="text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded text-[11px] border border-purple-100">
+                                <span>معاونت: {dept.deputyApprovedByUsername}</span>
+                              </div>
+                            )}
+                            {dept.approvedByUsername && (
+                              <div className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[11px] border border-emerald-100">
+                                <span>مدیریت: {dept.approvedByUsername}</span>
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-gray-400">ارسال نشده</span>
                         )}
                       </td>
 
                       <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
                           <Link
                             href={`/payroll/department/${dept.id}`}
                             className="inline-flex items-center gap-1 text-xs bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-2.5 py-1.5 rounded font-medium shadow-sm transition-colors"
@@ -386,15 +444,15 @@ export default function CycleDetailPage() {
                             بازبینی
                           </Link>
 
-                          {isAdmin && dept.status === 'Submitted' && (
+                          {canReview && dept.status === 'Submitted' && (
                             <>
                               <button
-                                onClick={() => handleQuickApprove(dept.id)}
-                                className="inline-flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded font-medium transition-colors"
-                                title="تایید کاربرگ این اداره"
+                                onClick={() => handleQuickApprove(dept.id, 'Deputy')}
+                                className="inline-flex items-center gap-1 text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-2.5 py-1.5 rounded font-medium transition-colors"
+                                title="تایید در مرحله معاونت اداره و ارجاع به دفتر مدیریت"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                تایید
+                                تایید معاونت
                               </button>
 
                               <button
@@ -403,12 +461,51 @@ export default function CycleDetailPage() {
                                   setRejectionReason('')
                                 }}
                                 className="inline-flex items-center gap-1 text-xs bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2.5 py-1.5 rounded font-medium transition-colors"
-                                title="عدم تایید و بازگشت به رییس اداره"
+                                title="عدم تایید و عودت به رییس اداره"
                               >
                                 <XCircle className="w-3.5 h-3.5" />
-                                بازگشت
+                                عودت
                               </button>
                             </>
+                          )}
+
+                          {canReview && dept.status === 'DeputyApproved' && (
+                            <>
+                              <button
+                                onClick={() => handleQuickApprove(dept.id, 'Manager')}
+                                className="inline-flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded font-medium transition-colors"
+                                title="تایید نهایی دفتر مدیریت"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                تایید مدیریت
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setRejectingDept(dept)
+                                  setRejectionReason('')
+                                }}
+                                className="inline-flex items-center gap-1 text-xs bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2.5 py-1.5 rounded font-medium transition-colors"
+                                title="عدم تایید و عودت به اداره"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                عودت
+                              </button>
+                            </>
+                          )}
+
+                          {canReview && dept.status === 'Approved' && (
+                            <button
+                              onClick={() => {
+                                setRejectingDept(dept)
+                                setRejectionReason('')
+                              }}
+                              className="inline-flex items-center gap-1 text-xs bg-gray-50 hover:bg-red-50 text-gray-500 hover:text-red-700 border border-gray-200 hover:border-red-200 px-2 py-1.5 rounded text-[11px] transition-colors"
+                              title="عودت پرونده جهت اصلاح مجدد"
+                            >
+                              <XCircle className="w-3 h-3" />
+                              عودت
+                            </button>
                           )}
                         </div>
                       </td>

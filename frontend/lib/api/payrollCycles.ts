@@ -27,12 +27,17 @@ export interface PayrollDepartmentEntrySummaryDto {
   baseOvertimeCap?: number | null
   baseWelfareCap?: number | null
   baseBonusCap?: number | null
+  groupHeadBonusCap?: number | null
+  seniorExpertBonusCap?: number | null
+  otherStaffBonusCap?: number | null
   employeeCount: number
   totalOvertimeAmount: number
   totalWelfareAmount: number
   totalBonusAmount: number
   submittedByUsername?: string | null
   submittedAt?: string | null
+  deputyApprovedByUsername?: string | null
+  deputyApprovedAt?: string | null
   approvedByUsername?: string | null
   approvedAt?: string | null
   rejectionReason?: string | null
@@ -67,8 +72,15 @@ export interface PayrollEmployeeItemDto {
   baseOvertimeAmount?: number | null
   baseWelfareAmount?: number | null
   baseBonusAmount?: number | null
+  adjustedBonusAmount?: number | null
   calculatedOvertimeAmount?: number | null
   calculatedWelfareAmount?: number | null
+  isLaborPosition: boolean
+  positionTier: string
+  positionTierDisplayName: string
+  positionTitle?: string | null
+  maxOvertimeLimit?: number | null
+  maxBonusLimit?: number | null
   officerNotes?: string | null
   isExcluded: boolean
 }
@@ -85,8 +97,13 @@ export interface PayrollDepartmentEntryDto {
   baseOvertimeCap?: number | null
   baseWelfareCap?: number | null
   baseBonusCap?: number | null
+  groupHeadBonusCap?: number | null
+  seniorExpertBonusCap?: number | null
+  otherStaffBonusCap?: number | null
   submittedByUsername?: string | null
   submittedAt?: string | null
+  deputyApprovedByUsername?: string | null
+  deputyApprovedAt?: string | null
   approvedByUsername?: string | null
   approvedAt?: string | null
   rejectionReason?: string | null
@@ -102,6 +119,7 @@ export interface UpdateEmployeeItemAdjustmentDto {
   id: string
   adjustedOvertimeRate?: number | null
   adjustedWelfareRate?: number | null
+  adjustedBonusAmount?: number | null
   officerNotes?: string | null
   isExcluded: boolean
 }
@@ -118,6 +136,7 @@ export interface SubmitDepartmentDto {
 
 export interface ReviewDepartmentDto {
   approve: boolean
+  reviewStage?: 'Deputy' | 'Manager' | null
   rejectionReason?: string | null
 }
 
@@ -131,9 +150,10 @@ export const CYCLE_STATUS_LABELS: Record<string, { label: string; color: string 
 export const DEPT_STATUS_LABELS: Record<string, { label: string; color: string; dot: string }> = {
   Pending: { label: 'در انتظار تکمیل', color: 'bg-gray-100 text-gray-700 border-gray-200', dot: 'bg-gray-400' },
   Draft: { label: 'پیش‌نویس موقت', color: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-400' },
-  Submitted: { label: 'ارسال شده جهت بررسی', color: 'bg-blue-100 text-blue-800 border-blue-200', dot: 'bg-blue-500' },
-  Approved: { label: 'تایید شده', color: 'bg-green-100 text-green-800 border-green-200', dot: 'bg-green-500' },
-  Rejected: { label: 'نیازمند اصلاح', color: 'bg-red-100 text-red-800 border-red-200', dot: 'bg-red-500' },
+  Submitted: { label: 'ارسال شده به معاونت اداره', color: 'bg-blue-100 text-blue-800 border-blue-200', dot: 'bg-blue-500' },
+  DeputyApproved: { label: 'تایید معاونت / در انتظار دفتر مدیریت', color: 'bg-purple-100 text-purple-800 border-purple-200', dot: 'bg-purple-500' },
+  Approved: { label: 'تایید نهایی دفتر مدیریت', color: 'bg-green-100 text-green-800 border-green-200', dot: 'bg-green-500' },
+  Rejected: { label: 'عودت جهت اصلاح', color: 'bg-red-100 text-red-800 border-red-200', dot: 'bg-red-500' },
 }
 
 const CYCLES_BASE = '/payroll/cycles'
