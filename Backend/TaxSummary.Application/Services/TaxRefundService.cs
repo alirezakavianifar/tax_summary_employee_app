@@ -241,6 +241,11 @@ public class TaxRefundService : ITaxRefundService
                 dto.GroupHeadName,
                 dto.SeniorAuditorName);
 
+            if (dto.TaxYear.HasValue && dto.TaxSource.HasValue)
+            {
+                refundCase.UpdateScope(dto.TaxYear.Value, dto.TaxSource.Value, dto.Period ?? refundCase.Period);
+            }
+
             await _repository.UpdateAsync(refundCase, ct);
             await _unitOfWork.SaveChangesAsync(ct);
 
@@ -248,6 +253,169 @@ public class TaxRefundService : ITaxRefundService
         }
         catch (Exception ex)
         {
+            return Result.Failure(ex.Message);
+        }
+    }
+
+    public async Task<Result> UpdateFullAsync(Guid id, CreateTaxRefundCaseDto dto, CancellationToken ct = default)
+    {
+        var refundCase = await _repository.GetByIdAsync(id, includeDetails: true, ct);
+        if (refundCase == null)
+            return Result.Failure("پرونده استرداد یافت نشد");
+
+        if (refundCase.Status == RefundCaseStatus.AdministrationHeadApproved || refundCase.Status == RefundCaseStatus.TreasuryDisbursed)
+            return Result.Failure("پرونده پس از تایید نهایی رئیس امور یا پرداخت در ذیحسابی قابل ویرایش نمی‌باشد");
+
+        try
+        {
+            // 1. Update Taxpayer & Officers
+            refundCase.UpdateTaxpayerInfo(
+                dto.TaxpayerName,
+                dto.EconomicCode,
+                dto.TaxUnitCode,
+                dto.Province,
+                dto.City,
+                dto.Address,
+                dto.BankName,
+                dto.ShebaNumber,
+                dto.DocketNumber,
+                dto.NationalId);
+
+            refundCase.UpdateAssignedOfficers(
+                dto.AdministrationHeadName,
+                dto.GroupHeadName,
+                dto.SeniorAuditorName);
+
+            refundCase.UpdateScope(dto.TaxYear, dto.TaxSource, dto.Period);
+
+            // 2. Sync Allocations and Receipts
+            var existingAllocations = refundCase.Allocations.ToList();
+            foreach (var a in existingAllocations)
+            {
+                refundCase.RemoveAllocation(a.Id);
+            }
+
+            var existingReceipts = refundCase.Receipts.ToList();
+            foreach (var r in existingReceipts)
+            {
+                refundCase.RemoveReceipt(r.Id);
+            }
+
+            var receiptMap = new Dictionary<string, Guid>();
+            if (dto.Receipts != null)
+            {
+                foreach (var r in dto.Receipts)
+                {
+                    var added = refundCase.AddReceipt(
+                        r.RowIndex,
+                        r.ReceiptNumber,
+                        r.IssueDateJalali,
+                        r.PaymentDateJalali,
+                        r.AmountRials,
+                        r.BankBranch,
+                        r.City,
+                        r.RevenueLedgerRow);
+
+                    if (!string.IsNullOrEmpty(added.ReceiptNumber))
+                        receiptMap[added.ReceiptNumber] = added.Id;
+                }
+            }
+
+            if (dto.Allocations != null)
+            {
+                foreach (var a in dto.Allocations)
+                {
+                    var receiptId = a.TaxRefundReceiptId;
+                    if (receiptId == Guid.Empty && !string.IsNullOrEmpty(a.ReceiptNumber) && receiptMap.TryGetValue(a.ReceiptNumber, out var mappedId))
+                    {
+                        receiptId = mappedId;
+                    }
+                    else if (receiptId == Guid.Empty)
+                    {
+                        var matchingReceipt = refundCase.Receipts.FirstOrDefault(r => r.ReceiptNumber == a.ReceiptNumber);
+                        if (matchingReceipt != null)
+                            receiptId = matchingReceipt.Id;
+                    }
+
+                    if (receiptId != Guid.Empty)
+                    {
+                        refundCase.AddAllocation(
+                            receiptId,
+                            a.ReceiptNumber,
+                            a.TotalReceiptAmount,
+                            a.RefundableAmount,
+                            a.BankBranch,
+                            a.City,
+                            a.RevenueLedgerRow);
+                    }
+                }
+            }
+
+            // 3. Sync Letters
+            var existingLetters = refundCase.Letters.ToList();
+            foreach (var l in existingLetters)
+            {
+                refundCase.RemoveLetter(l.Id);
+            }
+
+            if (dto.Letters != null)
+            {
+                foreach (var l in dto.Letters)
+                {
+                    refundCase.AddLetter(
+                        l.LetterType,
+                        l.LetterNumber,
+                        l.LetterDateJalali,
+                        l.Description,
+                        l.DebtAmount,
+                        l.DebtYear);
+                }
+            }
+
+            // 4. Update Assessment Info
+            if (dto.AssessmentInfo != null)
+            {
+                refundCase.UpdateAssessmentInfo(TaxAssessmentInfo.Create(
+                    dto.AssessmentInfo.HasReturnFiled,
+                    dto.AssessmentInfo.ReturnNumber,
+                    dto.AssessmentInfo.ReturnDateJalali,
+                    dto.AssessmentInfo.FinalizationMethod,
+                    dto.AssessmentInfo.FinalNoticeNumber,
+                    dto.AssessmentInfo.FinalNoticeDateJalali,
+                    dto.AssessmentInfo.AssessedIncome,
+                    dto.AssessmentInfo.Exemptions,
+                    dto.AssessmentInfo.AssessedTax,
+                    dto.AssessmentInfo.NonWaivablePenalties,
+                    dto.AssessmentInfo.TimelyPaymentBonus,
+                    dto.AssessmentInfo.FinalityStage));
+            }
+
+            // 5. Recompute and Update Breakdown
+            var calc = _calculationEngine.Compute(
+                refundCase.AssessmentInfo,
+                refundCase.Receipts,
+                refundCase.Letters,
+                dto.Breakdown?.StampDutyRefund ?? 0,
+                dto.Breakdown?.OtherRefund ?? 0,
+                dto.Breakdown?.PenaltiesRefund ?? 0,
+                (int)(dto.Breakdown?.DelayDamages ?? 0));
+
+            refundCase.UpdateBreakdown(RefundBreakdown.Create(
+                calc.PrincipalTaxRefund,
+                calc.StampDutyRefund,
+                calc.OtherRefund,
+                calc.PenaltiesRefund,
+                calc.DelayDamages));
+
+            await _repository.UpdateAsync(refundCase, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            _logger.LogInformation("Tax refund case full update succeeded: {Id} - {TrackingNumber}", refundCase.Id, refundCase.CaseTrackingNumber);
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error performing full update on tax refund case {Id}", id);
             return Result.Failure(ex.Message);
         }
     }

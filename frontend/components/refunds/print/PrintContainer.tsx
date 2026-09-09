@@ -12,6 +12,7 @@ interface PrintHeaderProps {
   province?: string
   city?: string
   taxUnitCode?: string
+  logoSrc?: string
 }
 
 export function PrintHeader({
@@ -24,6 +25,7 @@ export function PrintHeader({
   province = 'خوزستان',
   city = 'اهواز',
   taxUnitCode,
+  logoSrc = '/images/Intamedia_Logo.png',
 }: PrintHeaderProps) {
   return (
     <div className="border-b-2 border-black pb-3 mb-4 font-nazanin">
@@ -39,11 +41,17 @@ export function PrintHeader({
           {taxUnitCode && <p className="font-nazanin text-xs">واحد مالیاتی: {taxUnitCode}</p>}
         </div>
 
-        {/* Center: Title & Emblem placeholder */}
+        {/* Center: Title & Official Emblem */}
         <div className="text-center w-1/3 flex flex-col items-center">
-          <div className="w-10 h-10 border border-gray-800 rounded-full flex items-center justify-center text-[10px] font-bold mb-1 font-nazanin">
-            آرم سازمان
-          </div>
+          {logoSrc && (
+            <div className="w-12 h-12 mb-1 flex items-center justify-center">
+              <img
+                src={logoSrc}
+                alt="آرم سازمان امور مالیاتی کشور"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          )}
           <h1 className="text-base font-titr font-bold text-black tracking-tight">{formTitle}</h1>
           {subtitle && <p className="text-xs font-nazanin font-semibold text-gray-800 mt-0.5">{subtitle}</p>}
         </div>

@@ -13,6 +13,7 @@ public interface ITaxRefundService
     Task<Result<IEnumerable<TaxRefundCaseSummaryDto>>> GetCasesAsync(TaxRefundFilterDto filter, CancellationToken ct = default);
     Task<Result<Guid>> CreateAsync(CreateTaxRefundCaseDto dto, Guid currentUserId, CancellationToken ct = default);
     Task<Result> UpdateAsync(Guid id, UpdateTaxRefundCaseDto dto, CancellationToken ct = default);
+    Task<Result> UpdateFullAsync(Guid id, CreateTaxRefundCaseDto dto, CancellationToken ct = default);
     Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);
 
     Task<Result<TaxRefundReceiptDto>> AddReceiptAsync(Guid caseId, CreateTaxRefundReceiptDto dto, CancellationToken ct = default);

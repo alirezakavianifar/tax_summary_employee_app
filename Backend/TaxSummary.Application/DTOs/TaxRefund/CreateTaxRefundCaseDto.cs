@@ -70,4 +70,7 @@ public class UpdateTaxRefundCaseDto
     public string AdministrationHeadName { get; set; } = string.Empty;
     public string GroupHeadName { get; set; } = string.Empty;
     public string SeniorAuditorName { get; set; } = string.Empty;
+    public int? TaxYear { get; set; }
+    public TaxSourceType? TaxSource { get; set; }
+    public int? Period { get; set; }
 }

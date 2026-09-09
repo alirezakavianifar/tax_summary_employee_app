@@ -185,6 +185,38 @@ public class TaxRefundCaseTests
     }
 
     [Fact]
+    public void ReturnForRevision_WhenCaseIsApproved_UnlocksModificationsAndRecordsAudit()
+    {
+        // Arrange
+        var refundCase = CreateSampleCase();
+        var managerId = Guid.NewGuid();
+        refundCase.TransitionStatus(
+            RefundCaseStatus.AdministrationHeadApproved,
+            managerId,
+            "غلامرضا اسلامی",
+            "رئیس امور مالیاتی");
+
+        // Verify it was locked
+        Assert.Throws<InvalidOperationException>(() =>
+            refundCase.AddReceipt(1, "12345", "1403/01/01", "1403/01/01", 100_000));
+
+        // Act: Return case for revision to Audited
+        refundCase.TransitionStatus(
+            RefundCaseStatus.Audited,
+            managerId,
+            "غلامرضا اسلامی",
+            "رئیس امور مالیاتی",
+            "[عودت جهت اصلاح]: کشف بدهی جدید در استعلام وصول و اجرا");
+
+        // Assert: Case is unlocked and receipt can now be added
+        var receipt = refundCase.AddReceipt(1, "12345", "1403/01/01", "1403/01/01", 100_000);
+        Assert.NotNull(receipt);
+        Assert.Equal(RefundCaseStatus.Audited, refundCase.Status);
+        Assert.Equal(2, refundCase.Approvals.Count);
+        Assert.Contains(refundCase.Approvals, a => a.ToStatus == RefundCaseStatus.Audited && a.Notes!.Contains("عودت"));
+    }
+
+    [Fact]
     public void AddDocument_AddsToCollection()
     {
         // Arrange

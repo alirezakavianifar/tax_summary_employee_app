@@ -374,8 +374,10 @@ export interface UpdateTaxRefundCaseInput {
   province: string
   city: string
   address?: string
-  bankName: string
-  shebaNumber: string
+  bankName?: string
+  shebaNumber?: string
+  taxYear?: number
+  taxSource?: TaxSourceType
   refundReason?: string
   administrationHeadName?: string
   groupHeadName?: string

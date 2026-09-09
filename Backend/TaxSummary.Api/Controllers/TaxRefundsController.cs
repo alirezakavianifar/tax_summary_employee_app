@@ -157,6 +157,28 @@ public class TaxRefundsController : ControllerBase
     }
 
     /// <summary>
+    /// Full atomic update of an entire tax refund case across all wizard steps
+    /// ویرایش جامع و کامل پرونده استرداد شامل مشخصات، قبوض، استعلامات و محاسبات
+    /// </summary>
+    [HttpPut("{id:guid}/full")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateFull(
+        Guid id,
+        [FromBody] CreateTaxRefundCaseDto dto,
+        CancellationToken ct)
+    {
+        if (dto == null)
+            return BadRequest(new { error = "اطلاعات ورودی الزامی است" });
+
+        var result = await _refundService.UpdateFullAsync(id, dto, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return NoContent();
+    }
+
+    /// <summary>
     /// Delete a tax refund case
     /// حذف پرونده استرداد (صرفاً برای پرونده‌های پیش‌نویس و رد شده)
     /// </summary>

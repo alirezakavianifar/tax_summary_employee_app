@@ -20,6 +20,7 @@ import {
   TrendingDown,
   Building,
   CheckCircle2,
+  Pencil,
 } from 'lucide-react'
 import { taxRefundApi } from '@/lib/api/taxRefund'
 import {
@@ -30,6 +31,7 @@ import {
   RefundCaseStatusLabels,
 } from '@/types/taxRefund'
 import ExcelImportModal from '@/components/refunds/ExcelImportModal'
+import { QuickEditCaseModal } from '@/components/refunds/QuickEditCaseModal'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function RefundsDashboardPage() {
@@ -37,6 +39,7 @@ export default function RefundsDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [editingCase, setEditingCase] = useState<TaxRefundCaseSummary | null>(null)
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
@@ -361,6 +364,14 @@ export default function RefundsDashboardPage() {
                             </Link>
 
                             <button
+                              onClick={() => setEditingCase(c)}
+                              className="p-1.5 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                              title="ویرایش مشخصات پرونده"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+
+                            <button
                               onClick={async () => {
                                 try {
                                   const blob = await taxRefundApi.exportExcel(c.id)
@@ -478,6 +489,19 @@ export default function RefundsDashboardPage() {
           fetchCases()
         }}
       />
+
+      {/* Quick Edit Case Modal */}
+      {editingCase && (
+        <QuickEditCaseModal
+          caseItem={editingCase}
+          isOpen={!!editingCase}
+          onClose={() => setEditingCase(null)}
+          onSaved={() => {
+            setEditingCase(null)
+            fetchCases()
+          }}
+        />
+      )}
     </div>
     </ProtectedRoute>
   )

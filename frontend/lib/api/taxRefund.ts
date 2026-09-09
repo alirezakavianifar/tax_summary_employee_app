@@ -70,6 +70,13 @@ export const taxRefundApi = {
   },
 
   /**
+   * Full atomic update of a tax refund case across all 6 steps
+   */
+  async updateFullCase(id: string, data: CreateTaxRefundCaseInput): Promise<void> {
+    await apiClient.put(`/tax-refunds/${id}/full`, data)
+  },
+
+  /**
    * Delete refund case
    */
   async deleteCase(id: string): Promise<void> {

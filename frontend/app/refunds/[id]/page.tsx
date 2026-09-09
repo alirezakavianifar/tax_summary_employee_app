@@ -22,6 +22,8 @@ import {
   ArrowRight,
   ShieldCheck,
   FileText,
+  Edit3,
+  RotateCcw,
 } from 'lucide-react'
 import { taxRefundApi } from '@/lib/api/taxRefund'
 import {
@@ -37,6 +39,7 @@ import { DocumentsSection } from '@/components/refunds/DocumentsSection'
 import { PdfViewerModal } from '@/components/refunds/PdfViewerModal'
 import { JustificationReportSummaryCard } from '@/components/refunds/JustificationReportSummaryCard'
 import { JustificationReportEditorModal } from '@/components/refunds/JustificationReportEditorModal'
+import { WorkflowReturnModal } from '@/components/refunds/WorkflowReturnModal'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
 const PRINT_FORMS = [
@@ -63,6 +66,7 @@ export default function TaxRefundDetailPage() {
   const [downloading, setDownloading] = useState(false)
   const [directViewingDoc, setDirectViewingDoc] = useState<TaxRefundDocument | null>(null)
   const [isReportEditorOpen, setIsReportEditorOpen] = useState(false)
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false)
 
   const fetchCase = async () => {
     try {
@@ -94,6 +98,22 @@ export default function TaxRefundDetailPage() {
       await fetchCase()
     } catch (err: any) {
       alert(err.message || 'خطا در تغییر وضعیت پرونده')
+    } finally {
+      setTransitioning(false)
+    }
+  }
+
+  const handleReturnCase = async (targetStatus: RefundCaseStatus, reason: string) => {
+    try {
+      setTransitioning(true)
+      await taxRefundApi.transitionStatus(caseId, {
+        newStatus: targetStatus,
+        notes: reason,
+      })
+      await fetchCase()
+    } catch (err: any) {
+      alert(err.message || 'خطا در عودت پرونده')
+      throw err
     } finally {
       setTransitioning(false)
     }
@@ -166,6 +186,25 @@ export default function TaxRefundDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {refundCase.status !== RefundCaseStatus.AdministrationHeadApproved &&
+              refundCase.status !== RefundCaseStatus.TreasuryDisbursed && (
+                <Link
+                  href={`/refunds/${refundCase.id}/edit`}
+                  className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  ویرایش پرونده (۶ مرحله)
+                </Link>
+              )}
+            {refundCase.status === RefundCaseStatus.AdministrationHeadApproved && (
+              <button
+                onClick={() => setIsReturnModalOpen(true)}
+                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+              >
+                <RotateCcw className="w-4 h-4" />
+                عودت پرونده جهت ویرایش
+              </button>
+            )}
             <Link
               href={`/refunds/${refundCase.id}/print`}
               className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
@@ -423,33 +462,63 @@ export default function TaxRefundDetailPage() {
                 )}
 
                 {refundCase.status === RefundCaseStatus.Audited && (
-                  <button
-                    onClick={() => handleTransition(RefundCaseStatus.GroupHeadApproved)}
-                    disabled={transitioning}
-                    className="w-full py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold"
-                  >
-                    تایید رئیس گروه مالیاتی
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      onClick={() => handleTransition(RefundCaseStatus.GroupHeadApproved)}
+                      disabled={transitioning}
+                      className="flex-1 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
+                    >
+                      تایید رئیس گروه مالیاتی
+                    </button>
+                    <button
+                      onClick={() => setIsReturnModalOpen(true)}
+                      disabled={transitioning}
+                      className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      عودت به پیش‌نویس
+                    </button>
+                  </div>
                 )}
 
                 {refundCase.status === RefundCaseStatus.GroupHeadApproved && (
-                  <button
-                    onClick={() => handleTransition(RefundCaseStatus.AdministrationHeadApproved)}
-                    disabled={transitioning}
-                    className="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold"
-                  >
-                    صدور دستور استرداد (رئیس امور)
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      onClick={() => handleTransition(RefundCaseStatus.AdministrationHeadApproved)}
+                      disabled={transitioning}
+                      className="flex-1 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
+                    >
+                      صدور دستور استرداد (رئیس امور)
+                    </button>
+                    <button
+                      onClick={() => setIsReturnModalOpen(true)}
+                      disabled={transitioning}
+                      className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      عودت جهت اصلاح
+                    </button>
+                  </div>
                 )}
 
                 {refundCase.status === RefundCaseStatus.AdministrationHeadApproved && (
-                  <button
-                    onClick={() => handleTransition(RefundCaseStatus.TreasuryDisbursed)}
-                    disabled={transitioning}
-                    className="w-full py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold"
-                  >
-                    تایید پرداخت ذیحسابی
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      onClick={() => handleTransition(RefundCaseStatus.TreasuryDisbursed)}
+                      disabled={transitioning}
+                      className="flex-1 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
+                    >
+                      تایید پرداخت ذیحسابی
+                    </button>
+                    <button
+                      onClick={() => setIsReturnModalOpen(true)}
+                      disabled={transitioning}
+                      className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      عودت جهت اصلاح
+                    </button>
+                  </div>
                 )}
 
                 {refundCase.status === RefundCaseStatus.TreasuryDisbursed && (
@@ -500,6 +569,15 @@ export default function TaxRefundDetailPage() {
           isOpen={isReportEditorOpen}
           onClose={() => setIsReportEditorOpen(false)}
           onSaved={fetchCase}
+        />
+
+        {/* Workflow Return Modal */}
+        <WorkflowReturnModal
+          isOpen={isReturnModalOpen}
+          caseTrackingNumber={refundCase.caseTrackingNumber}
+          currentStatus={refundCase.status}
+          onClose={() => setIsReturnModalOpen(false)}
+          onConfirm={handleReturnCase}
         />
       </div>
     </div>

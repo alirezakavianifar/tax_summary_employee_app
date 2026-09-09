@@ -152,15 +152,37 @@ public class TaxRefundCase
             throw new ArgumentException("عنوان مودی نمی‌تواند خالی باشد", nameof(taxpayerName));
 
         TaxpayerName = taxpayerName.Trim();
-        EconomicCode = ValueObjects.EconomicCode.NormalizeDigits(economicCode.Trim());
-        TaxUnitCode = taxUnitCode.Trim();
-        Province = province.Trim();
-        City = city.Trim();
-        Address = address.Trim();
-        BankName = bankName.Trim();
-        ShebaNumber = shebaNumber.Trim().ToUpperInvariant();
-        DocketNumber = docketNumber.Trim();
-        NationalId = nationalId?.Trim();
+        if (!string.IsNullOrWhiteSpace(economicCode))
+            EconomicCode = ValueObjects.EconomicCode.NormalizeDigits(economicCode.Trim());
+        if (!string.IsNullOrWhiteSpace(taxUnitCode))
+            TaxUnitCode = taxUnitCode.Trim();
+        if (!string.IsNullOrWhiteSpace(province))
+            Province = province.Trim();
+        if (!string.IsNullOrWhiteSpace(city))
+            City = city.Trim();
+        if (!string.IsNullOrWhiteSpace(address))
+            Address = address.Trim();
+        if (!string.IsNullOrWhiteSpace(bankName))
+            BankName = bankName.Trim();
+        if (!string.IsNullOrWhiteSpace(shebaNumber))
+            ShebaNumber = shebaNumber.Trim().ToUpperInvariant();
+        if (!string.IsNullOrWhiteSpace(docketNumber))
+            DocketNumber = docketNumber.Trim();
+        if (nationalId != null)
+            NationalId = string.IsNullOrWhiteSpace(nationalId) ? null : nationalId.Trim();
+
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateScope(int taxYear, TaxSourceType taxSource, int period = 1)
+    {
+        EnsureModifiable();
+        if (taxYear < 1300 || taxYear > 1500)
+            throw new ArgumentException("سال مالیاتی نامعتبر است", nameof(taxYear));
+
+        TaxYear = taxYear;
+        TaxSource = taxSource;
+        Period = period > 0 ? period : 1;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -406,6 +428,12 @@ public class TaxRefundCase
 
         Status = newStatus;
         UpdatedAt = DateTime.UtcNow;
+
+        // When returning to an earlier stage for revision, reset FinalizedAt
+        if (newStatus < Status)
+        {
+            FinalizedAt = null;
+        }
 
         if (newStatus == RefundCaseStatus.Audited && SubmittedAt == null)
         {
