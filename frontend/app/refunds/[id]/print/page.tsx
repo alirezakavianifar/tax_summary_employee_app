@@ -114,7 +114,7 @@ export default function TaxRefundPrintPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-200 print:bg-white text-black font-sans">
+    <div className="min-h-screen bg-gray-200 print:bg-white text-black font-vazirmatn">
       {/* Top Action Bar (Screen Only - Hidden in Print) */}
       <div className="no-print sticky top-0 z-30 bg-gray-900 text-white shadow-lg border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
@@ -202,6 +202,16 @@ export default function TaxRefundPrintPage() {
           margin: 10mm 12mm;
         }
 
+        .a4-page {
+          font-family: var(--font-nazanin), 'B Nazanin', Tahoma, sans-serif;
+        }
+
+        .a4-page h1,
+        .a4-page th,
+        .a4-page .font-titr {
+          font-family: var(--font-titr), 'B Titr', Tahoma, sans-serif;
+        }
+
         @media print {
           html,
           body {
@@ -210,6 +220,7 @@ export default function TaxRefundPrintPage() {
             margin: 0 !important;
             padding: 0 !important;
             font-size: 11pt !important;
+            font-family: var(--font-nazanin), 'B Nazanin', Tahoma, sans-serif !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }

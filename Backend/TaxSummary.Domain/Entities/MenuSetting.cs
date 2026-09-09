@@ -143,7 +143,11 @@ public class MenuSetting
             return false;
 
         var roles = AllowedRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
+        return roles.Any(r => 
+            string.Equals(r, role, StringComparison.OrdinalIgnoreCase) ||
+            (string.Equals(role, "Expert", StringComparison.OrdinalIgnoreCase) && string.Equals(r, "Employee", StringComparison.OrdinalIgnoreCase)) ||
+            (string.Equals(role, "OfficeHead", StringComparison.OrdinalIgnoreCase) && string.Equals(r, "Manager", StringComparison.OrdinalIgnoreCase))
+        );
     }
 
     public void UpdateRoles(IEnumerable<string> roles, Guid? updatedByUserId = null)

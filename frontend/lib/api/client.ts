@@ -35,6 +35,11 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
+    // Skip if the request is for auth lifecycle endpoints to avoid loops
+    if (originalRequest.url?.includes('/login') || originalRequest.url?.includes('/refresh') || originalRequest.url?.includes('/logout')) {
+      return Promise.reject(error)
+    }
+
     // If error is 401 and we haven't retried yet, try to refresh token
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true

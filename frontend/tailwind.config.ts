@@ -10,7 +10,10 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        vazirmatn: ['var(--font-vazirmatn)'],
+        vazirmatn: ['var(--font-vazirmatn)', 'sans-serif'],
+        nazanin: ['var(--font-nazanin)', '"B Nazanin"', 'Tahoma', 'sans-serif'],
+        titr: ['var(--font-titr)', '"B Titr"', 'Tahoma', 'sans-serif'],
+        mitra: ['var(--font-mitra)', '"B Mitra"', 'Tahoma', 'sans-serif'],
       },
       colors: {
         primary: {

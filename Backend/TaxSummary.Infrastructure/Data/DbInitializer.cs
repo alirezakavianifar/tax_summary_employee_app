@@ -391,6 +391,21 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
+        // Synchronize legacy AllowedRoles to include organizational roles
+        var nonAdminItems = await context.MenuSettings
+            .Where(m => !m.AdminOnly)
+            .ToListAsync();
+
+        bool hasModified = false;
+        foreach (var item in nonAdminItems)
+        {
+            if (item.AllowedRoles == "Admin,Manager,Employee" || item.AllowedRoles == "Admin,Employee")
+            {
+                item.UpdateRoles(TaxSummary.Domain.Common.DefaultMenuSettings.AllGeneralRoles.Split(','));
+                hasModified = true;
+            }
+        }
+
         // Ensure admin-only menu items are properly restricted
         var adminItems = await context.MenuSettings
             .Where(m => m.AdminOnly && m.AllowedRoles != "Admin")
@@ -401,7 +416,12 @@ public static class DbInitializer
             foreach (var item in adminItems)
             {
                 item.UpdateRoles(new[] { "Admin" });
+                hasModified = true;
             }
+        }
+
+        if (hasModified)
+        {
             await context.SaveChangesAsync();
         }
     }

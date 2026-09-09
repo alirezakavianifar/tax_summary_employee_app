@@ -26,6 +26,42 @@ const vazirmatn = localFont({
   variable: '--font-vazirmatn',
 })
 
+const bNazanin = localFont({
+  src: [
+    {
+      path: '../public/fonts/BNazanin.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-nazanin',
+  display: 'swap',
+})
+
+const bTitr = localFont({
+  src: [
+    {
+      path: '../public/fonts/BTitrBold.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-titr',
+  display: 'swap',
+})
+
+const bMitra = localFont({
+  src: [
+    {
+      path: '../public/fonts/BMitra.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-mitra',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
   title: 'اداره کل امور مالیاتی استان خوزستان | سامانه جامع اداری و پرسنلی',
   description: 'سامانه جامع مدیریت ارزیابی شایستگی انتصابات و محاسبات رفاهی و اضافه کار اداره کل امور مالیاتی استان خوزستان',
@@ -38,7 +74,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fa" dir="rtl">
-      <body className={`${vazirmatn.variable} font-vazirmatn antialiased bg-gray-50`}>
+      <body className={`${vazirmatn.variable} ${bNazanin.variable} ${bTitr.variable} ${bMitra.variable} font-vazirmatn antialiased bg-gray-50`}>
         <AuthProvider>
           <MenuSettingsProvider>
             <div className="min-h-screen flex flex-col">

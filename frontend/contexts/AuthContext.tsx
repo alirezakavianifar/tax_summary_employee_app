@@ -110,22 +110,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [router]);
 
     const logout = useCallback(async () => {
-        // Clear local memory state immediately
-        tokenManager.clearAccessToken();
-        setAccessToken(null);
-        setUser(null);
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('user');
-        }
-        Cookies.remove('accessToken', { path: '/' });
-
         try {
             await authApi.logout();
         } catch (error) {
             console.error('Logout API call failed:', error);
         } finally {
-            router.push('/login');
+            tokenManager.clearAccessToken();
+            setAccessToken(null);
+            setUser(null);
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('user');
+                Cookies.remove('accessToken', { path: '/' });
+                Cookies.remove('accessToken');
+                window.location.href = '/login';
+            } else {
+                router.push('/login');
+            }
         }
     }, [router]);
 

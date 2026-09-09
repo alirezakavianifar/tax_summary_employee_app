@@ -103,28 +103,57 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
     if (!item.isVisible) return false
     if (item.adminOnly) return false
     if (item.allowedRoles && item.allowedRoles.length > 0) {
-      return !!user?.role && item.allowedRoles.some((r) => r.toLowerCase() === user.role.toLowerCase())
+      if (!user?.role) return false
+      const userRole = user.role.toLowerCase()
+      return item.allowedRoles.some((r) => {
+        const rLower = r.toLowerCase()
+        return (
+          rLower === userRole ||
+          (userRole === 'expert' && rLower === 'employee') ||
+          (userRole === 'officehead' && rLower === 'manager')
+        )
+      })
     }
     return true
   }, [isAdmin, user?.role])
 
   const isModuleVisible = useCallback(
     (moduleIdOrKey: string): boolean => {
-      if (settings.length === 0) return true
+      // While initial settings are loading, do not show modules to prevent unauthorized flashing
+      if (loading) return false
 
       const normalizedKey = (MODULE_KEY_MAP[moduleIdOrKey] || moduleIdOrKey).toLowerCase()
+
+      // Home link is always visible
+      if (normalizedKey === 'nav_home') {
+        const homeItem = settingsByKey['nav_home']
+        return homeItem ? homeItem.isVisible : true
+      }
+
+      // If user is not authenticated, show landing showcase modules (admin is always blocked)
+      if (!isAuthenticated) {
+        if (normalizedKey === 'module_admin' || normalizedKey === 'admin') return false
+        return true
+      }
+
+      // If settings array is empty after loading, user has no permitted modules
+      if (settings.length === 0) return false
+
       const item = settingsByKey[normalizedKey]
-      if (!item) return true
+      // If item was not returned by backend (or does not exist), user has no permission
+      if (!item) return false
 
       if (!item.isVisible) return false
       return isRolePermitted(item)
     },
-    [settings.length, settingsByKey, isRolePermitted]
+    [loading, isAuthenticated, settings.length, settingsByKey, isRolePermitted]
   )
 
   const isActionVisible = useCallback(
     (actionHrefOrKey: string, parentModuleIdOrKey?: string): boolean => {
-      if (settings.length === 0) return true
+      if (loading) return false
+      if (!isAuthenticated) return false
+      if (settings.length === 0) return false
 
       // First check if parent module is visible
       if (parentModuleIdOrKey) {
@@ -139,7 +168,8 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
         item = settingsByRoute[actionHrefOrKey.toLowerCase()]
       }
 
-      if (!item) return true
+      // If action was not returned by backend, user has no permission
+      if (!item) return false
 
       if (!item.isVisible) return false
       if (!isRolePermitted(item)) return false
@@ -152,7 +182,7 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
 
       return true
     },
-    [settings.length, settingsByKey, settingsByRoute, isModuleVisible, isRolePermitted]
+    [loading, isAuthenticated, settings.length, settingsByKey, settingsByRoute, isModuleVisible, isRolePermitted]
   )
 
   const updateSettings = useCallback(

@@ -103,13 +103,13 @@ export function ChecklistPrint({ data }: ChecklistPrintProps) {
         taxUnitCode={data.taxUnitCode}
       />
 
-      <div className="text-xs text-gray-700 mb-2 font-semibold">
+      <div className="text-xs text-gray-800 mb-2 font-bold font-nazanin">
         این چک‌لیست قبل از ارسال پرونده به اداره حسابداری و ذیحسابی توسط مسئولین ذیربط کنترل و تکمیل می‌گردد:
       </div>
 
-      <table className="w-full text-xs border-collapse border border-black mb-4">
+      <table className="w-full text-xs border-collapse border border-black mb-4 font-nazanin">
         <thead>
-          <tr className="bg-gray-100 text-black font-bold text-center">
+          <tr className="bg-gray-100 text-black font-titr font-bold text-center text-xs">
             <th className="border border-black py-1.5 px-2 w-24">مرحله / بخش</th>
             <th className="border border-black py-1.5 px-1 w-10">ردیف</th>
             <th className="border border-black py-1.5 px-3 text-right">شرح اقدام کنترلی</th>
@@ -123,13 +123,13 @@ export function ChecklistPrint({ data }: ChecklistPrintProps) {
               {item.rowSpan > 0 && (
                 <td
                   rowSpan={item.rowSpan}
-                  className="border border-black py-1 px-2 font-bold text-center bg-gray-50/30 align-middle text-[11px]"
+                  className="border border-black py-1 px-2 font-titr font-bold text-center bg-gray-50/30 align-middle text-[11px]"
                 >
                   {item.category}
                 </td>
               )}
-              <td className="border border-black py-1 px-1 text-center font-mono font-bold">{item.id}</td>
-              <td className="border border-black py-1 px-2 text-right leading-5">{item.desc}</td>
+              <td className="border border-black py-1 px-1 text-center font-bold text-sm">{item.id}</td>
+              <td className="border border-black py-1 px-2 text-right leading-5 text-[11.5px]">{item.desc}</td>
               <td className="border border-black py-1 px-1 text-center font-bold text-base">✓</td>
               <td className="border border-black py-1 px-1 text-center text-gray-300">-</td>
             </tr>

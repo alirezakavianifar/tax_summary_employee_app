@@ -33,8 +33,8 @@ authApi.interceptors.response.use(
     async (error: AxiosError) => {
         const originalRequest = error.config as any;
 
-        // Skip if the request is for login or refresh tokens to avoid loops
-        if (originalRequest.url?.includes('/login') || originalRequest.url?.includes('/refresh')) {
+        // Skip if the request is for login, refresh, or logout to avoid loops
+        if (originalRequest.url?.includes('/login') || originalRequest.url?.includes('/refresh') || originalRequest.url?.includes('/logout')) {
             return Promise.reject(error);
         }
 
@@ -120,13 +120,19 @@ export async function refreshToken(): Promise<LoginResponse> {
  * Logout and revoke tokens
  */
 export async function logout(): Promise<void> {
-    tokenManager.clearAccessToken();
-    if (typeof window !== 'undefined') {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('user');
-        Cookies.remove('accessToken', { path: '/' });
+    try {
+        await authApi.post('/logout');
+    } catch {
+        // Ignore network or authentication errors on logout
+    } finally {
+        tokenManager.clearAccessToken();
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
+            Cookies.remove('accessToken', { path: '/' });
+            Cookies.remove('accessToken');
+        }
     }
-    await authApi.post('/logout');
 }
 
 /**
