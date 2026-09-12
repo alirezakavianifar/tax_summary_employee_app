@@ -9,6 +9,7 @@ export interface User {
     isActive: boolean;
     employeeId?: string;
     employee?: any; // Can be typed more specifically if needed
+    assignedOffices?: { id: string; code: string; name: string }[];
     lockoutEnd?: string | null;
     failedLoginAttempts?: number;
     mustChangePassword?: boolean;
@@ -34,6 +35,7 @@ export interface RegisterRequest {
     password: string;
     role: UserRole;
     employeeId?: string;
+    officeIds?: string[];
 }
 
 export interface ChangePasswordRequest {

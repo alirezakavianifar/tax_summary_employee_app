@@ -367,10 +367,27 @@ public class PayrollCycleService : IPayrollCycleService
         return cycles.Select(MapToSummary);
     }
 
-    public async Task<PayrollCycleDetailDto?> GetCycleByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<PayrollCycleDetailDto?> GetCycleByIdAsync(
+        Guid id,
+        Guid? currentUserId = null,
+        string? currentUserRole = null,
+        CancellationToken cancellationToken = default)
     {
         var cycle = await _cycleRepository.GetCycleByIdAsync(id, includeDetails: true, cancellationToken);
         if (cycle == null) return null;
+
+        var entries = cycle.DepartmentEntries.AsEnumerable();
+
+        // If not Admin, filter entries by user's assigned offices
+        if (currentUserId.HasValue && !string.Equals(currentUserRole, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            var userResult = await _userRepository.GetByIdAsync(currentUserId.Value, cancellationToken);
+            if (userResult.IsSuccess && userResult.Value != null)
+            {
+                var user = userResult.Value;
+                entries = entries.Where(d => user.HasOfficeAccess(d.DepartmentName));
+            }
+        }
 
         return new PayrollCycleDetailDto
         {
@@ -386,7 +403,7 @@ public class PayrollCycleService : IPayrollCycleService
             CreatedByUsername = cycle.CreatedBy?.Username ?? "نامشخص",
             FinalizedAt = cycle.FinalizedAt,
             FinalizedByUsername = cycle.FinalizedBy?.Username,
-            DepartmentEntries = cycle.DepartmentEntries.Select(d => MapToDepartmentSummary(d, cycle.ProcessType)).OrderBy(d => d.DepartmentName).ToList()
+            DepartmentEntries = entries.Select(d => MapToDepartmentSummary(d, cycle.ProcessType)).OrderBy(d => d.DepartmentName).ToList()
         };
     }
 
@@ -411,14 +428,30 @@ public class PayrollCycleService : IPayrollCycleService
     {
         var userResult = await _userRepository.GetByIdAsync(currentUserId, cancellationToken);
         var user = userResult.Value;
-        var deptName = user?.Employee?.ServiceUnit;
-        if (string.IsNullOrWhiteSpace(deptName))
+        if (user == null)
         {
             return Enumerable.Empty<PayrollDepartmentEntrySummaryDto>();
         }
 
-        var entries = await _cycleRepository.GetDepartmentEntriesForUserAsync(deptName, cancellationToken);
-        return entries.Select(e => MapToDepartmentSummary(e, e.PayrollCycle?.ProcessType ?? "OvertimeWelfareRated"));
+        var assignedOfficeCodes = user.GetAssignedOfficeCodes().ToList();
+        if (!assignedOfficeCodes.Any() && user.Employee != null && !string.IsNullOrWhiteSpace(user.Employee.ServiceUnit))
+        {
+            assignedOfficeCodes.Add(user.Employee.ServiceUnit.Trim());
+        }
+
+        if (!assignedOfficeCodes.Any())
+        {
+            return Enumerable.Empty<PayrollDepartmentEntrySummaryDto>();
+        }
+
+        var allEntries = new List<PayrollDepartmentEntrySummaryDto>();
+        foreach (var officeCode in assignedOfficeCodes.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var entries = await _cycleRepository.GetDepartmentEntriesForUserAsync(officeCode, cancellationToken);
+            allEntries.AddRange(entries.Select(e => MapToDepartmentSummary(e, e.PayrollCycle?.ProcessType ?? "OvertimeWelfareRated")));
+        }
+
+        return allEntries;
     }
 
     public async Task<PayrollDepartmentEntryDto> SaveDepartmentDraftAsync(
@@ -543,7 +576,7 @@ public class PayrollCycleService : IPayrollCycleService
         cycle.FinalizeCycle(adminUserId);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return (await GetCycleByIdAsync(cycleId, cancellationToken))!;
+        return (await GetCycleByIdAsync(cycleId, adminUserId, "Admin", cancellationToken))!;
     }
 
     public async Task DeleteCycleAsync(
@@ -789,10 +822,14 @@ public class PayrollCycleService : IPayrollCycleService
 
         var userResult = await _userRepository.GetByIdAsync(currentUserId, ct);
         var user = userResult.Value;
-        var userDept = user?.Employee?.ServiceUnit;
-        if (string.IsNullOrWhiteSpace(userDept) || !userDept.Equals(departmentName, StringComparison.OrdinalIgnoreCase))
+        if (user == null || !user.HasOfficeAccess(departmentName))
         {
-            throw new UnauthorizedAccessException($"دسترسی غیرمجاز: شما فقط مجاز به مشاهده و مدیریت کاربرگ اداره مربوط به خود ({userDept ?? "فاقد اداره"}) هستید.");
+            var assigned = user != null ? string.Join(", ", user.GetAssignedOfficeCodes()) : "";
+            if (string.IsNullOrEmpty(assigned))
+            {
+                assigned = user?.Employee?.ServiceUnit ?? "فاقد اداره";
+            }
+            throw new UnauthorizedAccessException($"دسترسی غیرمجاز: شما فقط مجاز به مشاهده و مدیریت کاربرگ ادارات منتسب به خود ({assigned}) هستید.");
         }
     }
 

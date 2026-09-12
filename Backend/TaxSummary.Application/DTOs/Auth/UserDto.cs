@@ -43,6 +43,11 @@ public class UserDto
     public EmployeeDto? Employee { get; set; }
 
     /// <summary>
+    /// Offices assigned to this user
+    /// </summary>
+    public List<TaxSummary.Application.DTOs.Office.OfficeSummaryDto> AssignedOffices { get; set; } = new();
+
+    /// <summary>
     /// Account lockout expiration (null if not locked)
     /// </summary>
     public DateTime? LockoutEnd { get; set; }

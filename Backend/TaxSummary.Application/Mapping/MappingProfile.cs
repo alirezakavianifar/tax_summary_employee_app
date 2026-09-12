@@ -1,6 +1,7 @@
 using AutoMapper;
 using TaxSummary.Application.DTOs;
 using TaxSummary.Application.DTOs.Auth;
+using TaxSummary.Application.DTOs.Office;
 using TaxSummary.Domain.Entities;
 
 namespace TaxSummary.Application.Mapping;
@@ -55,8 +56,15 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.AdminStatus, opt => opt.MapFrom(src => src.AdministrativeStatus))
             .ForMember(dest => dest.Capabilities, opt => opt.MapFrom(src => src.PerformanceCapabilities));
 
+        // Office mappings
+        CreateMap<Office, OfficeSummaryDto>();
+        CreateMap<Office, OfficeDto>()
+            .ForMember(dest => dest.EmployeeCount, opt => opt.MapFrom(src => src.Employees.Count));
+
         // User mappings
-        CreateMap<User, UserDto>().MaxDepth(5);
+        CreateMap<User, UserDto>()
+            .ForMember(dest => dest.AssignedOffices, opt => opt.MapFrom(src => src.UserOffices.Where(uo => uo.Office != null).Select(uo => uo.Office)))
+            .MaxDepth(5);
         
         CreateMap<RegisterRequestDto, User>()
             .MaxDepth(5)

@@ -72,4 +72,9 @@ public interface IUserRepository
     /// Check if email already exists
     /// </summary>
     Task<bool> EmailExistsAsync(string? email, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Update assigned offices for a user
+    /// </summary>
+    Task<Result> UpdateUserOfficesAsync(Guid userId, IEnumerable<Guid> officeIds, CancellationToken cancellationToken = default);
 }

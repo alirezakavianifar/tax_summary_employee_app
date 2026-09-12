@@ -73,6 +73,9 @@ public static class DependencyInjection
         // Register Excel Seed Service
         services.AddScoped<IExcelSeedService, ExcelSeedService>();
 
+        // Register Office Service
+        services.AddScoped<IOfficeService, OfficeService>();
+
         // Register Payroll Services
         services.AddSingleton<IPositionMappingService, PositionMappingService>();
         services.AddScoped<IPayrollRepository, PayrollRepository>();

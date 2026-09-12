@@ -9,4 +9,5 @@ public class UpdateUserRequestDto
     public string Role { get; set; } = string.Empty;
     public Guid? EmployeeId { get; set; }
     public bool IsActive { get; set; }
+    public List<Guid>? OfficeIds { get; set; }
 }

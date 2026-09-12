@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usersApi } from '@/lib/api/users';
 import { reportsApi } from '@/lib/api/reports';
-import { EmployeeDto } from '@/lib/api/types';
+import { officesApi } from '@/lib/api/offices';
+import { EmployeeDto, OfficeDto } from '@/lib/api/types';
 import { User, UserRole } from '@/types/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { Building2, Search, CheckSquare, Square, X } from 'lucide-react';
 
 const getRoleBadge = (role: string) => {
     switch (role) {
@@ -61,6 +63,16 @@ export default function UsersPage() {
     const [editEmployeeId, setEditEmployeeId] = useState('');
     const [employees, setEmployees] = useState<EmployeeDto[]>([]);
     const [loadingEmployees, setLoadingEmployees] = useState(false);
+    const [offices, setOffices] = useState<OfficeDto[]>([]);
+    const [loadingOffices, setLoadingOffices] = useState(false);
+    const [editSelectedOfficeIds, setEditSelectedOfficeIds] = useState<string[]>([]);
+    const [editOfficeSearch, setEditOfficeSearch] = useState('');
+
+    const filteredEditOffices = offices.filter(
+        o =>
+            o.code.toLowerCase().includes(editOfficeSearch.toLowerCase()) ||
+            o.name.toLowerCase().includes(editOfficeSearch.toLowerCase())
+    );
 
     // Reset Password Modal State
     const [resetModalUser, setResetModalUser] = useState<User | null>(null);
@@ -77,7 +89,20 @@ export default function UsersPage() {
     useEffect(() => {
         loadUsers();
         loadEmployees();
+        loadOffices();
     }, []);
+
+    const loadOffices = async () => {
+        try {
+            setLoadingOffices(true);
+            const data = await officesApi.getAll();
+            setOffices(data || []);
+        } catch (err) {
+            console.error('Failed to load offices', err);
+        } finally {
+            setLoadingOffices(false);
+        }
+    };
 
     const loadEmployees = async () => {
         try {
@@ -109,12 +134,30 @@ export default function UsersPage() {
         setEditRole(user.role as UserRole);
         setEditIsActive(user.isActive);
         setEditEmployeeId(user.employeeId || '');
+        setEditSelectedOfficeIds(user.assignedOffices?.map(o => o.id) || []);
+        setEditOfficeSearch('');
         setActionError(null);
     };
 
     const handleCloseEditModal = () => {
         setEditModalUser(null);
+        setEditSelectedOfficeIds([]);
+        setEditOfficeSearch('');
         setActionError(null);
+    };
+
+    const toggleEditOffice = (officeId: string) => {
+        setEditSelectedOfficeIds(prev =>
+            prev.includes(officeId) ? prev.filter(id => id !== officeId) : [...prev, officeId]
+        );
+    };
+
+    const handleSelectAllEditOffices = () => {
+        setEditSelectedOfficeIds(offices.map(o => o.id));
+    };
+
+    const handleClearAllEditOffices = () => {
+        setEditSelectedOfficeIds([]);
     };
 
     const handleEditEmployeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -124,6 +167,15 @@ export default function UsersPage() {
             const selectedEmp = employees.find(emp => emp.id === empId);
             if (selectedEmp?.nationalId) {
                 setEditUsername(selectedEmp.nationalId);
+            }
+            if (selectedEmp?.serviceUnit && offices.length > 0) {
+                const normUnit = selectedEmp.serviceUnit.trim().toLowerCase();
+                const matched = offices.find(
+                    o => o.code.toLowerCase() === normUnit || o.name.toLowerCase().includes(normUnit)
+                );
+                if (matched && !editSelectedOfficeIds.includes(matched.id)) {
+                    setEditSelectedOfficeIds(prev => [...prev, matched.id]);
+                }
             }
         }
     };
@@ -145,6 +197,7 @@ export default function UsersPage() {
                 role: editRole,
                 isActive: editIsActive,
                 employeeId: editEmployeeId || undefined,
+                officeIds: editRole === 'Admin' ? [] : editSelectedOfficeIds,
             });
             setActionSuccess(`مشخصات کاربر «${editUsername.trim()}» با موفقیت بروزرسانی شد.`);
             handleCloseEditModal();
@@ -327,6 +380,9 @@ export default function UsersPage() {
                                             کارمند مرتبط
                                         </th>
                                         <th scope="col" className="px-6 py-3.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            ادارات مجاز
+                                        </th>
+                                        <th scope="col" className="px-6 py-3.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                             وضعیت حساب
                                         </th>
                                         <th scope="col" className="px-6 py-3.5 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -354,6 +410,27 @@ export default function UsersPage() {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                                     {user.employee ? `${user.employee.firstName} ${user.employee.lastName}` : '-'}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {user.role === 'Admin' ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                                                            همه ادارات (سازمانی)
+                                                        </span>
+                                                    ) : user.assignedOffices && user.assignedOffices.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                                            {user.assignedOffices.map((off) => (
+                                                                <span
+                                                                    key={off.id}
+                                                                    className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-primary-50 text-primary-700 border border-primary-200"
+                                                                    title={off.name}
+                                                                >
+                                                                    {off.code}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-400">فاقد اداره</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
@@ -544,7 +621,7 @@ export default function UsersPage() {
                 {/* Edit User Modal */}
                 {editModalUser && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4">
-                        <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 border border-gray-100 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
                                 <div className="flex items-center gap-2.5">
                                     <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
@@ -636,6 +713,127 @@ export default function UsersPage() {
                                     <p className="mt-1 text-[11px] text-gray-500">
                                         با انتخاب کارمند، کاربر به پرونده پرسنلی و سوابق وی متصل می‌گردد.
                                     </p>
+                                </div>
+
+                                {/* Office Assignment Section */}
+                                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <Building2 className="w-4 h-4 text-primary-600" />
+                                            <h3 className="text-xs font-bold text-gray-800">
+                                                تخصیص ادارات مجاز (Offices)
+                                            </h3>
+                                            <span className="text-[11px] font-semibold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-full">
+                                                {editRole === 'Admin' ? 'دسترسی سراسری' : `${editSelectedOfficeIds.length} اداره انتخاب شده`}
+                                            </span>
+                                        </div>
+                                        {editRole !== 'Admin' && (
+                                            <div className="flex items-center gap-2 text-xs">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSelectAllEditOffices}
+                                                    className="text-primary-600 hover:text-primary-800 hover:underline font-medium"
+                                                >
+                                                    انتخاب همه
+                                                </button>
+                                                <span className="text-gray-300">|</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleClearAllEditOffices}
+                                                    className="text-gray-500 hover:text-red-600 hover:underline font-medium"
+                                                >
+                                                    پاک کردن همه
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {editRole === 'Admin' ? (
+                                        <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                                            کاربران با نقش «مدیر ارشد سامانه (Admin)» به صورت خودکار به تمامی کاربرگ‌ها و ادارات استان دسترسی کامل دارند.
+                                        </p>
+                                    ) : (
+                                        <>
+                                            <p className="text-[11px] text-gray-500 mb-3">
+                                                کاربر فقط مجاز به مشاهده، ثبت و ویرایش کاربرگ‌ها و اطلاعات ادارات انتخاب شده خواهد بود.
+                                            </p>
+
+                                            {/* Search Filter */}
+                                            <div className="relative mb-3">
+                                                <input
+                                                    type="text"
+                                                    value={editOfficeSearch}
+                                                    onChange={e => setEditOfficeSearch(e.target.value)}
+                                                    placeholder="جستجوی کد یا نام اداره (مثال: 1601)..."
+                                                    className="w-full pr-9 pl-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                                                />
+                                                <Search className="w-4 h-4 text-gray-400 absolute right-2.5 top-2" />
+                                            </div>
+
+                                            {/* Selected Badges */}
+                                            {editSelectedOfficeIds.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 mb-3 max-h-24 overflow-y-auto p-1.5 bg-white rounded-lg border border-gray-200">
+                                                    {editSelectedOfficeIds.map(id => {
+                                                        const off = offices.find(o => o.id === id);
+                                                        if (!off) return null;
+                                                        return (
+                                                            <span
+                                                                key={id}
+                                                                className="inline-flex items-center gap-1 text-[11px] font-semibold bg-primary-50 text-primary-800 px-2 py-0.5 rounded border border-primary-200"
+                                                            >
+                                                                {off.code} - {off.name}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleEditOffice(id)}
+                                                                    className="hover:text-red-600"
+                                                                >
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {/* Offices List */}
+                                            {loadingOffices ? (
+                                                <div className="text-center py-4 text-xs text-gray-400">در حال دریافت لیست ادارات...</div>
+                                            ) : filteredEditOffices.length === 0 ? (
+                                                <div className="text-center py-4 text-xs text-gray-400">اداره‌ای با این مشخصات یافت نشد.</div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                                                    {filteredEditOffices.map(office => {
+                                                        const isSelected = editSelectedOfficeIds.includes(office.id);
+                                                        return (
+                                                            <div
+                                                                key={office.id}
+                                                                onClick={() => toggleEditOffice(office.id)}
+                                                                className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition text-xs select-none ${
+                                                                    isSelected
+                                                                        ? 'bg-primary-50 border-primary-400 text-primary-900 font-semibold shadow-xs'
+                                                                        : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    {isSelected ? (
+                                                                        <CheckSquare className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                                                                    ) : (
+                                                                        <Square className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                                                    )}
+                                                                    <span className="font-mono font-bold text-gray-800">
+                                                                        {office.code}
+                                                                    </span>
+                                                                    <span className="truncate max-w-[120px]">
+                                                                        {office.name}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Account Status Checkbox */}

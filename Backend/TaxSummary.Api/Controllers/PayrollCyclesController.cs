@@ -113,7 +113,9 @@ public class PayrollCyclesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PayrollCycleDetailDto>> GetCycleById(Guid id, CancellationToken cancellationToken)
     {
-        var cycle = await _cycleService.GetCycleByIdAsync(id, cancellationToken);
+        var userId = GetCurrentUserId();
+        var role = GetCurrentUserRole();
+        var cycle = await _cycleService.GetCycleByIdAsync(id, userId, role, cancellationToken);
         if (cycle == null) return NotFound(new { error = "دوره محاسبه یافت نشد" });
         return Ok(cycle);
     }
@@ -139,7 +141,7 @@ public class PayrollCyclesController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Message });
         }
     }
 

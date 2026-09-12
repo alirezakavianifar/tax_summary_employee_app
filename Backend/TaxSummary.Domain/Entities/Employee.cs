@@ -34,6 +34,16 @@ public class Employee
     /// </summary>
     public User? User { get; private set; }
 
+    /// <summary>
+    /// Optional reference to assigned office
+    /// </summary>
+    public Guid? OfficeId { get; private set; }
+
+    /// <summary>
+    /// Navigation property to assigned office
+    /// </summary>
+    public Office? Office { get; private set; }
+
     // Private constructor for EF Core
     private Employee()
     {
@@ -108,6 +118,12 @@ public class Employee
     public void UpdateServiceUnit(string serviceUnit)
     {
         ServiceUnit = serviceUnit?.Trim() ?? string.Empty;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetOffice(Guid? officeId)
+    {
+        OfficeId = officeId;
         UpdatedAt = DateTime.UtcNow;
     }
 

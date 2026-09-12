@@ -39,6 +39,9 @@ public static class DbInitializer
 
         // Seed Menu & Module Visibility Settings
         await SeedMenuSettingsAsync(context);
+
+        // Seed and synchronize Offices and UserOffices
+        await SeedOfficesAndUserOfficesAsync(context);
     }
 
     private static async Task SeedSampleDataAsync(TaxSummaryDbContext context)
@@ -422,6 +425,88 @@ public static class DbInitializer
 
         if (hasModified)
         {
+            await context.SaveChangesAsync();
+        }
+    }
+
+    private static async Task SeedOfficesAndUserOfficesAsync(TaxSummaryDbContext context)
+    {
+        // 1. Gather all distinct department / service unit names from Employees and PayrollDepartmentEntries
+        var empUnits = await context.Employees
+            .Where(e => !string.IsNullOrWhiteSpace(e.ServiceUnit))
+            .Select(e => e.ServiceUnit.Trim())
+            .Distinct()
+            .ToListAsync();
+
+        var payrollUnits = await context.PayrollDepartmentEntries
+            .Where(p => !string.IsNullOrWhiteSpace(p.DepartmentName))
+            .Select(p => p.DepartmentName.Trim())
+            .Distinct()
+            .ToListAsync();
+
+        var allCodes = empUnits.Union(payrollUnits, StringComparer.OrdinalIgnoreCase).ToList();
+
+        // 2. Ensure each exists in Offices table
+        var existingOffices = await context.Offices.ToListAsync();
+        var existingOfficeMap = existingOffices.ToDictionary(o => o.Code.Trim(), o => o, StringComparer.OrdinalIgnoreCase);
+
+        var newOffices = new List<Office>();
+        foreach (var code in allCodes)
+        {
+            if (!existingOfficeMap.ContainsKey(code))
+            {
+                var name = code.StartsWith("اداره") ? code : $"اداره {code}";
+                var office = Office.Create(code, name);
+                newOffices.Add(office);
+                existingOfficeMap[code] = office;
+            }
+        }
+
+        if (newOffices.Any())
+        {
+            await context.Offices.AddRangeAsync(newOffices);
+            await context.SaveChangesAsync();
+        }
+
+        // 3. Link Employees to OfficeId if not set
+        var employeesWithoutOffice = await context.Employees
+            .Where(e => e.OfficeId == null && !string.IsNullOrWhiteSpace(e.ServiceUnit))
+            .ToListAsync();
+
+        bool hasEmpUpdated = false;
+        foreach (var emp in employeesWithoutOffice)
+        {
+            if (existingOfficeMap.TryGetValue(emp.ServiceUnit.Trim(), out var off))
+            {
+                emp.SetOffice(off.Id);
+                hasEmpUpdated = true;
+            }
+        }
+
+        if (hasEmpUpdated)
+        {
+            await context.SaveChangesAsync();
+        }
+
+        // 4. Link existing users with an employee to their office if no UserOffices exist
+        var usersWithoutOffices = await context.Users
+            .Include(u => u.UserOffices)
+            .Include(u => u.Employee)
+            .Where(u => !u.UserOffices.Any() && u.Employee != null && u.Employee.OfficeId != null)
+            .ToListAsync();
+
+        var newUserOffices = new List<UserOffice>();
+        foreach (var u in usersWithoutOffices)
+        {
+            if (u.Employee?.OfficeId != null)
+            {
+                newUserOffices.Add(UserOffice.Create(u.Id, u.Employee.OfficeId.Value));
+            }
+        }
+
+        if (newUserOffices.Any())
+        {
+            await context.UserOffices.AddRangeAsync(newUserOffices);
             await context.SaveChangesAsync();
         }
     }

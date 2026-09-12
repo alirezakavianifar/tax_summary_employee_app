@@ -28,6 +28,7 @@ import {
   ExternalLink,
   DollarSign,
   FileSpreadsheet,
+  ShieldCheck,
 } from 'lucide-react'
 
 function formatNumber(v: number | null | undefined): string {
@@ -324,20 +325,59 @@ export default function CycleDetailPage() {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-primary-600" />
-                کاربرگ‌ها و وضعیت ارسال ادارات
-              </h2>
-              <p className="text-xs text-gray-500 mt-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-primary-600" />
+                  کاربرگ‌ها و وضعیت ارسال ادارات
+                </h2>
+              </div>
+              <p className="text-xs text-gray-500">
                 برای بازبینی ریز اقلام یا تایید نهایی، بر روی نام هر اداره یا دکمه بازبینی کلیک کنید.
               </p>
             </div>
+
+            {/* Office Scope Indicator */}
+            <div className="flex items-center gap-2">
+              {user?.role === 'Admin' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  دسترسی مدیر ارشد (مشاهده تمامی ادارات استان)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200 shadow-2xs">
+                  <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                  نمایش ادارات منتسب به شما ({formatNumber(cycle.departmentEntries.length)} اداره مجاز)
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse text-right">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 text-xs font-semibold">
+          {cycle.departmentEntries.length === 0 ? (
+            <div className="p-12 text-center bg-gray-50/50">
+              <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-amber-200">
+                <AlertCircle className="w-7 h-7" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-800 mb-1.5">
+                هیچ کاربرگی برای ادارات منتسب به شما در این دوره یافت نشد
+              </h3>
+              <p className="text-xs text-gray-500 max-w-md mx-auto mb-5 leading-relaxed">
+                {user?.role === 'Admin'
+                  ? 'هنوز هیچ کاربرگ اداره‌ای در این دوره ثبت یا بارگذاری نشده است.'
+                  : 'حساب کاربری شما به هیچ‌کدام از ادارات تعریف شده در این دوره تخصیص داده نشده است یا هنوز کاربرگی برای اداره شما ایجاد نشده است. جهت بررسی دسترسی، با مدیر ارشد سامانه تماس حاصل فرمایید.'}
+              </p>
+              <Link
+                href="/payroll/cycles"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-800 hover:underline"
+              >
+                <ArrowRight className="w-4 h-4" />
+                بازگشت به فهرست دوره‌های محاسبه
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse text-right">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 text-xs font-semibold">
                   <th className="px-6 py-3.5">نام اداره / کاربرگ</th>
                   <th className="px-4 py-3.5">وضعیت</th>
                   <th className="px-4 py-3.5">تعداد نفرات</th>
@@ -527,6 +567,7 @@ export default function CycleDetailPage() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
 
         {/* Rejection Modal */}

@@ -81,7 +81,18 @@ public class UserService : IUserService
         // Update user
         user.UpdateDetails(request.Email, request.Role, request.IsActive, request.EmployeeId, request.Username);
 
-        return await _userRepository.UpdateAsync(user, cancellationToken);
+        var updateResult = await _userRepository.UpdateAsync(user, cancellationToken);
+        if (updateResult.IsFailure)
+            return updateResult;
+
+        if (request.OfficeIds != null)
+        {
+            var officeResult = await _userRepository.UpdateUserOfficesAsync(user.Id, request.OfficeIds, cancellationToken);
+            if (officeResult.IsFailure)
+                return officeResult;
+        }
+
+        return Result.Success();
     }
 
     public async Task<Result> DeleteUserAsync(Guid id, CancellationToken cancellationToken = default)

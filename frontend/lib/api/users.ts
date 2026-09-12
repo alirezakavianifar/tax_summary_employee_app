@@ -7,6 +7,7 @@ export interface UpdateUserRequest {
     role: UserRole
     isActive: boolean
     employeeId?: string
+    officeIds?: string[]
 }
 
 export const usersApi = {

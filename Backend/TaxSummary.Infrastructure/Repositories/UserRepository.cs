@@ -25,6 +25,8 @@ public class UserRepository : IUserRepository
             var user = await _context.Users
                 .Include(u => u.Employee)
                 .Include(u => u.RefreshTokens)
+                .Include(u => u.UserOffices)
+                    .ThenInclude(uo => uo.Office)
                 .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
             if (user == null)
@@ -45,6 +47,8 @@ public class UserRepository : IUserRepository
             var user = await _context.Users
                 .Include(u => u.Employee)
                 .Include(u => u.RefreshTokens)
+                .Include(u => u.UserOffices)
+                    .ThenInclude(uo => uo.Office)
                 .FirstOrDefaultAsync(u => u.Username == username, cancellationToken);
 
             if (user == null)
@@ -65,6 +69,8 @@ public class UserRepository : IUserRepository
             var user = await _context.Users
                 .Include(u => u.Employee)
                 .Include(u => u.RefreshTokens)
+                .Include(u => u.UserOffices)
+                    .ThenInclude(uo => uo.Office)
                 .FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), cancellationToken);
 
             if (user == null)
@@ -84,6 +90,8 @@ public class UserRepository : IUserRepository
         {
             var users = await _context.Users
                 .Include(u => u.Employee)
+                .Include(u => u.UserOffices)
+                    .ThenInclude(uo => uo.Office)
                 .ToListAsync(cancellationToken);
 
             return Result.Success<IEnumerable<User>>(users);
@@ -228,6 +236,38 @@ public class UserRepository : IUserRepository
 
         return await _context.Users
             .AnyAsync(u => u.Email == email.ToLowerInvariant(), cancellationToken);
+    }
+
+    public async Task<Result> UpdateUserOfficesAsync(Guid userId, IEnumerable<Guid> officeIds, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var existing = await _context.UserOffices
+                .Where(uo => uo.UserId == userId)
+                .ToListAsync(cancellationToken);
+
+            _context.UserOffices.RemoveRange(existing);
+
+            if (officeIds != null)
+            {
+                var newAssignments = officeIds
+                    .Distinct()
+                    .Select(officeId => UserOffice.Create(userId, officeId))
+                    .ToList();
+
+                if (newAssignments.Any())
+                {
+                    await _context.UserOffices.AddRangeAsync(newAssignments, cancellationToken);
+                }
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure($"خطا در بروزرسانی ادارات کاربر: {ex.Message}");
+        }
     }
 }
 

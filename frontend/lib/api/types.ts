@@ -130,3 +130,19 @@ export interface PaginatedResponse<T> {
     totalPages: number
   }
 }
+
+export interface OfficeDto {
+  id: string
+  code: string
+  name: string
+  description?: string
+  isActive: boolean
+  employeeCount: number
+  createdAt: string
+}
+
+export interface OfficeSummaryDto {
+  id: string
+  code: string
+  name: string
+}

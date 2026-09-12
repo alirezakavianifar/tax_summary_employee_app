@@ -21,7 +21,11 @@ public interface IPayrollCycleService
 
     Task<IEnumerable<PayrollCycleSummaryDto>> GetCyclesAsync(CancellationToken cancellationToken = default);
 
-    Task<PayrollCycleDetailDto?> GetCycleByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<PayrollCycleDetailDto?> GetCycleByIdAsync(
+        Guid id,
+        Guid? currentUserId = null,
+        string? currentUserRole = null,
+        CancellationToken cancellationToken = default);
 
     Task<PayrollDepartmentEntryDto?> GetDepartmentEntryByIdAsync(
         Guid departmentEntryId,

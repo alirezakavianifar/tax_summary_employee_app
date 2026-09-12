@@ -22,6 +22,8 @@ public class TaxSummaryDbContext : DbContext
     public DbSet<PayrollCycle> PayrollCycles => Set<PayrollCycle>();
     public DbSet<PayrollDepartmentEntry> PayrollDepartmentEntries => Set<PayrollDepartmentEntry>();
     public DbSet<PayrollEmployeeItem> PayrollEmployeeItems => Set<PayrollEmployeeItem>();
+    public DbSet<Office> Offices => Set<Office>();
+    public DbSet<UserOffice> UserOffices => Set<UserOffice>();
 
     // Tax Refund System DbSets
     public DbSet<TaxRefundCase> TaxRefundCases => Set<TaxRefundCase>();

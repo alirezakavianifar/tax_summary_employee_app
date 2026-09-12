@@ -111,6 +111,11 @@ public class User
     /// </summary>
     public ICollection<RefreshToken> RefreshTokens { get; private set; } = new List<RefreshToken>();
 
+    /// <summary>
+    /// Navigation property to offices assigned to this user
+    /// </summary>
+    public ICollection<UserOffice> UserOffices { get; private set; } = new List<UserOffice>();
+
     // Private constructor for EF Core
     private User() { }
 
@@ -269,5 +274,42 @@ public class User
     {
         EmployeeId = employeeId;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Check whether user has access to a specific office by code or name (Admin has access to all)
+    /// </summary>
+    public bool HasOfficeAccess(string? officeCodeOrName)
+    {
+        if (string.IsNullOrWhiteSpace(officeCodeOrName)) return false;
+        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase)) return true;
+
+        var normalized = officeCodeOrName.Trim();
+        var hasMatch = UserOffices.Any(uo =>
+            (uo.Office != null && (
+                uo.Office.Code.Equals(normalized, StringComparison.OrdinalIgnoreCase) ||
+                uo.Office.Name.Equals(normalized, StringComparison.OrdinalIgnoreCase)
+            ))
+        );
+
+        if (hasMatch) return true;
+
+        if (Employee != null && !string.IsNullOrWhiteSpace(Employee.ServiceUnit))
+        {
+            if (Employee.ServiceUnit.Trim().Equals(normalized, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Get all assigned office codes for this user
+    /// </summary>
+    public IEnumerable<string> GetAssignedOfficeCodes()
+    {
+        return UserOffices
+            .Where(uo => uo.Office != null)
+            .Select(uo => uo.Office.Code);
     }
 }

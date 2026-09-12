@@ -29,4 +29,9 @@ public class RegisterRequestDto
     /// Optional employee ID to associate user with employee record
     /// </summary>
     public Guid? EmployeeId { get; set; }
+
+    /// <summary>
+    /// Optional list of office IDs to assign to this user
+    /// </summary>
+    public List<Guid>? OfficeIds { get; set; }
 }

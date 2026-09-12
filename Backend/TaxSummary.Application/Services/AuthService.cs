@@ -178,7 +178,13 @@ public class AuthService : IAuthService
             return Result.Failure<UserDto>("خطا در ایجاد کاربر. لطفاً مجدداً تلاش کنید");
         }
 
-        // Reload user with employee data
+        // Assign offices if provided
+        if (request.OfficeIds != null && request.OfficeIds.Any())
+        {
+            await _userRepository.UpdateUserOfficesAsync(user.Id, request.OfficeIds, cancellationToken);
+        }
+
+        // Reload user with employee and office data
         var userResult = await _userRepository.GetByIdAsync(user.Id, cancellationToken);
         if (userResult.IsFailure)
         {
