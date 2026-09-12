@@ -95,14 +95,11 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // Add CORS
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:3000", "http://localhost:3001" };
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(_ => true) // Support any intranet IP/hostname (e.g., 10.52.0.114, localhost)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials(); // Support cookies/credentials
