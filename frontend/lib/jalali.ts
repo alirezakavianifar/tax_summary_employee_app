@@ -170,6 +170,14 @@ export function getTodayJalali(): { jy: number; jm: number; jd: number } {
 }
 
 /**
+ * Get today's date in Jalali formatted string (YYYY/MM/DD)
+ */
+export function getTodayJalaliString(persianDigits = false): string {
+  const { jy, jm, jd } = getTodayJalali()
+  return formatJalaliDateString(jy, jm, jd, persianDigits)
+}
+
+/**
  * Converts ISO date string (YYYY-MM-DD or full ISO) to Jalali object
  */
 export function isoStringToJalali(

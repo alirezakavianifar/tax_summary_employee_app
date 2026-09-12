@@ -194,64 +194,6 @@ export default function TaxRefundPrintPage() {
         {activeTab === 'form6' && <AuditorCommitmentPrint data={doc} />}
         {activeTab === 'form7' && <TableAPrint data={doc} />}
       </main>
-
-      {/* Embedded CSS for Screen A4 Simulation and Print Media Formatting */}
-      <style jsx global>{`
-        @page {
-          size: A4 portrait;
-          margin: 10mm 12mm;
-        }
-
-        .a4-page {
-          font-family: var(--font-nazanin), 'B Nazanin', Tahoma, sans-serif;
-        }
-
-        .a4-page h1,
-        .a4-page th,
-        .a4-page .font-titr {
-          font-family: var(--font-titr), 'B Titr', Tahoma, sans-serif;
-        }
-
-        @media print {
-          html,
-          body {
-            background-color: white !important;
-            color: black !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            font-size: 11pt !important;
-            font-family: var(--font-nazanin), 'B Nazanin', Tahoma, sans-serif !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-
-          .no-print {
-            display: none !important;
-          }
-
-          .a4-page {
-            width: 100% !important;
-            min-height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-
-          .page-break {
-            page-break-after: always !important;
-            break-after: page !important;
-          }
-
-          table,
-          tr,
-          td,
-          th {
-            page-break-inside: avoid;
-            break-inside: avoid;
-          }
-        }
-      `}</style>
     </div>
   )
 }

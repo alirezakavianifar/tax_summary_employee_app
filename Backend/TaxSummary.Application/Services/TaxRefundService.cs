@@ -820,34 +820,54 @@ public class TaxRefundService : ITaxRefundService
             Calculation = calc,
             Receipts = _mapper.Map<List<TaxRefundReceiptDto>>(refundCase.Receipts.OrderBy(r => r.RowIndex).ToList()),
             Allocations = _mapper.Map<List<RefundableReceiptAllocationDto>>(refundCase.Allocations.ToList()),
-            Letters = _mapper.Map<List<TaxRefundLetterDto>>(refundCase.Letters.ToList()),
-            JustificationReport = _mapper.Map<JustificationReportDto>(refundCase.JustificationReport)
+            Letters = _mapper.Map<List<TaxRefundLetterDto>>(refundCase.Letters.ToList())
         };
 
-        // Extract letter numbers & dates
+        // Default Jalali date of the case (FinalizedAt -> SubmittedAt -> CreatedAt -> UtcNow)
+        var defaultCaseDateJalali = TaxSummary.Domain.ValueObjects.JalaliDate.FromDateTime(
+            refundCase.FinalizedAt ?? refundCase.SubmittedAt ?? (refundCase.CreatedAt != default ? refundCase.CreatedAt : DateTime.UtcNow)
+        ).ToString();
+
+        doc.JustificationReport = BuildJustificationReportDto(refundCase, calc, defaultCaseDateJalali);
+
+        // Extract letter numbers & dates with sensible fallbacks to case tracking number & Persian date
         var voucherLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.RefundVoucher);
-        doc.RefundVoucherNumber = voucherLetter?.LetterNumber;
-        doc.RefundVoucherDate = voucherLetter?.LetterDateJalali;
+        doc.RefundVoucherNumber = !string.IsNullOrWhiteSpace(voucherLetter?.LetterNumber)
+            ? voucherLetter.LetterNumber
+            : refundCase.CaseTrackingNumber;
+        doc.RefundVoucherDate = !string.IsNullOrWhiteSpace(voucherLetter?.LetterDateJalali)
+            ? voucherLetter.LetterDateJalali
+            : defaultCaseDateJalali;
 
         var reportLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.JustificationReport);
         doc.JustificationReportNumber = !string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportNumber)
             ? refundCase.JustificationReport.ReportNumber
-            : reportLetter?.LetterNumber;
+            : (!string.IsNullOrWhiteSpace(reportLetter?.LetterNumber) ? reportLetter.LetterNumber : refundCase.CaseTrackingNumber);
         doc.JustificationReportDate = !string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportDateJalali)
             ? refundCase.JustificationReport.ReportDateJalali
-            : reportLetter?.LetterDateJalali;
+            : (!string.IsNullOrWhiteSpace(reportLetter?.LetterDateJalali) ? reportLetter.LetterDateJalali : defaultCaseDateJalali);
 
         var commitLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.OfficeCommitment);
-        doc.OfficeCommitmentNumber = commitLetter?.LetterNumber;
-        doc.OfficeCommitmentDate = commitLetter?.LetterDateJalali;
+        doc.OfficeCommitmentNumber = !string.IsNullOrWhiteSpace(commitLetter?.LetterNumber)
+            ? commitLetter.LetterNumber
+            : refundCase.CaseTrackingNumber;
+        doc.OfficeCommitmentDate = !string.IsNullOrWhiteSpace(commitLetter?.LetterDateJalali)
+            ? commitLetter.LetterDateJalali
+            : defaultCaseDateJalali;
 
         var treasuryLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.TreasuryLetter);
-        doc.TreasuryLetterNumber = treasuryLetter?.LetterNumber;
-        doc.TreasuryLetterDate = treasuryLetter?.LetterDateJalali;
+        doc.TreasuryLetterNumber = !string.IsNullOrWhiteSpace(treasuryLetter?.LetterNumber)
+            ? treasuryLetter.LetterNumber
+            : refundCase.CaseTrackingNumber;
+        doc.TreasuryLetterDate = !string.IsNullOrWhiteSpace(treasuryLetter?.LetterDateJalali)
+            ? treasuryLetter.LetterDateJalali
+            : doc.RefundVoucherDate;
 
         var requestLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.InboundTaxpayerRequest);
         doc.TaxpayerRequestNumber = requestLetter?.LetterNumber;
-        doc.TaxpayerRequestDate = requestLetter?.LetterDateJalali;
+        doc.TaxpayerRequestDate = !string.IsNullOrWhiteSpace(requestLetter?.LetterDateJalali)
+            ? requestLetter.LetterDateJalali
+            : defaultCaseDateJalali;
 
         return Result.Success(doc);
     }
@@ -1073,6 +1093,12 @@ public class TaxRefundService : ITaxRefundService
         var calc = CalculateForCase(refundCase);
         var todayJalali = TaxSummary.Domain.ValueObjects.JalaliDate.FromDateTime(DateTime.UtcNow).ToString();
 
+        var dto = BuildJustificationReportDto(refundCase, calc, todayJalali);
+        return Result.Success(dto);
+    }
+
+    private JustificationReportDto BuildJustificationReportDto(TaxRefundCase refundCase, RefundCalculationResultDto calc, string todayJalali)
+    {
         var requestLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.InboundTaxpayerRequest);
         var inqCollection = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.CollectionAndEnforcementInquiry);
         var inqPayroll = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.WithholdingTaxInquiry);
@@ -1110,7 +1136,7 @@ public class TaxRefundService : ITaxRefundService
 
         var reportNumber = $"{refundCase.TaxUnitCode}/استرداد/{refundCase.TaxYear}";
 
-        var dto = new JustificationReportDto
+        return new JustificationReportDto
         {
             ReportNumber = string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportNumber) ? reportNumber : refundCase.JustificationReport.ReportNumber,
             ReportDateJalali = string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportDateJalali) ? todayJalali : refundCase.JustificationReport.ReportDateJalali,
@@ -1128,8 +1154,6 @@ public class TaxRefundService : ITaxRefundService
             GroupHeadOpinionText = refundCase.JustificationReport?.GroupHeadOpinionText,
             AdministrationHeadApprovalText = refundCase.JustificationReport?.AdministrationHeadApprovalText
         };
-
-        return Result.Success(dto);
     }
 
     public async Task<Result<JustificationReportDto>> SaveJustificationReportAsync(

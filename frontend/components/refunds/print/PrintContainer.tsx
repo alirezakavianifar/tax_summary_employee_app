@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { toPersianDigits } from '@/lib/jalali'
 
 interface PrintHeaderProps {
   formTitle: string
@@ -38,7 +39,7 @@ export function PrintHeader({
           <p className="font-nazanin text-xs font-semibold mt-0.5">
             اداره کل امور مالیاتی استان {province} {city && `- اداره ${city}`}
           </p>
-          {taxUnitCode && <p className="font-nazanin text-xs">واحد مالیاتی: {taxUnitCode}</p>}
+          {taxUnitCode && <p className="font-nazanin text-xs">واحد مالیاتی: {toPersianDigits(taxUnitCode)}</p>}
         </div>
 
         {/* Center: Title & Official Emblem */}
@@ -61,25 +62,25 @@ export function PrintHeader({
           {docNumber && (
             <div className="flex justify-end gap-1">
               <span className="font-bold">شماره:</span>
-              <span className="font-bold">{docNumber}</span>
+              <span className="font-bold">{toPersianDigits(docNumber)}</span>
             </div>
           )}
           {docDate && (
             <div className="flex justify-end gap-1">
               <span className="font-bold">تاریخ:</span>
-              <span className="font-bold">{docDate}</span>
+              <span className="font-bold">{toPersianDigits(docDate)}</span>
             </div>
           )}
           {trackingNumber && (
             <div className="flex justify-end gap-1">
               <span className="font-bold">کد پیگیری:</span>
-              <span>{trackingNumber}</span>
+              <span>{toPersianDigits(trackingNumber)}</span>
             </div>
           )}
           {docketNumber && (
             <div className="flex justify-end gap-1">
               <span className="font-bold">شماره پرونده:</span>
-              <span>{docketNumber}</span>
+              <span>{toPersianDigits(docketNumber)}</span>
             </div>
           )}
           <div className="flex justify-end gap-1">
@@ -108,7 +109,7 @@ export function SignatureBox({ title, name, role, date }: SignatureBoxProps) {
       </div>
       <div className="text-[11px] text-gray-600 flex justify-between px-2">
         <span>مهر و امضاء</span>
-        {date && <span>تاریخ: {date}</span>}
+        {date && <span>تاریخ: {toPersianDigits(date)}</span>}
       </div>
     </div>
   )

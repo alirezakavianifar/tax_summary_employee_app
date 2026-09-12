@@ -134,12 +134,11 @@ if ($UpdateOnly) {
     Remove-Item -Recurse -Force (Join-Path $destNext "cache") -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force (Join-Path $destNext "standalone") -ErrorAction SilentlyContinue
 
-    if ($IncludeNodeModules) {
-        Write-Host "Including frontend node_modules..." -ForegroundColor Gray
-        $nmSource = Join-Path $standaloneDir "node_modules"
-        if (Test-Path $nmSource) {
-            Copy-Item $nmSource -Destination (Join-Path $frontendOut "node_modules") -Recurse -Force
-        }
+    # Standalone node_modules (minimal runtime dependencies ~17 MB) is required by server.js
+    Write-Host "Including standalone frontend node_modules..." -ForegroundColor Gray
+    $nmSource = Join-Path $standaloneDir "node_modules"
+    if (Test-Path $nmSource) {
+        Copy-Item $nmSource -Destination (Join-Path $frontendOut "node_modules") -Recurse -Force
     }
 
     # 5. Create APPLY_UPDATE.bat helper in update folder

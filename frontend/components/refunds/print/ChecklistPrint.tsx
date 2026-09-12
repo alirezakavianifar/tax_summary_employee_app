@@ -2,6 +2,7 @@
 
 import React from 'react'
 import type { PrintableDocument } from '@/types/taxRefund'
+import { getTodayJalaliString, toPersianDigits } from '@/lib/jalali'
 import { PrintContainer, PrintHeader, SignatureBox } from './PrintContainer'
 
 interface ChecklistPrintProps {
@@ -9,6 +10,7 @@ interface ChecklistPrintProps {
 }
 
 export function ChecklistPrint({ data }: ChecklistPrintProps) {
+  const fallbackDate = React.useMemo(() => getTodayJalaliString(), [])
   const checklistItems = [
     {
       category: 'نامه استرداد',
@@ -94,9 +96,9 @@ export function ChecklistPrint({ data }: ChecklistPrintProps) {
     <PrintContainer>
       <PrintHeader
         formTitle="چک لیست کنترل اسناد استردادی"
-        subtitle={`مودی: ${data.taxpayerName} | سال عملکرد: ${data.taxYear}`}
+        subtitle={`مودی: ${data.taxpayerName} | سال عملکرد: ${toPersianDigits(data.taxYear)}`}
         docNumber={data.caseTrackingNumber}
-        docDate={data.refundVoucherDate}
+        docDate={data.refundVoucherDate || fallbackDate}
         docketNumber={data.docketNumber}
         province={data.province}
         city={data.city}
@@ -128,7 +130,7 @@ export function ChecklistPrint({ data }: ChecklistPrintProps) {
                   {item.category}
                 </td>
               )}
-              <td className="border border-black py-1 px-1 text-center font-bold text-sm">{item.id}</td>
+              <td className="border border-black py-1 px-1 text-center font-bold text-sm">{toPersianDigits(item.id)}</td>
               <td className="border border-black py-1 px-2 text-right leading-5 text-[11.5px]">{item.desc}</td>
               <td className="border border-black py-1 px-1 text-center font-bold text-base">✓</td>
               <td className="border border-black py-1 px-1 text-center text-gray-300">-</td>

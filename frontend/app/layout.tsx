@@ -33,9 +33,24 @@ const bNazanin = localFont({
       weight: '400',
       style: 'normal',
     },
+    {
+      path: '../public/fonts/BNazanin.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/BNazanin.woff2',
+      weight: '800',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/BNazanin.woff2',
+      weight: '900',
+      style: 'normal',
+    },
   ],
   variable: '--font-nazanin',
-  display: 'swap',
+  display: 'block',
 })
 
 const bTitr = localFont({
@@ -45,9 +60,19 @@ const bTitr = localFont({
       weight: '700',
       style: 'normal',
     },
+    {
+      path: '../public/fonts/BTitrBold.woff2',
+      weight: '800',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/BTitrBold.woff2',
+      weight: '900',
+      style: 'normal',
+    },
   ],
   variable: '--font-titr',
-  display: 'swap',
+  display: 'block',
 })
 
 const bMitra = localFont({
@@ -57,9 +82,14 @@ const bMitra = localFont({
       weight: '400',
       style: 'normal',
     },
+    {
+      path: '../public/fonts/BMitra.woff2',
+      weight: '700',
+      style: 'normal',
+    },
   ],
   variable: '--font-mitra',
-  display: 'swap',
+  display: 'block',
 })
 
 export const metadata: Metadata = {

@@ -8,7 +8,34 @@
        url('/fonts/BNazanin.woff') format('woff');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'B Nazanin';
+  src: url('/fonts/BNazanin.woff2') format('woff2'),
+       url('/fonts/BNazanin.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'B Nazanin';
+  src: url('/fonts/BNazanin.woff2') format('woff2'),
+       url('/fonts/BNazanin.woff') format('woff');
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'B Nazanin';
+  src: url('/fonts/BNazanin.woff2') format('woff2'),
+       url('/fonts/BNazanin.woff') format('woff');
+  font-weight: 900;
+  font-style: normal;
+  font-display: block;
 }
 
 @font-face {
@@ -17,7 +44,34 @@
        url('/fonts/BTitrBold.woff') format('woff');
   font-weight: bold;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'B Titr';
+  src: url('/fonts/BTitrBold.woff2') format('woff2'),
+       url('/fonts/BTitrBold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'B Titr';
+  src: url('/fonts/BTitrBold.woff2') format('woff2'),
+       url('/fonts/BTitrBold.woff') format('woff');
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'B Titr';
+  src: url('/fonts/BTitrBold.woff2') format('woff2'),
+       url('/fonts/BTitrBold.woff') format('woff');
+  font-weight: 900;
+  font-style: normal;
+  font-display: block;
 }
 
 @font-face {
@@ -26,7 +80,7 @@
        url('/fonts/BMitra.woff') format('woff');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 @font-face {
@@ -35,7 +89,7 @@
        url('/fonts/BZar.woff') format('woff');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 @layer base {
@@ -46,6 +100,29 @@
   body {
     @apply text-gray-900;
   }
+}
+
+/* Typography and Persian Digits for Official Print Documents */
+.a4-page {
+  font-family: var(--font-nazanin), 'B Nazanin', 'Vazirmatn', Tahoma, sans-serif !important;
+  font-feature-settings: "ss01" 1, "locl" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+.a4-page h1,
+.a4-page th,
+.a4-page .font-titr {
+  font-family: var(--font-titr), 'B Titr', 'Vazirmatn', Tahoma, sans-serif !important;
+  font-feature-settings: "ss01" 1, "locl" 1;
+}
+
+.a4-page .font-nazanin {
+  font-family: var(--font-nazanin), 'B Nazanin', 'Vazirmatn', Tahoma, sans-serif !important;
+  font-feature-settings: "ss01" 1, "locl" 1;
+}
+
+.persian-digits {
+  font-feature-settings: "ss01" 1, "locl" 1;
 }
 
 @layer utilities {
@@ -64,18 +141,27 @@
   }
 }
 
-/* Print styles for A4 layout */
+/* Global Print Styles for A4 Layouts */
+@page {
+  size: A4 portrait;
+  margin: 10mm 12mm;
+}
+
 @media print {
-  @page {
-    size: A4;
-    margin: 0;
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+    font-family: var(--font-nazanin), 'B Nazanin', 'Vazirmatn', Tahoma, sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  body {
-    margin: 0;
-    padding: 0;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+  .no-print {
+    display: none !important;
   }
 
   .report-container {
@@ -94,7 +180,25 @@
     -webkit-print-color-adjust: exact;
   }
 
-  table {
+  .a4-page {
+    width: 100% !important;
+    min-height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  table,
+  tr,
+  td,
+  th {
     page-break-inside: avoid;
+    break-inside: avoid;
   }
 }

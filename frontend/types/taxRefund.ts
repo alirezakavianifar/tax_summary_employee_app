@@ -152,6 +152,7 @@ export interface TaxRefundLetter {
   id: string
   taxRefundCaseId: string
   letterType: TaxRefundLetterType
+  letterTypeName?: string
   letterNumber: string
   letterDateJalali: string
   description?: string
