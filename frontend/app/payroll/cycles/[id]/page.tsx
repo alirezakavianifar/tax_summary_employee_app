@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
+import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 import {
   payrollCyclesApi,
   CYCLE_STATUS_LABELS,
@@ -36,6 +37,7 @@ function formatNumber(v: number | null | undefined): string {
 
 export default function CycleDetailPage() {
   const { user } = useAuth()
+  const { isActionVisible, isModuleVisible } = useMenuSettings()
   const params = useParams()
   const router = useRouter()
   const cycleId = params.id as string
@@ -143,7 +145,17 @@ export default function CycleDetailPage() {
   }
 
   const isAdmin = user?.role === 'Admin'
-  const canReview = user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'OfficeHead'
+  const canManageCycles =
+    isAdmin ||
+    isActionVisible('action_payroll_cycles', 'module_payroll') ||
+    isActionVisible('/payroll/cycles') ||
+    isModuleVisible('module_payroll')
+  const canReview =
+    user?.role === 'Admin' ||
+    user?.role === 'Manager' ||
+    user?.role === 'OfficeHead' ||
+    user?.role === 'GroupHead' ||
+    user?.role === 'Expert'
 
   if (loading) {
     return (
@@ -240,7 +252,7 @@ export default function CycleDetailPage() {
                 دانلود اکسل تجمیعی کلیه ادارات
               </button>
 
-              {isAdmin && cycle.status !== 'Finalized' && (
+              {canManageCycles && cycle.status !== 'Finalized' && (
                 <button
                   onClick={handleFinalizeCycle}
                   disabled={finalizing}

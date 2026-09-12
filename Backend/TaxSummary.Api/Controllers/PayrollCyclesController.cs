@@ -30,10 +30,10 @@ public class PayrollCyclesController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new collaborative payroll cycle by uploading base files (Admin only)
+    /// Create a new collaborative payroll cycle by uploading base files
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [RequireModuleAccess("action_payroll_cycles")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(PayrollCycleSummaryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -206,10 +206,10 @@ public class PayrollCyclesController : ControllerBase
     }
 
     /// <summary>
-    /// Review (Approve or Reject) department entry (Admin only)
+    /// Review (Approve or Reject) department entry
     /// </summary>
     [HttpPost("departments/{departmentEntryId:guid}/review")]
-    [Authorize(Roles = "Admin,Manager,OfficeHead")]
+    [Authorize(Roles = "Admin,Manager,OfficeHead,GroupHead,Expert")]
     [ProducesResponseType(typeof(PayrollDepartmentEntryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PayrollDepartmentEntryDto>> ReviewDepartment(
@@ -231,10 +231,10 @@ public class PayrollCyclesController : ControllerBase
     }
 
     /// <summary>
-    /// Finalize entire payroll cycle (Admin only)
+    /// Finalize entire payroll cycle
     /// </summary>
     [HttpPost("{id:guid}/finalize")]
-    [Authorize(Roles = "Admin")]
+    [RequireModuleAccess("action_payroll_cycles")]
     [ProducesResponseType(typeof(PayrollCycleDetailDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<PayrollCycleDetailDto>> FinalizeCycle(Guid id, CancellationToken cancellationToken)
     {
@@ -244,10 +244,10 @@ public class PayrollCyclesController : ControllerBase
     }
 
     /// <summary>
-    /// Delete payroll cycle (Admin only)
+    /// Delete payroll cycle
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [RequireModuleAccess("action_payroll_cycles")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteCycle(Guid id, CancellationToken cancellationToken)
     {

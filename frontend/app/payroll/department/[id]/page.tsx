@@ -272,7 +272,12 @@ export default function DepartmentWorkspacePage() {
     }
   }
 
-  const canReview = user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'OfficeHead'
+  const canReview =
+    user?.role === 'Admin' ||
+    user?.role === 'Manager' ||
+    user?.role === 'OfficeHead' ||
+    user?.role === 'GroupHead' ||
+    user?.role === 'Expert'
 
   const handleReview = async (approve: boolean, stage: 'Deputy' | 'Manager' = 'Deputy') => {
     if (approve) {

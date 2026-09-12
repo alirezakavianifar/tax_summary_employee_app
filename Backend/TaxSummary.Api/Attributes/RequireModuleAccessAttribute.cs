@@ -68,7 +68,19 @@ public class RequireModuleAccessFilter : IAsyncActionFilter
             return;
         }
 
-        if (!setting.IsVisible || !setting.IsRoleAllowed(role))
+        var isAllowed = setting.IsVisible && setting.IsRoleAllowed(role);
+
+        // If this is an action and not permitted by its own setting, check if parent module allows it
+        if (!isAllowed && !string.IsNullOrWhiteSpace(setting.ParentKey))
+        {
+            var parentSetting = await _repository.GetByKeyAsync(setting.ParentKey, context.HttpContext.RequestAborted);
+            if (parentSetting != null && parentSetting.IsVisible && parentSetting.IsRoleAllowed(role))
+            {
+                isAllowed = true;
+            }
+        }
+
+        if (!isAllowed)
         {
             _logger.LogWarning("Access to module '{ModuleKey}' forbidden for role '{Role}' on user '{UserId}'.",
                 _moduleKey, role, user.FindFirst(ClaimTypes.NameIdentifier)?.Value);

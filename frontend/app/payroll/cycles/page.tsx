@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
+import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 import {
   payrollCyclesApi,
   CYCLE_STATUS_LABELS,
@@ -50,6 +51,7 @@ function getDefaultCycleTitle(processType: string, year: number, month: number):
 
 export default function PayrollCyclesPage() {
   const { user } = useAuth()
+  const { isActionVisible, isModuleVisible } = useMenuSettings()
   const router = useRouter()
   const [cycles, setCycles] = useState<PayrollCycleSummaryDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -215,6 +217,11 @@ export default function PayrollCyclesPage() {
   }
 
   const isAdmin = user?.role === 'Admin'
+  const canManageCycles =
+    isAdmin ||
+    isActionVisible('action_payroll_cycles', 'module_payroll') ||
+    isActionVisible('/payroll/cycles') ||
+    isModuleVisible('module_payroll')
 
   return (
     <ProtectedRoute requiredModule="module_payroll">
@@ -240,7 +247,7 @@ export default function PayrollCyclesPage() {
               ورود به کارپوشه اداره من
             </Link>
 
-            {isAdmin && (
+            {canManageCycles && (
               <button
                 onClick={openNewCycleModal}
                 className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors text-sm"
@@ -271,7 +278,7 @@ export default function PayrollCyclesPage() {
             <p className="text-sm text-gray-500 mb-6">
               برای شروع، اولین دوره محاسبه را با بارگذاری فایل‌های پایه ایجاد کنید.
             </p>
-            {isAdmin && (
+            {canManageCycles && (
               <button
                 onClick={openNewCycleModal}
                 className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
@@ -370,7 +377,7 @@ export default function PayrollCyclesPage() {
                       ورود به داشبورد و بازبینی <ChevronRight className="w-3.5 h-3.5" />
                     </span>
 
-                    {isAdmin && (
+                    {canManageCycles && (
                       <button
                         onClick={(e) => handleDelete(cycle.id, e)}
                         className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
