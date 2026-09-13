@@ -8,15 +8,30 @@ export interface TaxHierarchyInfo {
   isValid: boolean
 }
 
-// Known human-readable names for Khuzestan tax offices
+// Known human-readable names for Khuzestan tax offices (1601-1622 are Ahvaz tax offices)
 export const KNOWN_OFFICES: Record<string, string> = {
   '160100': 'اداره امور مالیاتی ۱ اهواز',
   '160200': 'اداره امور مالیاتی ۲ اهواز',
   '160300': 'اداره امور مالیاتی ۳ اهواز',
-  '160400': 'اداره امور مالیاتی دزفول',
-  '160500': 'اداره امور مالیاتی آبادان',
-  '160600': 'اداره امور مالیاتی ماهشهر',
-  '160700': 'اداره امور مالیاتی مسجدسلیمان',
+  '160400': 'اداره امور مالیاتی ۴ اهواز',
+  '160500': 'اداره امور مالیاتی ۵ اهواز',
+  '160600': 'اداره امور مالیاتی ۶ اهواز',
+  '160700': 'اداره امور مالیاتی ۷ اهواز',
+  '160800': 'اداره امور مالیاتی ۸ اهواز',
+  '160900': 'اداره امور مالیاتی ۹ اهواز',
+  '161000': 'اداره امور مالیاتی ۱۰ اهواز',
+  '161100': 'اداره امور مالیاتی ۱۱ اهواز',
+  '161200': 'اداره امور مالیاتی ۱۲ اهواز',
+  '161300': 'اداره امور مالیاتی ۱۳ اهواز',
+  '161400': 'اداره امور مالیاتی ۱۴ اهواز',
+  '161500': 'اداره امور مالیاتی ۱۵ اهواز',
+  '161600': 'اداره امور مالیاتی ۱۶ اهواز',
+  '161700': 'اداره امور مالیاتی ۱۷ اهواز',
+  '161800': 'اداره امور مالیاتی ۱۸ اهواز',
+  '161900': 'اداره امور مالیاتی ۱۹ اهواز',
+  '162000': 'اداره امور مالیاتی ۲۰ اهواز',
+  '162100': 'اداره امور مالیاتی ۲۱ اهواز',
+  '162200': 'اداره امور مالیاتی ۲۲ اهواز',
 }
 
 /**
@@ -54,7 +69,18 @@ export function decomposeTaxUnitCode(code?: string | null): TaxHierarchyInfo {
     const groupCode = `${officePrefix}${groupDigit}0`
     const taxUnitCode = normalized
 
-    const officeName = KNOWN_OFFICES[officeCode] || `اداره امور مالیاتی ${officePrefix}`
+    let officeName = KNOWN_OFFICES[officeCode]
+    if (!officeName) {
+      if (officePrefix.startsWith('16') && officePrefix.length === 4) {
+        const num = parseInt(officePrefix.substring(2), 10)
+        if (!isNaN(num)) {
+          officeName = `اداره امور مالیاتی ${num} اهواز`
+        }
+      }
+      if (!officeName) {
+        officeName = `اداره امور مالیاتی ${officePrefix}`
+      }
+    }
     const groupName = `گروه رسیدگی ${groupDigit}`
     const unitName = `واحد مالیاتی ${unitDigit}`
 
