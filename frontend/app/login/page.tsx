@@ -14,13 +14,24 @@ export default function LoginPage() {
     const { login } = useAuth();
     const router = useRouter();
 
+    const toAsciiDigits = (str: string) => {
+        return str
+            .replace(/[۰-۹]/g, d => String.fromCharCode(d.charCodeAt(0) - 1728))
+            .replace(/[٠-٩]/g, d => String.fromCharCode(d.charCodeAt(0) - 1584))
+            .trim();
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
 
         try {
-            await login({ username, password, rememberMe });
+            await login({
+                username: toAsciiDigits(username),
+                password: toAsciiDigits(password),
+                rememberMe
+            });
             // Redirect will be handled by AuthContext
         } catch (err: any) {
             setError(err.message || 'خطا در ورود. لطفاً مجدداً تلاش کنید');

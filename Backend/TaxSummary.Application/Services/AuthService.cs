@@ -4,6 +4,7 @@ using TaxSummary.Application.DTOs.Auth;
 using TaxSummary.Domain.Common;
 using TaxSummary.Domain.Entities;
 using TaxSummary.Domain.Interfaces;
+using TaxSummary.Domain.ValueObjects;
 
 namespace TaxSummary.Application.Services;
 
@@ -45,8 +46,16 @@ public class AuthService : IAuthService
         string? userAgent,
         CancellationToken cancellationToken = default)
     {
-        // Find user by username
-        var userResult = await _userRepository.GetByUsernameAsync(request.Username, cancellationToken);
+        var normalizedUsername = EconomicCode.NormalizeDigits(request.Username ?? string.Empty).Trim();
+        var normalizedPassword = EconomicCode.NormalizeDigits(request.Password ?? string.Empty).Trim();
+
+        // Find user by username (try normalized username first, then fallback to raw input)
+        var userResult = await _userRepository.GetByUsernameAsync(normalizedUsername, cancellationToken);
+        if (userResult.IsFailure && !string.IsNullOrEmpty(request.Username) && request.Username != normalizedUsername)
+        {
+            userResult = await _userRepository.GetByUsernameAsync(request.Username.Trim(), cancellationToken);
+        }
+
         if (userResult.IsFailure)
         {
             return Result.Failure<LoginResponseDto>("نام کاربری یا رمز عبور اشتباه است");
@@ -66,8 +75,11 @@ public class AuthService : IAuthService
             return Result.Failure<LoginResponseDto>("حساب کاربری غیرفعال است. لطفاً با مدیر سیستم تماس بگیرید");
         }
 
-        // Verify password
-        if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+        // Verify password (check normalized digits first, with fallback to raw password)
+        var isPasswordValid = _passwordHasher.VerifyPassword(normalizedPassword, user.PasswordHash) ||
+                              (!string.IsNullOrEmpty(request.Password) && _passwordHasher.VerifyPassword(request.Password, user.PasswordHash));
+
+        if (!isPasswordValid)
         {
             // Increment failed login attempts
             user.IncrementFailedLoginAttempts();
@@ -130,8 +142,10 @@ public class AuthService : IAuthService
         RegisterRequestDto request,
         CancellationToken cancellationToken = default)
     {
+        var normalizedUsername = EconomicCode.NormalizeDigits(request.Username ?? string.Empty).Trim();
+
         // Check if username already exists
-        if (await _userRepository.UsernameExistsAsync(request.Username, cancellationToken))
+        if (await _userRepository.UsernameExistsAsync(normalizedUsername, cancellationToken))
         {
             return Result.Failure<UserDto>("این نام کاربری قبلاً استفاده شده است");
         }
@@ -149,7 +163,9 @@ public class AuthService : IAuthService
         }
 
         // Default password to username (National ID) if not provided
-        var rawPassword = string.IsNullOrWhiteSpace(request.Password) ? request.Username.Trim() : request.Password;
+        var rawPassword = string.IsNullOrWhiteSpace(request.Password) 
+            ? normalizedUsername 
+            : EconomicCode.NormalizeDigits(request.Password).Trim();
 
         // Hash password
         var passwordHash = _passwordHasher.HashPassword(rawPassword);
@@ -159,7 +175,7 @@ public class AuthService : IAuthService
         try
         {
             user = User.Create(
-                username: request.Username,
+                username: normalizedUsername,
                 email: request.Email,
                 passwordHash: passwordHash,
                 role: request.Role,
@@ -312,14 +328,20 @@ public class AuthService : IAuthService
 
         var user = userResult.Value!;
 
-        // Verify current password
-        if (!_passwordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash))
+        var currentPasswordNorm = EconomicCode.NormalizeDigits(request.CurrentPassword ?? string.Empty).Trim();
+        var newPasswordNorm = EconomicCode.NormalizeDigits(request.NewPassword ?? string.Empty).Trim();
+
+        // Verify current password (check normalized first, then fallback to raw)
+        var isCurrentValid = _passwordHasher.VerifyPassword(currentPasswordNorm, user.PasswordHash) ||
+                             (!string.IsNullOrEmpty(request.CurrentPassword) && _passwordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash));
+
+        if (!isCurrentValid)
         {
             return Result.Failure("رمز عبور فعلی اشتباه است");
         }
 
-        // Hash new password
-        var newPasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        // Hash new password using normalized digits
+        var newPasswordHash = _passwordHasher.HashPassword(newPasswordNorm);
 
         // Update password
         user.UpdatePassword(newPasswordHash);

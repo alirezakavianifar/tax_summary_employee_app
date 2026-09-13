@@ -21,27 +21,38 @@ export default function ChangePasswordPage() {
 
     const isForcedChange = user?.mustChangePassword;
 
+    const toAsciiDigits = (str: string) => {
+        return str
+            .replace(/[۰-۹]/g, d => String.fromCharCode(d.charCodeAt(0) - 1728))
+            .replace(/[٠-٩]/g, d => String.fromCharCode(d.charCodeAt(0) - 1584))
+            .trim();
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         setSuccessMessage(null);
 
-        if (!currentPassword) {
+        const currentPwd = toAsciiDigits(currentPassword);
+        const newPwd = toAsciiDigits(newPassword);
+        const confirmPwd = toAsciiDigits(confirmPassword);
+
+        if (!currentPwd) {
             setError('لطفاً رمز عبور فعلی خود را وارد فرمایید.');
             return;
         }
 
-        if (newPassword.length < 6) {
+        if (newPwd.length < 6) {
             setError('رمز عبور جدید باید حداقل ۶ کاراکتر باشد.');
             return;
         }
 
-        if (newPassword === currentPassword) {
+        if (newPwd === currentPwd) {
             setError('رمز عبور جدید نمی‌تواند با رمز عبور فعلی یکسان باشد.');
             return;
         }
 
-        if (newPassword !== confirmPassword) {
+        if (newPwd !== confirmPwd) {
             setError('رمز عبور جدید و تکرار آن یکسان نیستند.');
             return;
         }
@@ -49,8 +60,8 @@ export default function ChangePasswordPage() {
         try {
             setIsLoading(true);
             await authApi.changePassword({
-                currentPassword,
-                newPassword,
+                currentPassword: currentPwd,
+                newPassword: newPwd,
             });
 
             setSuccessMessage('رمز عبور شما با موفقیت تغییر یافت. لطفاً با رمز جدید مجدداً وارد سامانه شوید.');

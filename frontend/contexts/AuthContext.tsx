@@ -103,7 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         } catch (error: any) {
             console.error('Login failed:', error);
-            throw new Error(error.response?.data?.error || 'ورود ناموفق بود');
+            const serverError = error.response?.data?.error || error.response?.data?.message;
+            throw new Error(serverError || 'نام کاربری یا رمز عبور اشتباه است');
         } finally {
             setIsLoading(false);
         }
