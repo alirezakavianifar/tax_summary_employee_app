@@ -95,6 +95,9 @@ public static class DependencyInjection
         services.AddScoped<IMenuSettingsRepository, MenuSettingsRepository>();
         services.AddScoped<IMenuSettingsService, MenuSettingsService>();
 
+        // Register Personnel & User Excel Import Service
+        services.AddScoped<IPersonnelImportService, PersonnelImportService>();
+
         return services;
     }
 }

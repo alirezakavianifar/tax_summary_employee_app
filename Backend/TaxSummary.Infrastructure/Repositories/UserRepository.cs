@@ -102,6 +102,74 @@ public class UserRepository : IUserRepository
         }
     }
 
+    public async Task<Result<(IEnumerable<User> Items, int TotalCount)>> GetPagedAsync(
+        string? search = null,
+        string? role = null,
+        Guid? officeId = null,
+        int page = 1,
+        int pageSize = 25,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 200) pageSize = 25;
+
+            var query = _context.Users
+                .AsNoTracking()
+                .Include(u => u.Employee)
+                .Include(u => u.UserOffices)
+                    .ThenInclude(uo => uo.Office)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(role))
+            {
+                var roleTrimmed = role.Trim();
+                query = query.Where(u => u.Role == roleTrimmed);
+            }
+
+            if (officeId.HasValue && officeId.Value != Guid.Empty)
+            {
+                query = query.Where(u => u.UserOffices.Any(uo => uo.OfficeId == officeId.Value) ||
+                                         (u.Employee != null && u.Employee.OfficeId == officeId.Value));
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                var termLower = term.ToLower();
+
+                query = query.Where(u =>
+                    u.Username.Contains(termLower) ||
+                    (u.Email != null && u.Email.Contains(termLower)) ||
+                    (u.Employee != null && (
+                        u.Employee.PersonnelNumber.Contains(term) ||
+                        u.Employee.FirstName.Contains(term) ||
+                        u.Employee.LastName.Contains(term) ||
+                        (u.Employee.NationalId != null && u.Employee.NationalId.Contains(term)) ||
+                        u.Employee.CurrentPosition.Contains(term) ||
+                        u.Employee.ServiceUnit.Contains(term)
+                    )) ||
+                    u.UserOffices.Any(uo => uo.Office.Name.Contains(term) || uo.Office.Code.Contains(term))
+                );
+            }
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderBy(u => u.Username)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return Result.Success<(IEnumerable<User> Items, int TotalCount)>((items, totalCount));
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<(IEnumerable<User> Items, int TotalCount)>($"خطا در دریافت کاربران: {ex.Message}");
+        }
+    }
+
     public async Task<Result<Guid>> CreateAsync(User user, CancellationToken cancellationToken = default)
     {
         try

@@ -1,6 +1,7 @@
 using AutoMapper;
 using TaxSummary.Application.DTOs;
 using TaxSummary.Application.DTOs.Auth;
+using TaxSummary.Application.DTOs.Common;
 using TaxSummary.Domain.Common;
 using TaxSummary.Domain.Interfaces;
 
@@ -34,6 +35,33 @@ public class UserService : IUserService
 
         var userDtos = _mapper.Map<IEnumerable<UserDto>>(result.Value);
         return Result.Success(userDtos);
+    }
+
+    public async Task<Result<PagedResultDto<UserDto>>> GetUsersPagedAsync(
+        string? search = null,
+        string? role = null,
+        Guid? officeId = null,
+        int page = 1,
+        int pageSize = 25,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _userRepository.GetPagedAsync(search, role, officeId, page, pageSize, cancellationToken);
+
+        if (result.IsFailure)
+            return Result.Failure<PagedResultDto<UserDto>>(result.Error);
+
+        var (items, totalCount) = result.Value;
+        var userDtos = _mapper.Map<IEnumerable<UserDto>>(items);
+
+        var pagedResult = new PagedResultDto<UserDto>
+        {
+            Items = userDtos,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+
+        return Result.Success(pagedResult);
     }
 
     public async Task<Result<UserDto>> GetUserByIdAsync(Guid id, CancellationToken cancellationToken = default)

@@ -8,7 +8,28 @@ import { officesApi } from '@/lib/api/offices';
 import { EmployeeDto, OfficeDto } from '@/lib/api/types';
 import { User, UserRole } from '@/types/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { Building2, Search, CheckSquare, Square, X } from 'lucide-react';
+import { Building2, Search, CheckSquare, Square, X, FileSpreadsheet, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Loader2, RotateCcw } from 'lucide-react';
+import PersonnelImportModal from '@/components/admin/PersonnelImportModal';
+
+const getPaginationItems = (currentPage: number, total: number) => {
+    if (total <= 7) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    const items: (number | string)[] = [1];
+    if (currentPage > 3) {
+        items.push('ellipsis-start');
+    }
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(total - 1, currentPage + 1);
+    for (let i = start; i <= end; i++) {
+        items.push(i);
+    }
+    if (currentPage < total - 2) {
+        items.push('ellipsis-end');
+    }
+    items.push(total);
+    return items;
+};
 
 const getRoleBadge = (role: string) => {
     switch (role) {
@@ -53,7 +74,18 @@ const getRoleBadge = (role: string) => {
 export default function UsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [tableLoading, setTableLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showImportModal, setShowImportModal] = useState(false);
+
+    // Search and Pagination State
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [selectedRole, setSelectedRole] = useState('');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
+    const [totalCount, setTotalCount] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
 
     // Edit User Modal State
     const [editModalUser, setEditModalUser] = useState<User | null>(null);
@@ -86,8 +118,23 @@ export default function UsersPage() {
     const [actionError, setActionError] = useState<string | null>(null);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
+    // Debounce search input to avoid overwhelming the server and UI
     useEffect(() => {
-        loadUsers();
+        const handler = setTimeout(() => {
+            if (searchTerm !== debouncedSearch) {
+                setDebouncedSearch(searchTerm);
+                setPage(1);
+            }
+        }, 350);
+        return () => clearTimeout(handler);
+    }, [searchTerm, debouncedSearch]);
+
+    // Fetch users whenever page, pageSize, search, or role changes
+    useEffect(() => {
+        loadUsers(page, pageSize, debouncedSearch, selectedRole);
+    }, [page, pageSize, debouncedSearch, selectedRole]);
+
+    useEffect(() => {
         loadEmployees();
         loadOffices();
     }, []);
@@ -116,15 +163,29 @@ export default function UsersPage() {
         }
     };
 
-    const loadUsers = async () => {
+    const loadUsers = async (
+        currentPage = page,
+        currentPageSize = pageSize,
+        currentSearch = debouncedSearch,
+        currentRole = selectedRole
+    ) => {
         try {
-            setLoading(true);
-            const data = await usersApi.getUsers();
-            setUsers(data);
+            setTableLoading(true);
+            const data = await usersApi.getUsersPaged({
+                search: currentSearch.trim() || undefined,
+                role: currentRole || undefined,
+                page: currentPage,
+                pageSize: currentPageSize,
+            });
+            setUsers(data.items || []);
+            setTotalCount(data.totalCount || 0);
+            setTotalPages(data.totalPages || 1);
+            setError(null);
         } catch (err: any) {
             setError(err.message || 'خطا در دریافت لیست کاربران');
         } finally {
             setLoading(false);
+            setTableLoading(false);
         }
     };
 
@@ -226,9 +287,9 @@ export default function UsersPage() {
             setActionLoading(true);
             setActionError(null);
             await usersApi.deleteUser(deleteModalUser.id);
-            setUsers(users.filter(u => u.id !== deleteModalUser.id));
             setActionSuccess(`کاربر «${deleteModalUser.username}» با موفقیت حذف شد.`);
             handleCloseDeleteModal();
+            await loadUsers();
         } catch (err: any) {
             setActionError(err.response?.data?.error || err.message || 'خطا در حذف کاربر');
         } finally {
@@ -316,15 +377,25 @@ export default function UsersPage() {
                             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">مدیریت کاربران</h1>
                             <p className="text-sm text-gray-500 mt-1">مدیریت حساب‌های کاربری، سطوح دسترسی و بازنشانی رمز عبور</p>
                         </div>
-                        <Link
-                            href="/admin/users/create"
-                            className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2.5 rounded-lg hover:bg-primary-700 transition shadow-sm font-medium"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            افزودن کاربر جدید
-                        </Link>
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowImportModal(true)}
+                                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg transition shadow-sm font-medium text-sm"
+                            >
+                                <FileSpreadsheet className="w-5 h-5" />
+                                همگام‌سازی از اکسل
+                            </button>
+                            <Link
+                                href="/admin/users/create"
+                                className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2.5 rounded-lg hover:bg-primary-700 transition shadow-sm font-medium text-sm"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                افزودن کاربر جدید
+                            </Link>
+                        </div>
                     </div>
 
                     {/* Alerts */}
@@ -364,6 +435,99 @@ export default function UsersPage() {
                         </div>
                     )}
 
+                    {/* Search & Filter Bar */}
+                    <div className="bg-white p-4 rounded-xl border border-gray-200 mb-6 shadow-xs flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+                            {/* Search Input */}
+                            <div className="relative flex-1 max-w-md">
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
+                                    {tableLoading ? (
+                                        <Loader2 className="w-4 h-4 animate-spin text-primary-600" />
+                                    ) : (
+                                        <Search className="w-4 h-4" />
+                                    )}
+                                </div>
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="جستجو با کد ملی، شماره کارمند، نام، سمت یا نام اداره..."
+                                    className="w-full pr-9 pl-8 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 transition bg-gray-50/50 focus:bg-white"
+                                />
+                                {searchTerm && (
+                                    <button
+                                        onClick={() => setSearchTerm('')}
+                                        className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 hover:text-gray-600 text-xs"
+                                        title="پاک کردن جستجو"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Role Filter */}
+                            <div className="w-full sm:w-48">
+                                <select
+                                    value={selectedRole}
+                                    onChange={(e) => {
+                                        setSelectedRole(e.target.value);
+                                        setPage(1);
+                                    }}
+                                    aria-label="فیلتر بر اساس نقش"
+                                    className="w-full py-2 px-3 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 transition bg-white text-gray-700"
+                                >
+                                    <option value="">همه نقش‌ها</option>
+                                    <option value="Admin">مدیر ارشد (Admin)</option>
+                                    <option value="OfficeHead">رئیس اداره</option>
+                                    <option value="GroupHead">رئیس گروه مالیاتی</option>
+                                    <option value="Expert">کارشناس (ممیز)</option>
+                                    <option value="ITSpecialist">کارشناس فناوری</option>
+                                    <option value="Employee">کارمند (Employee)</option>
+                                </select>
+                            </div>
+
+                            {(searchTerm || selectedRole) && (
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm('');
+                                        setSelectedRole('');
+                                        setPage(1);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 px-2.5 py-1.5 rounded-lg border border-dashed border-gray-300 hover:border-gray-400 transition"
+                                    title="پاک‌سازی فیلترها"
+                                >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span>حذف فیلترها</span>
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Count & PageSize Selector */}
+                        <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-gray-500 font-medium">
+                            <div className="flex items-center gap-1.5">
+                                <span>تعداد در صفحه:</span>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => {
+                                        setPageSize(Number(e.target.value));
+                                        setPage(1);
+                                    }}
+                                    aria-label="تعداد نمایش در هر صفحه"
+                                    className="py-1 px-2 border border-gray-200 rounded-md text-xs font-mono font-bold bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                                >
+                                    <option value={10}>۱۰</option>
+                                    <option value={25}>۲۵</option>
+                                    <option value={50}>۵۰</option>
+                                    <option value={100}>۱۰۰</option>
+                                </select>
+                            </div>
+                            <div className="h-4 w-px bg-gray-200 hidden sm:block" />
+                            <div>
+                                مجموع: <span className="font-bold text-gray-900 font-mono">{totalCount.toLocaleString('fa-IR')}</span> کاربر
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Users Table */}
                     <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
                         <div className="overflow-x-auto">
@@ -372,6 +536,9 @@ export default function UsersPage() {
                                     <tr>
                                         <th scope="col" className="px-6 py-3.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                             نام کاربری (کد ملی)
+                                        </th>
+                                        <th scope="col" className="px-6 py-3.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            شماره کارمند
                                         </th>
                                         <th scope="col" className="px-6 py-3.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                             نقش
@@ -391,126 +558,252 @@ export default function UsersPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {users.map((user) => {
-                                        const locked = isAccountLocked(user);
-                                        return (
-                                            <tr key={user.id} className="hover:bg-gray-50/70 transition">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm font-semibold text-gray-900">{user.username}</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {(() => {
-                                                        const badge = getRoleBadge(user.role);
-                                                        return (
-                                                            <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${badge.className}`}>
-                                                                {badge.label}
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {user.employee ? `${user.employee.firstName} ${user.employee.lastName}` : '-'}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    {user.role === 'Admin' ? (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                                                            همه ادارات (سازمانی)
-                                                        </span>
-                                                    ) : user.assignedOffices && user.assignedOffices.length > 0 ? (
-                                                        <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                                            {user.assignedOffices.map((off) => (
-                                                                <span
-                                                                    key={off.id}
-                                                                    className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-primary-50 text-primary-700 border border-primary-200"
-                                                                    title={off.name}
-                                                                >
-                                                                    {off.code}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-400">فاقد اداره</span>
+                                    {users.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                                                <div className="flex flex-col items-center justify-center gap-2">
+                                                    <Search className="w-8 h-8 text-gray-300" />
+                                                    <span className="text-sm font-medium">هیچ کاربری با این مشخصات یافت نشد.</span>
+                                                    {(searchTerm || selectedRole) && (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSearchTerm('');
+                                                                setSelectedRole('');
+                                                                setPage(1);
+                                                            }}
+                                                            className="mt-1 text-xs text-primary-600 hover:text-primary-800 underline"
+                                                        >
+                                                            پاک‌سازی فیلترها و مشاهده همه کاربران
+                                                        </button>
                                                     )}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-medium rounded-full ${
-                                                            user.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-700'
-                                                        }`}>
-                                                            {user.isActive ? 'فعال' : 'غیرفعال'}
-                                                        </span>
-                                                        {locked && (
-                                                            <span className="px-2 py-0.5 inline-flex items-center gap-1 text-xs font-medium rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-                                                                <svg className="w-3 h-3 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                                </svg>
-                                                                قفل موقت
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        users.map((user) => {
+                                            const locked = isAccountLocked(user);
+                                            return (
+                                                <tr key={user.id} className="hover:bg-gray-50/70 transition">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm font-semibold font-mono text-gray-900">{user.username}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {user.employee?.personnelNumber ? (
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                                                                {user.employee.personnelNumber}
                                                             </span>
+                                                        ) : (
+                                                            <span className="text-gray-400 text-xs">-</span>
                                                         )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                                    <div className="flex items-center justify-center gap-2.5">
-                                                        {/* Edit User Button */}
-                                                        <button
-                                                            onClick={() => handleOpenEditModal(user)}
-                                                            disabled={actionLoading}
-                                                            className="inline-flex items-center gap-1.5 text-xs text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md border border-indigo-200 transition"
-                                                            title="ویرایش مشخصات، نقش و انتصاب کارمند"
-                                                        >
-                                                            <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                            </svg>
-                                                            ویرایش
-                                                        </button>
-
-                                                        {/* Reset Password Button */}
-                                                        <button
-                                                            onClick={() => handleOpenResetModal(user)}
-                                                            className="inline-flex items-center gap-1.5 text-xs text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-md border border-sky-200 transition"
-                                                            title="بازنشانی رمز عبور"
-                                                        >
-                                                            <svg className="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                                                            </svg>
-                                                            بازنشانی رمز
-                                                        </button>
-
-                                                        {/* Unlock Button if Locked */}
-                                                        {locked && (
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {(() => {
+                                                            const badge = getRoleBadge(user.role);
+                                                            return (
+                                                                <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${badge.className}`}>
+                                                                    {badge.label}
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                        {user.employee ? `${user.employee.firstName} ${user.employee.lastName}` : '-'}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {user.role === 'Admin' ? (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                                                                همه ادارات (سازمانی)
+                                                            </span>
+                                                        ) : user.assignedOffices && user.assignedOffices.length > 0 ? (
+                                                            <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                                                {user.assignedOffices.map((off) => (
+                                                                    <span
+                                                                        key={off.id}
+                                                                        className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-primary-50 text-primary-700 border border-primary-200"
+                                                                        title={off.name}
+                                                                    >
+                                                                        {off.code}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400">فاقد اداره</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-medium rounded-full ${
+                                                                user.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-700'
+                                                            }`}>
+                                                                {user.isActive ? 'فعال' : 'غیرفعال'}
+                                                            </span>
+                                                            {locked && (
+                                                                <span className="px-2 py-0.5 inline-flex items-center gap-1 text-xs font-medium rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                                                                    <svg className="w-3 h-3 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                                    </svg>
+                                                                    قفل موقت
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                                        <div className="flex items-center justify-center gap-2.5">
+                                                            {/* Edit User Button */}
                                                             <button
-                                                                onClick={() => handleUnlock(user)}
+                                                                onClick={() => handleOpenEditModal(user)}
                                                                 disabled={actionLoading}
-                                                                className="inline-flex items-center gap-1.5 text-xs text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 transition"
-                                                                title="رفع قفل حساب کاربری"
+                                                                className="inline-flex items-center gap-1.5 text-xs text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md border border-indigo-200 transition"
+                                                                title="ویرایش مشخصات، نقش و انتصاب کارمند"
                                                             >
-                                                                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                                                                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                                 </svg>
-                                                                رفع قفل
+                                                                ویرایش
                                                             </button>
-                                                        )}
 
-                                                        {/* Delete Button */}
-                                                        <button
-                                                            onClick={() => handleOpenDeleteModal(user)}
-                                                            disabled={actionLoading}
-                                                            className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md border border-red-200 transition"
-                                                            title="حذف کاربر"
-                                                        >
-                                                            <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                            حذف
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                                            {/* Reset Password Button */}
+                                                            <button
+                                                                onClick={() => handleOpenResetModal(user)}
+                                                                className="inline-flex items-center gap-1.5 text-xs text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-md border border-sky-200 transition"
+                                                                title="بازنشانی رمز عبور"
+                                                            >
+                                                                <svg className="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                                                </svg>
+                                                                بازنشانی رمز
+                                                            </button>
+
+                                                            {/* Unlock Button if Locked */}
+                                                            {locked && (
+                                                                <button
+                                                                    onClick={() => handleUnlock(user)}
+                                                                    disabled={actionLoading}
+                                                                    className="inline-flex items-center gap-1.5 text-xs text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 transition"
+                                                                    title="رفع قفل حساب کاربری"
+                                                                >
+                                                                    <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                                                                    </svg>
+                                                                    رفع قفل
+                                                                </button>
+                                                            )}
+
+                                                            {/* Delete Button */}
+                                                            <button
+                                                                onClick={() => handleOpenDeleteModal(user)}
+                                                                disabled={actionLoading}
+                                                                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md border border-red-200 transition"
+                                                                title="حذف کاربر"
+                                                            >
+                                                                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                                حذف
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination Controls Bar */}
+                        {totalPages > 1 && (
+                            <div className="p-4 border-t border-gray-200 bg-gray-50/70 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-600">
+                                <div className="flex items-center gap-1.5">
+                                    <span>نمایش</span>
+                                    <span className="font-bold text-gray-900 font-mono">
+                                        {((page - 1) * pageSize + 1).toLocaleString('fa-IR')}
+                                    </span>
+                                    <span>تا</span>
+                                    <span className="font-bold text-gray-900 font-mono">
+                                        {Math.min(page * pageSize, totalCount).toLocaleString('fa-IR')}
+                                    </span>
+                                    <span>از</span>
+                                    <span className="font-bold text-gray-900 font-mono">
+                                        {totalCount.toLocaleString('fa-IR')}
+                                    </span>
+                                    <span>کاربر</span>
+                                    {tableLoading && (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary-600 mr-2" />
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                    {/* First Page */}
+                                    <button
+                                        onClick={() => setPage(1)}
+                                        disabled={page <= 1 || tableLoading}
+                                        className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                        title="صفحه نخست"
+                                    >
+                                        <ChevronsRight className="w-4 h-4" />
+                                    </button>
+
+                                    {/* Previous Page */}
+                                    <button
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={page <= 1 || tableLoading}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition font-medium"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                        <span>صفحه قبل</span>
+                                    </button>
+
+                                    {/* Page Numbers */}
+                                    <div className="flex items-center gap-1 mx-1">
+                                        {getPaginationItems(page, totalPages).map((item, idx) => {
+                                            if (typeof item === 'string') {
+                                                return (
+                                                    <span key={`ellipsis-${idx}`} className="px-1 text-gray-400 font-mono">
+                                                        ...
+                                                    </span>
+                                                );
+                                            }
+                                            const isCurrent = item === page;
+                                            return (
+                                                <button
+                                                    key={item}
+                                                    onClick={() => setPage(item)}
+                                                    disabled={tableLoading}
+                                                    className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition font-mono ${
+                                                        isCurrent
+                                                            ? 'bg-primary-600 text-white shadow-xs'
+                                                            : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
+                                                    }`}
+                                                >
+                                                    {item.toLocaleString('fa-IR')}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Next Page */}
+                                    <button
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={page >= totalPages || tableLoading}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition font-medium"
+                                    >
+                                        <span>صفحه بعد</span>
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+
+                                    {/* Last Page */}
+                                    <button
+                                        onClick={() => setPage(totalPages)}
+                                        disabled={page >= totalPages || tableLoading}
+                                        className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                        title="صفحه آخر"
+                                    >
+                                        <ChevronsLeft className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -960,6 +1253,16 @@ export default function UsersPage() {
                         </div>
                     </div>
                 )}
+                {/* Personnel Excel Import Modal */}
+                <PersonnelImportModal
+                    isOpen={showImportModal}
+                    onClose={() => setShowImportModal(false)}
+                    onSuccess={() => {
+                        loadUsers();
+                        loadEmployees();
+                        loadOffices();
+                    }}
+                />
             </div>
         </ProtectedRoute>
     );

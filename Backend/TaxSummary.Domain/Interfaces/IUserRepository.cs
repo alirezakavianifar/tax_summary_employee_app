@@ -29,6 +29,17 @@ public interface IUserRepository
     Task<Result<IEnumerable<User>>> GetAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Get paginated and filtered users
+    /// </summary>
+    Task<Result<(IEnumerable<User> Items, int TotalCount)>> GetPagedAsync(
+        string? search = null,
+        string? role = null,
+        Guid? officeId = null,
+        int page = 1,
+        int pageSize = 25,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Create a new user
     /// </summary>
     Task<Result<Guid>> CreateAsync(User user, CancellationToken cancellationToken = default);
