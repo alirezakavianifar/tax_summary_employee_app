@@ -13,6 +13,10 @@ public class TaxRefundCaseDto
     public string EconomicCode { get; set; } = string.Empty;
     public string? NationalId { get; set; }
     public string TaxUnitCode { get; set; } = string.Empty;
+    public string GroupCode { get; set; } = string.Empty;
+    public string OfficeCode { get; set; } = string.Empty;
+    public Guid? OfficeId { get; set; }
+    public string? OfficeName { get; set; }
     public string Province { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;

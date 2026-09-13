@@ -14,6 +14,10 @@ public interface ITaxRefundRepository
         TaxSourceType? taxSource = null,
         RefundCaseStatus? status = null,
         string? searchTerm = null,
+        string? officeCode = null,
+        string? groupCode = null,
+        string? taxUnitCode = null,
+        IEnumerable<string>? allowedHierarchyCodes = null,
         CancellationToken cancellationToken = default);
     Task<TaxRefundCase> CreateAsync(TaxRefundCase refundCase, CancellationToken cancellationToken = default);
     Task UpdateAsync(TaxRefundCase refundCase, CancellationToken cancellationToken = default);

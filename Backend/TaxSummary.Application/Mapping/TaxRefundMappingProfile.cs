@@ -38,12 +38,14 @@ public class TaxRefundMappingProfile : Profile
 
         CreateMap<TaxRefundCase, TaxRefundCaseDto>()
             .MaxDepth(5)
+            .ForMember(dest => dest.OfficeName, opt => opt.MapFrom(src => src.Office != null ? src.Office.Name : null))
             .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => GetStatusName(src.Status)))
             .ForMember(dest => dest.TaxSourceName, opt => opt.MapFrom(src => GetTaxSourceName(src.TaxSource)))
             .ForMember(dest => dest.Calculation, opt => opt.Ignore());
 
         CreateMap<TaxRefundCase, TaxRefundCaseSummaryDto>()
             .MaxDepth(5)
+            .ForMember(dest => dest.OfficeName, opt => opt.MapFrom(src => src.Office != null ? src.Office.Name : null))
             .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => GetStatusName(src.Status)))
             .ForMember(dest => dest.TaxSourceName, opt => opt.MapFrom(src => GetTaxSourceName(src.TaxSource)))
             .ForMember(dest => dest.ReceiptsCount, opt => opt.MapFrom(src => src.Receipts.Count))

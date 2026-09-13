@@ -25,6 +25,10 @@ public class TaxRefundCase
     public string EconomicCode { get; private set; } = string.Empty;
     public string? NationalId { get; private set; }
     public string TaxUnitCode { get; private set; } = string.Empty;
+    public string GroupCode { get; private set; } = string.Empty;
+    public string OfficeCode { get; private set; } = string.Empty;
+    public Guid? OfficeId { get; private set; }
+    public Office? Office { get; private set; }
     public string Province { get; private set; } = string.Empty;
     public string City { get; private set; } = string.Empty;
     public string Address { get; private set; } = string.Empty;
@@ -103,6 +107,7 @@ public class TaxRefundCase
             throw new ArgumentException($"سال استرداد نامعتبر است ({taxYear})", nameof(taxYear));
 
         var now = DateTime.UtcNow;
+        var hierarchy = ValueObjects.TaxHierarchy.Decompose(taxUnitCode);
 
         var refundCase = new TaxRefundCase
         {
@@ -112,7 +117,9 @@ public class TaxRefundCase
             TaxpayerName = taxpayerName.Trim(),
             EconomicCode = ValueObjects.EconomicCode.NormalizeDigits(economicCode.Trim()),
             NationalId = nationalId?.Trim(),
-            TaxUnitCode = taxUnitCode.Trim(),
+            TaxUnitCode = hierarchy.TaxUnitCode,
+            GroupCode = hierarchy.GroupCode,
+            OfficeCode = hierarchy.OfficeCode,
             Province = province.Trim(),
             City = city.Trim(),
             Address = address.Trim(),
@@ -155,7 +162,12 @@ public class TaxRefundCase
         if (!string.IsNullOrWhiteSpace(economicCode))
             EconomicCode = ValueObjects.EconomicCode.NormalizeDigits(economicCode.Trim());
         if (!string.IsNullOrWhiteSpace(taxUnitCode))
-            TaxUnitCode = taxUnitCode.Trim();
+        {
+            var hierarchy = ValueObjects.TaxHierarchy.Decompose(taxUnitCode);
+            TaxUnitCode = hierarchy.TaxUnitCode;
+            GroupCode = hierarchy.GroupCode;
+            OfficeCode = hierarchy.OfficeCode;
+        }
         if (!string.IsNullOrWhiteSpace(province))
             Province = province.Trim();
         if (!string.IsNullOrWhiteSpace(city))
@@ -171,6 +183,16 @@ public class TaxRefundCase
         if (nationalId != null)
             NationalId = string.IsNullOrWhiteSpace(nationalId) ? null : nationalId.Trim();
 
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetOffice(Guid officeId, string? officeCode = null)
+    {
+        OfficeId = officeId;
+        if (!string.IsNullOrWhiteSpace(officeCode))
+        {
+            OfficeCode = officeCode.Trim();
+        }
         UpdatedAt = DateTime.UtcNow;
     }
 

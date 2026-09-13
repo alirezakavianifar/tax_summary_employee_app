@@ -33,6 +33,7 @@ import {
 import ExcelImportModal from '@/components/refunds/ExcelImportModal'
 import { QuickEditCaseModal } from '@/components/refunds/QuickEditCaseModal'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import { KNOWN_OFFICES, decomposeTaxUnitCode } from '@/lib/taxHierarchy'
 
 export default function RefundsDashboardPage() {
   const [cases, setCases] = useState<TaxRefundCaseSummary[]>([])
@@ -46,6 +47,7 @@ export default function RefundsDashboardPage() {
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined)
   const [selectedSource, setSelectedSource] = useState<TaxSourceType | undefined>(undefined)
   const [selectedStatus, setSelectedStatus] = useState<RefundCaseStatus | undefined>(undefined)
+  const [selectedOfficeCode, setSelectedOfficeCode] = useState<string | undefined>(undefined)
 
   const fetchCases = async () => {
     try {
@@ -56,6 +58,7 @@ export default function RefundsDashboardPage() {
         taxYear: selectedYear,
         taxSource: selectedSource,
         status: selectedStatus,
+        officeCode: selectedOfficeCode,
       })
       setCases(data)
     } catch (err: any) {
@@ -67,7 +70,7 @@ export default function RefundsDashboardPage() {
 
   useEffect(() => {
     fetchCases()
-  }, [selectedYear, selectedSource, selectedStatus])
+  }, [selectedYear, selectedSource, selectedStatus, selectedOfficeCode])
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -190,7 +193,7 @@ export default function RefundsDashboardPage() {
 
         {/* Filter and Search Bar */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-sm space-y-3">
-          <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             {/* Search Term */}
             <div className="lg:col-span-2 relative">
               <Search className="w-4 h-4 text-gray-400 absolute right-3 top-3" />
@@ -201,6 +204,22 @@ export default function RefundsDashboardPage() {
                 placeholder="جستجو بر اساس نام مودی، کد اقتصادی، شماره پیگیری..."
                 className="w-full pr-9 pl-3 py-2 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-purple-500"
               />
+            </div>
+
+            {/* Office Filter (اداره امور مالیاتی) */}
+            <div>
+              <select
+                value={selectedOfficeCode || ''}
+                onChange={(e) => setSelectedOfficeCode(e.target.value ? e.target.value : undefined)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs bg-white focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">همه ادارات کل/امور</option>
+                {Object.entries(KNOWN_OFFICES).map(([code, name]) => (
+                  <option key={code} value={code}>
+                    {code} - {name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Tax Year Filter */}
@@ -312,6 +331,7 @@ export default function RefundsDashboardPage() {
                     <th className="py-3 px-4">شماره پیگیری</th>
                     <th className="py-3 px-4">نام مودی</th>
                     <th className="py-3 px-4">کد اقتصادی</th>
+                    <th className="py-3 px-4">حوزه مالیاتی</th>
                     <th className="py-3 px-4">سال مالیاتی</th>
                     <th className="py-3 px-4">منبع مالیات</th>
                     <th className="py-3 px-4 text-center">تعداد قبوض</th>
@@ -330,6 +350,7 @@ export default function RefundsDashboardPage() {
                     const sourceLabel = c.taxSourceName || c.taxSourceDescription || (c.taxSource ? TaxSourceLabels[c.taxSource] : '') || '-'
                     const refundAmount = c.principalTaxRefund ?? c.grandTotalRefundable ?? 0
                     const count = c.receiptsCount ?? 0
+                    const hierarchy = decomposeTaxUnitCode(c.taxUnitCode)
 
                     return (
                       <tr key={c.id} className="hover:bg-purple-50/20 transition-colors">
@@ -340,6 +361,14 @@ export default function RefundsDashboardPage() {
                         </td>
                         <td className="py-3 px-4 font-bold text-gray-900">{c.taxpayerName}</td>
                         <td className="py-3 px-4 font-mono text-gray-700">{c.economicCode}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-bold text-gray-900 text-[11px] line-clamp-1">{c.officeName || hierarchy.officeName}</span>
+                            <span className="font-mono text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded w-fit">
+                              {c.officeCode || hierarchy.officeCode} {hierarchy.taxUnitCode ? `• واحد ${hierarchy.taxUnitCode}` : ''}
+                            </span>
+                          </div>
+                        </td>
                         <td className="py-3 px-4 font-mono text-gray-700">{c.taxYear}</td>
                         <td className="py-3 px-4 text-gray-700">{sourceLabel}</td>
                         <td className="py-3 px-4 text-center font-bold text-gray-800">

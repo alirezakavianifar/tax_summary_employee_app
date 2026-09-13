@@ -14,6 +14,8 @@ namespace TaxSummary.Application.Services;
 public class TaxRefundService : ITaxRefundService
 {
     private readonly ITaxRefundRepository _repository;
+    private readonly IUserRepository _userRepository;
+    private readonly IOfficeService _officeService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly RefundCalculationEngine _calculationEngine;
@@ -22,6 +24,8 @@ public class TaxRefundService : ITaxRefundService
 
     public TaxRefundService(
         ITaxRefundRepository repository,
+        IUserRepository userRepository,
+        IOfficeService officeService,
         IUnitOfWork unitOfWork,
         IMapper mapper,
         RefundCalculationEngine calculationEngine,
@@ -29,6 +33,8 @@ public class TaxRefundService : ITaxRefundService
         ILogger<TaxRefundService> logger)
     {
         _repository = repository;
+        _userRepository = userRepository;
+        _officeService = officeService;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _calculationEngine = calculationEngine;
@@ -36,37 +42,83 @@ public class TaxRefundService : ITaxRefundService
         _logger = logger;
     }
 
-    public async Task<Result<TaxRefundCaseDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<Result<TaxRefundCaseDto>> GetByIdAsync(Guid id, Guid? currentUserId = null, CancellationToken ct = default)
     {
         var refundCase = await _repository.GetByIdAsync(id, includeDetails: true, ct);
         if (refundCase == null)
             return Result.Failure<TaxRefundCaseDto>("پرونده استرداد مورد نظر یافت نشد");
 
+        if (currentUserId.HasValue && currentUserId.Value != Guid.Empty && _userRepository != null)
+        {
+            var userResult = await _userRepository.GetByIdAsync(currentUserId.Value, ct);
+            if (userResult != null && userResult.IsSuccess && userResult.Value != null)
+            {
+                var user = userResult.Value;
+                if (!user.HasAccessToTaxHierarchy(refundCase.TaxUnitCode))
+                    return Result.Failure<TaxRefundCaseDto>("شما دسترسی لازم برای مشاهده پرونده‌های این واحد/اداره مالیاتی را ندارید");
+            }
+        }
+
         var dto = _mapper.Map<TaxRefundCaseDto>(refundCase);
         dto.Calculation = CalculateForCase(refundCase);
 
         return Result.Success(dto);
     }
 
-    public async Task<Result<TaxRefundCaseDto>> GetByTrackingNumberAsync(string trackingNumber, CancellationToken ct = default)
+    public async Task<Result<TaxRefundCaseDto>> GetByTrackingNumberAsync(string trackingNumber, Guid? currentUserId = null, CancellationToken ct = default)
     {
         var refundCase = await _repository.GetByTrackingNumberAsync(trackingNumber, ct);
         if (refundCase == null)
             return Result.Failure<TaxRefundCaseDto>($"پرونده استرداد با کد رهگیری {trackingNumber} یافت نشد");
 
+        if (currentUserId.HasValue && currentUserId.Value != Guid.Empty && _userRepository != null)
+        {
+            var userResult = await _userRepository.GetByIdAsync(currentUserId.Value, ct);
+            if (userResult != null && userResult.IsSuccess && userResult.Value != null)
+            {
+                var user = userResult.Value;
+                if (!user.HasAccessToTaxHierarchy(refundCase.TaxUnitCode))
+                    return Result.Failure<TaxRefundCaseDto>("شما دسترسی لازم برای مشاهده پرونده‌های این واحد/اداره مالیاتی را ندارید");
+            }
+        }
+
         var dto = _mapper.Map<TaxRefundCaseDto>(refundCase);
         dto.Calculation = CalculateForCase(refundCase);
 
         return Result.Success(dto);
     }
 
-    public async Task<Result<IEnumerable<TaxRefundCaseSummaryDto>>> GetCasesAsync(TaxRefundFilterDto filter, CancellationToken ct = default)
+    public async Task<Result<IEnumerable<TaxRefundCaseSummaryDto>>> GetCasesAsync(TaxRefundFilterDto filter, Guid? currentUserId = null, CancellationToken ct = default)
     {
+        IEnumerable<string>? allowedCodes = null;
+
+        if (currentUserId.HasValue && currentUserId.Value != Guid.Empty && _userRepository != null)
+        {
+            var userResult = await _userRepository.GetByIdAsync(currentUserId.Value, ct);
+            if (userResult != null && userResult.IsSuccess && userResult.Value != null)
+            {
+                var user = userResult.Value;
+                if (!user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    var assigned = user.GetAssignedOfficeCodes().ToList();
+                    if (!assigned.Any() && user.Employee != null && !string.IsNullOrWhiteSpace(user.Employee.ServiceUnit))
+                    {
+                        assigned.Add(user.Employee.ServiceUnit.Trim());
+                    }
+                    allowedCodes = assigned;
+                }
+            }
+        }
+
         var cases = await _repository.GetCasesAsync(
             filter.TaxYear,
             filter.TaxSource,
             filter.Status,
             filter.SearchTerm,
+            filter.OfficeCode,
+            filter.GroupCode,
+            filter.TaxUnitCode,
+            allowedCodes,
             ct);
 
         var dtos = _mapper.Map<IEnumerable<TaxRefundCaseSummaryDto>>(cases);
@@ -77,6 +129,19 @@ public class TaxRefundService : ITaxRefundService
     {
         try
         {
+            if (currentUserId != Guid.Empty && _userRepository != null)
+            {
+                var userResult = await _userRepository.GetByIdAsync(currentUserId, ct);
+                if (userResult != null && userResult.IsSuccess && userResult.Value != null)
+                {
+                    var user = userResult.Value;
+                    if (!user.HasAccessToTaxHierarchy(dto.TaxUnitCode))
+                    {
+                        return Result.Failure<Guid>("شما دسترسی لازم برای ثبت پرونده در واحد/اداره مالیاتی انتخاب شده را ندارید");
+                    }
+                }
+            }
+
             var trackingNumber = !string.IsNullOrWhiteSpace(dto.CaseTrackingNumber)
                 ? dto.CaseTrackingNumber.Trim()
                 : $"REF-{dto.TaxYear}-{new Random().Next(1000, 9999)}";
@@ -199,6 +264,8 @@ public class TaxRefundService : ITaxRefundService
                 calc.PenaltiesRefund,
                 calc.DelayDamages));
 
+            await LinkOfficeAsync(refundCase, ct);
+
             await _repository.CreateAsync(refundCase, ct);
             await _unitOfWork.SaveChangesAsync(ct);
 
@@ -216,11 +283,25 @@ public class TaxRefundService : ITaxRefundService
         }
     }
 
-    public async Task<Result> UpdateAsync(Guid id, UpdateTaxRefundCaseDto dto, CancellationToken ct = default)
+    public async Task<Result> UpdateAsync(Guid id, UpdateTaxRefundCaseDto dto, Guid? currentUserId = null, CancellationToken ct = default)
     {
         var refundCase = await _repository.GetByIdAsync(id, includeDetails: true, ct);
         if (refundCase == null)
             return Result.Failure("پرونده استرداد یافت نشد");
+
+        if (currentUserId.HasValue && currentUserId.Value != Guid.Empty && _userRepository != null)
+        {
+            var userResult = await _userRepository.GetByIdAsync(currentUserId.Value, ct);
+            if (userResult != null && userResult.IsSuccess && userResult.Value != null)
+            {
+                var user = userResult.Value;
+                if (!user.HasAccessToTaxHierarchy(refundCase.TaxUnitCode))
+                    return Result.Failure("شما دسترسی ویرایش پرونده‌های این اداره مالیاتی را ندارید");
+
+                if (!string.IsNullOrWhiteSpace(dto.TaxUnitCode) && !user.HasAccessToTaxHierarchy(dto.TaxUnitCode))
+                    return Result.Failure("شما دسترسی انتساب پرونده به این واحد/اداره مالیاتی را ندارید");
+            }
+        }
 
         try
         {
@@ -235,6 +316,8 @@ public class TaxRefundService : ITaxRefundService
                 dto.ShebaNumber,
                 dto.DocketNumber,
                 dto.NationalId);
+
+            await LinkOfficeAsync(refundCase, ct);
 
             refundCase.UpdateAssignedOfficers(
                 dto.AdministrationHeadName,
@@ -257,7 +340,7 @@ public class TaxRefundService : ITaxRefundService
         }
     }
 
-    public async Task<Result> UpdateFullAsync(Guid id, CreateTaxRefundCaseDto dto, CancellationToken ct = default)
+    public async Task<Result> UpdateFullAsync(Guid id, CreateTaxRefundCaseDto dto, Guid? currentUserId = null, CancellationToken ct = default)
     {
         var refundCase = await _repository.GetByIdAsync(id, includeDetails: true, ct);
         if (refundCase == null)
@@ -265,6 +348,20 @@ public class TaxRefundService : ITaxRefundService
 
         if (refundCase.Status == RefundCaseStatus.AdministrationHeadApproved || refundCase.Status == RefundCaseStatus.TreasuryDisbursed)
             return Result.Failure("پرونده پس از تایید نهایی رئیس امور یا پرداخت در ذیحسابی قابل ویرایش نمی‌باشد");
+
+        if (currentUserId.HasValue && currentUserId.Value != Guid.Empty && _userRepository != null)
+        {
+            var userResult = await _userRepository.GetByIdAsync(currentUserId.Value, ct);
+            if (userResult != null && userResult.IsSuccess && userResult.Value != null)
+            {
+                var user = userResult.Value;
+                if (!user.HasAccessToTaxHierarchy(refundCase.TaxUnitCode))
+                    return Result.Failure("شما دسترسی ویرایش پرونده‌های این اداره مالیاتی را ندارید");
+
+                if (!string.IsNullOrWhiteSpace(dto.TaxUnitCode) && !user.HasAccessToTaxHierarchy(dto.TaxUnitCode))
+                    return Result.Failure("شما دسترسی انتساب پرونده به این واحد/اداره مالیاتی را ندارید");
+            }
+        }
 
         try
         {
@@ -280,6 +377,8 @@ public class TaxRefundService : ITaxRefundService
                 dto.ShebaNumber,
                 dto.DocketNumber,
                 dto.NationalId);
+
+            await LinkOfficeAsync(refundCase, ct);
 
             refundCase.UpdateAssignedOfficers(
                 dto.AdministrationHeadName,
@@ -420,11 +519,22 @@ public class TaxRefundService : ITaxRefundService
         }
     }
 
-    public async Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+    public async Task<Result> DeleteAsync(Guid id, Guid? currentUserId = null, CancellationToken ct = default)
     {
         var refundCase = await _repository.GetByIdAsync(id, includeDetails: false, ct);
         if (refundCase == null)
             return Result.Failure("پرونده استرداد یافت نشد");
+
+        if (currentUserId.HasValue && currentUserId.Value != Guid.Empty && _userRepository != null)
+        {
+            var userResult = await _userRepository.GetByIdAsync(currentUserId.Value, ct);
+            if (userResult != null && userResult.IsSuccess && userResult.Value != null)
+            {
+                var user = userResult.Value;
+                if (!user.HasAccessToTaxHierarchy(refundCase.TaxUnitCode))
+                    return Result.Failure("شما دسترسی حذف پرونده‌های این اداره مالیاتی را ندارید");
+            }
+        }
 
         if (refundCase.Status != RefundCaseStatus.Draft && refundCase.Status != RefundCaseStatus.Rejected)
             return Result.Failure("فقط پرونده‌های در وضعیت پیش‌نویس یا رد شده قابل حذف هستند");
@@ -767,6 +877,19 @@ public class TaxRefundService : ITaxRefundService
         if (refundCase == null)
             return Result.Failure("پرونده استرداد یافت نشد");
 
+        if (currentUserId != Guid.Empty && _userRepository != null)
+        {
+            var userResult = await _userRepository.GetByIdAsync(currentUserId, ct);
+            if (userResult != null && userResult.IsSuccess && userResult.Value != null)
+            {
+                var user = userResult.Value;
+                if (!user.CanVerifyStage(dto.NewStatus, refundCase.TaxUnitCode))
+                {
+                    return Result.Failure($"شما با نقش '{actorRole}' و اداره انتسابی، مجاز به تایید این پرونده در مرحله مربوطه نمی‌باشید.");
+                }
+            }
+        }
+
         try
         {
             refundCase.TransitionStatus(dto.NewStatus, currentUserId, actorName, actorRole, dto.Notes);
@@ -781,11 +904,22 @@ public class TaxRefundService : ITaxRefundService
         }
     }
 
-    public async Task<Result<PrintableDocumentDto>> GetPrintableDocumentAsync(Guid id, string formType, CancellationToken ct = default)
+    public async Task<Result<PrintableDocumentDto>> GetPrintableDocumentAsync(Guid id, string formType, Guid? currentUserId = null, CancellationToken ct = default)
     {
         var refundCase = await _repository.GetByIdAsync(id, includeDetails: true, ct);
         if (refundCase == null)
             return Result.Failure<PrintableDocumentDto>("پرونده استرداد یافت نشد");
+
+        if (currentUserId.HasValue && currentUserId.Value != Guid.Empty)
+        {
+            var userResult = await _userRepository.GetByIdAsync(currentUserId.Value, ct);
+            if (userResult.IsSuccess && userResult.Value != null)
+            {
+                var user = userResult.Value;
+                if (!user.HasAccessToTaxHierarchy(refundCase.TaxUnitCode))
+                    return Result.Failure<PrintableDocumentDto>("شما دسترسی لازم برای چاپ یا مشاهده مدارک این اداره مالیاتی را ندارید");
+            }
+        }
 
         var calc = CalculateForCase(refundCase);
 
@@ -1238,6 +1372,31 @@ public class TaxRefundService : ITaxRefundService
         {
             _logger.LogError(ex, "Error finalizing justification report for case {CaseId}", caseId);
             return Result.Failure<JustificationReportDto>(ex.Message);
+        }
+    }
+
+    private async Task LinkOfficeAsync(TaxRefundCase refundCase, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(refundCase.OfficeCode) || _officeService == null) return;
+
+        try
+        {
+            var offices = await _officeService.GetAllOfficesAsync(ct);
+            if (offices == null) return;
+
+            var targetOffice = offices.FirstOrDefault(o =>
+                o.Code.Equals(refundCase.OfficeCode, StringComparison.OrdinalIgnoreCase) ||
+                (refundCase.OfficeCode.Length >= 4 && o.Code.Equals(refundCase.OfficeCode.Substring(0, 4), StringComparison.OrdinalIgnoreCase)) ||
+                (o.Code.Length >= 4 && refundCase.OfficeCode.StartsWith(o.Code, StringComparison.OrdinalIgnoreCase)));
+
+            if (targetOffice != null)
+            {
+                refundCase.SetOffice(targetOffice.Id, targetOffice.Code);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to automatically link office for case {TrackingNumber} with office code {OfficeCode}", refundCase.CaseTrackingNumber, refundCase.OfficeCode);
         }
     }
 }

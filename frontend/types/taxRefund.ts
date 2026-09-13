@@ -237,6 +237,10 @@ export interface TaxRefundCase {
   economicCode: string
   nationalId?: string
   taxUnitCode: string
+  groupCode?: string
+  officeCode?: string
+  officeId?: string
+  officeName?: string
   province: string
   city: string
   address: string
@@ -325,6 +329,11 @@ export interface TaxRefundCaseSummary {
   docketNumber: string
   taxpayerName: string
   economicCode: string
+  taxUnitCode?: string
+  groupCode?: string
+  officeCode?: string
+  officeId?: string
+  officeName?: string
   taxYear: number
   taxSource: TaxSourceType
   taxSourceName?: string
@@ -411,6 +420,9 @@ export interface TaxRefundFilter {
   taxSource?: TaxSourceType
   status?: RefundCaseStatus
   searchTerm?: string
+  officeCode?: string
+  groupCode?: string
+  taxUnitCode?: string
   pageNumber?: number
   pageSize?: number
 }

@@ -38,6 +38,8 @@ import InquiriesEditor, { LetterItem } from '@/components/refunds/InquiriesEdito
 import TableBAllocationEditor, { AllocationItem } from '@/components/refunds/TableBAllocationEditor'
 import { WorkflowReturnModal } from '@/components/refunds/WorkflowReturnModal'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
+import { decomposeTaxUnitCode, isUserAuthorizedForUnit } from '@/lib/taxHierarchy'
 
 const WIZARD_STEPS = [
   { id: 1, title: 'مشخصات عمومی و مودی', icon: Building },
@@ -51,6 +53,7 @@ const WIZARD_STEPS = [
 export default function EditTaxRefundCasePage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
   const caseId = params.id as string
 
   const [loading, setLoading] = useState(true)
@@ -281,6 +284,11 @@ export default function EditTaxRefundCasePage() {
       }
       if (!taxUnitCode.trim()) {
         setStepError('کد واحد مالیاتی الزامی است')
+        return false
+      }
+      if (user && user.role?.toLowerCase() !== 'admin' && !isUserAuthorizedForUnit(user.role, user.assignedOffices, taxUnitCode, user.employee?.serviceUnit)) {
+        const h = decomposeTaxUnitCode(taxUnitCode)
+        setStepError(`شما به عنوان کاربر با سطح دسترسی سازمانی فعلی، مجاز به انتساب پرونده به حوزه ${h.officeCode} (${h.officeName}) نمی‌باشید.`)
         return false
       }
       if (!province.trim()) {
@@ -754,15 +762,83 @@ export default function EditTaxRefundCasePage() {
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 font-bold mb-1">کد واحد مالیاتی *</label>
+                      <label className="block text-gray-700 font-bold mb-1">کد واحد مالیاتی (۶ رقم) *</label>
                       <input
                         type="text"
                         value={taxUnitCode}
                         onChange={(e) => setTaxUnitCode(e.target.value)}
-                        placeholder="مثال: ۱۶۰۳۰۰"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
+                        placeholder="مثال: ۱۶۰۲۱۱"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono focus:ring-2 focus:ring-purple-500"
                       />
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        ۴ رقم اول: اداره کل/امور (۱۶۰۲۰۰) • رقم پنجم: رئیس گروه (۱۶۰۲۱۰) • رقم ششم: کارشناس ارشد (۱۶۰۲۱۱)
+                      </p>
                     </div>
+
+                    {/* 3-Tier Hierarchy Indicator */}
+                    {(() => {
+                      const h = decomposeTaxUnitCode(taxUnitCode)
+                      if (!h.isValid) return null
+                      const isAuthorized = isUserAuthorizedForUnit(user?.role, user?.assignedOffices, taxUnitCode, user?.employee?.serviceUnit)
+
+                      return (
+                        <div className="sm:col-span-2 bg-gradient-to-l from-purple-50/80 via-indigo-50/50 to-white rounded-2xl border border-purple-200 p-4 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between border-b border-purple-100 pb-2">
+                            <div className="flex items-center gap-2">
+                              <Layers className="w-4 h-4 text-purple-600" />
+                              <span className="text-xs font-bold text-purple-900">ساختار سازمانی پرونده (سطوح سه‌گانه مالیاتی)</span>
+                            </div>
+                            {!isAuthorized ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-100 px-2.5 py-1 rounded-full border border-rose-200">
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                عدم دسترسی به این حوزه
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-200">
+                                <Check className="w-3.5 h-3.5" />
+                                حوزه سازمانی مجاز
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                            {/* Level 1: Office */}
+                            <div className="bg-white/90 rounded-xl p-3 border border-purple-100 shadow-2xs">
+                              <div className="text-[10px] text-gray-500 font-medium">سطح ۱: اداره کل / امور مالیاتی (مسئول رسیدگی)</div>
+                              <div className="font-bold text-gray-900 mt-1 flex items-center justify-between">
+                                <span className="line-clamp-1">{h.officeName}</span>
+                                <span className="font-mono text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded text-[11px] flex-shrink-0">{h.officeCode}</span>
+                              </div>
+                            </div>
+
+                            {/* Level 2: Group Head */}
+                            <div className="bg-white/90 rounded-xl p-3 border border-indigo-100 shadow-2xs">
+                              <div className="text-[10px] text-gray-500 font-medium">سطح ۲: رئیس گروه مالیاتی</div>
+                              <div className="font-bold text-gray-900 mt-1 flex items-center justify-between">
+                                <span>{h.groupName}</span>
+                                <span className="font-mono text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded text-[11px] flex-shrink-0">{h.groupCode}</span>
+                              </div>
+                            </div>
+
+                            {/* Level 3: Senior Auditor / Unit */}
+                            <div className="bg-white/90 rounded-xl p-3 border border-blue-100 shadow-2xs">
+                              <div className="text-[10px] text-gray-500 font-medium">سطح ۳: کارشناس ارشد / واحد مالیاتی</div>
+                              <div className="font-bold text-gray-900 mt-1 flex items-center justify-between">
+                                <span>{h.unitName}</span>
+                                <span className="font-mono text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded text-[11px] flex-shrink-0">{h.taxUnitCode}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {!isAuthorized && (
+                            <div className="text-[11px] text-rose-700 bg-rose-50 p-2.5 rounded-xl border border-rose-200 flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+                              <span>کاربر گرامی، حساب شما به اداره مالیاتی <strong>{h.officeCode}</strong> انتساب ندارد و امکان ثبت تغییرات برای این حوزه مسدود است.</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
 
                     <div>
                       <label className="block text-gray-700 font-bold mb-1">استان *</label>

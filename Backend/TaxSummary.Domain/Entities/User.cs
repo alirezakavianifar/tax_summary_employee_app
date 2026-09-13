@@ -312,4 +312,139 @@ public class User
             .Where(uo => uo.Office != null)
             .Select(uo => uo.Office.Code);
     }
+
+    /// <summary>
+    /// Assign an office to this user
+    /// </summary>
+    public void AssignOffice(Office office)
+    {
+        if (office == null) throw new ArgumentNullException(nameof(office));
+        if (!UserOffices.Any(uo => uo.OfficeId == office.Id))
+        {
+            UserOffices.Add(UserOffice.Create(Id, office.Id, office));
+        }
+    }
+
+    /// <summary>
+    /// Check whether user has access to a specific tax unit code based on 3-tier hierarchy (Admin has access to all)
+    /// </summary>
+    public bool HasAccessToTaxHierarchy(string? taxUnitCode)
+    {
+        if (string.IsNullOrWhiteSpace(taxUnitCode)) return false;
+        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase)) return true;
+
+        var hierarchy = ValueObjects.TaxHierarchy.Decompose(taxUnitCode);
+
+        // Check assigned UserOffices
+        foreach (var uo in UserOffices)
+        {
+            if (uo.Office == null) continue;
+            if (hierarchy.IsCoveredBy(uo.Office.Code))
+                return true;
+            if (uo.Office.Name.Contains(hierarchy.OfficeCode) || uo.Office.Name.Contains(hierarchy.TaxUnitCode))
+                return true;
+        }
+
+        // Check associated employee service unit
+        if (Employee != null && !string.IsNullOrWhiteSpace(Employee.ServiceUnit))
+        {
+            if (hierarchy.IsCoveredBy(Employee.ServiceUnit))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks whether the user has both the appropriate organizational role AND office/group/unit assignment
+    /// to verify a specific workflow transition stage.
+    /// </summary>
+    public bool CanVerifyStage(RefundCaseStatus targetStatus, string? taxUnitCode)
+    {
+        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase)) return true;
+        if (string.IsNullOrWhiteSpace(taxUnitCode)) return false;
+
+        var hierarchy = ValueObjects.TaxHierarchy.Decompose(taxUnitCode);
+
+        // 1. Check office/hierarchy coverage first
+        if (!HasAccessToTaxHierarchy(taxUnitCode))
+            return false;
+
+        // 2. Check role requirements per stage
+        switch (targetStatus)
+        {
+            case RefundCaseStatus.Audited:
+                // Level 3: Senior Auditor / Expert (or GroupHead/OfficeHead/Admin)
+                return Role.Equals("Expert", StringComparison.OrdinalIgnoreCase) ||
+                       Role.Equals("Auditor", StringComparison.OrdinalIgnoreCase) ||
+                       Role.Equals("GroupHead", StringComparison.OrdinalIgnoreCase) ||
+                       Role.Equals("OfficeHead", StringComparison.OrdinalIgnoreCase);
+
+            case RefundCaseStatus.GroupHeadApproved:
+                // Level 2: Group Head (رئیس گروه مالیاتی)
+                // Must have role GroupHead (or OfficeHead/Admin) AND cover the GroupCode (e.g. 160210)
+                if (!Role.Equals("GroupHead", StringComparison.OrdinalIgnoreCase) &&
+                    !Role.Equals("OfficeHead", StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                return HasGroupOrOfficeAccess(hierarchy.GroupCode, hierarchy.OfficeCode);
+
+            case RefundCaseStatus.AdministrationHeadApproved:
+                // Level 1: Office Head (رئیس امور / رئیس اداره)
+                // Must have role OfficeHead (or Admin) AND cover the OfficeCode (e.g. 160200)
+                if (!Role.Equals("OfficeHead", StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                return HasOfficeLevelAccess(hierarchy.OfficeCode);
+
+            case RefundCaseStatus.TreasuryDisbursed:
+                // Treasury / Office Head / Admin
+                return Role.Equals("OfficeHead", StringComparison.OrdinalIgnoreCase) ||
+                       Role.Equals("Manager", StringComparison.OrdinalIgnoreCase);
+
+            case RefundCaseStatus.Draft:
+            case RefundCaseStatus.InquiriesPending:
+            case RefundCaseStatus.Rejected:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private bool HasGroupOrOfficeAccess(string groupCode, string officeCode)
+    {
+        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase)) return true;
+
+        foreach (var uo in UserOffices)
+        {
+            if (uo.Office == null) continue;
+            var code = uo.Office.Code.Trim();
+            if (code.Equals(groupCode, StringComparison.OrdinalIgnoreCase) ||
+                code.Equals(officeCode, StringComparison.OrdinalIgnoreCase) ||
+                (code.Length == 6 && code.EndsWith("00") && groupCode.StartsWith(code.Substring(0, 4))))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool HasOfficeLevelAccess(string officeCode)
+    {
+        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase)) return true;
+
+        foreach (var uo in UserOffices)
+        {
+            if (uo.Office == null) continue;
+            var code = uo.Office.Code.Trim();
+            if (code.Equals(officeCode, StringComparison.OrdinalIgnoreCase) ||
+                (code.Length == 6 && code.EndsWith("00") && officeCode.StartsWith(code.Substring(0, 4))) ||
+                (code.Length == 4 && officeCode.StartsWith(code)))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 }

@@ -84,7 +84,7 @@ public class TaxRefundsControllerTests
             TaxYear = 1402
         };
 
-        _mockService.Setup(s => s.GetByIdAsync(caseId, It.IsAny<CancellationToken>()))
+        _mockService.Setup(s => s.GetByIdAsync(caseId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(caseDto));
 
         // Act
@@ -101,7 +101,7 @@ public class TaxRefundsControllerTests
     {
         // Arrange
         var caseId = Guid.NewGuid();
-        _mockService.Setup(s => s.GetByIdAsync(caseId, It.IsAny<CancellationToken>()))
+        _mockService.Setup(s => s.GetByIdAsync(caseId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure<TaxRefundCaseDto>("پرونده یافت نشد"));
 
         // Act
@@ -116,7 +116,7 @@ public class TaxRefundsControllerTests
     {
         // Arrange
         var caseDto = new TaxRefundCaseDto { CaseTrackingNumber = "TRC-999" };
-        _mockService.Setup(s => s.GetByTrackingNumberAsync("TRC-999", It.IsAny<CancellationToken>()))
+        _mockService.Setup(s => s.GetByTrackingNumberAsync("TRC-999", It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(caseDto));
 
         // Act
@@ -151,7 +151,7 @@ public class TaxRefundsControllerTests
         _mockService.Setup(s => s.CreateAsync(createDto, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(newId));
 
-        _mockService.Setup(s => s.GetByIdAsync(newId, It.IsAny<CancellationToken>()))
+        _mockService.Setup(s => s.GetByIdAsync(newId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(caseDto));
 
         // Act
@@ -169,7 +169,7 @@ public class TaxRefundsControllerTests
         var caseId = Guid.NewGuid();
         var updateDto = new UpdateTaxRefundCaseDto { TaxpayerName = "نام جدید" };
 
-        _mockService.Setup(s => s.UpdateAsync(caseId, updateDto, It.IsAny<CancellationToken>()))
+        _mockService.Setup(s => s.UpdateAsync(caseId, updateDto, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
         // Act
@@ -184,7 +184,7 @@ public class TaxRefundsControllerTests
     {
         // Arrange
         var caseId = Guid.NewGuid();
-        _mockService.Setup(s => s.DeleteAsync(caseId, It.IsAny<CancellationToken>()))
+        _mockService.Setup(s => s.DeleteAsync(caseId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
         // Act
@@ -228,7 +228,7 @@ public class TaxRefundsControllerTests
             GrandTotalRefundableFormatted = "۶۵,۰۰۰,۰۰۰"
         };
 
-        _mockService.Setup(s => s.GetPrintableDocumentAsync(caseId, "form5", It.IsAny<CancellationToken>()))
+        _mockService.Setup(s => s.GetPrintableDocumentAsync(caseId, "form5", It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(printable));
 
         // Act
@@ -246,6 +246,9 @@ public class TaxRefundsControllerTests
         // Arrange
         var caseId = Guid.NewGuid();
         var mockBytes = new byte[] { 1, 2, 3, 4, 5 };
+
+        _mockService.Setup(s => s.GetByIdAsync(caseId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(new TaxRefundCaseDto()));
 
         _mockExcelService.Setup(s => s.ExportToExcelAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(mockBytes));

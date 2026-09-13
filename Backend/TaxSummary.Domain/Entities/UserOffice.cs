@@ -15,12 +15,13 @@ public class UserOffice
 
     private UserOffice() { }
 
-    public static UserOffice Create(Guid userId, Guid officeId)
+    public static UserOffice Create(Guid userId, Guid officeId, Office? office = null)
     {
         return new UserOffice
         {
             UserId = userId,
             OfficeId = officeId,
+            Office = office!,
             AssignedAt = DateTime.UtcNow
         };
     }

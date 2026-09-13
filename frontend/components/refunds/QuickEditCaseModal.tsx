@@ -22,6 +22,7 @@ import {
   TaxSourceLabels,
   RefundCaseStatus,
 } from '@/types/taxRefund'
+import { decomposeTaxUnitCode } from '@/lib/taxHierarchy'
 
 interface QuickEditCaseModalProps {
   caseItem: TaxRefundCaseSummary | null
@@ -349,16 +350,32 @@ export function QuickEditCaseModal({
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  واحد مالیاتی
+                  کد واحد مالیاتی (۶ رقم)
                 </label>
                 <input
                   type="text"
                   disabled={isLocked}
                   value={formData.taxUnitCode}
                   onChange={(e) => setFormData({ ...formData, taxUnitCode: e.target.value })}
-                  placeholder="مثال: 160300"
+                  placeholder="مثال: 160211"
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                 />
+                {(() => {
+                  const h = decomposeTaxUnitCode(formData.taxUnitCode)
+                  if (!h.isValid) return null
+                  return (
+                    <div className="mt-1.5 p-2 bg-purple-50/70 border border-purple-200/60 rounded-lg text-[10px] text-purple-900 space-y-0.5">
+                      <div className="font-bold flex items-center justify-between">
+                        <span>اداره کل / امور: {h.officeName}</span>
+                        <span className="font-mono bg-purple-100 px-1 rounded">{h.officeCode}</span>
+                      </div>
+                      <div className="text-gray-600 flex items-center justify-between">
+                        <span>{h.groupName} • {h.unitName}</span>
+                        <span className="font-mono">{h.groupCode}</span>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
 
               <div>

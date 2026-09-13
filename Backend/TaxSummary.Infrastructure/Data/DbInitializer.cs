@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaxSummary.Domain.Entities;
+using TaxSummary.Domain.ValueObjects;
 using TaxSummary.Infrastructure.Services;
 
 namespace TaxSummary.Infrastructure.Data;
@@ -34,14 +35,14 @@ public static class DbInitializer
             await SeedSampleDataAsync(context);
         }
 
-        // Seed Tax Refund benchmark case
-        await SeedTaxRefundDataAsync(context);
-
         // Seed Menu & Module Visibility Settings
         await SeedMenuSettingsAsync(context);
 
         // Seed and synchronize Offices and UserOffices
         await SeedOfficesAndUserOfficesAsync(context);
+
+        // Seed Tax Refund benchmark case
+        await SeedTaxRefundDataAsync(context);
     }
 
     private static async Task SeedSampleDataAsync(TaxSummaryDbContext context)
@@ -208,13 +209,97 @@ public static class DbInitializer
 
     private static async Task SeedTaxRefundDataAsync(TaxSummaryDbContext context)
     {
-        if (await context.TaxRefundCases.AnyAsync())
-        {
-            return;
-        }
-
         var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "admin");
         var adminUserId = adminUser?.Id ?? Guid.NewGuid();
+
+        if (await context.TaxRefundCases.AnyAsync())
+        {
+            // Backfill unlinked cases
+            var unlinkedCases = await context.TaxRefundCases.Where(c => c.OfficeId == null).ToListAsync();
+            foreach (var c in unlinkedCases)
+            {
+                var h = Domain.ValueObjects.TaxHierarchy.Decompose(c.TaxUnitCode);
+                var matched = await context.Offices.FirstOrDefaultAsync(o => o.Code == h.OfficeCode || o.Code == h.OfficeCode.Substring(0, 4));
+                if (matched != null)
+                {
+                    c.SetOffice(matched.Id, matched.Code);
+                }
+            }
+            if (unlinkedCases.Any())
+            {
+                await context.SaveChangesAsync();
+            }
+
+            var hasKarunCase = await context.TaxRefundCases.AnyAsync(c => c.TaxUnitCode == "160211");
+            if (!hasKarunCase)
+            {
+                var off1602 = await context.Offices.FirstOrDefaultAsync(o => o.Code == "160200" || o.Code == "1602");
+                var karunCase = TaxRefundCase.Create(
+                    caseTrackingNumber: "TRC-1403-1602",
+                    docketNumber: "105",
+                    taxpayerName: "شرکت پتروشیمی کارون",
+                    economicCode: "411395768531",
+                    taxUnitCode: "160211",
+                    province: "خوزستان",
+                    city: "اهواز",
+                    address: "اهواز، سایت منطقه ویژه اقتصادی",
+                    bankName: "ملی",
+                    shebaNumber: "IR980170000000123456789012",
+                    taxYear: 1402,
+                    period: 1,
+                    taxSource: TaxSourceType.CorporateIncome,
+                    refundReason: "اشتباه واریزی و اضافه پرداختی عملکرد سال 1402",
+                    administrationHeadName: "غلامرضا اسلامی",
+                    groupHeadName: "مسعود بصیر",
+                    seniorAuditorName: "مهدی دلفی",
+                    createdByUserId: adminUserId,
+                    nationalId: "10102345678"
+                );
+
+                if (off1602 != null)
+                {
+                    karunCase.SetOffice(off1602.Id, off1602.Code);
+                }
+
+                karunCase.UpdateAssessmentInfo(TaxAssessmentInfo.Create(
+                    hasReturnFiled: true,
+                    returnNumber: "777654321",
+                    returnDateJalali: "1403/04/28",
+                    finalizationMethod: FinalizationMethod.AuditBooks,
+                    finalNoticeNumber: "555641789",
+                    finalNoticeDateJalali: "1403/09/15",
+                    assessedIncome: 2_500_000_000,
+                    exemptions: 0,
+                    assessedTax: 625_000_000,
+                    nonWaivablePenalties: 0,
+                    timelyPaymentBonus: 0,
+                    finalityStage: FinalityStage.Tamkin
+                ));
+
+                karunCase.UpdateBreakdown(RefundBreakdown.Create(
+                    principalTaxRefund: 120_000_000,
+                    stampDutyRefund: 0,
+                    otherRefund: 0,
+                    penaltiesRefund: 0,
+                    delayDamages: 0
+                ));
+
+                karunCase.AddReceipt(
+                    rowIndex: 1,
+                    receiptNumber: "88997711",
+                    issueDateJalali: "1403/03/10",
+                    paymentDateJalali: "1403/03/10",
+                    amountRials: 745_000_000,
+                    bankBranch: "اهواز",
+                    city: "اهواز",
+                    revenueLedgerRow: "ردیف 1"
+                );
+
+                context.TaxRefundCases.Add(karunCase);
+                await context.SaveChangesAsync();
+            }
+            return;
+        }
 
         var refundCase = TaxRefundCase.Create(
             caseTrackingNumber: "TRC-1403-0001",
@@ -451,6 +536,24 @@ public static class DbInitializer
         var existingOfficeMap = existingOffices.ToDictionary(o => o.Code.Trim(), o => o, StringComparer.OrdinalIgnoreCase);
 
         var newOffices = new List<Office>();
+
+        var standardOffices = new (string Code, string Name)[]
+        {
+            ("160100", "اداره امور مالیاتی ۱ اهواز (۱۶۰۱۰۰)"),
+            ("160200", "اداره امور مالیاتی ۲ اهواز (۱۶۰۲۰۰)"),
+            ("160300", "اداره امور مالیاتی ۳ اهواز (۱۶۰۳۰۰)")
+        };
+
+        foreach (var std in standardOffices)
+        {
+            if (!existingOfficeMap.ContainsKey(std.Code))
+            {
+                var off = Office.Create(std.Code, std.Name);
+                newOffices.Add(off);
+                existingOfficeMap[std.Code] = off;
+            }
+        }
+
         foreach (var code in allCodes)
         {
             if (!existingOfficeMap.ContainsKey(code))

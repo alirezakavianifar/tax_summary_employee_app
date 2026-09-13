@@ -48,8 +48,8 @@ $BackendDir  = Join-Path $ProjectRoot "Backend\TaxSummary.Api"
 $FrontendDir = Join-Path $ProjectRoot "frontend"
 
 # Standard Ports & URLs
-$BackendHttpPort  = 5000
-$BackendHttpsPort = 5001
+$BackendHttpPort  = 5005
+$BackendHttpsPort = 5006
 $FrontendPort     = 3000
 
 $BackendUrl  = "http://localhost:$BackendHttpPort"
@@ -116,6 +116,26 @@ function Stop-PortProcess {
     }
 }
 
+function Start-DetachedProcess {
+    param(
+        [string]$ShellCommand,
+        [string]$WorkingDirectory
+    )
+    $cmdLine = "powershell.exe -NoExit -Command ""Set-Location '$WorkingDirectory'; $ShellCommand"""
+    try {
+        $res = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+            CommandLine      = $cmdLine
+            CurrentDirectory = $WorkingDirectory
+        } -ErrorAction Stop
+        if ($res.ReturnValue -eq 0) {
+            return
+        }
+    } catch {
+        # Fallback to Start-Process if CIM is unavailable
+    }
+    Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", "Set-Location '$WorkingDirectory'; $ShellCommand" -WorkingDirectory $WorkingDirectory
+}
+
 function Start-BackendService {
     Write-Host "--- Starting Backend API (.NET 8) ---" -ForegroundColor Cyan
     
@@ -130,13 +150,12 @@ function Start-BackendService {
         return
     }
 
-    $cmd = "cd '$BackendDir'; Write-Host 'Starting Tax Summary Backend API...' -ForegroundColor Green; dotnet run --launch-profile http"
-    Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", $cmd -WorkingDirectory $BackendDir
+    Start-DetachedProcess -ShellCommand "Write-Host 'Starting Tax Summary Backend API...' -ForegroundColor Green; dotnet run --launch-profile http" -WorkingDirectory $BackendDir
 
     Write-Host "  Backend process launched in separate window." -ForegroundColor Green
     Write-Host "  Waiting for service to bind to port $BackendHttpPort..." -ForegroundColor Gray
     
-    for ($i = 0; $i -lt 15; $i++) {
+    for ($i = 0; $i -lt 25; $i++) {
         Start-Sleep -Milliseconds 800
         $listener = Get-PortListener -Port $BackendHttpPort
         if ($null -ne $listener) {
@@ -161,13 +180,12 @@ function Start-FrontendService {
         return
     }
 
-    $cmd = "cd '$FrontendDir'; Write-Host 'Starting Next.js Frontend Server...' -ForegroundColor Green; npm run dev"
-    Start-Process powershell.exe -ArgumentList "-NoExit", "-Command", $cmd -WorkingDirectory $FrontendDir
+    Start-DetachedProcess -ShellCommand "Write-Host 'Starting Next.js Frontend Server...' -ForegroundColor Green; npm run dev" -WorkingDirectory $FrontendDir
 
     Write-Host "  Frontend process launched in separate window." -ForegroundColor Green
     Write-Host "  Waiting for service to bind to port $FrontendPort..." -ForegroundColor Gray
     
-    for ($i = 0; $i -lt 15; $i++) {
+    for ($i = 0; $i -lt 25; $i++) {
         Start-Sleep -Milliseconds 800
         $listener = Get-PortListener -Port $FrontendPort
         if ($null -ne $listener) {
@@ -256,7 +274,7 @@ function Check-Health {
     $backendAlive = $false
     try {
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        $resp = Invoke-WebRequest -Uri $HealthUrl -UseBasicParsing -TimeoutSec 4 -ErrorAction Stop
+        $resp = Invoke-WebRequest -Uri $HealthUrl -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
         $sw.Stop()
         
         $body = $resp.Content.Trim()
@@ -281,7 +299,7 @@ function Check-Health {
     $frontendAlive = $false
     try {
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        $resp = Invoke-WebRequest -Uri $FrontendUrl -UseBasicParsing -TimeoutSec 4 -ErrorAction Stop
+        $resp = Invoke-WebRequest -Uri $FrontendUrl -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
         $sw.Stop()
         
         if ($resp.StatusCode -eq 200) {

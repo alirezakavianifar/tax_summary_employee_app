@@ -8,13 +8,13 @@ namespace TaxSummary.Application.Services;
 /// </summary>
 public interface ITaxRefundService
 {
-    Task<Result<TaxRefundCaseDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<Result<TaxRefundCaseDto>> GetByTrackingNumberAsync(string trackingNumber, CancellationToken ct = default);
-    Task<Result<IEnumerable<TaxRefundCaseSummaryDto>>> GetCasesAsync(TaxRefundFilterDto filter, CancellationToken ct = default);
+    Task<Result<TaxRefundCaseDto>> GetByIdAsync(Guid id, Guid? currentUserId = null, CancellationToken ct = default);
+    Task<Result<TaxRefundCaseDto>> GetByTrackingNumberAsync(string trackingNumber, Guid? currentUserId = null, CancellationToken ct = default);
+    Task<Result<IEnumerable<TaxRefundCaseSummaryDto>>> GetCasesAsync(TaxRefundFilterDto filter, Guid? currentUserId = null, CancellationToken ct = default);
     Task<Result<Guid>> CreateAsync(CreateTaxRefundCaseDto dto, Guid currentUserId, CancellationToken ct = default);
-    Task<Result> UpdateAsync(Guid id, UpdateTaxRefundCaseDto dto, CancellationToken ct = default);
-    Task<Result> UpdateFullAsync(Guid id, CreateTaxRefundCaseDto dto, CancellationToken ct = default);
-    Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);
+    Task<Result> UpdateAsync(Guid id, UpdateTaxRefundCaseDto dto, Guid? currentUserId = null, CancellationToken ct = default);
+    Task<Result> UpdateFullAsync(Guid id, CreateTaxRefundCaseDto dto, Guid? currentUserId = null, CancellationToken ct = default);
+    Task<Result> DeleteAsync(Guid id, Guid? currentUserId = null, CancellationToken ct = default);
 
     Task<Result<TaxRefundReceiptDto>> AddReceiptAsync(Guid caseId, CreateTaxRefundReceiptDto dto, CancellationToken ct = default);
     Task<Result> RemoveReceiptAsync(Guid caseId, Guid receiptId, CancellationToken ct = default);
@@ -30,7 +30,7 @@ public interface ITaxRefundService
 
     Task<Result<RefundCalculationResultDto>> CalculateSandboxAsync(CalculateRefundRequestDto dto, CancellationToken ct = default);
     Task<Result> TransitionStatusAsync(Guid id, TransitionStatusDto dto, Guid currentUserId, string actorName, string actorRole, CancellationToken ct = default);
-    Task<Result<PrintableDocumentDto>> GetPrintableDocumentAsync(Guid id, string formType, CancellationToken ct = default);
+    Task<Result<PrintableDocumentDto>> GetPrintableDocumentAsync(Guid id, string formType, Guid? currentUserId = null, CancellationToken ct = default);
 
     Task<Result<TaxRefundDocumentDto>> UploadDocumentAsync(Guid caseId, Microsoft.AspNetCore.Http.IFormFile file, UploadTaxRefundDocumentDto dto, Guid currentUserId, string currentUserName, CancellationToken ct = default);
     Task<Result<IEnumerable<TaxRefundDocumentDto>>> GetDocumentsAsync(Guid caseId, CancellationToken ct = default);

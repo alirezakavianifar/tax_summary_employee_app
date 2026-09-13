@@ -34,6 +34,21 @@ public class TaxRefundCaseConfiguration : IEntityTypeConfiguration<TaxRefundCase
             .IsRequired()
             .HasMaxLength(50);
 
+        builder.Property(c => c.GroupCode)
+            .HasMaxLength(50);
+
+        builder.Property(c => c.OfficeCode)
+            .HasMaxLength(50);
+
+        builder.HasOne(c => c.Office)
+            .WithMany()
+            .HasForeignKey(c => c.OfficeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(c => c.OfficeCode);
+        builder.HasIndex(c => c.GroupCode);
+        builder.HasIndex(c => new { c.OfficeId, c.Status });
+
         builder.Property(c => c.Province)
             .IsRequired()
             .HasMaxLength(100);

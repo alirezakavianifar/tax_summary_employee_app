@@ -10,6 +10,10 @@ public class TaxRefundCaseSummaryDto
     public string TaxpayerName { get; set; } = string.Empty;
     public string EconomicCode { get; set; } = string.Empty;
     public string TaxUnitCode { get; set; } = string.Empty;
+    public string GroupCode { get; set; } = string.Empty;
+    public string OfficeCode { get; set; } = string.Empty;
+    public Guid? OfficeId { get; set; }
+    public string? OfficeName { get; set; }
     public string City { get; set; } = string.Empty;
     public int TaxYear { get; set; }
     public int Period { get; set; }

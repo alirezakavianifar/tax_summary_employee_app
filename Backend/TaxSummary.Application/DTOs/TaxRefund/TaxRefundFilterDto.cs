@@ -14,6 +14,9 @@ public class TaxRefundFilterDto
     public TaxSourceType? TaxSource { get; set; }
     public RefundCaseStatus? Status { get; set; }
     public string? SearchTerm { get; set; }
+    public string? OfficeCode { get; set; }
+    public string? GroupCode { get; set; }
+    public string? TaxUnitCode { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 20;
 }

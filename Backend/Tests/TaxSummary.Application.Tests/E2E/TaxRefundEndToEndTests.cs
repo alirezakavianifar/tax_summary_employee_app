@@ -60,8 +60,16 @@ public class TaxRefundEndToEndTests : IDisposable
 
         var mockServiceLogger = new Mock<ILogger<TaxRefundService>>();
         var mockDocStorage = new Mock<IRefundDocumentStorageService>();
+        var mockUserRepo = new Mock<IUserRepository>();
+        mockUserRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TaxSummary.Domain.Common.Result.Success(User.Create("admin", "admin@tax.gov.ir", "hash", "Admin")));
+        var mockOfficeService = new Mock<IOfficeService>();
+        mockOfficeService.Setup(o => o.GetAllOfficesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Enumerable.Empty<TaxSummary.Application.DTOs.Office.OfficeDto>());
         _service = new TaxRefundService(
             _repository,
+            mockUserRepo.Object,
+            mockOfficeService.Object,
             _unitOfWork,
             _mapper,
             _calcEngine,

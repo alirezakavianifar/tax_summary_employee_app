@@ -24,6 +24,7 @@ public class TaxRefundRepository : ITaxRefundRepository
         if (includeDetails)
         {
             query = query
+                .Include(c => c.Office)
                 .Include(c => c.Receipts)
                 .Include(c => c.Allocations)
                 .Include(c => c.Letters)
@@ -37,6 +38,7 @@ public class TaxRefundRepository : ITaxRefundRepository
     public async Task<TaxRefundCase?> GetByTrackingNumberAsync(string trackingNumber, CancellationToken cancellationToken = default)
     {
         return await _context.TaxRefundCases
+            .Include(c => c.Office)
             .Include(c => c.Receipts)
             .Include(c => c.Allocations)
             .Include(c => c.Letters)
@@ -50,9 +52,14 @@ public class TaxRefundRepository : ITaxRefundRepository
         TaxSourceType? taxSource = null,
         RefundCaseStatus? status = null,
         string? searchTerm = null,
+        string? officeCode = null,
+        string? groupCode = null,
+        string? taxUnitCode = null,
+        IEnumerable<string>? allowedHierarchyCodes = null,
         CancellationToken cancellationToken = default)
     {
         var query = _context.TaxRefundCases
+            .Include(c => c.Office)
             .Include(c => c.Receipts)
             .AsQueryable();
 
@@ -71,6 +78,50 @@ public class TaxRefundRepository : ITaxRefundRepository
             query = query.Where(c => c.Status == status.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(officeCode))
+        {
+            var cleanOffice = officeCode.Trim();
+            var prefix = cleanOffice.Length >= 4 ? cleanOffice.Substring(0, 4) : cleanOffice;
+            query = query.Where(c => c.OfficeCode == cleanOffice || c.TaxUnitCode.StartsWith(prefix));
+        }
+
+        if (!string.IsNullOrWhiteSpace(groupCode))
+        {
+            var cleanGroup = groupCode.Trim();
+            var prefix = cleanGroup.Length >= 5 ? cleanGroup.Substring(0, 5) : cleanGroup;
+            query = query.Where(c => c.GroupCode == cleanGroup || c.TaxUnitCode.StartsWith(prefix));
+        }
+
+        if (!string.IsNullOrWhiteSpace(taxUnitCode))
+        {
+            var cleanUnit = taxUnitCode.Trim();
+            query = query.Where(c => c.TaxUnitCode == cleanUnit);
+        }
+
+        if (allowedHierarchyCodes != null)
+        {
+            var codeList = allowedHierarchyCodes
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Select(c => c.Trim())
+                .ToList();
+
+            if (codeList.Any())
+            {
+                var officePrefixes = codeList.Where(c => c.Length == 6 && c.EndsWith("00")).Select(c => c.Substring(0, 4)).ToList();
+                officePrefixes.AddRange(codeList.Where(c => c.Length == 4));
+
+                var groupPrefixes = codeList.Where(c => c.Length == 6 && c.EndsWith("0") && !c.EndsWith("00")).Select(c => c.Substring(0, 5)).ToList();
+                var exactUnits = codeList.Where(c => c.Length == 6 && !c.EndsWith("0")).ToList();
+
+                query = query.Where(c =>
+                    officePrefixes.Any(p => c.TaxUnitCode.StartsWith(p)) ||
+                    codeList.Contains(c.OfficeCode) ||
+                    groupPrefixes.Any(p => c.TaxUnitCode.StartsWith(p)) ||
+                    codeList.Contains(c.GroupCode) ||
+                    exactUnits.Contains(c.TaxUnitCode));
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var term = searchTerm.Trim();
@@ -79,6 +130,7 @@ public class TaxRefundRepository : ITaxRefundRepository
                 c.EconomicCode.Contains(term) ||
                 c.CaseTrackingNumber.Contains(term) ||
                 c.DocketNumber.Contains(term) ||
+                c.TaxUnitCode.Contains(term) ||
                 c.City.Contains(term));
         }
 

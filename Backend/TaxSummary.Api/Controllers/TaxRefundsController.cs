@@ -66,7 +66,8 @@ public class TaxRefundsController : ControllerBase
         [FromQuery] TaxRefundFilterDto filter,
         CancellationToken ct)
     {
-        var result = await _refundService.GetCasesAsync(filter, ct);
+        var userId = GetCurrentUserId();
+        var result = await _refundService.GetCasesAsync(filter, userId, ct);
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
@@ -82,7 +83,8 @@ public class TaxRefundsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TaxRefundCaseDto>> GetById(Guid id, CancellationToken ct)
     {
-        var result = await _refundService.GetByIdAsync(id, ct);
+        var userId = GetCurrentUserId();
+        var result = await _refundService.GetByIdAsync(id, userId, ct);
         if (result.IsFailure)
             return NotFound(new { error = result.Error });
 
@@ -101,7 +103,8 @@ public class TaxRefundsController : ControllerBase
         if (string.IsNullOrWhiteSpace(trackingNumber))
             return BadRequest(new { error = "شماره پیگیری نمی‌تواند خالی باشد" });
 
-        var result = await _refundService.GetByTrackingNumberAsync(trackingNumber, ct);
+        var userId = GetCurrentUserId();
+        var result = await _refundService.GetByTrackingNumberAsync(trackingNumber, userId, ct);
         if (result.IsFailure)
             return NotFound(new { error = result.Error });
 
@@ -127,7 +130,7 @@ public class TaxRefundsController : ControllerBase
         if (createResult.IsFailure)
             return BadRequest(new { error = createResult.Error });
 
-        var caseResult = await _refundService.GetByIdAsync(createResult.Value, ct);
+        var caseResult = await _refundService.GetByIdAsync(createResult.Value, userId, ct);
         if (caseResult.IsFailure)
             return CreatedAtAction(nameof(GetById), new { id = createResult.Value }, new { id = createResult.Value });
 
@@ -149,7 +152,8 @@ public class TaxRefundsController : ControllerBase
         if (dto == null)
             return BadRequest(new { error = "اطلاعات ورودی الزامی است" });
 
-        var result = await _refundService.UpdateAsync(id, dto, ct);
+        var userId = GetCurrentUserId();
+        var result = await _refundService.UpdateAsync(id, dto, userId, ct);
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
@@ -171,7 +175,8 @@ public class TaxRefundsController : ControllerBase
         if (dto == null)
             return BadRequest(new { error = "اطلاعات ورودی الزامی است" });
 
-        var result = await _refundService.UpdateFullAsync(id, dto, ct);
+        var userId = GetCurrentUserId();
+        var result = await _refundService.UpdateFullAsync(id, dto, userId, ct);
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
@@ -187,7 +192,8 @@ public class TaxRefundsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var result = await _refundService.DeleteAsync(id, ct);
+        var userId = GetCurrentUserId();
+        var result = await _refundService.DeleteAsync(id, userId, ct);
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
@@ -393,7 +399,8 @@ public class TaxRefundsController : ControllerBase
         if (string.IsNullOrWhiteSpace(formType))
             return BadRequest(new { error = "نوع فرم چاپی الزامی است" });
 
-        var result = await _refundService.GetPrintableDocumentAsync(id, formType, ct);
+        var userId = GetCurrentUserId();
+        var result = await _refundService.GetPrintableDocumentAsync(id, formType, userId, ct);
         if (result.IsFailure)
             return NotFound(new { error = result.Error });
 
@@ -426,7 +433,7 @@ public class TaxRefundsController : ControllerBase
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
-        var caseResult = await _refundService.GetByIdAsync(result.Value, ct);
+        var caseResult = await _refundService.GetByIdAsync(result.Value, userId, ct);
         if (caseResult.IsFailure)
             return CreatedAtAction(nameof(GetById), new { id = result.Value }, new { id = result.Value });
 
@@ -442,6 +449,11 @@ public class TaxRefundsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ExportExcel(Guid id, CancellationToken ct)
     {
+        var userId = GetCurrentUserId();
+        var caseCheck = await _refundService.GetByIdAsync(id, userId, ct);
+        if (caseCheck.IsFailure)
+            return NotFound(new { error = caseCheck.Error });
+
         var result = await _excelService.ExportToExcelAsync(id, ct);
         if (result.IsFailure)
             return NotFound(new { error = result.Error });

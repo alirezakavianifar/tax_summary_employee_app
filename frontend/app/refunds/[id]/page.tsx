@@ -41,6 +41,8 @@ import { JustificationReportSummaryCard } from '@/components/refunds/Justificati
 import { JustificationReportEditorModal } from '@/components/refunds/JustificationReportEditorModal'
 import { WorkflowReturnModal } from '@/components/refunds/WorkflowReturnModal'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
+import { decomposeTaxUnitCode, canUserVerifyStage } from '@/lib/taxHierarchy'
 
 const PRINT_FORMS = [
   { id: 'cheklist', title: 'چک‌لیست کنترل اسناد استردادی' },
@@ -56,6 +58,7 @@ const PRINT_FORMS = [
 export default function TaxRefundDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
   const caseId = params.id as string
 
   const [refundCase, setRefundCase] = useState<TaxRefundCase | null>(null)
@@ -244,6 +247,30 @@ export default function TaxRefundDetailPage() {
                 <span>مرحله قطعیت: <strong className="text-purple-900 font-bold bg-purple-100/70 px-2 py-0.5 rounded-lg">{FinalityStageLabels[refundCase.assessmentInfo?.finalityStage] || refundCase.assessmentInfo?.finalityStageName || 'تمکین'}</strong></span>
                 <span>نحوه رسیدگی: <strong className="text-gray-800">{FinalizationMethodLabels[refundCase.assessmentInfo?.finalizationMethod] || refundCase.assessmentInfo?.finalizationMethodName || 'علی‌الراس'}</strong></span>
               </div>
+
+              {/* 3-Tier Hierarchy Organizational Indicator Card */}
+              {(() => {
+                const h = decomposeTaxUnitCode(refundCase.taxUnitCode)
+                return (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold py-2 px-3 bg-purple-50/70 rounded-xl border border-purple-200/70">
+                    <div className="flex items-center gap-1.5 text-purple-900 font-bold">
+                      <Building className="w-3.5 h-3.5 text-purple-600" />
+                      <span>تشکیلات سازمانی رسیدگی:</span>
+                    </div>
+                    <span className="bg-white px-2 py-1 rounded-lg border border-purple-200 text-purple-950 shadow-2xs">
+                      سطح ۱ (اداره کل/امور): <strong>{refundCase.officeName || h.officeName}</strong> <span className="font-mono text-[11px] text-purple-700 bg-purple-50 px-1 rounded">({refundCase.officeCode || h.officeCode})</span>
+                    </span>
+                    <span className="text-gray-400">←</span>
+                    <span className="bg-white px-2 py-1 rounded-lg border border-indigo-200 text-indigo-950 shadow-2xs">
+                      سطح ۲ (رئیس گروه): <strong>{refundCase.groupHeadName ? `${refundCase.groupHeadName} (${h.groupName})` : h.groupName}</strong> <span className="font-mono text-[11px] text-indigo-700 bg-indigo-50 px-1 rounded">({refundCase.groupCode || h.groupCode})</span>
+                    </span>
+                    <span className="text-gray-400">←</span>
+                    <span className="bg-white px-2 py-1 rounded-lg border border-blue-200 text-blue-950 shadow-2xs">
+                      سطح ۳ (کارشناس ارشد): <strong>{refundCase.seniorAuditorName ? `${refundCase.seniorAuditorName} (${h.unitName})` : h.unitName}</strong> <span className="font-mono text-[11px] text-blue-700 bg-blue-50 px-1 rounded">({refundCase.taxUnitCode})</span>
+                    </span>
+                  </div>
+                )
+              })()}
             </div>
 
             <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100 text-left md:text-right">
@@ -451,55 +478,85 @@ export default function TaxRefundDetailPage() {
               </div>
 
               <div>
-                {refundCase.status === RefundCaseStatus.Draft && (
-                  <button
-                    onClick={() => handleTransition(RefundCaseStatus.Audited)}
-                    disabled={transitioning}
-                    className="w-full py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold"
-                  >
-                    تایید کارشناس ارشد (Audited)
-                  </button>
-                )}
+                {refundCase.status === RefundCaseStatus.Draft && (() => {
+                  const canAudit = canUserVerifyStage(user?.role, user?.assignedOffices, user?.employee?.serviceUnit, RefundCaseStatus.Audited, refundCase.taxUnitCode)
+                  return (
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => handleTransition(RefundCaseStatus.Audited)}
+                        disabled={transitioning || !canAudit}
+                        className="w-full py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      >
+                        تایید کارشناس ارشد (Audited)
+                      </button>
+                      {!canAudit && (
+                        <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200 text-center">
+                          تایید این مرحله منحصراً در صلاحیت کارشناس ارشد مالیاتی منتسب به این واحد/اداره می‌باشد.
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
 
-                {refundCase.status === RefundCaseStatus.Audited && (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <button
-                      onClick={() => handleTransition(RefundCaseStatus.GroupHeadApproved)}
-                      disabled={transitioning}
-                      className="flex-1 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
-                    >
-                      تایید رئیس گروه مالیاتی
-                    </button>
-                    <button
-                      onClick={() => setIsReturnModalOpen(true)}
-                      disabled={transitioning}
-                      className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      عودت به پیش‌نویس
-                    </button>
-                  </div>
-                )}
+                {refundCase.status === RefundCaseStatus.Audited && (() => {
+                  const canGroupHeadApprove = canUserVerifyStage(user?.role, user?.assignedOffices, user?.employee?.serviceUnit, RefundCaseStatus.GroupHeadApproved, refundCase.taxUnitCode)
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={() => handleTransition(RefundCaseStatus.GroupHeadApproved)}
+                          disabled={transitioning || !canGroupHeadApprove}
+                          className="flex-1 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          تایید رئیس گروه مالیاتی
+                        </button>
+                        <button
+                          onClick={() => setIsReturnModalOpen(true)}
+                          disabled={transitioning}
+                          className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          عودت به پیش‌نویس
+                        </button>
+                      </div>
+                      {!canGroupHeadApprove && (
+                        <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200 text-center">
+                          تایید این مرحله نیازمند دسترسی رئیس گروه مالیاتی (سطح ۲) حوزه انتسابی می‌باشد.
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
 
-                {refundCase.status === RefundCaseStatus.GroupHeadApproved && (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <button
-                      onClick={() => handleTransition(RefundCaseStatus.AdministrationHeadApproved)}
-                      disabled={transitioning}
-                      className="flex-1 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
-                    >
-                      صدور دستور استرداد (رئیس امور)
-                    </button>
-                    <button
-                      onClick={() => setIsReturnModalOpen(true)}
-                      disabled={transitioning}
-                      className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      عودت جهت اصلاح
-                    </button>
-                  </div>
-                )}
+                {refundCase.status === RefundCaseStatus.GroupHeadApproved && (() => {
+                  const canOfficeHeadApprove = canUserVerifyStage(user?.role, user?.assignedOffices, user?.employee?.serviceUnit, RefundCaseStatus.AdministrationHeadApproved, refundCase.taxUnitCode)
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={() => handleTransition(RefundCaseStatus.AdministrationHeadApproved)}
+                          disabled={transitioning || !canOfficeHeadApprove}
+                          className="flex-1 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          صدور دستور استرداد (رئیس امور)
+                        </button>
+                        <button
+                          onClick={() => setIsReturnModalOpen(true)}
+                          disabled={transitioning}
+                          className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          عودت جهت اصلاح
+                        </button>
+                      </div>
+                      {!canOfficeHeadApprove && (
+                        <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200 text-center">
+                          صدور دستور نهایی استرداد منحصراً بر عهده رئیس اداره/امور مالیاتی (سطح ۱) یا مدیر سامانه می‌باشد.
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {refundCase.status === RefundCaseStatus.AdministrationHeadApproved && (
                   <div className="flex flex-col sm:flex-row gap-2">

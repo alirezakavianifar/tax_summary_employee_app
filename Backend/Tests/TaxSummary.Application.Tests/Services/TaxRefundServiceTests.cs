@@ -18,6 +18,7 @@ public class TaxRefundServiceTests
     private readonly RefundCalculationEngine _calcEngine;
     private readonly Mock<IRefundDocumentStorageService> _mockDocStorage;
     private readonly Mock<ILogger<TaxRefundService>> _mockLogger;
+    private readonly Mock<IUserRepository> _mockUserRepo;
     private readonly TaxRefundService _service;
 
     public TaxRefundServiceTests()
@@ -34,9 +35,17 @@ public class TaxRefundServiceTests
 
         _calcEngine = new RefundCalculationEngine();
         _mockLogger = new Mock<ILogger<TaxRefundService>>();
+        _mockUserRepo = new Mock<IUserRepository>();
+        _mockUserRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TaxSummary.Domain.Common.Result.Success(User.Create("admin", "admin@tax.gov.ir", "hash", "Admin")));
+        var mockOfficeService = new Mock<IOfficeService>();
+        mockOfficeService.Setup(o => o.GetAllOfficesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Enumerable.Empty<TaxSummary.Application.DTOs.Office.OfficeDto>());
 
         _service = new TaxRefundService(
             _mockRepo.Object,
+            _mockUserRepo.Object,
+            mockOfficeService.Object,
             _mockUow.Object,
             _mapper,
             _calcEngine,
@@ -308,5 +317,141 @@ public class TaxRefundServiceTests
         Assert.Equal(TaxRefundDocumentType.TaxpayerPetition, result.Value.DocumentType);
         Assert.Equal("darkhast_taxpayer.pdf", result.Value.OriginalFileName);
         Assert.Single(testCase.Documents);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenUserAssignedToOffice160200_CanAccessCaseWithUnit160211()
+    {
+        // Arrange
+        var caseId = Guid.NewGuid();
+        var refundCase = TaxRefundCase.Create(
+            "REF-1402-001", "87", "شرکت پتروشیمی کارون", "1234567890", "160211",
+            "خوزستان", "اهواز", "کیانپارس", "ملی", "IR123456789012345678901234",
+            1402, 1, TaxSourceType.CorporateIncome, "اضافه پرداختی",
+            "رئیس امور", "رئیس گروه", "کارشناس ارشد", Guid.NewGuid());
+
+        _mockRepo.Setup(r => r.GetByIdAsync(caseId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(refundCase);
+
+        var userId = Guid.NewGuid();
+        var user = User.Create("office_head", "oh@tax.gov.ir", "hash", "OfficeHead");
+        user.AssignOffice(Office.Create("160200", "اداره ۲ اهواز"));
+        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TaxSummary.Domain.Common.Result.Success(user));
+
+        // Act
+        var result = await _service.GetByIdAsync(caseId, userId);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal("160200", result.Value.OfficeCode);
+        Assert.Equal("160210", result.Value.GroupCode);
+        Assert.Equal("160211", result.Value.TaxUnitCode);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenUserAssignedToOffice160100_IsDeniedAccessToUnit160211()
+    {
+        // Arrange
+        var caseId = Guid.NewGuid();
+        var refundCase = TaxRefundCase.Create(
+            "REF-1402-001", "87", "شرکت پتروشیمی کارون", "1234567890", "160211",
+            "خوزستان", "اهواز", "کیانپارس", "ملی", "IR123456789012345678901234",
+            1402, 1, TaxSourceType.CorporateIncome, "اضافه پرداختی",
+            "رئیس امور", "رئیس گروه", "کارشناس ارشد", Guid.NewGuid());
+
+        _mockRepo.Setup(r => r.GetByIdAsync(caseId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(refundCase);
+
+        var userId = Guid.NewGuid();
+        // User assigned to Office 160100 (Different office from 160200!)
+        var user = User.Create("office1_head", "oh1@tax.gov.ir", "hash", "OfficeHead");
+        user.AssignOffice(Office.Create("160100", "اداره ۱ اهواز"));
+        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TaxSummary.Domain.Common.Result.Success(user));
+
+        // Act
+        var result = await _service.GetByIdAsync(caseId, userId);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Contains("دسترسی لازم", result.Error);
+    }
+
+    [Fact]
+    public async Task TransitionStatusAsync_WhenOfficeHead160200VerifiesUnit160211_Succeeds()
+    {
+        // Arrange
+        var caseId = Guid.NewGuid();
+        var refundCase = TaxRefundCase.Create(
+            "REF-1402-001", "87", "شرکت نمونه", "1234567890", "160211",
+            "خوزستان", "اهواز", "کیانپارس", "ملی", "IR123456789012345678901234",
+            1402, 1, TaxSourceType.CorporateIncome, "اضافه پرداختی",
+            "رئیس امور", "رئیس گروه", "کارشناس ارشد", Guid.NewGuid());
+
+        // Fast forward to GroupHeadApproved
+        refundCase.TransitionStatus(RefundCaseStatus.Audited, Guid.NewGuid(), "Auditor", "Expert");
+        refundCase.TransitionStatus(RefundCaseStatus.GroupHeadApproved, Guid.NewGuid(), "GroupHead", "GroupHead");
+
+        _mockRepo.Setup(r => r.GetByIdAsync(caseId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(refundCase);
+        _mockUow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var userId = Guid.NewGuid();
+        var officeHead = User.Create("office_head", "oh@tax.gov.ir", "hash", "OfficeHead");
+        officeHead.AssignOffice(Office.Create("160200", "اداره ۲ اهواز"));
+        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TaxSummary.Domain.Common.Result.Success(officeHead));
+
+        // Act: Office Head approves stage 3 (AdministrationHeadApproved)
+        var result = await _service.TransitionStatusAsync(
+            caseId,
+            new TransitionStatusDto { NewStatus = RefundCaseStatus.AdministrationHeadApproved, Notes = "صدور دستور استرداد" },
+            userId,
+            "غلامرضا اسلامی",
+            "OfficeHead");
+
+        // Assert
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Equal(RefundCaseStatus.AdministrationHeadApproved, refundCase.Status);
+    }
+
+    [Fact]
+    public async Task TransitionStatusAsync_WhenDifferentOfficeHeadVerifiesUnit160211_Fails()
+    {
+        // Arrange
+        var caseId = Guid.NewGuid();
+        var refundCase = TaxRefundCase.Create(
+            "REF-1402-001", "87", "شرکت نمونه", "1234567890", "160211",
+            "خوزستان", "اهواز", "کیانپارس", "ملی", "IR123456789012345678901234",
+            1402, 1, TaxSourceType.CorporateIncome, "اضافه پرداختی",
+            "رئیس امور", "رئیس گروه", "کارشناس ارشد", Guid.NewGuid());
+
+        refundCase.TransitionStatus(RefundCaseStatus.Audited, Guid.NewGuid(), "Auditor", "Expert");
+        refundCase.TransitionStatus(RefundCaseStatus.GroupHeadApproved, Guid.NewGuid(), "GroupHead", "GroupHead");
+
+        _mockRepo.Setup(r => r.GetByIdAsync(caseId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(refundCase);
+
+        var userId = Guid.NewGuid();
+        // Office Head of 160100 (different office!)
+        var otherHead = User.Create("office1_head", "oh1@tax.gov.ir", "hash", "OfficeHead");
+        otherHead.AssignOffice(Office.Create("160100", "اداره ۱ اهواز"));
+        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TaxSummary.Domain.Common.Result.Success(otherHead));
+
+        // Act
+        var result = await _service.TransitionStatusAsync(
+            caseId,
+            new TransitionStatusDto { NewStatus = RefundCaseStatus.AdministrationHeadApproved, Notes = "صدور دستور استرداد" },
+            userId,
+            "مدیر اداره دیگر",
+            "OfficeHead");
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Contains("مجاز به تایید این پرونده", result.Error);
     }
 }
