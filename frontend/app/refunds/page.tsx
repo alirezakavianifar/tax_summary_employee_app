@@ -33,9 +33,11 @@ import {
 import ExcelImportModal from '@/components/refunds/ExcelImportModal'
 import { QuickEditCaseModal } from '@/components/refunds/QuickEditCaseModal'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 import { KNOWN_OFFICES, decomposeTaxUnitCode } from '@/lib/taxHierarchy'
 
 export default function RefundsDashboardPage() {
+  const { isActionVisible } = useMenuSettings()
   const [cases, setCases] = useState<TaxRefundCaseSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -133,29 +135,35 @@ export default function RefundsDashboardPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-2 backdrop-blur-md border border-white/20 transition-all hover:scale-105"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
-                بارگذاری فایل اکسل (.xlsm)
-              </button>
+              {isActionVisible('/refunds/new', 'module_tax_refund') && (
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-2 backdrop-blur-md border border-white/20 transition-all hover:scale-105"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+                  بارگذاری فایل اکسل (.xlsm)
+                </button>
+              )}
 
-              <Link
-                href="/refunds/calculator"
-                className="px-4 py-2.5 bg-purple-700/80 hover:bg-purple-600 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-purple-400/30 transition-all hover:scale-105"
-              >
-                <Scale className="w-4 h-4 text-purple-200" />
-                شبیه‌ساز و محاسبه‌گر برخط
-              </Link>
+              {isActionVisible('/refunds/calculator', 'module_tax_refund') && (
+                <Link
+                  href="/refunds/calculator"
+                  className="px-4 py-2.5 bg-purple-700/80 hover:bg-purple-600 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-purple-400/30 transition-all hover:scale-105"
+                >
+                  <Scale className="w-4 h-4 text-purple-200" />
+                  شبیه‌ساز و محاسبه‌گر برخط
+                </Link>
+              )}
 
-              <Link
-                href="/refunds/new"
-                className="px-5 py-2.5 bg-white text-purple-900 hover:bg-purple-50 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg transition-all hover:scale-105"
-              >
-                <PlusCircle className="w-4 h-4 text-purple-700" />
-                ثبت پرونده استرداد جدید
-              </Link>
+              {isActionVisible('/refunds/new', 'module_tax_refund') && (
+                <Link
+                  href="/refunds/new"
+                  className="px-5 py-2.5 bg-white text-purple-900 hover:bg-purple-50 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg transition-all hover:scale-105"
+                >
+                  <PlusCircle className="w-4 h-4 text-purple-700" />
+                  ثبت پرونده استرداد جدید
+                </Link>
+              )}
             </div>
           </div>
         </div>

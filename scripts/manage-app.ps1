@@ -180,6 +180,22 @@ function Start-FrontendService {
         return
     }
 
+    $nodeModules = Join-Path $FrontendDir "node_modules"
+    if (-not (Test-Path $nodeModules)) {
+        Write-Host "  [WARN] 'node_modules' not found in frontend directory." -ForegroundColor Yellow
+        Write-Host "  Installing frontend dependencies via 'npm install'... Please wait." -ForegroundColor Cyan
+        Push-Location $FrontendDir
+        try {
+            npm install
+        } finally {
+            Pop-Location
+        }
+        if (-not (Test-Path $nodeModules)) {
+            Write-Host "  [ERROR] Failed to install dependencies. Please run 'npm install' manually in '$FrontendDir'." -ForegroundColor Red
+            return
+        }
+    }
+
     Start-DetachedProcess -ShellCommand "Write-Host 'Starting Next.js Frontend Server...' -ForegroundColor Green; npm run dev" -WorkingDirectory $FrontendDir
 
     Write-Host "  Frontend process launched in separate window." -ForegroundColor Green

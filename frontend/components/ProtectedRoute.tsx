@@ -10,11 +10,12 @@ interface ProtectedRouteProps {
     children: React.ReactNode;
     requiredRoles?: UserRole[];
     requiredModule?: string;
+    requiredAction?: string;
 }
 
-export default function ProtectedRoute({ children, requiredRoles, requiredModule }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRoles, requiredModule, requiredAction }: ProtectedRouteProps) {
     const { isAuthenticated, isLoading, user } = useAuth();
-    const { isModuleVisible, loading: settingsLoading } = useMenuSettings();
+    const { isModuleVisible, isActionVisible, loading: settingsLoading } = useMenuSettings();
     const router = useRouter();
 
     useEffect(() => {
@@ -41,7 +42,16 @@ export default function ProtectedRoute({ children, requiredRoles, requiredModule
         }
     }, [isAuthenticated, isLoading, settingsLoading, requiredModule, isModuleVisible, router]);
 
-    if (isLoading || (requiredModule && settingsLoading)) {
+    useEffect(() => {
+        if (!isLoading && !settingsLoading && isAuthenticated && requiredAction) {
+            const hasActionAccess = isActionVisible(requiredAction, requiredModule);
+            if (!hasActionAccess) {
+                router.push('/unauthorized');
+            }
+        }
+    }, [isAuthenticated, isLoading, settingsLoading, requiredAction, requiredModule, isActionVisible, router]);
+
+    if (isLoading || ((requiredModule || requiredAction) && settingsLoading)) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
@@ -61,6 +71,10 @@ export default function ProtectedRoute({ children, requiredRoles, requiredModule
     }
 
     if (requiredModule && !isModuleVisible(requiredModule)) {
+        return null; // Will redirect to unauthorized
+    }
+
+    if (requiredAction && !isActionVisible(requiredAction, requiredModule)) {
         return null; // Will redirect to unauthorized
     }
 

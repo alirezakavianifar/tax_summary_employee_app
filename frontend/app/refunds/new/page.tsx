@@ -345,7 +345,7 @@ export default function NewTaxRefundCasePage() {
   }
 
   return (
-    <ProtectedRoute requiredModule="module_tax_refund">
+    <ProtectedRoute requiredModule="module_tax_refund" requiredAction="/refunds/new">
       <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Navigation Breadcrumb */}

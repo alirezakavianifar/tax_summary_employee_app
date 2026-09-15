@@ -67,7 +67,7 @@ export default function CalculatorPage() {
   }
 
   return (
-    <ProtectedRoute requiredModule="module_tax_refund">
+    <ProtectedRoute requiredModule="module_tax_refund" requiredAction="/refunds/calculator">
       <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8" dir="rtl">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Navigation Breadcrumb */}

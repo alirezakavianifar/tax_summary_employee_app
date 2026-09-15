@@ -93,6 +93,8 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
     for (const item of settings) {
       if (item.route) {
         dict[item.route.toLowerCase()] = item
+        const trimmed = item.route.replace(/\/+$/, '').toLowerCase()
+        if (trimmed) dict[trimmed] = item
       }
     }
     return dict
@@ -162,10 +164,11 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
       }
 
       // Check action by key or route
-      const actionKey = ACTION_ROUTE_MAP[actionHrefOrKey] || actionHrefOrKey
+      const trimmedRoute = actionHrefOrKey.trim().replace(/\/+$/, '') || '/'
+      const actionKey = ACTION_ROUTE_MAP[trimmedRoute] || ACTION_ROUTE_MAP[actionHrefOrKey] || actionHrefOrKey
       let item = settingsByKey[actionKey.toLowerCase()]
       if (!item) {
-        item = settingsByRoute[actionHrefOrKey.toLowerCase()]
+        item = settingsByRoute[trimmedRoute.toLowerCase()] || settingsByRoute[actionHrefOrKey.toLowerCase()]
       }
 
       // If action was not returned by backend, user has no permission

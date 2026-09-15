@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Sparkles, CheckCircle, AlertTriangle, Layers } from 'lucide-react'
+import { toEnglishDigits } from '@/lib/jalali'
 import type { ReceiptItem } from './ReceiptsTableEditor'
 
 export interface AllocationItem {
@@ -33,6 +34,7 @@ export default function TableBAllocationEditor({
   const [selectedReceiptNo, setSelectedReceiptNo] = useState<string>(receipts[0]?.receiptNumber || '')
   const [allocAmount, setAllocAmount] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
+  const initialPopulatedRef = useRef<boolean>(false)
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fa-IR').format(Math.round(num))
@@ -40,6 +42,43 @@ export default function TableBAllocationEditor({
 
   const totalAllocated = allocations.reduce((sum, a) => sum + (a.refundableAmount || 0), 0)
   const remainingToAllocate = Math.max(0, principalRefundTarget - totalAllocated)
+
+  const effectiveReceiptNo = selectedReceiptNo || receipts[0]?.receiptNumber || ''
+
+  const getSuggestedAmount = (receiptNo: string): number => {
+    const r = receipts.find((x) => x.receiptNumber === receiptNo)
+    if (!r) return 0
+    const existing = allocations.find((a) => a.receiptNumber === receiptNo)
+    if (existing) {
+      return existing.refundableAmount
+    }
+    return Math.min(
+      remainingToAllocate > 0 ? remainingToAllocate : r.amountRials,
+      r.amountRials
+    )
+  }
+
+  // Pre-fill allocation amount on initial load or when receipts first become available
+  useEffect(() => {
+    if (!initialPopulatedRef.current && effectiveReceiptNo && receipts.length > 0) {
+      const suggested = getSuggestedAmount(effectiveReceiptNo)
+      if (suggested > 0) {
+        initialPopulatedRef.current = true
+        setAllocAmount(Math.round(suggested).toLocaleString('en-US'))
+      }
+    }
+  }, [effectiveReceiptNo, receipts, remainingToAllocate, allocations])
+
+  const handleReceiptSelect = (receiptNo: string) => {
+    setSelectedReceiptNo(receiptNo)
+    setError(null)
+    const suggested = getSuggestedAmount(receiptNo)
+    if (suggested > 0) {
+      setAllocAmount(Math.round(suggested).toLocaleString('en-US'))
+    } else {
+      setAllocAmount('')
+    }
+  }
 
   // Auto Allocate logic: Allocate target refund sequentially across available receipts
   const handleAutoAllocate = () => {
@@ -66,8 +105,6 @@ export default function TableBAllocationEditor({
     onChange(newAllocations)
   }
 
-  const effectiveReceiptNo = selectedReceiptNo || receipts[0]?.receiptNumber || ''
-
   const handleManualAdd = () => {
     setError(null)
     if (!effectiveReceiptNo) {
@@ -78,7 +115,8 @@ export default function TableBAllocationEditor({
     const receipt = receipts.find((r) => r.receiptNumber === effectiveReceiptNo)
     if (!receipt) return
 
-    const parsedAmount = parseFloat(allocAmount.replace(/,/g, ''))
+    const clean = toEnglishDigits(allocAmount).replace(/,/g, '').trim()
+    const parsedAmount = parseFloat(clean)
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       setError('مبلغ تخصیص باید بزرگتر از صفر باشد')
       return
@@ -101,8 +139,23 @@ export default function TableBAllocationEditor({
       revenueLedgerRow: receipt.revenueLedgerRow,
     }
 
-    onChange([...filtered, newAllocation])
+    const updatedAllocations = [...filtered, newAllocation]
+    onChange(updatedAllocations)
     setAllocAmount('')
+
+    // If there is another unallocated receipt, automatically advance to it
+    const nextUnallocated = receipts.find(
+      (r) => r.receiptNumber !== effectiveReceiptNo && !updatedAllocations.some((a) => a.receiptNumber === r.receiptNumber)
+    )
+    if (nextUnallocated) {
+      setSelectedReceiptNo(nextUnallocated.receiptNumber)
+      const nextTotalAllocated = updatedAllocations.reduce((sum, a) => sum + (a.refundableAmount || 0), 0)
+      const nextRem = Math.max(0, principalRefundTarget - nextTotalAllocated)
+      const nextSuggested = Math.min(nextRem > 0 ? nextRem : nextUnallocated.amountRials, nextUnallocated.amountRials)
+      if (nextSuggested > 0) {
+        setAllocAmount(Math.round(nextSuggested).toLocaleString('en-US'))
+      }
+    }
   }
 
   const handleRemove = (receiptNo: string) => {
@@ -178,13 +231,7 @@ export default function TableBAllocationEditor({
               <label className="block text-[11px] text-gray-600 mb-1">انتخاب قبض از جدول (الف):</label>
               <select
                 value={effectiveReceiptNo}
-                onChange={(e) => {
-                  setSelectedReceiptNo(e.target.value)
-                  const r = receipts.find((x) => x.receiptNumber === e.target.value)
-                  if (r) {
-                    setAllocAmount(formatNumber(Math.min(remainingToAllocate || r.amountRials, r.amountRials)))
-                  }
-                }}
+                onChange={(e) => handleReceiptSelect(e.target.value)}
                 className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white"
               >
                 {receipts.map((r) => (
@@ -201,8 +248,9 @@ export default function TableBAllocationEditor({
                 type="text"
                 value={allocAmount}
                 onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, '')
-                  setAllocAmount(val ? Number(val).toLocaleString() : '')
+                  setError(null)
+                  const clean = toEnglishDigits(e.target.value).replace(/[^0-9]/g, '')
+                  setAllocAmount(clean ? Number(clean).toLocaleString('en-US') : '')
                 }}
                 placeholder="مبلغ استردادی..."
                 className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold"
