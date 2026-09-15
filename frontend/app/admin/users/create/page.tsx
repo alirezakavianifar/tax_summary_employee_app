@@ -10,7 +10,7 @@ import { reportsApi } from '@/lib/api/reports';
 import { officesApi } from '@/lib/api/offices';
 import { rolesApi, RoleDto } from '@/lib/api/roles';
 import { EmployeeDto, OfficeDto } from '@/lib/api/types';
-import { UserRole } from '@/types/auth';
+import { UserRole, formatRoleTitle } from '@/types/auth';
 import { Building2, Search, Check, X, CheckSquare, Square } from 'lucide-react';
 
 interface CreateUserForm {
@@ -306,7 +306,7 @@ export default function CreateUserPage() {
                                     {roles.length > 0 ? (
                                         roles.map(r => (
                                             <option key={r.id} value={r.name}>
-                                                {r.title} ({r.name})
+                                                {formatRoleTitle(r.title)}
                                             </option>
                                         ))
                                     ) : (
@@ -317,8 +317,9 @@ export default function CreateUserPage() {
                                             <option value="DirectorGeneral">مدیر کل امور مالیاتی</option>
                                             <option value="Treasury">ذیحساب</option>
                                             <option value="ITSpecialist">کارشناس فناوری اطلاعات</option>
-                                            <option value="Manager">مدیر / معاونت</option>
-                                            <option value="Admin">مدیر ارشد سامانه (Admin - دسترسی نامحدود به تمامی ادارات)</option>
+                                            <option value="Manager">معاونت / مدیر</option>
+                                            <option value="Employee">کارمند</option>
+                                            <option value="Admin">مدیر ارشد سامانه</option>
                                         </>
                                     )}
                                 </select>
@@ -359,7 +360,7 @@ export default function CreateUserPage() {
 
                                 {selectedRole === 'Admin' || selectedRole === 'DirectorGeneral' ? (
                                     <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-                                        کاربران با نقش «{selectedRole === 'DirectorGeneral' ? 'مدیر کل امور مالیاتی' : 'مدیر ارشد سامانه (Admin)'}» به صورت خودکار به تمامی کاربرگ‌ها و ادارات استان دسترسی کامل دارند.
+                                        کاربران با نقش «{selectedRole === 'DirectorGeneral' ? 'مدیر کل امور مالیاتی' : 'مدیر ارشد سامانه'}» به صورت خودکار به تمامی کاربرگ‌ها و ادارات استان دسترسی کامل دارند.
                                     </p>
                                 ) : (
                                     <>

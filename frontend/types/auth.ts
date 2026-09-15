@@ -14,9 +14,15 @@ export const ROLE_NAMES_FA: Record<string, string> = {
     Auditor: 'حسابرس',
 };
 
+export function formatRoleTitle(title?: string | null): string {
+    if (!title) return '';
+    return title.replace(/\s*\([A-Za-z\s_-]+\)/g, '').trim();
+}
+
 export function getRolePersianName(role?: string | null): string {
     if (!role) return '';
-    return ROLE_NAMES_FA[role] || role;
+    const name = ROLE_NAMES_FA[role] || role;
+    return formatRoleTitle(name);
 }
 
 export interface User {

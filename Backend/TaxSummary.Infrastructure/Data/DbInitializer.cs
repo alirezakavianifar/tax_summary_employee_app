@@ -621,14 +621,14 @@ public static class DbInitializer
     {
         var defaultRoles = new[]
         {
-            (Name: "Admin", Title: "مدیر ارشد سامانه (Admin)", Description: "دسترسی نامحدود سیستمی به تمامی بخش‌ها و ادارات", Order: 1),
+            (Name: "Admin", Title: "مدیر ارشد سامانه", Description: "دسترسی نامحدود سیستمی به تمامی بخش‌ها و ادارات", Order: 1),
             (Name: "DirectorGeneral", Title: "مدیر کل امور مالیاتی", Description: "مدیر کل امور مالیاتی استان با دسترسی عالیه و نظارت بر کلیه ادارات و امضا نامه‌های ذیحسابی", Order: 2),
             (Name: "Treasury", Title: "ذیحساب", Description: "مسئول تایید پرداخت‌ها و استرداد وجوه در اداره امور مالی و ذیحسابی", Order: 3),
             (Name: "OfficeHead", Title: "رئیس اداره امور مالیاتی", Description: "رئیس امور یا اداره مالیاتی شهرستان با اختیارات صدور و تایید دستور استرداد (سطح ۱)", Order: 4),
             (Name: "GroupHead", Title: "رئیس گروه مالیاتی", Description: "رئیس گروه مالیاتی رسیدگی‌کننده پرونده‌ها (سطح ۲)", Order: 5),
             (Name: "Expert", Title: "کارشناس (ممیز مالیاتی)", Description: "کارشناس ارشد و رسیدگی‌کننده پرونده‌های مالیاتی (سطح ۳)", Order: 6),
             (Name: "ITSpecialist", Title: "کارشناس فناوری اطلاعات", Description: "کارشناس فناوری و پشتیبانی سامانه", Order: 7),
-            (Name: "Manager", Title: "مدیر / معاونت", Description: "مدیران اجرایی و معاونت‌های سازمانی", Order: 8),
+            (Name: "Manager", Title: "معاونت / مدیر", Description: "مدیران اجرایی و معاونت‌های سازمانی", Order: 8),
             (Name: "Employee", Title: "کارمند", Description: "پرسنل و کاربران عمومی سازمان", Order: 9),
         };
 
@@ -644,6 +644,10 @@ public static class DbInitializer
                     isSystemRole: true,
                     isActive: true,
                     displayOrder: def.Order));
+            }
+            else
+            {
+                existing.Update(def.Title, def.Description, existing.IsActive, def.Order);
             }
         }
 

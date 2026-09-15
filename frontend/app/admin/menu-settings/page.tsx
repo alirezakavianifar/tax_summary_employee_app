@@ -121,9 +121,9 @@ const getRoleLabel = (role: string): string => {
     case 'itspecialist':
       return 'کارشناس فناوری';
     case 'manager':
-      return 'رئیس اداره (Manager)';
+      return 'معاونت / مدیر';
     case 'employee':
-      return 'کارشناس (Employee)';
+      return 'کارمند';
     default:
       return role;
   }
