@@ -61,6 +61,20 @@ interface RoleDef {
 
 const ORGANIZATIONAL_ROLES: RoleDef[] = [
   {
+    key: 'DirectorGeneral',
+    label: 'مدیر کل امور مالیاتی',
+    shortLabel: 'مدیر کل',
+    colorClass: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    activeClass: 'bg-indigo-50 text-indigo-700 border-indigo-300 shadow-xs hover:bg-indigo-100',
+  },
+  {
+    key: 'Treasury',
+    label: 'ذیحساب',
+    shortLabel: 'ذیحساب',
+    colorClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    activeClass: 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-xs hover:bg-emerald-100',
+  },
+  {
     key: 'OfficeHead',
     label: 'رئیس اداره',
     shortLabel: 'رئیس اداره',
@@ -94,6 +108,10 @@ const getRoleLabel = (role: string): string => {
   switch (role.toLowerCase()) {
     case 'admin':
       return 'مدیر ارشد';
+    case 'directorgeneral':
+      return 'مدیر کل امور مالیاتی';
+    case 'treasury':
+      return 'ذیحساب';
     case 'officehead':
       return 'رئیس اداره';
     case 'grouphead':

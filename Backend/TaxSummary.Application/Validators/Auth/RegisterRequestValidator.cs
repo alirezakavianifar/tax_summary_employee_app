@@ -34,14 +34,9 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequestDto>
         RuleFor(x => x.Role)
             .NotEmpty()
             .WithMessage("نقش کاربری الزامی است")
-            .Must(BeValidRole)
-            .WithMessage("نقش کاربری نامعتبر است. نقش‌های معتبر: Admin، OfficeHead، GroupHead، Expert، ITSpecialist");
+            .MaximumLength(50)
+            .WithMessage("نام نقش نمی‌تواند بیشتر از 50 کاراکتر باشد");
     }
-
-    private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Admin", "OfficeHead", "GroupHead", "Expert", "ITSpecialist", "Manager", "Employee"
-    };
 
     private bool HaveComplexity(string password)
     {
@@ -54,10 +49,5 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequestDto>
         var hasSpecialChar = Regex.IsMatch(password, @"[^a-zA-Z0-9]");
 
         return hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar;
-    }
-
-    private bool BeValidRole(string role)
-    {
-        return ValidRoles.Contains(role);
     }
 }

@@ -1,8 +1,10 @@
 // Authentication types
-export type UserRole = 'Admin' | 'OfficeHead' | 'GroupHead' | 'Expert' | 'ITSpecialist' | 'Manager' | 'Employee' | 'Auditor';
+export type UserRole = 'Admin' | 'DirectorGeneral' | 'Treasury' | 'OfficeHead' | 'GroupHead' | 'Expert' | 'ITSpecialist' | 'Manager' | 'Employee' | 'Auditor' | (string & {});
 
 export const ROLE_NAMES_FA: Record<string, string> = {
     Admin: 'مدیر ارشد',
+    DirectorGeneral: 'مدیر کل امور مالیاتی',
+    Treasury: 'ذیحساب',
     OfficeHead: 'رئیس اداره',
     GroupHead: 'رئیس گروه مالیاتی',
     Expert: 'کارشناس (ممیز)',

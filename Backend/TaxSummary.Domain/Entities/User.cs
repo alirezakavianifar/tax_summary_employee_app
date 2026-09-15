@@ -41,11 +41,14 @@ public class User
     public bool MustChangePassword { get; private set; }
 
     /// <summary>
+    /// <summary>
     /// Supported system and organizational roles
     /// </summary>
-    public static readonly string[] ValidRoles = new[]
+    private static readonly HashSet<string> _validRoles = new(StringComparer.OrdinalIgnoreCase)
     {
         "Admin",
+        "DirectorGeneral",
+        "Treasury",
         "OfficeHead",
         "GroupHead",
         "Expert",
@@ -54,23 +57,33 @@ public class User
         "Employee"
     };
 
+    public static IReadOnlyCollection<string> ValidRoles => _validRoles;
+
+    public static void RegisterCustomRole(string role)
+    {
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            _validRoles.Add(role.Trim());
+        }
+    }
+
     /// <summary>
     /// Update user details
     /// </summary>
-    public void UpdateDetails(string? email, string role, bool isActive, Guid? employeeId, string? username = null)
+    public void UpdateDetails(string? email, string role, bool isActive, Guid? employeeId, string? username = null, bool validateRole = true)
     {
         if (string.IsNullOrWhiteSpace(role))
             throw new ArgumentException("نقش کاربر نمی‌تواند خالی باشد", nameof(role));
 
-        if (!ValidRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
-            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", ValidRoles)}", nameof(role));
+        if (validateRole && !_validRoles.Contains(role))
+            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", _validRoles)}", nameof(role));
 
         if (!string.IsNullOrWhiteSpace(username))
         {
             Username = username.Trim().ToLowerInvariant();
         }
         Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant();
-        Role = role;
+        Role = role.Trim();
         IsActive = isActive;
         EmployeeId = employeeId;
         UpdatedAt = DateTime.UtcNow;
@@ -127,7 +140,8 @@ public class User
         string? email = null,
         string passwordHash = "",
         string role = "Employee",
-        Guid? employeeId = null)
+        Guid? employeeId = null,
+        bool validateRole = true)
     {
         if (string.IsNullOrWhiteSpace(username))
             throw new ArgumentException("نام کاربری نمی‌تواند خالی باشد", nameof(username));
@@ -138,8 +152,8 @@ public class User
         if (string.IsNullOrWhiteSpace(role))
             throw new ArgumentException("نقش کاربر نمی‌تواند خالی باشد", nameof(role));
 
-        if (!ValidRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
-            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", ValidRoles)}", nameof(role));
+        if (validateRole && !_validRoles.Contains(role))
+            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", _validRoles)}", nameof(role));
 
         var user = new User
         {
@@ -147,7 +161,7 @@ public class User
             Username = username.Trim().ToLowerInvariant(),
             Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant(),
             PasswordHash = passwordHash,
-            Role = role,
+            Role = role.Trim(),
             IsActive = true,
             MustChangePassword = false,
             FailedLoginAttempts = 0,
@@ -255,15 +269,15 @@ public class User
     /// <summary>
     /// Update user role
     /// </summary>
-    public void UpdateRole(string newRole)
+    public void UpdateRole(string newRole, bool validateRole = true)
     {
         if (string.IsNullOrWhiteSpace(newRole))
             throw new ArgumentException("نقش کاربر نمی‌تواند خالی باشد", nameof(newRole));
 
-        if (!ValidRoles.Contains(newRole, StringComparer.OrdinalIgnoreCase))
-            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", ValidRoles)}", nameof(newRole));
+        if (validateRole && !_validRoles.Contains(newRole))
+            throw new ArgumentException($"نقش باید یکی از موارد زیر باشد: {string.Join(", ", _validRoles)}", nameof(newRole));
 
-        Role = newRole;
+        Role = newRole.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -326,12 +340,13 @@ public class User
     }
 
     /// <summary>
-    /// Check whether user has access to a specific tax unit code based on 3-tier hierarchy (Admin has access to all)
+    /// Check whether user has access to a specific tax unit code based on 3-tier hierarchy (Admin and DirectorGeneral have access to all)
     /// </summary>
     public bool HasAccessToTaxHierarchy(string? taxUnitCode)
     {
         if (string.IsNullOrWhiteSpace(taxUnitCode)) return false;
-        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase)) return true;
+        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+            Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase)) return true;
 
         var hierarchy = ValueObjects.TaxHierarchy.Decompose(taxUnitCode);
 
@@ -361,7 +376,8 @@ public class User
     /// </summary>
     public bool CanVerifyStage(RefundCaseStatus targetStatus, string? taxUnitCode)
     {
-        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase)) return true;
+        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+            Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase)) return true;
         if (string.IsNullOrWhiteSpace(taxUnitCode)) return false;
 
         var hierarchy = ValueObjects.TaxHierarchy.Decompose(taxUnitCode);
@@ -390,17 +406,22 @@ public class User
                 return HasGroupOrOfficeAccess(hierarchy.GroupCode, hierarchy.OfficeCode);
 
             case RefundCaseStatus.AdministrationHeadApproved:
-                // Level 1: Office Head (رئیس امور / رئیس اداره)
-                // Must have role OfficeHead (or Admin) AND cover the OfficeCode (e.g. 160200)
+                // Level 1: Office Head (رئیس امور / رئیس اداره) or Director General (مدیر کل)
+                if (Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
                 if (!Role.Equals("OfficeHead", StringComparison.OrdinalIgnoreCase))
                     return false;
 
                 return HasOfficeLevelAccess(hierarchy.OfficeCode);
 
             case RefundCaseStatus.TreasuryDisbursed:
-                // Treasury / Office Head / Admin
-                return Role.Equals("OfficeHead", StringComparison.OrdinalIgnoreCase) ||
-                       Role.Equals("Manager", StringComparison.OrdinalIgnoreCase);
+                // Treasury / DirectorGeneral / Office Head / Manager / Admin
+                return Role.Equals("Treasury", StringComparison.OrdinalIgnoreCase) ||
+                       Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase) ||
+                       Role.Equals("OfficeHead", StringComparison.OrdinalIgnoreCase) ||
+                       Role.Equals("Manager", StringComparison.OrdinalIgnoreCase) ||
+                       Role.Equals("Admin", StringComparison.OrdinalIgnoreCase);
 
             case RefundCaseStatus.Draft:
             case RefundCaseStatus.InquiriesPending:
@@ -414,7 +435,8 @@ public class User
 
     private bool HasGroupOrOfficeAccess(string groupCode, string officeCode)
     {
-        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase)) return true;
+        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+            Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase)) return true;
 
         foreach (var uo in UserOffices)
         {
@@ -432,7 +454,8 @@ public class User
 
     private bool HasOfficeLevelAccess(string officeCode)
     {
-        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase)) return true;
+        if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+            Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase)) return true;
 
         foreach (var uo in UserOffices)
         {

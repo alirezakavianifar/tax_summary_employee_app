@@ -35,6 +35,9 @@ public static class DbInitializer
             await SeedSampleDataAsync(context);
         }
 
+        // Seed default system roles
+        await SeedRolesAsync(context);
+
         // Seed Menu & Module Visibility Settings
         await SeedMenuSettingsAsync(context);
 
@@ -612,5 +615,38 @@ public static class DbInitializer
             await context.UserOffices.AddRangeAsync(newUserOffices);
             await context.SaveChangesAsync();
         }
+    }
+
+    private static async Task SeedRolesAsync(TaxSummaryDbContext context)
+    {
+        var defaultRoles = new[]
+        {
+            (Name: "Admin", Title: "مدیر ارشد سامانه (Admin)", Description: "دسترسی نامحدود سیستمی به تمامی بخش‌ها و ادارات", Order: 1),
+            (Name: "DirectorGeneral", Title: "مدیر کل امور مالیاتی", Description: "مدیر کل امور مالیاتی استان با دسترسی عالیه و نظارت بر کلیه ادارات و امضا نامه‌های ذیحسابی", Order: 2),
+            (Name: "Treasury", Title: "ذیحساب", Description: "مسئول تایید پرداخت‌ها و استرداد وجوه در اداره امور مالی و ذیحسابی", Order: 3),
+            (Name: "OfficeHead", Title: "رئیس اداره امور مالیاتی", Description: "رئیس امور یا اداره مالیاتی شهرستان با اختیارات صدور و تایید دستور استرداد (سطح ۱)", Order: 4),
+            (Name: "GroupHead", Title: "رئیس گروه مالیاتی", Description: "رئیس گروه مالیاتی رسیدگی‌کننده پرونده‌ها (سطح ۲)", Order: 5),
+            (Name: "Expert", Title: "کارشناس (ممیز مالیاتی)", Description: "کارشناس ارشد و رسیدگی‌کننده پرونده‌های مالیاتی (سطح ۳)", Order: 6),
+            (Name: "ITSpecialist", Title: "کارشناس فناوری اطلاعات", Description: "کارشناس فناوری و پشتیبانی سامانه", Order: 7),
+            (Name: "Manager", Title: "مدیر / معاونت", Description: "مدیران اجرایی و معاونت‌های سازمانی", Order: 8),
+            (Name: "Employee", Title: "کارمند", Description: "پرسنل و کاربران عمومی سازمان", Order: 9),
+        };
+
+        foreach (var def in defaultRoles)
+        {
+            var existing = await context.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == def.Name.ToLower());
+            if (existing == null)
+            {
+                await context.Roles.AddAsync(Role.Create(
+                    name: def.Name,
+                    title: def.Title,
+                    description: def.Description,
+                    isSystemRole: true,
+                    isActive: true,
+                    displayOrder: def.Order));
+            }
+        }
+
+        await context.SaveChangesAsync();
     }
 }

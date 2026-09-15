@@ -35,6 +35,7 @@ public class TaxSummaryDbContext : DbContext
 
     // System & Navigation Configuration DbSets
     public DbSet<MenuSetting> MenuSettings => Set<MenuSetting>();
+    public DbSet<Role> Roles => Set<Role>();
 
     // Audit Logging
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();

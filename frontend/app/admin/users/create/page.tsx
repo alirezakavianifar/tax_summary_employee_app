@@ -8,6 +8,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { usersApi } from '@/lib/api/users';
 import { reportsApi } from '@/lib/api/reports';
 import { officesApi } from '@/lib/api/offices';
+import { rolesApi, RoleDto } from '@/lib/api/roles';
 import { EmployeeDto, OfficeDto } from '@/lib/api/types';
 import { UserRole } from '@/types/auth';
 import { Building2, Search, Check, X, CheckSquare, Square } from 'lucide-react';
@@ -27,6 +28,7 @@ export default function CreateUserPage() {
     const [loadingEmployees, setLoadingEmployees] = useState(false);
     const [offices, setOffices] = useState<OfficeDto[]>([]);
     const [loadingOffices, setLoadingOffices] = useState(false);
+    const [roles, setRoles] = useState<RoleDto[]>([]);
     const [selectedOfficeIds, setSelectedOfficeIds] = useState<string[]>([]);
     const [officeSearch, setOfficeSearch] = useState('');
     const [isCustomPassword, setIsCustomPassword] = useState(false);
@@ -49,12 +51,14 @@ export default function CreateUserPage() {
             try {
                 setLoadingEmployees(true);
                 setLoadingOffices(true);
-                const [empData, officeData] = await Promise.all([
+                const [empData, officeData, roleData] = await Promise.all([
                     reportsApi.getAllEmployees(),
-                    officesApi.getAll()
+                    officesApi.getAll(),
+                    rolesApi.getActiveRoles()
                 ]);
                 setEmployees(empData || []);
                 setOffices(officeData || []);
+                setRoles(roleData || []);
             } catch (err) {
                 console.error('Failed to load initial data', err);
             } finally {
@@ -299,12 +303,24 @@ export default function CreateUserPage() {
                                     {...register('role', { required: 'نقش کاربری الزامی است' })}
                                     className="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                 >
-                                    <option value="Expert">کارشناس (ممیز مالیاتی)</option>
-                                    <option value="GroupHead">رئیس گروه مالیاتی</option>
-                                    <option value="OfficeHead">رئیس اداره امور مالیاتی</option>
-                                    <option value="ITSpecialist">کارشناس فناوری اطلاعات</option>
-                                    <option value="Manager">مدیر / معاونت</option>
-                                    <option value="Admin">مدیر ارشد سامانه (Admin - دسترسی نامحدود به تمامی ادارات)</option>
+                                    {roles.length > 0 ? (
+                                        roles.map(r => (
+                                            <option key={r.id} value={r.name}>
+                                                {r.title} ({r.name})
+                                            </option>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <option value="Expert">کارشناس (ممیز مالیاتی)</option>
+                                            <option value="GroupHead">رئیس گروه مالیاتی</option>
+                                            <option value="OfficeHead">رئیس اداره امور مالیاتی</option>
+                                            <option value="DirectorGeneral">مدیر کل امور مالیاتی</option>
+                                            <option value="Treasury">ذیحساب</option>
+                                            <option value="ITSpecialist">کارشناس فناوری اطلاعات</option>
+                                            <option value="Manager">مدیر / معاونت</option>
+                                            <option value="Admin">مدیر ارشد سامانه (Admin - دسترسی نامحدود به تمامی ادارات)</option>
+                                        </>
+                                    )}
                                 </select>
                             </div>
 
@@ -317,10 +333,10 @@ export default function CreateUserPage() {
                                             تخصیص ادارات مجاز (Offices)
                                         </h3>
                                         <span className="text-[11px] font-semibold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-full">
-                                            {selectedRole === 'Admin' ? 'دسترسی سراسری' : `${selectedOfficeIds.length} اداره انتخاب شده`}
+                                            {selectedRole === 'Admin' || selectedRole === 'DirectorGeneral' ? 'دسترسی سراسری' : `${selectedOfficeIds.length} اداره انتخاب شده`}
                                         </span>
                                     </div>
-                                    {selectedRole !== 'Admin' && (
+                                    {selectedRole !== 'Admin' && selectedRole !== 'DirectorGeneral' && (
                                         <div className="flex items-center gap-2 text-xs">
                                             <button
                                                 type="button"
@@ -341,9 +357,9 @@ export default function CreateUserPage() {
                                     )}
                                 </div>
 
-                                {selectedRole === 'Admin' ? (
+                                {selectedRole === 'Admin' || selectedRole === 'DirectorGeneral' ? (
                                     <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-                                        کاربران با نقش «مدیر ارشد سامانه (Admin)» به صورت خودکار به تمامی کاربرگ‌ها و ادارات استان دسترسی کامل دارند.
+                                        کاربران با نقش «{selectedRole === 'DirectorGeneral' ? 'مدیر کل امور مالیاتی' : 'مدیر ارشد سامانه (Admin)'}» به صورت خودکار به تمامی کاربرگ‌ها و ادارات استان دسترسی کامل دارند.
                                     </p>
                                 ) : (
                                     <>

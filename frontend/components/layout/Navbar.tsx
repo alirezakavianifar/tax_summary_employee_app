@@ -26,6 +26,7 @@ import {
   Sliders,
   KeyRound,
   History,
+  Shield,
 } from 'lucide-react'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 
@@ -282,6 +283,28 @@ export default function Navbar() {
                           </Link>
                         )}
 
+                        {isActionVisible('/admin/roles', 'admin') && (
+                          <Link
+                            href="/admin/roles"
+                            onClick={() => setOpenDropdown(null)}
+                            className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
+                              pathname === '/admin/roles'
+                                ? 'bg-purple-50 text-purple-800 font-bold'
+                                : 'hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
+                              <Shield className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold block">مدیریت نقش‌ها و اختیارات</span>
+                              <span className="text-[11px] text-gray-400 font-normal">
+                                تعریف نقش‌های سازمانی و اختیارات سفارشی
+                              </span>
+                            </div>
+                          </Link>
+                        )}
+
                         {isActionVisible('/admin/menu-settings', 'admin') && (
                           <Link
                             href="/admin/menu-settings"
@@ -517,6 +540,16 @@ export default function Navbar() {
                         >
                           <UserPlus className="w-4 h-4 text-purple-500" />
                           <span>تعریف کاربر جدید</span>
+                        </Link>
+                      )}
+                      {isActionVisible('/admin/roles', 'admin') && (
+                        <Link
+                          href="/admin/roles"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
+                        >
+                          <Shield className="w-4 h-4 text-purple-500" />
+                          <span>مدیریت نقش‌ها و اختیارات</span>
                         </Link>
                       )}
                       {isActionVisible('/admin/menu-settings', 'admin') && (

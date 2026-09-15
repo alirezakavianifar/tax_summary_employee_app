@@ -46,6 +46,7 @@ const ACTION_ROUTE_MAP: Record<string, string> = {
   '/refunds/new': 'action_refund_new',
   '/refunds/calculator': 'action_refund_calculator',
   '/admin/users': 'action_admin_users',
+  '/admin/roles': 'action_admin_roles',
   '/admin/menu-settings': 'action_admin_menus',
 }
 

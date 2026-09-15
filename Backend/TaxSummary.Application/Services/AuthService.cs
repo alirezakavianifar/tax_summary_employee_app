@@ -16,6 +16,7 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly IRoleRepository _roleRepository;
     private readonly IMapper _mapper;
     private readonly IConfiguration _configuration;
     private readonly int _maxFailedAttempts;
@@ -24,12 +25,14 @@ public class AuthService : IAuthService
 
     public AuthService(
         IUserRepository userRepository,
+        IRoleRepository roleRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         IMapper mapper,
         IConfiguration configuration)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _roleRepository = roleRepository ?? throw new ArgumentNullException(nameof(roleRepository));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _jwtTokenService = jwtTokenService ?? throw new ArgumentNullException(nameof(jwtTokenService));
         _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
@@ -157,7 +160,15 @@ public class AuthService : IAuthService
         }
 
         // Validate role
-        if (string.IsNullOrWhiteSpace(request.Role) || !User.ValidRoles.Contains(request.Role, StringComparer.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(request.Role))
+        {
+            return Result.Failure<UserDto>("نقش کاربری الزامی است");
+        }
+
+        var isRoleValid = User.ValidRoles.Contains(request.Role, StringComparer.OrdinalIgnoreCase) ||
+                          await _roleRepository.ExistsByNameAsync(request.Role, cancellationToken);
+
+        if (!isRoleValid)
         {
             return Result.Failure<UserDto>("نقش کاربری نامعتبر است");
         }
@@ -169,6 +180,8 @@ public class AuthService : IAuthService
 
         // Hash password
         var passwordHash = _passwordHasher.HashPassword(rawPassword);
+
+        User.RegisterCustomRole(request.Role);
 
         // Create user entity
         User user;

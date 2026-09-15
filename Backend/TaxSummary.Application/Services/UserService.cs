@@ -3,6 +3,7 @@ using TaxSummary.Application.DTOs;
 using TaxSummary.Application.DTOs.Auth;
 using TaxSummary.Application.DTOs.Common;
 using TaxSummary.Domain.Common;
+using TaxSummary.Domain.Entities;
 using TaxSummary.Domain.Interfaces;
 
 namespace TaxSummary.Application.Services;
@@ -13,17 +14,20 @@ public class UserService : IUserService
     private readonly IEmployeeRepository _employeeRepository;
     private readonly IMapper _mapper;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IRoleRepository _roleRepository;
 
     public UserService(
         IUserRepository userRepository,
         IEmployeeRepository employeeRepository,
         IMapper mapper,
-        IPasswordHasher passwordHasher)
+        IPasswordHasher passwordHasher,
+        IRoleRepository roleRepository)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _employeeRepository = employeeRepository ?? throw new ArgumentNullException(nameof(employeeRepository));
         _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
+        _roleRepository = roleRepository ?? throw new ArgumentNullException(nameof(roleRepository));
     }
 
     public async Task<Result<IEnumerable<UserDto>>> GetAllUsersAsync(CancellationToken cancellationToken = default)
@@ -101,12 +105,14 @@ public class UserService : IUserService
                 return Result.Failure("ایمیل وارد شده تکراری است");
         }
 
-        // Validate role
-        var validRoles = new[] { "Admin", "OfficeHead", "GroupHead", "Expert", "ITSpecialist", "Manager", "Employee" };
-        if (!validRoles.Contains(request.Role, StringComparer.OrdinalIgnoreCase))
+        // Validate role against system roles or database roles
+        var isRoleValid = User.ValidRoles.Contains(request.Role, StringComparer.OrdinalIgnoreCase) ||
+                          await _roleRepository.ExistsByNameAsync(request.Role, cancellationToken);
+        if (!isRoleValid)
             return Result.Failure("نقش کاربری نامعتبر است");
 
         // Update user
+        User.RegisterCustomRole(request.Role);
         user.UpdateDetails(request.Email, request.Role, request.IsActive, request.EmployeeId, request.Username);
 
         var updateResult = await _userRepository.UpdateAsync(user, cancellationToken);

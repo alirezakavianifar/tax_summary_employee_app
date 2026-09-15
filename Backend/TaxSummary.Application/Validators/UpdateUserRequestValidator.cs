@@ -5,11 +5,6 @@ namespace TaxSummary.Application.Validators;
 
 public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequestDto>
 {
-    private static readonly string[] ValidRoles = new[]
-    {
-        "Admin", "OfficeHead", "GroupHead", "Expert", "ITSpecialist", "Manager", "Employee"
-    };
-
     public UpdateUserRequestValidator()
     {
         RuleFor(x => x.Username)
@@ -23,7 +18,6 @@ public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequestDto
 
         RuleFor(x => x.Role)
             .NotEmpty().WithMessage("نقش کاربری الزامی است")
-            .Must(role => ValidRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
-            .WithMessage("نقش کاربری نامعتبر است");
+            .MaximumLength(50).WithMessage("نام نقش نمی‌تواند بیشتر از ۵۰ کاراکتر باشد");
     }
 }

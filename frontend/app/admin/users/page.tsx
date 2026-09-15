@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { usersApi } from '@/lib/api/users';
 import { reportsApi } from '@/lib/api/reports';
 import { officesApi } from '@/lib/api/offices';
+import { rolesApi, RoleDto } from '@/lib/api/roles';
 import { EmployeeDto, OfficeDto } from '@/lib/api/types';
-import { User, UserRole } from '@/types/auth';
+import { User, UserRole, getRolePersianName } from '@/types/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { Building2, Search, CheckSquare, Square, X, FileSpreadsheet, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Loader2, RotateCcw } from 'lucide-react';
+import { Building2, Search, CheckSquare, Square, X, FileSpreadsheet, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Loader2, RotateCcw, Shield } from 'lucide-react';
 import PersonnelImportModal from '@/components/admin/PersonnelImportModal';
 
 const getPaginationItems = (currentPage: number, total: number) => {
@@ -31,12 +32,22 @@ const getPaginationItems = (currentPage: number, total: number) => {
     return items;
 };
 
-const getRoleBadge = (role: string) => {
+const getRoleBadge = (role: string, roleList?: RoleDto[]) => {
     switch (role) {
         case 'Admin':
             return {
                 label: 'مدیر ارشد (Admin)',
                 className: 'bg-red-100 text-red-800 border border-red-200'
+            };
+        case 'DirectorGeneral':
+            return {
+                label: 'مدیر کل امور مالیاتی',
+                className: 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+            };
+        case 'Treasury':
+            return {
+                label: 'ذیحساب',
+                className: 'bg-emerald-100 text-emerald-800 border border-emerald-200'
             };
         case 'OfficeHead':
             return {
@@ -64,8 +75,9 @@ const getRoleBadge = (role: string) => {
                 className: 'bg-amber-100 text-amber-800 border border-amber-200'
             };
         default:
+            const matched = roleList?.find(r => r.name.toLowerCase() === role.toLowerCase());
             return {
-                label: 'کارمند (Employee)',
+                label: matched ? `${matched.title} (${matched.name})` : (getRolePersianName(role) || role),
                 className: 'bg-gray-100 text-gray-800 border border-gray-200'
             };
     }
@@ -134,10 +146,22 @@ export default function UsersPage() {
         loadUsers(page, pageSize, debouncedSearch, selectedRole);
     }, [page, pageSize, debouncedSearch, selectedRole]);
 
+    const [availableRoles, setAvailableRoles] = useState<RoleDto[]>([]);
+
     useEffect(() => {
         loadEmployees();
         loadOffices();
+        loadRoles();
     }, []);
+
+    const loadRoles = async () => {
+        try {
+            const data = await rolesApi.getActiveRoles();
+            setAvailableRoles(data || []);
+        } catch (err) {
+            console.error('Failed to load roles', err);
+        }
+    };
 
     const loadOffices = async () => {
         try {
@@ -378,6 +402,13 @@ export default function UsersPage() {
                             <p className="text-sm text-gray-500 mt-1">مدیریت حساب‌های کاربری، سطوح دسترسی و بازنشانی رمز عبور</p>
                         </div>
                         <div className="flex items-center gap-3">
+                            <Link
+                                href="/admin/roles"
+                                className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg transition shadow-sm font-medium text-sm"
+                            >
+                                <Shield className="w-5 h-5" />
+                                مدیریت نقش‌ها
+                            </Link>
                             <button
                                 type="button"
                                 onClick={() => setShowImportModal(true)}
@@ -477,12 +508,23 @@ export default function UsersPage() {
                                     className="w-full py-2 px-3 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 transition bg-white text-gray-700"
                                 >
                                     <option value="">همه نقش‌ها</option>
-                                    <option value="Admin">مدیر ارشد (Admin)</option>
-                                    <option value="OfficeHead">رئیس اداره</option>
-                                    <option value="GroupHead">رئیس گروه مالیاتی</option>
-                                    <option value="Expert">کارشناس (ممیز)</option>
-                                    <option value="ITSpecialist">کارشناس فناوری</option>
-                                    <option value="Employee">کارمند (Employee)</option>
+                                    {availableRoles.length > 0 ? (
+                                        availableRoles.map(r => (
+                                            <option key={r.id} value={r.name}>{r.title} ({r.name})</option>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <option value="Admin">مدیر ارشد (Admin)</option>
+                                            <option value="DirectorGeneral">مدیر کل امور مالیاتی</option>
+                                            <option value="Treasury">ذیحساب</option>
+                                            <option value="OfficeHead">رئیس اداره</option>
+                                            <option value="GroupHead">رئیس گروه مالیاتی</option>
+                                            <option value="Expert">کارشناس (ممیز)</option>
+                                            <option value="ITSpecialist">کارشناس فناوری</option>
+                                            <option value="Manager">مدیر</option>
+                                            <option value="Employee">کارمند (Employee)</option>
+                                        </>
+                                    )}
                                 </select>
                             </div>
 
@@ -598,7 +640,7 @@ export default function UsersPage() {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         {(() => {
-                                                            const badge = getRoleBadge(user.role);
+                                                            const badge = getRoleBadge(user.role, availableRoles);
                                                             return (
                                                                 <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${badge.className}`}>
                                                                     {badge.label}
@@ -610,7 +652,7 @@ export default function UsersPage() {
                                                         {user.employee ? `${user.employee.firstName} ${user.employee.lastName}` : '-'}
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        {user.role === 'Admin' ? (
+                                                        {user.role === 'Admin' || user.role === 'DirectorGeneral' ? (
                                                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
                                                                 همه ادارات (سازمانی)
                                                             </span>
@@ -832,7 +874,7 @@ export default function UsersPage() {
 
                             <div className="mb-4 bg-gray-50 p-3 rounded-lg text-xs text-gray-600 space-y-1">
                                 <div><span className="font-semibold text-gray-700">نام کاربری:</span> {resetModalUser.username}</div>
-                                <div><span className="font-semibold text-gray-700">نقش کاربری:</span> {getRoleBadge(resetModalUser.role).label}</div>
+                                <div><span className="font-semibold text-gray-700">نقش کاربری:</span> {getRoleBadge(resetModalUser.role, availableRoles).label}</div>
                             </div>
 
                             {actionError && (
@@ -974,11 +1016,22 @@ export default function UsersPage() {
                                         onChange={(e) => setEditRole(e.target.value as UserRole)}
                                         className="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                     >
-                                        <option value="Expert">کارشناس (ممیز مالیاتی)</option>
-                                        <option value="GroupHead">رئیس گروه مالیاتی</option>
-                                        <option value="OfficeHead">رئیس اداره امور مالیاتی</option>
-                                        <option value="ITSpecialist">کارشناس فناوری اطلاعات</option>
-                                        <option value="Admin">مدیر ارشد سامانه (Admin)</option>
+                                        {availableRoles.length > 0 ? (
+                                            availableRoles.map(r => (
+                                                <option key={r.id} value={r.name}>{r.title} ({r.name})</option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="Expert">کارشناس (ممیز مالیاتی)</option>
+                                                <option value="GroupHead">رئیس گروه مالیاتی</option>
+                                                <option value="OfficeHead">رئیس اداره امور مالیاتی</option>
+                                                <option value="DirectorGeneral">مدیر کل امور مالیاتی</option>
+                                                <option value="Treasury">ذیحساب</option>
+                                                <option value="ITSpecialist">کارشناس فناوری اطلاعات</option>
+                                                <option value="Manager">مدیر</option>
+                                                <option value="Admin">مدیر ارشد سامانه (Admin)</option>
+                                            </>
+                                        )}
                                     </select>
                                     <p className="mt-1 text-[11px] text-gray-500">
                                         دسترسی این کاربر در منوهای سامانه بر اساس این نقش اعمال خواهد شد.
@@ -1017,10 +1070,10 @@ export default function UsersPage() {
                                                 تخصیص ادارات مجاز (Offices)
                                             </h3>
                                             <span className="text-[11px] font-semibold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-full">
-                                                {editRole === 'Admin' ? 'دسترسی سراسری' : `${editSelectedOfficeIds.length} اداره انتخاب شده`}
+                                                {editRole === 'Admin' || editRole === 'DirectorGeneral' ? 'دسترسی سراسری' : `${editSelectedOfficeIds.length} اداره انتخاب شده`}
                                             </span>
                                         </div>
-                                        {editRole !== 'Admin' && (
+                                        {editRole !== 'Admin' && editRole !== 'DirectorGeneral' && (
                                             <div className="flex items-center gap-2 text-xs">
                                                 <button
                                                     type="button"
@@ -1041,9 +1094,9 @@ export default function UsersPage() {
                                         )}
                                     </div>
 
-                                    {editRole === 'Admin' ? (
+                                    {editRole === 'Admin' || editRole === 'DirectorGeneral' ? (
                                         <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-                                            کاربران با نقش «مدیر ارشد سامانه (Admin)» به صورت خودکار به تمامی کاربرگ‌ها و ادارات استان دسترسی کامل دارند.
+                                            کاربران با نقش «{editRole === 'DirectorGeneral' ? 'مدیر کل امور مالیاتی' : 'مدیر ارشد سامانه (Admin)'}» به صورت خودکار به تمامی کاربرگ‌ها و ادارات استان دسترسی کامل دارند.
                                         </p>
                                     ) : (
                                         <>
