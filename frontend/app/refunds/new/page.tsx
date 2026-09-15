@@ -429,7 +429,7 @@ export default function NewTaxRefundCasePage() {
                   </div>
 
                   <div>
-                    <label className="block text-gray-700 font-bold mb-1">شماره اقتصادی (۱۰ الی ۱۲ رقم) *</label>
+                    <label className="block text-gray-700 font-bold mb-1">تین مودی *</label>
                     <input
                       type="text"
                       value={economicCode}
