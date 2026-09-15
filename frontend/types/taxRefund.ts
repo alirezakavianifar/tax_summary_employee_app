@@ -251,6 +251,7 @@ export interface TaxRefundCase {
   taxSource: TaxSourceType
   taxSourceDescription: string
   refundReason: string
+  directorGeneralName?: string
   administrationHeadName: string
   groupHeadName: string
   seniorAuditorName: string
@@ -365,6 +366,7 @@ export interface CreateTaxRefundCaseInput {
   period: number
   taxSource: TaxSourceType
   refundReason?: string
+  directorGeneralName?: string
   administrationHeadName?: string
   groupHeadName?: string
   seniorAuditorName?: string
@@ -389,6 +391,7 @@ export interface UpdateTaxRefundCaseInput {
   taxYear?: number
   taxSource?: TaxSourceType
   refundReason?: string
+  directorGeneralName?: string
   administrationHeadName?: string
   groupHeadName?: string
   seniorAuditorName?: string
@@ -446,6 +449,7 @@ export interface PrintableDocument {
   period: number
   taxSourceName: string
   refundReason?: string
+  directorGeneralName?: string
   administrationHeadName: string
   groupHeadName: string
   seniorAuditorName: string

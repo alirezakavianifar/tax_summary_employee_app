@@ -71,6 +71,10 @@ public class TaxRefundCaseConfiguration : IEntityTypeConfiguration<TaxRefundCase
         builder.Property(c => c.RefundReason)
             .HasMaxLength(500);
 
+        builder.Property(c => c.DirectorGeneralName)
+            .HasMaxLength(150)
+            .HasDefaultValue(string.Empty);
+
         builder.Property(c => c.AdministrationHeadName)
             .HasMaxLength(150);
 

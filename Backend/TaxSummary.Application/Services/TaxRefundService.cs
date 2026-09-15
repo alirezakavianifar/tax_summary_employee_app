@@ -60,6 +60,10 @@ public class TaxRefundService : ITaxRefundService
         }
 
         var dto = _mapper.Map<TaxRefundCaseDto>(refundCase);
+        if (string.IsNullOrWhiteSpace(dto.DirectorGeneralName))
+        {
+            dto.DirectorGeneralName = await GetOrSnapshotDirectorGeneralNameAsync(refundCase, ct);
+        }
         dto.Calculation = CalculateForCase(refundCase);
 
         return Result.Success(dto);
@@ -83,6 +87,10 @@ public class TaxRefundService : ITaxRefundService
         }
 
         var dto = _mapper.Map<TaxRefundCaseDto>(refundCase);
+        if (string.IsNullOrWhiteSpace(dto.DirectorGeneralName))
+        {
+            dto.DirectorGeneralName = await GetOrSnapshotDirectorGeneralNameAsync(refundCase, ct);
+        }
         dto.Calculation = CalculateForCase(refundCase);
 
         return Result.Success(dto);
@@ -146,6 +154,10 @@ public class TaxRefundService : ITaxRefundService
                 ? dto.CaseTrackingNumber.Trim()
                 : $"REF-{dto.TaxYear}-{new Random().Next(1000, 9999)}";
 
+            var dgName = !string.IsNullOrWhiteSpace(dto.DirectorGeneralName)
+                ? dto.DirectorGeneralName.Trim()
+                : await GetCurrentDirectorGeneralNameAsync(ct);
+
             var refundCase = TaxRefundCase.Create(
                 trackingNumber,
                 dto.DocketNumber,
@@ -165,7 +177,8 @@ public class TaxRefundService : ITaxRefundService
                 dto.GroupHeadName,
                 dto.SeniorAuditorName,
                 currentUserId,
-                dto.NationalId);
+                dto.NationalId,
+                dgName);
 
             // Add initial receipts if provided
             if (dto.Receipts != null)
@@ -322,7 +335,8 @@ public class TaxRefundService : ITaxRefundService
             refundCase.UpdateAssignedOfficers(
                 dto.AdministrationHeadName,
                 dto.GroupHeadName,
-                dto.SeniorAuditorName);
+                dto.SeniorAuditorName,
+                dto.DirectorGeneralName);
 
             if (dto.TaxYear.HasValue && dto.TaxSource.HasValue)
             {
@@ -383,7 +397,8 @@ public class TaxRefundService : ITaxRefundService
             refundCase.UpdateAssignedOfficers(
                 dto.AdministrationHeadName,
                 dto.GroupHeadName,
-                dto.SeniorAuditorName);
+                dto.SeniorAuditorName,
+                dto.DirectorGeneralName);
 
             refundCase.UpdateScope(dto.TaxYear, dto.TaxSource, dto.Period);
 
@@ -892,6 +907,13 @@ public class TaxRefundService : ITaxRefundService
 
         try
         {
+            // Snapshot active Director General if not set yet (e.g. at transition/sealing)
+            if (string.IsNullOrWhiteSpace(refundCase.DirectorGeneralName))
+            {
+                var dgName = await GetCurrentDirectorGeneralNameAsync(ct);
+                refundCase.SetDirectorGeneralName(dgName);
+            }
+
             refundCase.TransitionStatus(dto.NewStatus, currentUserId, actorName, actorRole, dto.Notes);
             await _repository.UpdateAsync(refundCase, ct);
             await _unitOfWork.SaveChangesAsync(ct);
@@ -943,6 +965,9 @@ public class TaxRefundService : ITaxRefundService
             Period = refundCase.Period,
             TaxSourceName = TaxRefundMappingProfile.GetTaxSourceName(refundCase.TaxSource),
             RefundReason = refundCase.RefundReason,
+            DirectorGeneralName = !string.IsNullOrWhiteSpace(refundCase.DirectorGeneralName)
+                ? refundCase.DirectorGeneralName
+                : await GetOrSnapshotDirectorGeneralNameAsync(refundCase, ct),
             AdministrationHeadName = refundCase.AdministrationHeadName,
             GroupHeadName = refundCase.GroupHeadName,
             SeniorAuditorName = refundCase.SeniorAuditorName,
@@ -1401,5 +1426,56 @@ public class TaxRefundService : ITaxRefundService
         {
             _logger.LogWarning(ex, "Failed to automatically link office for case {TrackingNumber} with office code {OfficeCode}", refundCase.CaseTrackingNumber, refundCase.OfficeCode);
         }
+    }
+
+    private async Task<string> GetOrSnapshotDirectorGeneralNameAsync(TaxRefundCase refundCase, CancellationToken ct = default)
+    {
+        if (!string.IsNullOrWhiteSpace(refundCase.DirectorGeneralName))
+            return refundCase.DirectorGeneralName;
+
+        var activeDg = await GetCurrentDirectorGeneralNameAsync(ct);
+
+        // If the case is already sealed/finished, permanently persist this snapshot so it never changes in the future!
+        if (refundCase.Status == RefundCaseStatus.AdministrationHeadApproved || refundCase.Status == RefundCaseStatus.TreasuryDisbursed)
+        {
+            try
+            {
+                refundCase.SetDirectorGeneralName(activeDg);
+                await _repository.UpdateAsync(refundCase, ct);
+                await _unitOfWork.SaveChangesAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to persist sealed DirectorGeneralName snapshot for case {CaseId}", refundCase.Id);
+            }
+        }
+
+        return activeDg;
+    }
+
+    private async Task<string> GetCurrentDirectorGeneralNameAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var paged = await _userRepository.GetPagedAsync(role: "DirectorGeneral", pageSize: 1, cancellationToken: ct);
+            if (paged.IsSuccess && paged.Value.Items.Any())
+            {
+                var user = paged.Value.Items.First();
+                if (user.Employee != null && (!string.IsNullOrWhiteSpace(user.Employee.FirstName) || !string.IsNullOrWhiteSpace(user.Employee.LastName)))
+                {
+                    var name = $"{user.Employee.FirstName} {user.Employee.LastName}".Trim();
+                    if (!string.IsNullOrWhiteSpace(name))
+                        return name;
+                }
+                if (!string.IsNullOrWhiteSpace(user.Username))
+                    return user.Username;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to retrieve active Director General user from repository");
+        }
+
+        return "علی خورشیدی"; // Default fallback
     }
 }

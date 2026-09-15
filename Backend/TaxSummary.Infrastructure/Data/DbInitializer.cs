@@ -233,6 +233,19 @@ public static class DbInitializer
                 await context.SaveChangesAsync();
             }
 
+            // Backfill DirectorGeneralName for existing cases if empty
+            var casesWithoutDg = await context.TaxRefundCases
+                .Where(c => string.IsNullOrWhiteSpace(c.DirectorGeneralName))
+                .ToListAsync();
+            foreach (var c in casesWithoutDg)
+            {
+                c.SetDirectorGeneralName("علی خورشیدی");
+            }
+            if (casesWithoutDg.Any())
+            {
+                await context.SaveChangesAsync();
+            }
+
             var hasKarunCase = await context.TaxRefundCases.AnyAsync(c => c.TaxUnitCode == "160211");
             if (!hasKarunCase)
             {
@@ -256,7 +269,8 @@ public static class DbInitializer
                     groupHeadName: "مسعود بصیر",
                     seniorAuditorName: "مهدی دلفی",
                     createdByUserId: adminUserId,
-                    nationalId: "10102345678"
+                    nationalId: "10102345678",
+                    directorGeneralName: "علی خورشیدی"
                 );
 
                 if (off1602 != null)
@@ -323,7 +337,8 @@ public static class DbInitializer
             groupHeadName: "مسعود بصیر",
             seniorAuditorName: "مهدی دلفی",
             createdByUserId: adminUserId,
-            nationalId: "10100000000"
+            nationalId: "10100000000",
+            directorGeneralName: "علی خورشیدی"
         );
 
         // Assessment Info

@@ -46,6 +46,7 @@ public class CreateTaxRefundCaseDto
     public int Period { get; set; } = 1;
     public TaxSourceType TaxSource { get; set; }
     public string RefundReason { get; set; } = string.Empty;
+    public string? DirectorGeneralName { get; set; }
     public string AdministrationHeadName { get; set; } = string.Empty;
     public string GroupHeadName { get; set; } = string.Empty;
     public string SeniorAuditorName { get; set; } = string.Empty;
@@ -71,6 +72,7 @@ public class UpdateTaxRefundCaseDto
     public string BankName { get; set; } = string.Empty;
     public string ShebaNumber { get; set; } = string.Empty;
     public string RefundReason { get; set; } = string.Empty;
+    public string? DirectorGeneralName { get; set; }
     public string AdministrationHeadName { get; set; } = string.Empty;
     public string GroupHeadName { get; set; } = string.Empty;
     public string SeniorAuditorName { get; set; } = string.Empty;

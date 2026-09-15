@@ -33,6 +33,7 @@ public class TaxRefundCaseDto
     public string RefundReason { get; set; } = string.Empty;
 
     // Officials
+    public string DirectorGeneralName { get; set; } = string.Empty;
     public string AdministrationHeadName { get; set; } = string.Empty;
     public string GroupHeadName { get; set; } = string.Empty;
     public string SeniorAuditorName { get; set; } = string.Empty;

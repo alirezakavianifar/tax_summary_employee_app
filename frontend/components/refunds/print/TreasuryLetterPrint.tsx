@@ -90,7 +90,7 @@ export function TreasuryLetterPrint({ data }: TreasuryLetterPrintProps) {
           <div className="font-bold text-sm font-titr">
             مدیر کل امور مالیاتی استان {data.province || 'خوزستان'}
           </div>
-          <div className="font-bold text-base mt-3">{data.administrationHeadName}</div>
+          <div className="font-bold text-base mt-3">{data.directorGeneralName || 'علی خورشیدی'}</div>
           <div className="text-xs text-gray-600 mt-2">مهر و امضاء</div>
         </div>
       </div>

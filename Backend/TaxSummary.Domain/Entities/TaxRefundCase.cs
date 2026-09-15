@@ -44,6 +44,7 @@ public class TaxRefundCase
     public string RefundReason { get; private set; } = string.Empty;
 
     // Presiding Officers (مقامات مسئول)
+    public string DirectorGeneralName { get; private set; } = string.Empty; // مدیر کل امور مالیاتی استان
     public string AdministrationHeadName { get; private set; } = string.Empty; // رئیس امور
     public string GroupHeadName { get; private set; } = string.Empty; // رئیس گروه
     public string SeniorAuditorName { get; private set; } = string.Empty; // کارشناس ارشد مالیاتی
@@ -92,7 +93,8 @@ public class TaxRefundCase
         string groupHeadName,
         string seniorAuditorName,
         Guid createdByUserId,
-        string? nationalId = null)
+        string? nationalId = null,
+        string? directorGeneralName = null)
     {
         if (string.IsNullOrWhiteSpace(caseTrackingNumber))
             throw new ArgumentException("شماره پیگیری پرونده نمی‌تواند خالی باشد", nameof(caseTrackingNumber));
@@ -129,6 +131,7 @@ public class TaxRefundCase
             Period = period,
             TaxSource = taxSource,
             RefundReason = refundReason.Trim(),
+            DirectorGeneralName = !string.IsNullOrWhiteSpace(directorGeneralName) ? directorGeneralName.Trim() : string.Empty,
             AdministrationHeadName = administrationHeadName.Trim(),
             GroupHeadName = groupHeadName.Trim(),
             SeniorAuditorName = seniorAuditorName.Trim(),
@@ -208,16 +211,34 @@ public class TaxRefundCase
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void SetDirectorGeneralName(string directorGeneralName)
+    {
+        if ((Status == RefundCaseStatus.AdministrationHeadApproved || Status == RefundCaseStatus.TreasuryDisbursed) 
+            && !string.IsNullOrWhiteSpace(DirectorGeneralName))
+        {
+            // Case is sealed and finished - already signed by a Director General, do not alter
+            return;
+        }
+
+        DirectorGeneralName = directorGeneralName?.Trim() ?? string.Empty;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void UpdateAssignedOfficers(
         string administrationHeadName,
         string groupHeadName,
-        string seniorAuditorName)
+        string seniorAuditorName,
+        string? directorGeneralName = null)
     {
         EnsureModifiable();
 
         AdministrationHeadName = administrationHeadName.Trim();
         GroupHeadName = groupHeadName.Trim();
         SeniorAuditorName = seniorAuditorName.Trim();
+        if (!string.IsNullOrWhiteSpace(directorGeneralName))
+        {
+            DirectorGeneralName = directorGeneralName.Trim();
+        }
         UpdatedAt = DateTime.UtcNow;
     }
 

@@ -67,6 +67,7 @@ export default function NewTaxRefundCasePage() {
   const [taxSource, setTaxSource] = useState<TaxSourceType>(TaxSourceType.CorporateIncome)
   const [refundReason, setRefundReason] = useState('')
   const [docketNumber, setDocketNumber] = useState('')
+  const [directorGeneralName, setDirectorGeneralName] = useState('')
   const [adminHeadName, setAdminHeadName] = useState('')
   const [groupHeadName, setGroupHeadName] = useState('')
   const [seniorAuditorName, setSeniorAuditorName] = useState('')
@@ -285,6 +286,7 @@ export default function NewTaxRefundCasePage() {
         taxSource,
         refundReason: refundReason.trim(),
         docketNumber: docketNumber.trim(),
+        directorGeneralName: directorGeneralName.trim() || undefined,
         administrationHeadName: adminHeadName.trim(),
         groupHeadName: groupHeadName.trim(),
         seniorAuditorName: seniorAuditorName.trim(),
@@ -634,7 +636,17 @@ export default function NewTaxRefundCasePage() {
                 {/* Presiding Officers */}
                 <div className="border-t border-gray-200 pt-4 mt-4">
                   <h4 className="text-xs font-bold text-gray-700 mb-3">مقامات مسئول پرونده:</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <label className="block text-gray-500 mb-1">مدیر کل امور مالیاتی</label>
+                      <input
+                        type="text"
+                        value={directorGeneralName}
+                        onChange={(e) => setDirectorGeneralName(e.target.value)}
+                        placeholder="پیش‌فرض: علی خورشیدی"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-gray-50/50"
+                      />
+                    </div>
                     <div>
                       <label className="block text-gray-500 mb-1">رئیس امور مالیاتی *</label>
                       <input
