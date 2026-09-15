@@ -36,20 +36,26 @@ export const FinalizationMethodLabels: Record<FinalizationMethod, string> = {
 
 export enum FinalityStage {
   Tamkin = 1,
-  TaxOfficeAgreement = 2,
-  PrimaryBoardRuling = 3,
-  AppellateBoardRuling = 4,
-  Article251 = 5,
-  Article216 = 6,
+  Agreement = 2,
+  PrimaryBoard244 = 3,
+  AppellateBoard247 = 4,
+  SupremeTaxCouncil251 = 5,
+  Board251Repeated = 6,
+  Board257 = 7,
+  Board216 = 8,
+  ParallelBoard = 9,
 }
 
 export const FinalityStageLabels: Record<FinalityStage, string> = {
-  [FinalityStage.Tamkin]: 'تمکین',
-  [FinalityStage.TaxOfficeAgreement]: 'توافق در اداره امور مالیاتی',
-  [FinalityStage.PrimaryBoardRuling]: 'رای هیات بدوی',
-  [FinalityStage.AppellateBoardRuling]: 'رای هیات تجدید نظر',
-  [FinalityStage.Article251]: '251',
-  [FinalityStage.Article216]: '216',
+  [FinalityStage.Tamkin]: 'تمکين',
+  [FinalityStage.Agreement]: 'توافق',
+  [FinalityStage.PrimaryBoard244]: 'رای هیات بدوی 244',
+  [FinalityStage.AppellateBoard247]: 'رای هیأت تجدیدنظر 247',
+  [FinalityStage.SupremeTaxCouncil251]: 'شورای عالی مالیاتی 251',
+  [FinalityStage.Board251Repeated]: 'هیات 251 مکرر',
+  [FinalityStage.Board257]: 'هیات 257',
+  [FinalityStage.Board216]: 'هیات 216',
+  [FinalityStage.ParallelBoard]: 'هیات هم عرض',
 }
 
 export enum RefundCaseStatus {

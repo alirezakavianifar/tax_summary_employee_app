@@ -745,7 +745,7 @@ export default function NewTaxRefundCasePage() {
                   </div>
 
                   <div>
-                    <label className="block text-gray-700 font-bold mb-1">مرحله قطعیت *</label>
+                    <label className="block text-gray-700 font-bold mb-1">مرحله قطعیت مالیات *</label>
                     <select
                       value={finalityStage}
                       onChange={(e) => setFinalityStage(Number(e.target.value))}

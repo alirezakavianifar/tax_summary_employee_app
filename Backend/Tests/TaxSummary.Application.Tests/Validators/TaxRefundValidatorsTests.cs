@@ -151,11 +151,14 @@ public class TaxRefundValidatorsTests
 
     [Theory]
     [InlineData(FinalityStage.Tamkin)]
-    [InlineData(FinalityStage.TaxOfficeAgreement)]
-    [InlineData(FinalityStage.PrimaryBoardRuling)]
-    [InlineData(FinalityStage.AppellateBoardRuling)]
-    [InlineData(FinalityStage.Article251)]
-    [InlineData(FinalityStage.Article216)]
+    [InlineData(FinalityStage.Agreement)]
+    [InlineData(FinalityStage.PrimaryBoard244)]
+    [InlineData(FinalityStage.AppellateBoard247)]
+    [InlineData(FinalityStage.SupremeTaxCouncil251)]
+    [InlineData(FinalityStage.Board251Repeated)]
+    [InlineData(FinalityStage.Board257)]
+    [InlineData(FinalityStage.Board216)]
+    [InlineData(FinalityStage.ParallelBoard)]
     public void TaxAssessmentInfoValidator_ValidFinalityStage_ShouldNotHaveError(FinalityStage stage)
     {
         var dto = new UpdateTaxAssessmentInfoDto

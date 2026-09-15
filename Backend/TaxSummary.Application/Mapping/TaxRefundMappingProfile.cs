@@ -90,12 +90,15 @@ public class TaxRefundMappingProfile : Profile
 
     public static string GetFinalityStageName(FinalityStage stage) => stage switch
     {
-        FinalityStage.Tamkin => "تمکین",
-        FinalityStage.TaxOfficeAgreement => "توافق در اداره امور مالیاتی",
-        FinalityStage.PrimaryBoardRuling => "رای هیات بدوی",
-        FinalityStage.AppellateBoardRuling => "رای هیات تجدید نظر",
-        FinalityStage.Article251 => "251",
-        FinalityStage.Article216 => "216",
+        FinalityStage.Tamkin => "تمکين",
+        FinalityStage.Agreement => "توافق",
+        FinalityStage.PrimaryBoard244 => "رای هیات بدوی 244",
+        FinalityStage.AppellateBoard247 => "رای هیأت تجدیدنظر 247",
+        FinalityStage.SupremeTaxCouncil251 => "شورای عالی مالیاتی 251",
+        FinalityStage.Board251Repeated => "هیات 251 مکرر",
+        FinalityStage.Board257 => "هیات 257",
+        FinalityStage.Board216 => "هیات 216",
+        FinalityStage.ParallelBoard => "هیات هم عرض",
         _ => stage.ToString()
     };
 

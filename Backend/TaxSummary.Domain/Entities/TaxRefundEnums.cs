@@ -179,32 +179,52 @@ public enum TaxRefundLetterType
 public enum FinalityStage
 {
     /// <summary>
-    /// تمکین
+    /// تمکين
     /// </summary>
     Tamkin = 1,
 
     /// <summary>
-    /// توافق در اداره امور مالیاتی
+    /// توافق
     /// </summary>
-    TaxOfficeAgreement = 2,
+    Agreement = 2,
+    TaxOfficeAgreement = Agreement,
 
     /// <summary>
-    /// رای هیات بدوی
+    /// رای هیات بدوی 244
     /// </summary>
-    PrimaryBoardRuling = 3,
+    PrimaryBoard244 = 3,
+    PrimaryBoardRuling = PrimaryBoard244,
 
     /// <summary>
-    /// رای هیات تجدید نظر
+    /// رای هیأت تجدیدنظر 247
     /// </summary>
-    AppellateBoardRuling = 4,
+    AppellateBoard247 = 4,
+    AppellateBoardRuling = AppellateBoard247,
 
     /// <summary>
-    /// 251 (ماده ۲۵۱ مکرر)
+    /// شورای عالی مالیاتی 251
     /// </summary>
-    Article251 = 5,
+    SupremeTaxCouncil251 = 5,
+    Article251 = SupremeTaxCouncil251,
 
     /// <summary>
-    /// 216 (ماده ۲۱۶)
+    /// هیات 251 مکرر
     /// </summary>
-    Article216 = 6
+    Board251Repeated = 6,
+
+    /// <summary>
+    /// هیات 257
+    /// </summary>
+    Board257 = 7,
+
+    /// <summary>
+    /// هیات 216
+    /// </summary>
+    Board216 = 8,
+    Article216 = Board216,
+
+    /// <summary>
+    /// هیات هم عرض
+    /// </summary>
+    ParallelBoard = 9
 }

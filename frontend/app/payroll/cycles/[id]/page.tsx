@@ -149,8 +149,7 @@ export default function CycleDetailPage() {
   const canManageCycles =
     isAdmin ||
     isActionVisible('action_payroll_cycles', 'module_payroll') ||
-    isActionVisible('/payroll/cycles') ||
-    isModuleVisible('module_payroll')
+    isActionVisible('/payroll/cycles', 'module_payroll')
   const canReview =
     user?.role === 'Admin' ||
     user?.role === 'Manager' ||

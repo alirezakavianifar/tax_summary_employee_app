@@ -217,11 +217,14 @@ export default function PayrollCyclesPage() {
   }
 
   const isAdmin = user?.role === 'Admin'
+  const canCreateCycle =
+    isAdmin ||
+    isActionVisible('action_payroll_create_cycle', 'module_payroll') ||
+    isActionVisible('/payroll/cycles/create', 'module_payroll')
   const canManageCycles =
     isAdmin ||
     isActionVisible('action_payroll_cycles', 'module_payroll') ||
-    isActionVisible('/payroll/cycles') ||
-    isModuleVisible('module_payroll')
+    isActionVisible('/payroll/cycles', 'module_payroll')
 
   return (
     <ProtectedRoute requiredModule="module_payroll">
@@ -247,7 +250,7 @@ export default function PayrollCyclesPage() {
               ورود به کارپوشه اداره من
             </Link>
 
-            {canManageCycles && (
+            {canCreateCycle && (
               <button
                 onClick={openNewCycleModal}
                 className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors text-sm"
@@ -278,7 +281,7 @@ export default function PayrollCyclesPage() {
             <p className="text-sm text-gray-500 mb-6">
               برای شروع، اولین دوره محاسبه را با بارگذاری فایل‌های پایه ایجاد کنید.
             </p>
-            {canManageCycles && (
+            {canCreateCycle && (
               <button
                 onClick={openNewCycleModal}
                 className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"

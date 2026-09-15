@@ -495,24 +495,30 @@ public class TaxRefundExcelService : ITaxRefundExcelService
     private static FinalityStage ParseFinalityStage(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return FinalityStage.Tamkin;
-        if (text.Contains("توافق")) return FinalityStage.TaxOfficeAgreement;
-        if (text.Contains("بدوی")) return FinalityStage.PrimaryBoardRuling;
-        if (text.Contains("تجدید")) return FinalityStage.AppellateBoardRuling;
-        if (text.Contains("251") || text.Contains("۲۵۱")) return FinalityStage.Article251;
-        if (text.Contains("216") || text.Contains("۲۱۶")) return FinalityStage.Article216;
-        if (text.Contains("تمکین")) return FinalityStage.Tamkin;
+        if (text.Contains("هم عرض") || text.Contains("هم‌عرض")) return FinalityStage.ParallelBoard;
+        if (text.Contains("257") || text.Contains("۲۵۷")) return FinalityStage.Board257;
+        if (text.Contains("مکرر")) return FinalityStage.Board251Repeated;
+        if (text.Contains("شورای عالی") || text.Contains("251") || text.Contains("۲۵۱")) return FinalityStage.SupremeTaxCouncil251;
+        if (text.Contains("216") || text.Contains("۲۱۶")) return FinalityStage.Board216;
+        if (text.Contains("تجدید") || text.Contains("247") || text.Contains("۲۴۷")) return FinalityStage.AppellateBoard247;
+        if (text.Contains("بدوی") || text.Contains("244") || text.Contains("۲۴۴")) return FinalityStage.PrimaryBoard244;
+        if (text.Contains("توافق")) return FinalityStage.Agreement;
+        if (text.Contains("تمکین") || text.Contains("تمکين")) return FinalityStage.Tamkin;
         return FinalityStage.Tamkin;
     }
 
     private static string GetFinalityStagePersian(FinalityStage stage) => stage switch
     {
-        FinalityStage.Tamkin => "تمکین",
-        FinalityStage.TaxOfficeAgreement => "توافق در اداره امور مالیاتی",
-        FinalityStage.PrimaryBoardRuling => "رای هیات بدوی",
-        FinalityStage.AppellateBoardRuling => "رای هیات تجدید نظر",
-        FinalityStage.Article251 => "251",
-        FinalityStage.Article216 => "216",
-        _ => "تمکین"
+        FinalityStage.Tamkin => "تمکين",
+        FinalityStage.Agreement => "توافق",
+        FinalityStage.PrimaryBoard244 => "رای هیات بدوی 244",
+        FinalityStage.AppellateBoard247 => "رای هیأت تجدیدنظر 247",
+        FinalityStage.SupremeTaxCouncil251 => "شورای عالی مالیاتی 251",
+        FinalityStage.Board251Repeated => "هیات 251 مکرر",
+        FinalityStage.Board257 => "هیات 257",
+        FinalityStage.Board216 => "هیات 216",
+        FinalityStage.ParallelBoard => "هیات هم عرض",
+        _ => "تمکين"
     };
 
     private static string NormalizeOrFallbackSheba(string? rawSheba)

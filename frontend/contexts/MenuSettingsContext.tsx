@@ -39,6 +39,8 @@ const ACTION_ROUTE_MAP: Record<string, string> = {
   '/reports/create': 'action_evaluation_create',
   '/reports/search': 'action_evaluation_search',
   '/payroll/cycles': 'action_payroll_cycles',
+  '/payroll/cycles/create': 'action_payroll_create_cycle',
+  'action_payroll_create_cycle': 'action_payroll_create_cycle',
   '/payroll/my-department': 'action_payroll_department',
   '/payroll': 'action_payroll_quick',
   '/payroll/history': 'action_payroll_history',

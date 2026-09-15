@@ -33,7 +33,7 @@ public class PayrollCyclesController : ControllerBase
     /// Create a new collaborative payroll cycle by uploading base files
     /// </summary>
     [HttpPost]
-    [RequireModuleAccess("action_payroll_cycles")]
+    [RequireModuleAccess("action_payroll_create_cycle")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(PayrollCycleSummaryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

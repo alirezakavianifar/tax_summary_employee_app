@@ -70,13 +70,13 @@ public class RequireModuleAccessFilter : IAsyncActionFilter
 
         var isAllowed = setting.IsVisible && setting.IsRoleAllowed(role);
 
-        // If this is an action and not permitted by its own setting, check if parent module allows it
-        if (!isAllowed && !string.IsNullOrWhiteSpace(setting.ParentKey))
+        // If this is a child action, also verify that its parent module is visible and allows this role
+        if (isAllowed && !string.IsNullOrWhiteSpace(setting.ParentKey))
         {
             var parentSetting = await _repository.GetByKeyAsync(setting.ParentKey, context.HttpContext.RequestAborted);
-            if (parentSetting != null && parentSetting.IsVisible && parentSetting.IsRoleAllowed(role))
+            if (parentSetting != null && (!parentSetting.IsVisible || !parentSetting.IsRoleAllowed(role)))
             {
-                isAllowed = true;
+                isAllowed = false;
             }
         }
 
