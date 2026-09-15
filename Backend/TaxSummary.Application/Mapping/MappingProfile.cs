@@ -64,6 +64,12 @@ public class MappingProfile : Profile
         // User mappings
         CreateMap<User, UserDto>()
             .ForMember(dest => dest.AssignedOffices, opt => opt.MapFrom(src => src.UserOffices.Where(uo => uo.Office != null).Select(uo => uo.Office)))
+            .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.Employee != null ? src.Employee.FirstName : null))
+            .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.Employee != null ? src.Employee.LastName : null))
+            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => 
+                src.Employee != null && (!string.IsNullOrWhiteSpace(src.Employee.FirstName) || !string.IsNullOrWhiteSpace(src.Employee.LastName))
+                    ? $"{src.Employee.FirstName} {src.Employee.LastName}".Trim()
+                    : null))
             .MaxDepth(5);
         
         CreateMap<RegisterRequestDto, User>()

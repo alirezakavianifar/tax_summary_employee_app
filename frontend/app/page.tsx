@@ -3,6 +3,12 @@
 import React from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import {
+  getRolePersianName,
+  getUserDisplayName,
+  getUserFullName,
+  getUserAvatarLetter,
+} from '@/types/auth'
 import { getAuthorizedPortalModules } from '@/lib/modules/portalRegistry'
 import ModuleCard from '@/components/portal/ModuleCard'
 import {
@@ -60,15 +66,20 @@ export default function HomePage() {
               <div className="pt-2 flex flex-wrap items-center gap-4">
                 {isAuthenticated ? (
                   <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl px-4 py-2.5">
-                    <div className="w-9 h-9 rounded-full bg-primary-500/30 border border-primary-400/40 flex items-center justify-center font-bold text-sm text-primary-200">
-                      {user?.username?.charAt(0).toUpperCase()}
+                    <div className="w-9 h-9 rounded-full bg-primary-500/30 border border-primary-400/40 flex items-center justify-center font-bold text-sm text-primary-200 shadow-xs flex-shrink-0">
+                      {getUserAvatarLetter(user)}
                     </div>
                     <div>
                       <span className="text-xs text-gray-300 block">کاربر فعال:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-white">{user?.username}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-white">{getUserDisplayName(user)}</span>
+                        {getUserFullName(user) && user?.username && (
+                          <span className="text-xs text-gray-300/80 font-mono" dir="ltr">
+                            ({user.username})
+                          </span>
+                        )}
                         <span className="text-[11px] bg-primary-500/20 text-primary-300 px-2 py-0.5 rounded-md font-medium border border-primary-500/30">
-                          نقش: {user?.role}
+                          نقش: {getRolePersianName(user?.role)}
                         </span>
                       </div>
                     </div>

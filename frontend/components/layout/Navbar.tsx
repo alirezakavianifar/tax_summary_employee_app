@@ -4,6 +4,12 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import {
+  getRolePersianName,
+  getUserDisplayName,
+  getUserFullName,
+  getUserAvatarLetter,
+} from '@/types/auth'
 import { getAuthorizedPortalModules } from '@/lib/modules/portalRegistry'
 import {
   Home,
@@ -35,6 +41,11 @@ export default function Navbar() {
 
   const modules = getAuthorizedPortalModules(user?.role)
   const visibleModules = modules.filter((mod) => isModuleVisible(mod.id))
+
+  const displayName = getUserDisplayName(user)
+  const fullName = getUserFullName(user)
+  const rolePersian = getRolePersianName(user?.role)
+  const avatarLetter = getUserAvatarLetter(user)
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -328,26 +339,35 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2 p-1.5 pr-2.5 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-2 p-1.5 pr-2.5 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors shadow-xs"
                 >
                   <div className="flex flex-col text-left items-end">
-                    <span className="text-xs font-bold text-gray-800 leading-tight">
-                      {user?.username}
+                    <span className="text-xs font-bold text-gray-800 leading-tight max-w-[150px] truncate">
+                      {displayName}
                     </span>
-                    <span className="text-[10px] text-gray-400 font-medium">{user?.role}</span>
+                    <span className="text-[10px] text-gray-400 font-medium">{rolePersian}</span>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-                    {user?.username?.charAt(0).toUpperCase()}
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs flex-shrink-0">
+                    {avatarLetter}
                   </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* User Dropdown */}
                 {isUserMenuOpen && (
-                  <div className="absolute left-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-50">
-                    <div className="px-4 py-2.5 border-b border-gray-100">
-                      <span className="text-xs font-bold text-gray-800 block">{user?.username}</span>
-                      <span className="text-[11px] text-primary-600 font-medium">نقش سازمانی: {user?.role}</span>
+                  <div className="absolute left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-4 py-2.5 border-b border-gray-100 text-right">
+                      <span className="text-xs font-bold text-gray-800 block leading-snug">
+                        {fullName || user?.username}
+                      </span>
+                      {fullName && user?.username && (
+                        <span className="text-[11px] text-gray-400 font-mono block mt-0.5" dir="ltr">
+                          {user.username}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-primary-600 font-medium block mt-1">
+                        نقش سازمانی: {rolePersian}
+                      </span>
                     </div>
 
                     <Link

@@ -38,6 +38,21 @@ public class UserDto
     public Guid? EmployeeId { get; set; }
 
     /// <summary>
+    /// User first name (from associated employee, if any)
+    /// </summary>
+    public string? FirstName { get; set; }
+
+    /// <summary>
+    /// User last name (from associated employee, if any)
+    /// </summary>
+    public string? LastName { get; set; }
+
+    /// <summary>
+    /// User full name (from associated employee, if any)
+    /// </summary>
+    public string? FullName { get; set; }
+
+    /// <summary>
     /// Associated employee information (if any)
     /// </summary>
     public EmployeeDto? Employee { get; set; }
