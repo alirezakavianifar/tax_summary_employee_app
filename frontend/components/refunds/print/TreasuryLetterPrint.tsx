@@ -88,7 +88,7 @@ export function TreasuryLetterPrint({ data }: TreasuryLetterPrintProps) {
       <div className="flex justify-end mt-16 pl-12">
         <div className="text-center">
           <div className="font-bold text-sm font-titr">
-            رئیس امور مالیاتی شهرستان {data.city || 'اهواز'}
+            مدیر کل امور مالیاتی استان {data.province || 'خوزستان'}
           </div>
           <div className="font-bold text-base mt-3">{data.administrationHeadName}</div>
           <div className="text-xs text-gray-600 mt-2">مهر و امضاء</div>

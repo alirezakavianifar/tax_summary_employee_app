@@ -989,13 +989,16 @@ public class TaxRefundService : ITaxRefundService
             ? commitLetter.LetterDateJalali
             : defaultCaseDateJalali;
 
+        var treasuryApproval = refundCase.Approvals.FirstOrDefault(a => a.ToStatus == RefundCaseStatus.TreasuryDisbursed);
+        doc.TreasuryOfficerName = treasuryApproval?.ActorName;
+
         var treasuryLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.TreasuryLetter);
         doc.TreasuryLetterNumber = !string.IsNullOrWhiteSpace(treasuryLetter?.LetterNumber)
             ? treasuryLetter.LetterNumber
             : refundCase.CaseTrackingNumber;
         doc.TreasuryLetterDate = !string.IsNullOrWhiteSpace(treasuryLetter?.LetterDateJalali)
             ? treasuryLetter.LetterDateJalali
-            : doc.RefundVoucherDate;
+            : (treasuryApproval != null ? TaxSummary.Domain.ValueObjects.JalaliDate.FromDateTime(treasuryApproval.ActionDate).ToString() : doc.RefundVoucherDate);
 
         var requestLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.InboundTaxpayerRequest);
         doc.TaxpayerRequestNumber = requestLetter?.LetterNumber;

@@ -35,6 +35,7 @@ public class PrintableDocumentDto
     public string AdministrationHeadName { get; set; } = string.Empty;
     public string GroupHeadName { get; set; } = string.Empty;
     public string SeniorAuditorName { get; set; } = string.Empty;
+    public string? TreasuryOfficerName { get; set; }
 
     // Numbers & Formatted Texts
     public string TotalPaidAmountFormatted { get; set; } = string.Empty;

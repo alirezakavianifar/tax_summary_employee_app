@@ -461,6 +461,7 @@ export interface PrintableDocument {
   officeCommitmentDate?: string
   treasuryLetterNumber?: string
   treasuryLetterDate?: string
+  treasuryOfficerName?: string
   taxpayerRequestNumber?: string
   taxpayerRequestDate?: string
   assessment: TaxAssessmentInfo

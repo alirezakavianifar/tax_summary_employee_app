@@ -139,7 +139,7 @@ export function ChecklistPrint({ data }: ChecklistPrintProps) {
         </tbody>
       </table>
 
-      <div className="grid grid-cols-2 gap-6 mt-6">
+      <div className="grid grid-cols-2 gap-4 mt-4">
         <SignatureBox
           title={`رئیس گروه مالیاتی شهرستان ${data.city || 'اهواز'}`}
           name={data.groupHeadName}
@@ -149,6 +149,12 @@ export function ChecklistPrint({ data }: ChecklistPrintProps) {
           title={`رئیس امور مالیاتی شهرستان ${data.city || 'اهواز'}`}
           name={data.administrationHeadName}
           date={data.refundVoucherDate}
+        />
+        <div className="invisible" aria-hidden="true" />
+        <SignatureBox
+          title={`ذیحساب اداره کل امور مالیاتی استان ${data.province || 'خوزستان'}`}
+          name={data.treasuryOfficerName}
+          date={data.treasuryLetterDate || data.refundVoucherDate}
         />
       </div>
     </PrintContainer>
