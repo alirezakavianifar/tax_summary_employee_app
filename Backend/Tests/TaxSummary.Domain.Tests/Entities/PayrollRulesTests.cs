@@ -186,19 +186,117 @@ public class PayrollRulesTests
     {
         // Arrange: Dept with BaseOvertimeCap of 100,000,000
         var dept = PayrollDepartmentEntry.Create(Guid.NewGuid(), "اداره امور مالیاتی", baseOvertimeCap: 100000000);
-        var item1 = PayrollEmployeeItem.Create(dept.Id, "101", "کارمند ۱", baseOvertimeAmount: 60000000);
-        var item2 = PayrollEmployeeItem.Create(dept.Id, "102", "کارمند ۲", baseOvertimeAmount: 50000000);
+        var item1 = PayrollEmployeeItem.Create(dept.Id, "101", "کارمند ۱", baseOvertimeAmount: 2000000);
+        var item2 = PayrollEmployeeItem.Create(dept.Id, "102", "کارمند ۲", baseOvertimeAmount: 1800000);
         
-        item1.UpdateAdjustments(1, 0, null, false, true); // calculated: 60,000,000
-        item2.UpdateAdjustments(1, 0, null, false, true); // calculated: 50,000,000
+        item1.UpdateAdjustments(30, 0, null, false, true); // calculated: 60,000,000
+        item2.UpdateAdjustments(30, 0, null, false, true); // calculated: 54,000,000
         dept.Items.Add(item1);
         dept.Items.Add(item2);
 
-        // Act & Assert: Total = 110,000,000 > 100,000,000 cap
+        // Act & Assert: Total = 114,000,000 > 100,000,000 cap
         var ex = Assert.Throws<InvalidOperationException>(() =>
             dept.ValidateDepartmentLimits("OvertimeWelfareRated"));
 
         Assert.Contains("مجموع اضافه کار", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(15)]
+    [InlineData(29)]
+    public void UpdateAdjustments_OvertimeBetween1And29_ThrowsArgumentException(double invalidRate)
+    {
+        var item = PayrollEmployeeItem.Create(
+            Guid.NewGuid(),
+            "1005",
+            "احمد کارمند",
+            baseOvertimeAmount: 1000000
+        );
+
+        var ex = Assert.Throws<ArgumentException>(() =>
+            item.UpdateAdjustments(
+                adjustedOvertimeRate: invalidRate,
+                adjustedWelfareRate: 50,
+                officerNotes: null,
+                isExcluded: false,
+                isRatedProcess: true
+            ));
+
+        Assert.Contains("نمی‌تواند بین ۱ تا ۲۹ باشد", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(30)]
+    [InlineData(120)]
+    public void UpdateAdjustments_OvertimeAllowedValues_Succeeds(double validRate)
+    {
+        var item = PayrollEmployeeItem.Create(
+            Guid.NewGuid(),
+            "1006",
+            "سعید کارمند",
+            baseOvertimeAmount: 1000000
+        );
+
+        item.UpdateAdjustments(
+            adjustedOvertimeRate: validRate,
+            adjustedWelfareRate: 50,
+            officerNotes: null,
+            isExcluded: false,
+            isRatedProcess: true
+        );
+
+        Assert.Equal(validRate, item.AdjustedOvertimeRate);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(10)]
+    [InlineData(29)]
+    public void UpdateAdjustments_WelfareBetween1And29_ThrowsArgumentException(double invalidRate)
+    {
+        var item = PayrollEmployeeItem.Create(
+            Guid.NewGuid(),
+            "1007",
+            "سارا کارمند",
+            baseWelfareAmount: 50000000
+        );
+
+        var ex = Assert.Throws<ArgumentException>(() =>
+            item.UpdateAdjustments(
+                adjustedOvertimeRate: 50,
+                adjustedWelfareRate: invalidRate,
+                officerNotes: null,
+                isExcluded: false,
+                isRatedProcess: true
+            ));
+
+        Assert.Contains("نمی‌تواند بین ۱ تا ۲۹ باشد", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(30)]
+    [InlineData(100)]
+    public void UpdateAdjustments_WelfareAllowedValues_Succeeds(double validRate)
+    {
+        var item = PayrollEmployeeItem.Create(
+            Guid.NewGuid(),
+            "1008",
+            "نرگس کارمند",
+            baseWelfareAmount: 50000000
+        );
+
+        item.UpdateAdjustments(
+            adjustedOvertimeRate: 50,
+            adjustedWelfareRate: validRate,
+            officerNotes: null,
+            isExcluded: false,
+            isRatedProcess: true
+        );
+
+        Assert.Equal(validRate, item.AdjustedWelfareRate);
     }
 
     [Fact]

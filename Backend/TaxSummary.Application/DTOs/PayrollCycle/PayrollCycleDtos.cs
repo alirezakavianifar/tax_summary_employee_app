@@ -113,6 +113,7 @@ public class PayrollEmployeeItemDto
     public Guid DepartmentEntryId { get; set; }
     public string PersonnelNumber { get; set; } = string.Empty;
     public string EmployeeName { get; set; } = string.Empty;
+    public string? EmploymentType { get; set; }
     public double? InitialOvertimeRate { get; set; }
     public double? AdjustedOvertimeRate { get; set; }
     public double? InitialWelfareRate { get; set; }

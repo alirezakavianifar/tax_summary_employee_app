@@ -77,6 +77,7 @@ export interface PayrollEmployeeItemDto {
   departmentEntryId: string
   personnelNumber: string
   employeeName: string
+  employmentType?: string | null
   initialOvertimeRate?: number | null
   adjustedOvertimeRate?: number | null
   initialWelfareRate?: number | null

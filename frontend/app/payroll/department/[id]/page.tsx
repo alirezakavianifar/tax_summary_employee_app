@@ -22,6 +22,7 @@ import {
   ArrowRight,
   Loader2,
   AlertTriangle,
+  AlertCircle,
   CheckCircle2,
   XCircle,
   Search,
@@ -50,6 +51,7 @@ export default function DepartmentWorkspacePage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isDirty, setIsDirty] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
@@ -102,15 +104,34 @@ export default function DepartmentWorkspacePage() {
           updated.calculatedOvertimeAmount = 0
           updated.calculatedWelfareAmount = 0
         } else if (dept?.processType === 'OvertimeWelfareRated') {
-          if (updated.baseOvertimeAmount != null && updated.adjustedOvertimeRate != null) {
+          const hourlyRate =
+            updated.baseOvertimeAmount != null && updated.baseOvertimeAmount > 1000
+              ? updated.baseOvertimeAmount
+              : updated.initialOvertimeRate != null && updated.initialOvertimeRate > 1000
+              ? updated.initialOvertimeRate
+              : updated.baseOvertimeAmount ?? updated.initialOvertimeRate ?? 0
+
+          if (hourlyRate && updated.adjustedOvertimeRate != null) {
             updated.calculatedOvertimeAmount = Math.ceil(
-              updated.baseOvertimeAmount * updated.adjustedOvertimeRate
+              hourlyRate * updated.adjustedOvertimeRate
             )
+          } else if (updated.adjustedOvertimeRate == null) {
+            updated.calculatedOvertimeAmount = null
           }
-          if (updated.baseWelfareAmount != null && updated.adjustedWelfareRate != null) {
+
+          const baseWelfare =
+            updated.baseWelfareAmount != null && updated.baseWelfareAmount > 1000
+              ? updated.baseWelfareAmount
+              : updated.initialWelfareRate != null && updated.initialWelfareRate > 1000
+              ? updated.initialWelfareRate
+              : updated.baseWelfareAmount ?? updated.initialWelfareRate ?? 0
+
+          if (baseWelfare && updated.adjustedWelfareRate != null) {
             updated.calculatedWelfareAmount = Math.ceil(
-              (updated.baseWelfareAmount * updated.adjustedWelfareRate) / 100
+              (baseWelfare * updated.adjustedWelfareRate) / 100
             )
+          } else if (updated.adjustedWelfareRate == null) {
+            updated.calculatedWelfareAmount = null
           }
         }
         return updated
@@ -152,13 +173,21 @@ export default function DepartmentWorkspacePage() {
     const errs: string[] = []
     for (const item of items) {
       if (item.isExcluded) continue
-      if (item.adjustedWelfareRate != null && (item.adjustedWelfareRate < 0 || item.adjustedWelfareRate > 100)) {
-        errs.push(`درصد رفاهی برای «${item.employeeName}» (${item.adjustedWelfareRate}٪) فراتر از سقف مجاز ۱۰۰٪ است.`)
+      if (item.adjustedWelfareRate != null) {
+        if (item.adjustedWelfareRate < 0 || item.adjustedWelfareRate > 100) {
+          errs.push(`درصد رفاهی برای «${item.employeeName}» (${item.adjustedWelfareRate}٪) فراتر از سقف مجاز ۱۰۰٪ است.`)
+        } else if (item.adjustedWelfareRate > 0 && item.adjustedWelfareRate < 30) {
+          errs.push(`درصد رفاهی «${item.employeeName}» (${item.adjustedWelfareRate}٪) نمی‌تواند بین ۱ تا ۲۹ باشد. مقدار باید ۰ یا حداقل ۳۰٪ باشد.`)
+        }
       }
       const maxOt = item.maxOvertimeLimit ?? (item.isLaborPosition ? 120 : 175)
-      if (item.adjustedOvertimeRate != null && (item.adjustedOvertimeRate < 0 || item.adjustedOvertimeRate > maxOt)) {
+      if (item.adjustedOvertimeRate != null) {
         const posLabel = item.isLaborPosition ? 'مشاغل کارگری' : 'سایر کارکنان'
-        errs.push(`ساعت اضافه کار «${item.employeeName}» (${item.adjustedOvertimeRate} ساعت) فراتر از سقف ${posLabel} (${maxOt} ساعت) است.`)
+        if (item.adjustedOvertimeRate < 0 || item.adjustedOvertimeRate > maxOt) {
+          errs.push(`ساعت اضافه کار «${item.employeeName}» (${item.adjustedOvertimeRate} ساعت) فراتر از سقف ${posLabel} (${maxOt} ساعت) است.`)
+        } else if (item.adjustedOvertimeRate > 0 && item.adjustedOvertimeRate < 30) {
+          errs.push(`ساعت اضافه کار «${item.employeeName}» (${item.adjustedOvertimeRate} ساعت) نمی‌تواند بین ۱ تا ۲۹ باشد. مقدار باید ۰ یا حداقل ۳۰ ساعت باشد.`)
+        }
       }
       if (item.adjustedBonusAmount != null && item.maxBonusLimit != null && item.adjustedBonusAmount > item.maxBonusLimit) {
         errs.push(`مبلغ پاداش «${item.employeeName}» (${item.positionTierDisplayName || 'پرسنل'}) فراتر از سقف مجاز سمت (${item.maxBonusLimit.toLocaleString('fa-IR')} ریال) است.`)
@@ -171,6 +200,11 @@ export default function DepartmentWorkspacePage() {
   const canSubmit = !hasBudgetViolation && individualValidationErrors.length === 0
 
   const handleSaveDraft = async () => {
+    if (individualValidationErrors.length > 0) {
+      alert(`امکان ذخیره به دلیل خطای مقادیر نامعتبر وجود ندارد:\n\n${individualValidationErrors.slice(0, 3).join('\n')}`)
+      return
+    }
+
     const payloadItems: UpdateEmployeeItemAdjustmentDto[] = items.map((i) => ({
       id: i.id,
       adjustedOvertimeRate: i.adjustedOvertimeRate,
@@ -321,7 +355,8 @@ export default function DepartmentWorkspacePage() {
       (i) =>
         i.personnelNumber.toLowerCase().includes(term) ||
         i.employeeName.toLowerCase().includes(term) ||
-        (i.positionTitle && i.positionTitle.toLowerCase().includes(term))
+        (i.positionTitle && i.positionTitle.toLowerCase().includes(term)) ||
+        (i.employmentType && i.employmentType.toLowerCase().includes(term))
     )
   }, [items, searchTerm])
 
@@ -442,6 +477,13 @@ export default function DepartmentWorkspacePage() {
             <p className="text-[11px] text-red-700 mt-2 font-medium">
               * تا زمان رفع موارد فوق، امکان «ارسال نهایی به معاونت اداره» غیرفعال خواهد بود.
             </p>
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl flex items-center gap-2 text-sm">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            {errorMsg}
           </div>
         )}
 
@@ -628,15 +670,19 @@ export default function DepartmentWorkspacePage() {
                 <tr className="bg-primary-50/80 border-b border-gray-200 text-gray-700 font-bold">
                   <th className="px-3 py-3">شماره کارمند</th>
                   <th className="px-3 py-3">نام و رده شغلی</th>
+                  <th className="px-3 py-3 text-center">نوع استخدام</th>
+                  <th className="px-3 py-3 text-center">پست</th>
                   {!isBonus && (
                     <>
                       <th className="px-2 py-3 text-center">ساعت/نرخ پایه</th>
                       <th className="px-2 py-3 text-center bg-primary-100/60 font-black">
-                        ساعت اضافه کار نهایی
+                        <div>ساعت اضافه کار نهایی</div>
+                        <div className="text-[10px] font-normal text-primary-900 mt-0.5">(۰ یا ۳۰ به بالا)</div>
                       </th>
                       <th className="px-2 py-3 text-center">رفاهی پایه</th>
                       <th className="px-2 py-3 text-center bg-primary-100/60 font-black">
-                        درصد رفاهی نهایی (سقف ۱۰۰٪)
+                        <div>درصد رفاهی نهایی (سقف ۱۰۰٪)</div>
+                        <div className="text-[10px] font-normal text-primary-900 mt-0.5">(۰ یا ۳۰٪ تا ۱۰۰٪)</div>
                       </th>
                       <th className="px-3 py-3 text-left">مبلغ اضافه کار (ریال)</th>
                       <th className="px-3 py-3 text-left">مبلغ رفاهی (ریال)</th>
@@ -644,7 +690,7 @@ export default function DepartmentWorkspacePage() {
                   )}
                   {isBonus && (
                     <>
-                      <th className="px-3 py-3 text-center">سمت و سقف مجاز</th>
+                      <th className="px-3 py-3 text-center">رده و سقف مصوب</th>
                       <th className="px-3 py-3 text-left bg-purple-50 font-black">مبلغ پاداش نیم درصد (ریال)</th>
                     </>
                   )}
@@ -655,8 +701,14 @@ export default function DepartmentWorkspacePage() {
               <tbody className="divide-y divide-gray-200">
                 {filteredItems.map((item, idx) => {
                   const maxOt = item.maxOvertimeLimit ?? (item.isLaborPosition ? 120 : 175)
-                  const isOtExceeded = (item.adjustedOvertimeRate || 0) > maxOt
-                  const isWelfareExceeded = (item.adjustedWelfareRate || 0) > 100
+                  const isOtExceeded = item.adjustedOvertimeRate != null && item.adjustedOvertimeRate > maxOt
+                  const isOtUnderMin = item.adjustedOvertimeRate != null && item.adjustedOvertimeRate > 0 && item.adjustedOvertimeRate < 30
+                  const isOtInvalid = isOtExceeded || isOtUnderMin
+
+                  const isWelfareExceeded = item.adjustedWelfareRate != null && item.adjustedWelfareRate > 100
+                  const isWelfareUnderMin = item.adjustedWelfareRate != null && item.adjustedWelfareRate > 0 && item.adjustedWelfareRate < 30
+                  const isWelfareInvalid = isWelfareExceeded || isWelfareUnderMin
+
                   const isBonusExceeded = isBonus && item.maxBonusLimit != null && ((item.adjustedBonusAmount ?? item.baseBonusAmount ?? 0) > item.maxBonusLimit)
 
                   return (
@@ -670,14 +722,6 @@ export default function DepartmentWorkspacePage() {
 
                       <td className="px-3 py-2">
                         <div className="font-medium text-gray-900">{item.employeeName}</div>
-                        {isBonus && (
-                          <div className="mt-0.5 text-[11px] text-purple-700 font-semibold flex items-center gap-1">
-                            <span className="text-gray-400 font-normal">پست:</span>
-                            <span className="bg-purple-50 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200 text-[10px]">
-                              {item.positionTitle || 'حسابرس'}
-                            </span>
-                          </div>
-                        )}
                         {!isBonus && (
                           <div className="mt-0.5">
                             {item.isLaborPosition ? (
@@ -693,6 +737,18 @@ export default function DepartmentWorkspacePage() {
                         )}
                       </td>
 
+                      <td className="px-3 py-2 text-center whitespace-nowrap">
+                        <span className="inline-block px-2.5 py-0.5 text-[11px] font-medium rounded-md bg-blue-50 text-blue-800 border border-blue-200/60">
+                          {item.employmentType || (item.isLaborPosition ? 'مشاغل کارگری' : 'رسمی')}
+                        </span>
+                      </td>
+
+                      <td className="px-3 py-2 text-center">
+                        <span className="text-xs text-gray-800 font-semibold">
+                          {item.positionTitle || 'حسابرس'}
+                        </span>
+                      </td>
+
                       {!isBonus && (
                         <>
                           <td className="px-2 py-2 text-center text-gray-500">
@@ -701,7 +757,7 @@ export default function DepartmentWorkspacePage() {
 
                           <td className="px-2 py-2 text-center bg-primary-50/40">
                             {isReadOnly ? (
-                              <span className={`font-bold ${isOtExceeded ? 'text-red-600' : 'text-primary-800'}`}>
+                              <span className={`font-bold ${isOtInvalid ? 'text-red-600' : 'text-primary-800'}`}>
                                 {formatNumber(item.adjustedOvertimeRate)}
                               </span>
                             ) : (
@@ -712,6 +768,8 @@ export default function DepartmentWorkspacePage() {
                                   min="0"
                                   max={maxOt}
                                   disabled={item.isExcluded}
+                                  placeholder="—"
+                                  title="مقدار باید ۰ یا حداقل ۳۰ باشد (اعداد ۱ تا ۲۹ مجاز نیستند)"
                                   value={item.adjustedOvertimeRate ?? ''}
                                   onChange={(e) =>
                                     handleRateChange(
@@ -720,15 +778,28 @@ export default function DepartmentWorkspacePage() {
                                       e.target.value === '' ? null : parseFloat(e.target.value)
                                     )
                                   }
+                                  onBlur={(e) => {
+                                    const val = e.target.value === '' ? null : parseFloat(e.target.value)
+                                    if (val !== null && val > 0 && val < 30) {
+                                      handleRateChange(item.id, 'adjustedOvertimeRate', null)
+                                      setErrorMsg(`مقدار وارد شده برای ساعت اضافه کار (${val}) مجاز نیست. مقادیر بین ۱ تا ۲۹ مجاز نمی‌باشند (مقدار باید ۰ یا حداقل ۳۰ باشد).`)
+                                      setTimeout(() => setErrorMsg(null), 6000)
+                                    }
+                                  }}
                                   className={`w-20 px-2 py-1 text-center font-bold text-xs bg-white border rounded focus:ring-2 focus:outline-none ${
-                                    isOtExceeded
+                                    isOtInvalid
                                       ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-300'
                                       : 'border-primary-300 focus:ring-primary-500'
                                   }`}
                                 />
                                 {isOtExceeded && (
-                                  <span className="text-[10px] text-red-600 font-bold mt-0.5">
+                                  <span className="text-[10px] text-red-600 font-bold mt-0.5 whitespace-nowrap">
                                     حداکثر {maxOt}
+                                  </span>
+                                )}
+                                {isOtUnderMin && (
+                                  <span className="text-[10px] text-red-600 font-bold mt-0.5 whitespace-nowrap">
+                                    حداقل ۳۰ یا ۰
                                   </span>
                                 )}
                               </div>
@@ -741,7 +812,7 @@ export default function DepartmentWorkspacePage() {
 
                           <td className="px-2 py-2 text-center bg-primary-50/40">
                             {isReadOnly ? (
-                              <span className={`font-bold ${isWelfareExceeded ? 'text-red-600' : 'text-primary-800'}`}>
+                              <span className={`font-bold ${isWelfareInvalid ? 'text-red-600' : 'text-primary-800'}`}>
                                 {formatNumber(item.adjustedWelfareRate)}%
                               </span>
                             ) : (
@@ -752,6 +823,8 @@ export default function DepartmentWorkspacePage() {
                                   min="0"
                                   max="100"
                                   disabled={item.isExcluded}
+                                  placeholder="—"
+                                  title="مقدار باید ۰ یا حداقل ۳۰٪ باشد (اعداد ۱ تا ۲۹ مجاز نیستند)"
                                   value={item.adjustedWelfareRate ?? ''}
                                   onChange={(e) =>
                                     handleRateChange(
@@ -760,15 +833,28 @@ export default function DepartmentWorkspacePage() {
                                       e.target.value === '' ? null : parseFloat(e.target.value)
                                     )
                                   }
+                                  onBlur={(e) => {
+                                    const val = e.target.value === '' ? null : parseFloat(e.target.value)
+                                    if (val !== null && val > 0 && val < 30) {
+                                      handleRateChange(item.id, 'adjustedWelfareRate', null)
+                                      setErrorMsg(`مقدار وارد شده برای درصد رفاهی (${val}٪) مجاز نیست. مقادیر بین ۱ تا ۲۹ مجاز نمی‌باشند (مقدار باید ۰ یا حداقل ۳۰٪ باشد).`)
+                                      setTimeout(() => setErrorMsg(null), 6000)
+                                    }
+                                  }}
                                   className={`w-16 px-2 py-1 text-center font-bold text-xs bg-white border rounded focus:ring-2 focus:outline-none ${
-                                    isWelfareExceeded
+                                    isWelfareInvalid
                                       ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-300'
                                       : 'border-primary-300 focus:ring-primary-500'
                                   }`}
                                 />
                                 {isWelfareExceeded && (
-                                  <span className="text-[10px] text-red-600 font-bold mt-0.5">
+                                  <span className="text-[10px] text-red-600 font-bold mt-0.5 whitespace-nowrap">
                                     حداکثر ۱۰۰٪
+                                  </span>
+                                )}
+                                {isWelfareUnderMin && (
+                                  <span className="text-[10px] text-red-600 font-bold mt-0.5 whitespace-nowrap">
+                                    حداقل ۳۰٪ یا ۰
                                   </span>
                                 )}
                               </div>
@@ -788,10 +874,7 @@ export default function DepartmentWorkspacePage() {
                       {isBonus && (
                         <>
                           <td className="px-3 py-2 text-center">
-                            <div className="font-bold text-xs text-gray-900">
-                              {item.positionTitle || 'حسابرس'}
-                            </div>
-                            <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded bg-purple-100 text-purple-800 mt-0.5">
+                            <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded bg-purple-100 text-purple-800">
                               {item.positionTierDisplayName || 'سایر کارکنان'}
                             </span>
                             {item.maxBonusLimit && (

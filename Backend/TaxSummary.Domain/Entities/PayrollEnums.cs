@@ -38,5 +38,7 @@ public static class PayrollBusinessRules
     public const double MaxWelfarePercentage = 100.0;
     public const double MaxOvertimeHoursStandard = 175.0;
     public const double MaxOvertimeHoursLabor = 120.0;
+    public const double MinOvertimeHoursThreshold = 30.0; // Numbers 1 through 29 are disallowed
+    public const double MinWelfarePercentageThreshold = 30.0; // Numbers 1 through 29 are disallowed
 }
 

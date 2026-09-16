@@ -80,13 +80,13 @@ public class PayrollEmployeeItem
             PersonnelNumber = personnelNumber.Trim(),
             EmployeeName = employeeName?.Trim() ?? string.Empty,
             InitialOvertimeRate = initialOvertimeRate,
-            AdjustedOvertimeRate = initialOvertimeRate, // default to initial
+            AdjustedOvertimeRate = null, // empty by default as requested
             InitialWelfareRate = initialWelfareRate,
-            AdjustedWelfareRate = initialWelfareRate,   // default to initial
+            AdjustedWelfareRate = null,   // empty by default as requested
             BaseOvertimeAmount = baseOvertimeAmount,
             BaseWelfareAmount = baseWelfareAmount,
             BaseBonusAmount = baseBonusAmount,
-            AdjustedBonusAmount = baseBonusAmount,     // default to base bonus
+            AdjustedBonusAmount = null,     // empty by default
             CalculatedOvertimeAmount = calculatedOvertimeAmount,
             CalculatedWelfareAmount = calculatedWelfareAmount,
             IsLaborPosition = isLaborPosition,
@@ -108,7 +108,7 @@ public class PayrollEmployeeItem
         bool isRatedProcess,
         double? adjustedBonusAmount = null)
     {
-        // 1. Validation for Welfare Rate (Max 100%)
+        // 1. Validation for Welfare Rate (Max 100%, disallowed 1 through 29)
         if (adjustedWelfareRate.HasValue)
         {
             if (adjustedWelfareRate.Value < 0 || adjustedWelfareRate.Value > PayrollBusinessRules.MaxWelfarePercentage)
@@ -117,9 +117,16 @@ public class PayrollEmployeeItem
                     $"حداکثر درصد رفاهی مجاز {PayrollBusinessRules.MaxWelfarePercentage}٪ می‌باشد. مقدار وارد شده: {adjustedWelfareRate.Value}٪",
                     nameof(adjustedWelfareRate));
             }
+
+            if (adjustedWelfareRate.Value > 0 && adjustedWelfareRate.Value < PayrollBusinessRules.MinWelfarePercentageThreshold)
+            {
+                throw new ArgumentException(
+                    $"درصد رفاهی نمی‌تواند بین ۱ تا ۲۹ باشد. مقدار مجاز صفر یا حداقل {PayrollBusinessRules.MinWelfarePercentageThreshold}٪ می‌باشد. مقدار وارد شده: {adjustedWelfareRate.Value}٪",
+                    nameof(adjustedWelfareRate));
+            }
         }
 
-        // 2. Validation for Overtime (Max 120h for labor, 175h for standard)
+        // 2. Validation for Overtime (Max 120h for labor, 175h for standard, disallowed 1 through 29)
         if (adjustedOvertimeRate.HasValue)
         {
             var maxAllowedOvertime = MaxOvertimeLimit ?? (IsLaborPosition
@@ -131,6 +138,13 @@ public class PayrollEmployeeItem
                 var roleLabel = IsLaborPosition ? "مشاغل کارگری" : "سایر کارکنان";
                 throw new ArgumentException(
                     $"حداکثر سقف ساعت اضافه کار برای {roleLabel} {maxAllowedOvertime} ساعت می‌باشد. مقدار وارد شده: {adjustedOvertimeRate.Value}",
+                    nameof(adjustedOvertimeRate));
+            }
+
+            if (adjustedOvertimeRate.Value > 0 && adjustedOvertimeRate.Value < PayrollBusinessRules.MinOvertimeHoursThreshold)
+            {
+                throw new ArgumentException(
+                    $"ساعت اضافه کار نمی‌تواند بین ۱ تا ۲۹ باشد. مقدار مجاز صفر یا حداقل {PayrollBusinessRules.MinOvertimeHoursThreshold} ساعت می‌باشد. مقدار وارد شده: {adjustedOvertimeRate.Value}",
                     nameof(adjustedOvertimeRate));
             }
         }
@@ -160,18 +174,26 @@ public class PayrollEmployeeItem
         }
         else if (isRatedProcess)
         {
-            if (BaseOvertimeAmount.HasValue && AdjustedOvertimeRate.HasValue)
+            if (AdjustedOvertimeRate.HasValue)
             {
-                CalculatedOvertimeAmount = (long)Math.Ceiling(BaseOvertimeAmount.Value * AdjustedOvertimeRate.Value);
+                var hourlyRate = (BaseOvertimeAmount.HasValue && BaseOvertimeAmount.Value > 1000)
+                    ? BaseOvertimeAmount.Value
+                    : (InitialOvertimeRate.HasValue && InitialOvertimeRate.Value > 1000 ? InitialOvertimeRate.Value : (BaseOvertimeAmount ?? InitialOvertimeRate ?? 0));
+
+                CalculatedOvertimeAmount = (long)Math.Ceiling(hourlyRate * AdjustedOvertimeRate.Value);
             }
             else
             {
                 CalculatedOvertimeAmount = null;
             }
 
-            if (BaseWelfareAmount.HasValue && AdjustedWelfareRate.HasValue)
+            if (AdjustedWelfareRate.HasValue)
             {
-                CalculatedWelfareAmount = (long)Math.Ceiling(BaseWelfareAmount.Value * AdjustedWelfareRate.Value / 100.0);
+                var baseWelfare = (BaseWelfareAmount.HasValue && BaseWelfareAmount.Value > 1000)
+                    ? BaseWelfareAmount.Value
+                    : (InitialWelfareRate.HasValue && InitialWelfareRate.Value > 1000 ? InitialWelfareRate.Value : (BaseWelfareAmount ?? InitialWelfareRate ?? 0));
+
+                CalculatedWelfareAmount = (long)Math.Ceiling(baseWelfare * AdjustedWelfareRate.Value / 100.0);
             }
             else
             {
