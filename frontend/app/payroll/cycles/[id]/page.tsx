@@ -14,6 +14,7 @@ import {
   type PayrollDepartmentEntrySummaryDto,
 } from '@/lib/api/payrollCycles'
 import { PROCESS_TYPE_LABELS } from '@/lib/api/payroll'
+import SendToOfficesModal from '@/components/payroll/SendToOfficesModal'
 import {
   Calendar,
   Building2,
@@ -56,6 +57,8 @@ export default function CycleDetailPage() {
   const [exporting, setExporting] = useState(false)
   const [finalizing, setFinalizing] = useState(false)
   const [sendingToOffices, setSendingToOffices] = useState(false)
+  const [isSendConfirmOpen, setIsSendConfirmOpen] = useState(false)
+  const [successBanner, setSuccessBanner] = useState<string | null>(null)
 
   // Adjust Total Amounts Modal state
   const [isAdjustTotalsOpen, setIsAdjustTotalsOpen] = useState(false)
@@ -171,12 +174,12 @@ export default function CycleDetailPage() {
   }
 
   const isAdmin = user?.role === 'Admin'
-  const isCreator = cycle?.createdByUsername === user?.username
+  const isCreator = Boolean(cycle?.createdByUsername && user?.username && cycle.createdByUsername === user.username)
   const canManageCycles =
     isAdmin ||
     isCreator ||
-    isActionVisible('action_payroll_cycles', 'module_payroll') ||
-    isActionVisible('/payroll/cycles', 'module_payroll')
+    isActionVisible('action_payroll_create_cycle', 'module_payroll') ||
+    isActionVisible('/payroll/cycles/create', 'module_payroll')
   const isDraft = cycle?.status === 'Draft'
   const canTweak = canManageCycles && (isDraft || isAdmin)
 
@@ -211,6 +214,24 @@ export default function CycleDetailPage() {
     )
   }
 
+  // If the cycle is Draft and the user cannot manage cycles / is not the creator, hide the cycle details
+  if (isDraft && !canManageCycles) {
+    return (
+      <ProtectedRoute>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+          <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">دوره محاسبه در مرحله پیش‌نویس است</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            این دوره در مرحله پیش‌نویس است و هنوز توسط ایجادکننده یا مدیر ارشد به ادارات ارسال نشده است.
+          </p>
+          <Link href="/payroll/cycles" className="text-primary-600 hover:underline text-sm font-medium">
+            بازگشت به فهرست دوره‌ها
+          </Link>
+        </div>
+      </ProtectedRoute>
+    )
+  }
+
   const statusInfo = CYCLE_STATUS_LABELS[cycle.status] || {
     label: cycle.status,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
@@ -228,16 +249,17 @@ export default function CycleDetailPage() {
   const totalWelfare = cycle.departmentEntries.reduce((sum, d) => sum + d.totalWelfareAmount, 0)
   const totalBonus = cycle.departmentEntries.reduce((sum, d) => sum + (d.totalBonusAmount || 0), 0)
 
-  const handleSendToOffices = async () => {
+  const handleConfirmSendToOffices = async () => {
     if (!cycle) return
-    const msg = `آیا از ارسال این دوره محاسبه به کلیه ${formatNumber(totalDepts)} اداره اطمینان دارید؟\n\nخلاصه وضعیت مبالغ:\n- مجموع اضافه کار: ${formatNumber(totalOvertime)} ریال\n- مجموع رفاهی: ${formatNumber(totalWelfare)} ریال\n- تعداد کل پرسنل: ${formatNumber(totalEmployees)} نفر\n\nپس از ارسال، وضعیت دوره به «در حال دریافت اطلاعات ادارات» تغییر یافته و ادارات امکان مشاهده و ثبت کاربرگ را خواهند داشت.`
-    if (!confirm(msg)) return
 
     setSendingToOffices(true)
     try {
       const updated = await payrollCyclesApi.sendToOffices(cycleId)
       setCycle(updated)
-      alert('دوره محاسبه با موفقیت به کلیه ادارات ارسال گردید.')
+      setIsSendConfirmOpen(false)
+      setSuccessBanner(
+        'دوره محاسبه با موفقیت به کلیه ادارات ارسال گردید و وضعیت آن به «در حال دریافت اطلاعات ادارات» تغییر یافت.'
+      )
     } catch (err: any) {
       alert(err?.response?.data?.error || err.message || 'خطا در ارسال دوره به ادارات')
     } finally {
@@ -332,6 +354,27 @@ export default function CycleDetailPage() {
           <span className="text-gray-900 font-medium">{cycle.title}</span>
         </div>
 
+        {/* Success Banner Notification */}
+        {successBanner && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 mb-6 shadow-sm flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-emerald-950">ارسال با موفقیت انجام شد</h4>
+                <p className="text-xs text-emerald-800 mt-0.5">{successBanner}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSuccessBanner(null)}
+              className="text-emerald-700 hover:text-emerald-900 text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
+            >
+              متوجه شدم
+            </button>
+          </div>
+        )}
+
         {/* Pre-Distribution Draft Alert Banner */}
         {isDraft && (
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 mb-6 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -364,7 +407,7 @@ export default function CycleDetailPage() {
                   تعدیل مبالغ کل دوره
                 </button>
                 <button
-                  onClick={handleSendToOffices}
+                  onClick={() => setIsSendConfirmOpen(true)}
                   disabled={sendingToOffices}
                   className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl font-bold shadow-sm transition-all text-xs whitespace-nowrap disabled:opacity-50"
                 >
@@ -410,7 +453,7 @@ export default function CycleDetailPage() {
             <div className="flex flex-wrap items-center gap-3">
               {isDraft && canManageCycles && (
                 <button
-                  onClick={handleSendToOffices}
+                  onClick={() => setIsSendConfirmOpen(true)}
                   disabled={sendingToOffices}
                   className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-bold shadow-sm transition-all text-sm disabled:opacity-50"
                 >
@@ -1187,6 +1230,22 @@ export default function CycleDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Send to Offices Confirmation Modal */}
+        <SendToOfficesModal
+          isOpen={isSendConfirmOpen}
+          onClose={() => setIsSendConfirmOpen(false)}
+          onConfirm={handleConfirmSendToOffices}
+          isSubmitting={sendingToOffices}
+          cycleTitle={cycle.title}
+          cycleCode={cycle.cycleCode}
+          totalDepts={totalDepts}
+          totalEmployees={totalEmployees}
+          totalOvertime={totalOvertime}
+          totalWelfare={totalWelfare}
+          totalBonus={totalBonus}
+          processType={cycle.processType}
+        />
       </div>
     </ProtectedRoute>
   )

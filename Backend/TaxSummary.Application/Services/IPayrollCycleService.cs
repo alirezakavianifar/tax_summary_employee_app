@@ -19,7 +19,11 @@ public interface IPayrollCycleService
         Stream? nim,
         CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<PayrollCycleSummaryDto>> GetCyclesAsync(PayrollCycleFilterDto? filter = null, CancellationToken cancellationToken = default);
+    Task<IEnumerable<PayrollCycleSummaryDto>> GetCyclesAsync(
+        PayrollCycleFilterDto? filter = null,
+        Guid? currentUserId = null,
+        string? currentUserRole = null,
+        CancellationToken cancellationToken = default);
 
     Task<PayrollCycleDetailDto?> GetCycleByIdAsync(
         Guid id,

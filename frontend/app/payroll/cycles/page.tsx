@@ -123,18 +123,34 @@ export default function PayrollCyclesPage() {
     return `PAY-${fiscalYear}${String(fiscalMonth).padStart(2, '0')}-${prefix}-${String(nextSeq).padStart(2, '0')}`
   }, [processType, fiscalYear, fiscalMonth, samePeriodExistingCycles.length])
 
-  // KPI Summary Statistics across all loaded cycles
+  const isUserAdmin = user?.role === 'Admin'
+  const canManageAnyDraft =
+    isUserAdmin ||
+    isActionVisible('action_payroll_create_cycle', 'module_payroll') ||
+    isActionVisible('/payroll/cycles/create', 'module_payroll')
+
+  // Filter cycles: hide Draft cycles from users who are not Admin, not cycle creators, and cannot manage cycles
+  const visibleCycles = useMemo(() => {
+    return cycles.filter((c) => {
+      if (c.status === 'Draft') {
+        return canManageAnyDraft || (user?.username && c.createdByUsername === user.username)
+      }
+      return true
+    })
+  }, [cycles, canManageAnyDraft, user?.username])
+
+  // KPI Summary Statistics across all visible cycles
   const stats = useMemo(() => {
-    const totalCycles = cycles.length
-    const openCycles = cycles.filter((c) => c.status === 'OpenForSubmission').length
-    const underReviewCycles = cycles.filter((c) => c.status === 'UnderReview').length
-    const finalizedCycles = cycles.filter((c) => c.status === 'Finalized').length
-    const totalDepts = cycles.reduce((sum, c) => sum + (c.totalDepartments || 0), 0)
-    const submittedDepts = cycles.reduce((sum, c) => sum + (c.submittedDepartments || 0), 0)
+    const totalCycles = visibleCycles.length
+    const openCycles = visibleCycles.filter((c) => c.status === 'OpenForSubmission').length
+    const underReviewCycles = visibleCycles.filter((c) => c.status === 'UnderReview').length
+    const finalizedCycles = visibleCycles.filter((c) => c.status === 'Finalized').length
+    const totalDepts = visibleCycles.reduce((sum, c) => sum + (c.totalDepartments || 0), 0)
+    const submittedDepts = visibleCycles.reduce((sum, c) => sum + (c.submittedDepartments || 0), 0)
     const overallSubmissionRate = totalDepts > 0 ? Math.round((submittedDepts / totalDepts) * 100) : 0
-    const totalEmployees = cycles.reduce((sum, c) => sum + (c.totalEmployees || 0), 0)
-    const totalOvertime = cycles.reduce((sum, c) => sum + (c.totalOvertimeAmount || 0), 0)
-    const totalBonus = cycles.reduce((sum, c) => sum + (c.totalBonusAmount || 0), 0)
+    const totalEmployees = visibleCycles.reduce((sum, c) => sum + (c.totalEmployees || 0), 0)
+    const totalOvertime = visibleCycles.reduce((sum, c) => sum + (c.totalOvertimeAmount || 0), 0)
+    const totalBonus = visibleCycles.reduce((sum, c) => sum + (c.totalBonusAmount || 0), 0)
 
     return {
       totalCycles,
@@ -148,21 +164,21 @@ export default function PayrollCyclesPage() {
       totalOvertime,
       totalBonus,
     }
-  }, [cycles])
+  }, [visibleCycles])
 
   // Distinct available fiscal years
   const availableYears = useMemo(() => {
     const years = new Set<number>()
     years.add(currentJalali.jy)
-    cycles.forEach((c) => {
+    visibleCycles.forEach((c) => {
       if (c.fiscalYear) years.add(c.fiscalYear)
     })
     return Array.from(years).sort((a, b) => b - a)
-  }, [cycles, currentJalali.jy])
+  }, [visibleCycles, currentJalali.jy])
 
   // Filtered & Sorted Cycles list
   const filteredCycles = useMemo(() => {
-    return cycles
+    return visibleCycles
       .filter((c) => {
         if (searchQuery.trim()) {
           const q = searchQuery.trim().toLowerCase()
@@ -198,7 +214,7 @@ export default function PayrollCyclesPage() {
         }
         return sortDescending ? -comparison : comparison
       })
-  }, [cycles, searchQuery, filterYear, filterMonth, filterProcessType, filterStatus, sortBy, sortDescending])
+  }, [visibleCycles, searchQuery, filterYear, filterMonth, filterProcessType, filterStatus, sortBy, sortDescending])
 
   const isFilterActive =
     searchQuery.trim() !== '' ||
@@ -597,6 +613,9 @@ export default function PayrollCyclesPage() {
                 title="وضعیت دوره"
               >
                 <option value="ALL">همه وضعیت‌ها</option>
+                {canManageAnyDraft && (
+                  <option value="Draft">پیش‌نویس (تنظیم اولیه)</option>
+                )}
                 <option value="OpenForSubmission">در حال دریافت اطلاعات</option>
                 <option value="UnderReview">در حال بررسی</option>
                 <option value="Finalized">نهایی شده</option>

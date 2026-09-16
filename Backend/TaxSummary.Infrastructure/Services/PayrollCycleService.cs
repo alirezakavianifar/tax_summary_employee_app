@@ -372,8 +372,14 @@ public class PayrollCycleService : IPayrollCycleService
         return MapToSummary(cycle);
     }
 
-    public async Task<IEnumerable<PayrollCycleSummaryDto>> GetCyclesAsync(PayrollCycleFilterDto? filter = null, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<PayrollCycleSummaryDto>> GetCyclesAsync(
+        PayrollCycleFilterDto? filter = null,
+        Guid? currentUserId = null,
+        string? currentUserRole = null,
+        CancellationToken cancellationToken = default)
     {
+        IEnumerable<PayrollCycle> cycles;
+
         if (filter != null && (
             !string.IsNullOrWhiteSpace(filter.SearchTerm) ||
             filter.FiscalYear.HasValue ||
@@ -382,7 +388,7 @@ public class PayrollCycleService : IPayrollCycleService
             !string.IsNullOrWhiteSpace(filter.Status) ||
             !string.IsNullOrWhiteSpace(filter.SortBy)))
         {
-            var filtered = await _cycleRepository.GetFilteredCyclesAsync(
+            cycles = await _cycleRepository.GetFilteredCyclesAsync(
                 filter.SearchTerm,
                 filter.FiscalYear,
                 filter.FiscalMonth,
@@ -391,10 +397,19 @@ public class PayrollCycleService : IPayrollCycleService
                 filter.SortBy,
                 filter.SortDescending,
                 cancellationToken);
-            return filtered.Select(MapToSummary);
+        }
+        else
+        {
+            cycles = await _cycleRepository.GetCyclesAsync(cancellationToken);
         }
 
-        var cycles = await _cycleRepository.GetCyclesAsync(cancellationToken);
+        // If the user is NOT Admin, filter out Draft cycles unless the user is the creator of the cycle
+        if (!string.Equals(currentUserRole, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            cycles = cycles.Where(c => c.Status != PayrollCycleStatus.Draft ||
+                (currentUserId.HasValue && c.CreatedByUserId == currentUserId.Value));
+        }
+
         return cycles.Select(MapToSummary);
     }
 
@@ -406,6 +421,18 @@ public class PayrollCycleService : IPayrollCycleService
     {
         var cycle = await _cycleRepository.GetCycleByIdAsync(id, includeDetails: true, cancellationToken);
         if (cycle == null) return null;
+
+        // If the cycle is in Draft state, only Admin or the user who created the cycle can view it!
+        if (cycle.Status == PayrollCycleStatus.Draft)
+        {
+            bool isAdmin = string.Equals(currentUserRole, "Admin", StringComparison.OrdinalIgnoreCase);
+            bool isCreator = currentUserId.HasValue && cycle.CreatedByUserId == currentUserId.Value;
+
+            if (!isAdmin && !isCreator)
+            {
+                return null;
+            }
+        }
 
         var entries = cycle.DepartmentEntries.AsEnumerable();
 

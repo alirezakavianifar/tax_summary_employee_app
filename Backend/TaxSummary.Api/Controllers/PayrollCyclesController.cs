@@ -103,7 +103,9 @@ public class PayrollCyclesController : ControllerBase
         [FromQuery] PayrollCycleFilterDto? filter,
         CancellationToken cancellationToken)
     {
-        var list = await _cycleService.GetCyclesAsync(filter, cancellationToken);
+        var userId = GetCurrentUserId();
+        var role = GetCurrentUserRole();
+        var list = await _cycleService.GetCyclesAsync(filter, userId, role, cancellationToken);
         return Ok(list);
     }
 
