@@ -170,4 +170,32 @@ public class PayrollDepartmentEntry
             }
         }
     }
+
+    public void UpdateCaps(double? baseOvertimeCap, double? baseWelfareCap, double? baseBonusCap = null)
+    {
+        if (baseOvertimeCap.HasValue) BaseOvertimeCap = baseOvertimeCap.Value;
+        if (baseWelfareCap.HasValue) BaseWelfareCap = baseWelfareCap.Value;
+        if (baseBonusCap.HasValue) BaseBonusCap = baseBonusCap.Value;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ScaleItems(double overtimeFactor, double welfareFactor, bool isRatedProcess)
+    {
+        foreach (var item in Items.Where(i => !i.IsExcluded))
+        {
+            item.ScaleAmounts(overtimeFactor, welfareFactor, isRatedProcess);
+        }
+
+        if (overtimeFactor > 0 && BaseOvertimeCap.HasValue)
+        {
+            BaseOvertimeCap = Math.Round(BaseOvertimeCap.Value * overtimeFactor, 0);
+        }
+
+        if (welfareFactor > 0 && BaseWelfareCap.HasValue)
+        {
+            BaseWelfareCap = Math.Round(BaseWelfareCap.Value * welfareFactor, 0);
+        }
+
+        UpdatedAt = DateTime.UtcNow;
+    }
 }

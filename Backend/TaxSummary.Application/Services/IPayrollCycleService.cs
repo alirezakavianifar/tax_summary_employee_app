@@ -81,4 +81,24 @@ public interface IPayrollCycleService
     Task<byte[]> ExportMasterExcelAsync(
         Guid cycleId,
         CancellationToken cancellationToken = default);
+
+    Task<PayrollCycleDetailDto> SendCycleToOfficesAsync(
+        Guid cycleId,
+        Guid currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken = default);
+
+    Task<PayrollCycleDetailDto> AdjustCycleTotalsAsync(
+        Guid cycleId,
+        AdjustCycleTotalsDto dto,
+        Guid currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken = default);
+
+    Task<PayrollDepartmentEntrySummaryDto> TweakDepartmentValuesAsync(
+        Guid departmentEntryId,
+        TweakDepartmentValuesDto dto,
+        Guid currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken = default);
 }

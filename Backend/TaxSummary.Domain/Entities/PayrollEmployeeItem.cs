@@ -181,4 +181,45 @@ public class PayrollEmployeeItem
 
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public void ScaleAmounts(double overtimeFactor, double welfareFactor, bool isRatedProcess)
+    {
+        if (IsExcluded) return;
+
+        if (overtimeFactor > 0)
+        {
+            if (CalculatedOvertimeAmount.HasValue)
+            {
+                CalculatedOvertimeAmount = (long)Math.Round(CalculatedOvertimeAmount.Value * overtimeFactor);
+            }
+            if (BaseOvertimeAmount.HasValue)
+            {
+                BaseOvertimeAmount = Math.Round(BaseOvertimeAmount.Value * overtimeFactor, 2);
+            }
+        }
+
+        if (welfareFactor > 0)
+        {
+            if (CalculatedWelfareAmount.HasValue)
+            {
+                CalculatedWelfareAmount = (long)Math.Round(CalculatedWelfareAmount.Value * welfareFactor);
+            }
+            if (BaseWelfareAmount.HasValue)
+            {
+                BaseWelfareAmount = Math.Round(BaseWelfareAmount.Value * welfareFactor, 2);
+            }
+        }
+
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void DirectSetAmounts(long? calculatedOvertime, long? calculatedWelfare, double? baseOvertime, double? baseWelfare)
+    {
+        if (calculatedOvertime.HasValue) CalculatedOvertimeAmount = calculatedOvertime.Value;
+        if (calculatedWelfare.HasValue) CalculatedWelfareAmount = calculatedWelfare.Value;
+        if (baseOvertime.HasValue) BaseOvertimeAmount = baseOvertime.Value;
+        if (baseWelfare.HasValue) BaseWelfareAmount = baseWelfare.Value;
+        UpdatedAt = DateTime.UtcNow;
+    }
 }
+

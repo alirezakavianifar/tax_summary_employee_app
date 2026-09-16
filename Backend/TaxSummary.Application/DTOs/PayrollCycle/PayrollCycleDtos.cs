@@ -161,3 +161,19 @@ public class ReviewDepartmentDto
     public string? ReviewStage { get; set; } // "Deputy" or "Manager"
     public string? RejectionReason { get; set; }
 }
+
+public class AdjustCycleTotalsDto
+{
+    public long? TargetTotalOvertimeAmount { get; set; }
+    public long? TargetTotalWelfareAmount { get; set; }
+    public double? OvertimeAdjustmentPercentage { get; set; }
+    public double? WelfareAdjustmentPercentage { get; set; }
+}
+
+public class TweakDepartmentValuesDto
+{
+    public double? BaseOvertimeCap { get; set; }
+    public double? BaseWelfareCap { get; set; }
+    public long? TotalOvertimeAmount { get; set; }
+    public long? TotalWelfareAmount { get; set; }
+}

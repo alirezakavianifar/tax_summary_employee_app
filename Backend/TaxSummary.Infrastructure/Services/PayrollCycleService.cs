@@ -409,8 +409,10 @@ public class PayrollCycleService : IPayrollCycleService
 
         var entries = cycle.DepartmentEntries.AsEnumerable();
 
-        // If not Admin, filter entries by user's assigned offices
-        if (currentUserId.HasValue && !string.Equals(currentUserRole, "Admin", StringComparison.OrdinalIgnoreCase))
+        // If not Admin and not the creator of the cycle, filter entries by user's assigned offices
+        if (currentUserId.HasValue &&
+            !string.Equals(currentUserRole, "Admin", StringComparison.OrdinalIgnoreCase) &&
+            cycle.CreatedByUserId != currentUserId.Value)
         {
             var userResult = await _userRepository.GetByIdAsync(currentUserId.Value, cancellationToken);
             if (userResult.IsSuccess && userResult.Value != null)
@@ -448,8 +450,12 @@ public class PayrollCycleService : IPayrollCycleService
         var dept = await _cycleRepository.GetDepartmentEntryByIdAsync(departmentEntryId, includeItems: true, cancellationToken);
         if (dept == null) return null;
 
-        // Authorization check: Admin can access any department; Manager must belong to that department
-        await ValidateDepartmentAccessAsync(dept.DepartmentName, currentUserId, currentUserRole, cancellationToken);
+        // Authorization check: Admin can access any department; cycle creator can access if cycle is draft; Manager must belong to that department
+        if (!currentUserRole.Equals("Admin", StringComparison.OrdinalIgnoreCase) &&
+            !(dept.PayrollCycle != null && dept.PayrollCycle.CreatedByUserId == currentUserId))
+        {
+            await ValidateDepartmentAccessAsync(dept.DepartmentName, currentUserId, currentUserRole, cancellationToken);
+        }
 
         return MapToDepartmentDetail(dept);
     }
@@ -480,7 +486,9 @@ public class PayrollCycleService : IPayrollCycleService
         foreach (var officeCode in assignedOfficeCodes.Distinct(StringComparer.OrdinalIgnoreCase))
         {
             var entries = await _cycleRepository.GetDepartmentEntriesForUserAsync(officeCode, cancellationToken);
-            allEntries.AddRange(entries.Select(e => MapToDepartmentSummary(e, e.PayrollCycle?.ProcessType ?? "OvertimeWelfareRated")));
+            allEntries.AddRange(entries
+                .Where(e => e.PayrollCycle != null && e.PayrollCycle.Status != PayrollCycleStatus.Draft)
+                .Select(e => MapToDepartmentSummary(e, e.PayrollCycle?.ProcessType ?? "OvertimeWelfareRated")));
         }
 
         return allEntries;
@@ -496,7 +504,11 @@ public class PayrollCycleService : IPayrollCycleService
         var dept = await _cycleRepository.GetDepartmentEntryByIdAsync(departmentEntryId, includeItems: true, cancellationToken);
         if (dept == null) throw new KeyNotFoundException("رکورد اداره یافت نشد");
 
-        await ValidateDepartmentAccessAsync(dept.DepartmentName, currentUserId, currentUserRole, cancellationToken);
+        if (!currentUserRole.Equals("Admin", StringComparison.OrdinalIgnoreCase) &&
+            !(dept.PayrollCycle != null && dept.PayrollCycle.CreatedByUserId == currentUserId && dept.PayrollCycle.Status == PayrollCycleStatus.Draft))
+        {
+            await ValidateDepartmentAccessAsync(dept.DepartmentName, currentUserId, currentUserRole, cancellationToken);
+        }
 
         var isRated = dept.PayrollCycle?.ProcessType == "OvertimeWelfareRated";
 
@@ -835,6 +847,144 @@ public class PayrollCycleService : IPayrollCycleService
         }
 
         return package.GetAsByteArray();
+    }
+
+    public async Task<PayrollCycleDetailDto> SendCycleToOfficesAsync(
+        Guid cycleId,
+        Guid currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken = default)
+    {
+        var cycle = await _cycleRepository.GetCycleByIdAsync(cycleId, includeDetails: true, cancellationToken);
+        if (cycle == null) throw new KeyNotFoundException("دوره محاسبه یافت نشد");
+
+        if (!currentUserRole.Equals("Admin", StringComparison.OrdinalIgnoreCase) && cycle.CreatedByUserId != currentUserId)
+        {
+            throw new UnauthorizedAccessException("تنها ایجادکننده دوره یا مدیر سیستم مجاز به ارسال دوره به ادارات هستند.");
+        }
+
+        cycle.SendToOffices();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return (await GetCycleByIdAsync(cycleId, currentUserId, currentUserRole, cancellationToken))!;
+    }
+
+    public async Task<PayrollCycleDetailDto> AdjustCycleTotalsAsync(
+        Guid cycleId,
+        AdjustCycleTotalsDto dto,
+        Guid currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken = default)
+    {
+        var cycle = await _cycleRepository.GetCycleByIdAsync(cycleId, includeDetails: true, cancellationToken);
+        if (cycle == null) throw new KeyNotFoundException("دوره محاسبه یافت نشد");
+
+        if (!currentUserRole.Equals("Admin", StringComparison.OrdinalIgnoreCase) && cycle.CreatedByUserId != currentUserId)
+        {
+            throw new UnauthorizedAccessException("تنها ایجادکننده دوره یا مدیر سیستم مجاز به ویرایش و تعدیل مبالغ دوره هستند.");
+        }
+
+        if (cycle.Status == PayrollCycleStatus.Finalized)
+        {
+            throw new InvalidOperationException("امکان تغییر مبالغ در دوره نهایی‌شده وجود ندارد.");
+        }
+
+        // Load all department entries with items
+        var depts = new List<PayrollDepartmentEntry>();
+        foreach (var dSummary in cycle.DepartmentEntries)
+        {
+            var d = await _cycleRepository.GetDepartmentEntryByIdAsync(dSummary.Id, includeItems: true, cancellationToken);
+            if (d != null) depts.Add(d);
+        }
+
+        var allItems = depts.SelectMany(d => d.Items).Where(i => !i.IsExcluded).ToList();
+        long currentTotalOvertime = allItems.Sum(i => i.CalculatedOvertimeAmount ?? 0);
+        long currentTotalWelfare = allItems.Sum(i => i.CalculatedWelfareAmount ?? 0);
+
+        double overtimeFactor = 1.0;
+        double welfareFactor = 1.0;
+
+        if (dto.TargetTotalOvertimeAmount.HasValue && dto.TargetTotalOvertimeAmount.Value > 0 && currentTotalOvertime > 0)
+        {
+            overtimeFactor = (double)dto.TargetTotalOvertimeAmount.Value / currentTotalOvertime;
+        }
+        else if (dto.OvertimeAdjustmentPercentage.HasValue)
+        {
+            overtimeFactor = 1.0 + (dto.OvertimeAdjustmentPercentage.Value / 100.0);
+        }
+
+        if (dto.TargetTotalWelfareAmount.HasValue && dto.TargetTotalWelfareAmount.Value > 0 && currentTotalWelfare > 0)
+        {
+            welfareFactor = (double)dto.TargetTotalWelfareAmount.Value / currentTotalWelfare;
+        }
+        else if (dto.WelfareAdjustmentPercentage.HasValue)
+        {
+            welfareFactor = 1.0 + (dto.WelfareAdjustmentPercentage.Value / 100.0);
+        }
+
+        bool isRated = cycle.ProcessType == "OvertimeWelfareRated";
+
+        foreach (var dept in depts)
+        {
+            dept.ScaleItems(overtimeFactor, welfareFactor, isRated);
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return (await GetCycleByIdAsync(cycleId, currentUserId, currentUserRole, cancellationToken))!;
+    }
+
+    public async Task<PayrollDepartmentEntrySummaryDto> TweakDepartmentValuesAsync(
+        Guid departmentEntryId,
+        TweakDepartmentValuesDto dto,
+        Guid currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken = default)
+    {
+        var dept = await _cycleRepository.GetDepartmentEntryByIdAsync(departmentEntryId, includeItems: true, cancellationToken);
+        if (dept == null) throw new KeyNotFoundException("رکورد اداره یافت نشد");
+
+        if (!currentUserRole.Equals("Admin", StringComparison.OrdinalIgnoreCase) &&
+            dept.PayrollCycle?.CreatedByUserId != currentUserId)
+        {
+            throw new UnauthorizedAccessException("تنها ایجادکننده دوره یا مدیر سیستم مجاز به تغییر مقادیر اولیه اداره هستند.");
+        }
+
+        if (dept.PayrollCycle?.Status == PayrollCycleStatus.Finalized)
+        {
+            throw new InvalidOperationException("امکان ویرایش مقادیر در دوره نهایی‌شده وجود ندارد.");
+        }
+
+        bool isRated = dept.PayrollCycle?.ProcessType == "OvertimeWelfareRated";
+
+        // Update caps
+        dept.UpdateCaps(dto.BaseOvertimeCap, dto.BaseWelfareCap);
+
+        var activeItems = dept.Items.Where(i => !i.IsExcluded).ToList();
+        long currentDeptOvertime = activeItems.Sum(i => i.CalculatedOvertimeAmount ?? 0);
+        long currentDeptWelfare = activeItems.Sum(i => i.CalculatedWelfareAmount ?? 0);
+
+        double otFactor = 1.0;
+        double wfFactor = 1.0;
+
+        if (dto.TotalOvertimeAmount.HasValue && dto.TotalOvertimeAmount.Value > 0 && currentDeptOvertime > 0)
+        {
+            otFactor = (double)dto.TotalOvertimeAmount.Value / currentDeptOvertime;
+        }
+
+        if (dto.TotalWelfareAmount.HasValue && dto.TotalWelfareAmount.Value > 0 && currentDeptWelfare > 0)
+        {
+            wfFactor = (double)dto.TotalWelfareAmount.Value / currentDeptWelfare;
+        }
+
+        if (otFactor != 1.0 || wfFactor != 1.0)
+        {
+            dept.ScaleItems(otFactor, wfFactor, isRated);
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return MapToDepartmentSummary(dept, dept.PayrollCycle?.ProcessType ?? "OvertimeWelfareRated");
     }
 
     // ─────────────────────────────────────────────────────────────────────────

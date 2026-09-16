@@ -29,6 +29,13 @@ import {
   DollarSign,
   FileSpreadsheet,
   ShieldCheck,
+  Send,
+  Sliders,
+  SlidersHorizontal,
+  Edit3,
+  Percent,
+  Sparkles,
+  Check,
 } from 'lucide-react'
 
 function formatNumber(v: number | null | undefined): string {
@@ -48,11 +55,29 @@ export default function CycleDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [finalizing, setFinalizing] = useState(false)
+  const [sendingToOffices, setSendingToOffices] = useState(false)
+
+  // Adjust Total Amounts Modal state
+  const [isAdjustTotalsOpen, setIsAdjustTotalsOpen] = useState(false)
+  const [adjustActiveTab, setAdjustActiveTab] = useState<'overtime' | 'welfare' | 'both'>('both')
+  const [targetOtInput, setTargetOtInput] = useState('')
+  const [targetWfInput, setTargetWfInput] = useState('')
+  const [otPercentInput, setOtPercentInput] = useState('')
+  const [wfPercentInput, setWfPercentInput] = useState('')
+  const [submittingAdjustTotals, setSubmittingAdjustTotals] = useState(false)
+
+  // Tweak Department Values Modal state
+  const [editingDept, setEditingDept] = useState<PayrollDepartmentEntrySummaryDto | null>(null)
+  const [deptBaseCapInput, setDeptBaseCapInput] = useState('')
+  const [deptOtInput, setDeptOtInput] = useState('')
+  const [deptWfInput, setDeptWfInput] = useState('')
+  const [submittingDeptTweak, setSubmittingDeptTweak] = useState(false)
 
   // Rejection modal state
   const [rejectingDept, setRejectingDept] = useState<PayrollDepartmentEntrySummaryDto | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
+
 
   const loadCycle = async () => {
     setLoading(true)
@@ -146,10 +171,15 @@ export default function CycleDetailPage() {
   }
 
   const isAdmin = user?.role === 'Admin'
+  const isCreator = cycle?.createdByUsername === user?.username
   const canManageCycles =
     isAdmin ||
+    isCreator ||
     isActionVisible('action_payroll_cycles', 'module_payroll') ||
     isActionVisible('/payroll/cycles', 'module_payroll')
+  const isDraft = cycle?.status === 'Draft'
+  const canTweak = canManageCycles && (isDraft || isAdmin)
+
   const canReview =
     user?.role === 'Admin' ||
     user?.role === 'Manager' ||
@@ -198,6 +228,97 @@ export default function CycleDetailPage() {
   const totalWelfare = cycle.departmentEntries.reduce((sum, d) => sum + d.totalWelfareAmount, 0)
   const totalBonus = cycle.departmentEntries.reduce((sum, d) => sum + (d.totalBonusAmount || 0), 0)
 
+  const handleSendToOffices = async () => {
+    if (!cycle) return
+    const msg = `آیا از ارسال این دوره محاسبه به کلیه ${formatNumber(totalDepts)} اداره اطمینان دارید؟\n\nخلاصه وضعیت مبالغ:\n- مجموع اضافه کار: ${formatNumber(totalOvertime)} ریال\n- مجموع رفاهی: ${formatNumber(totalWelfare)} ریال\n- تعداد کل پرسنل: ${formatNumber(totalEmployees)} نفر\n\nپس از ارسال، وضعیت دوره به «در حال دریافت اطلاعات ادارات» تغییر یافته و ادارات امکان مشاهده و ثبت کاربرگ را خواهند داشت.`
+    if (!confirm(msg)) return
+
+    setSendingToOffices(true)
+    try {
+      const updated = await payrollCyclesApi.sendToOffices(cycleId)
+      setCycle(updated)
+      alert('دوره محاسبه با موفقیت به کلیه ادارات ارسال گردید.')
+    } catch (err: any) {
+      alert(err?.response?.data?.error || err.message || 'خطا در ارسال دوره به ادارات')
+    } finally {
+      setSendingToOffices(false)
+    }
+  }
+
+  const openAdjustTotalsModal = (tab: 'overtime' | 'welfare' | 'both' = 'both') => {
+    setAdjustActiveTab(tab)
+    setTargetOtInput(totalOvertime > 0 ? totalOvertime.toString() : '')
+    setTargetWfInput(totalWelfare > 0 ? totalWelfare.toString() : '')
+    setOtPercentInput('')
+    setWfPercentInput('')
+    setIsAdjustTotalsOpen(true)
+  }
+
+  const handleAdjustTotalsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmittingAdjustTotals(true)
+    try {
+      const rawOt = targetOtInput.replace(/,/g, '').trim()
+      const rawWf = targetWfInput.replace(/,/g, '').trim()
+      const parsedOt = rawOt ? parseInt(rawOt, 10) : null
+      const parsedWf = rawWf ? parseInt(rawWf, 10) : null
+      const parsedOtPct = otPercentInput.trim() ? parseFloat(otPercentInput) : null
+      const parsedWfPct = wfPercentInput.trim() ? parseFloat(wfPercentInput) : null
+
+      const updated = await payrollCyclesApi.adjustCycleTotals(cycleId, {
+        targetTotalOvertimeAmount: (adjustActiveTab === 'overtime' || adjustActiveTab === 'both') ? parsedOt : null,
+        targetTotalWelfareAmount: (adjustActiveTab === 'welfare' || adjustActiveTab === 'both') ? parsedWf : null,
+        overtimeAdjustmentPercentage: (adjustActiveTab === 'overtime' || adjustActiveTab === 'both') ? parsedOtPct : null,
+        welfareAdjustmentPercentage: (adjustActiveTab === 'welfare' || adjustActiveTab === 'both') ? parsedWfPct : null,
+      })
+      setCycle(updated)
+      setIsAdjustTotalsOpen(false)
+      alert('مبالغ کل دوره با موفقیت تعدیل و در کلیه ادارات بازتوزیع گردید.')
+    } catch (err: any) {
+      alert(err?.response?.data?.error || err.message || 'خطا در تعدیل مبالغ کل دوره')
+    } finally {
+      setSubmittingAdjustTotals(false)
+    }
+  }
+
+  const openDeptEditModal = (dept: PayrollDepartmentEntrySummaryDto) => {
+    setEditingDept(dept)
+    setDeptBaseCapInput(dept.baseOvertimeCap ? dept.baseOvertimeCap.toString() : '')
+    setDeptOtInput(dept.totalOvertimeAmount ? dept.totalOvertimeAmount.toString() : '')
+    setDeptWfInput(dept.totalWelfareAmount ? dept.totalWelfareAmount.toString() : '')
+  }
+
+  const handleDeptTweakSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingDept) return
+
+    setSubmittingDeptTweak(true)
+    try {
+      const rawBase = deptBaseCapInput.replace(/,/g, '').trim()
+      const rawOt = deptOtInput.replace(/,/g, '').trim()
+      const rawWf = deptWfInput.replace(/,/g, '').trim()
+
+      const baseCap = rawBase ? parseFloat(rawBase) : null
+      const otAmount = rawOt ? parseInt(rawOt, 10) : null
+      const wfAmount = rawWf ? parseInt(rawWf, 10) : null
+
+      await payrollCyclesApi.tweakDepartmentValues(editingDept.id, {
+        baseOvertimeCap: baseCap,
+        baseWelfareCap: baseCap,
+        totalOvertimeAmount: otAmount,
+        totalWelfareAmount: wfAmount,
+      })
+      await loadCycle()
+      setEditingDept(null)
+      alert('مقادیر اداره با موفقیت ذخیره شد.')
+    } catch (err: any) {
+      alert(err?.response?.data?.error || err.message || 'خطا در ویرایش مقادیر اداره')
+    } finally {
+      setSubmittingDeptTweak(false)
+    }
+  }
+
+
   return (
     <ProtectedRoute>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -210,6 +331,50 @@ export default function CycleDetailPage() {
           <span>/</span>
           <span className="text-gray-900 font-medium">{cycle.title}</span>
         </div>
+
+        {/* Pre-Distribution Draft Alert Banner */}
+        {isDraft && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 mb-6 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0 border border-amber-200/60 shadow-2xs">
+                <Sliders className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-amber-900">
+                    وضعیت پیش‌نویس (آماده‌سازی و تنظیم اولیه مقادیر قبل از ارسال به ادارات)
+                  </h2>
+                  <span className="text-[11px] font-semibold bg-amber-200/80 text-amber-800 px-2 py-0.5 rounded-md">
+                    عدم دسترسی ادارات
+                  </span>
+                </div>
+                <p className="text-xs text-amber-800 mt-1 leading-relaxed max-w-3xl">
+                  این دوره در مرحله پیش‌نویس است و هنوز در دسترس ادارات قرار نگرفته است. شما به عنوان ایجادکننده دوره می‌توانید مبالغ کل اضافه کار و رفاهی را از کارت‌های خلاصه، یا مقادیر هر اداره را در جدول زیر تنظیم نمایید. پس از نهایی‌سازی ارقام، بر روی «ارسال به ادارات» کلیک کنید.
+                </p>
+              </div>
+            </div>
+
+            {canManageCycles && (
+              <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                <button
+                  onClick={() => openAdjustTotalsModal('both')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-amber-800 bg-white hover:bg-amber-100/60 border border-amber-300 shadow-2xs transition-colors"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-amber-700" />
+                  تعدیل مبالغ کل دوره
+                </button>
+                <button
+                  onClick={handleSendToOffices}
+                  disabled={sendingToOffices}
+                  className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl font-bold shadow-sm transition-all text-xs whitespace-nowrap disabled:opacity-50"
+                >
+                  {sendingToOffices ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  ارسال به ادارات
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Main Header */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm mb-8">
@@ -243,6 +408,27 @@ export default function CycleDetailPage() {
 
             {/* Action buttons */}
             <div className="flex flex-wrap items-center gap-3">
+              {isDraft && canManageCycles && (
+                <button
+                  onClick={handleSendToOffices}
+                  disabled={sendingToOffices}
+                  className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-bold shadow-sm transition-all text-sm disabled:opacity-50"
+                >
+                  {sendingToOffices ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  ارسال به ادارات
+                </button>
+              )}
+
+              {canTweak && (
+                <button
+                  onClick={() => openAdjustTotalsModal('both')}
+                  className="inline-flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-4 py-2.5 rounded-lg font-medium shadow-2xs transition-colors text-sm"
+                >
+                  <SlidersHorizontal className="w-4 h-4 text-amber-600" />
+                  تعدیل مبالغ کل
+                </button>
+              )}
+
               <button
                 onClick={handleExportMasterExcel}
                 disabled={exporting}
@@ -252,7 +438,7 @@ export default function CycleDetailPage() {
                 دانلود اکسل تجمیعی کلیه ادارات
               </button>
 
-              {canManageCycles && cycle.status !== 'Finalized' && (
+              {canManageCycles && !isDraft && cycle.status !== 'Finalized' && (
                 <button
                   onClick={handleFinalizeCycle}
                   disabled={finalizing}
@@ -298,20 +484,44 @@ export default function CycleDetailPage() {
               </div>
             ) : (
               <>
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <span className="text-xs text-gray-500 block mb-1 flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5 text-primary-600" />
-                    مجموع مبلغ اضافه کار
-                  </span>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 relative group hover:border-primary-200 transition-colors">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <DollarSign className="w-3.5 h-3.5 text-primary-600" />
+                      مجموع مبلغ اضافه کار
+                    </span>
+                    {canTweak && (
+                      <button
+                        onClick={() => openAdjustTotalsModal('overtime')}
+                        className="text-[11px] font-semibold text-primary-700 hover:text-primary-900 bg-primary-50 hover:bg-primary-100 border border-primary-200 px-2 py-0.5 rounded flex items-center gap-1 transition-colors"
+                        title="ویرایش و تعدیل مبلغ کل اضافه کار"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        تعدیل
+                      </button>
+                    )}
+                  </div>
                   <span className="text-lg font-bold text-gray-900">{formatNumber(totalOvertime)} ریال</span>
                   <span className="text-xs text-gray-400 block mt-1">محاسبه شده طبق ضرایب</span>
                 </div>
 
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <span className="text-xs text-gray-500 block mb-1 flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5 text-primary-600" />
-                    مجموع مبلغ رفاهی
-                  </span>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 relative group hover:border-primary-200 transition-colors">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <DollarSign className="w-3.5 h-3.5 text-primary-600" />
+                      مجموع مبلغ رفاهی
+                    </span>
+                    {canTweak && (
+                      <button
+                        onClick={() => openAdjustTotalsModal('welfare')}
+                        className="text-[11px] font-semibold text-primary-700 hover:text-primary-900 bg-primary-50 hover:bg-primary-100 border border-primary-200 px-2 py-0.5 rounded flex items-center gap-1 transition-colors"
+                        title="ویرایش و تعدیل مبلغ کل رفاهی"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        تعدیل
+                      </button>
+                    )}
+                  </div>
                   <span className="text-lg font-bold text-gray-900">{formatNumber(totalWelfare)} ریال</span>
                   <span className="text-xs text-gray-400 block mt-1">محاسبه شده طبق درصدها</span>
                 </div>
@@ -319,6 +529,7 @@ export default function CycleDetailPage() {
             )}
           </div>
         </div>
+
 
         {/* Department Submissions Table */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -495,6 +706,17 @@ export default function CycleDetailPage() {
                             بازبینی
                           </Link>
 
+                          {canTweak && (
+                            <button
+                              onClick={() => openDeptEditModal(dept)}
+                              className="inline-flex items-center gap-1 text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1.5 rounded font-medium shadow-2xs transition-colors"
+                              title="ویرایش سرانه پایه، اضافه کار و رفاهی این اداره"
+                            >
+                              <SlidersHorizontal className="w-3.5 h-3.5 text-amber-700" />
+                              ویرایش مقادیر
+                            </button>
+                          )}
+
                           {canReview && dept.status === 'Submitted' && (
                             <>
                               <button
@@ -624,6 +846,341 @@ export default function CycleDetailPage() {
                       <XCircle className="w-4 h-4" />
                     )}
                     ثبت و ارجاع به اداره
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+        {/* Adjust Total Amounts Modal */}
+        {isAdjustTotalsOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl overflow-hidden">
+              <div className="flex justify-between items-center pb-4 border-b border-gray-200 mb-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center border border-primary-100">
+                    <Sliders className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">
+                      تعدیل مبالغ کل دوره محاسبه
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      تنظیم ارقام اضافه کار و رفاهی و بازتوزیع تناسبی در کلیه ادارات
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsAdjustTotalsOpen(false)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-base font-bold transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Tab Selector */}
+              <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-xl mb-5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setAdjustActiveTab('both')}
+                  className={`flex-1 py-2 rounded-lg transition-all ${
+                    adjustActiveTab === 'both' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  اضافه کار و رفاهی
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdjustActiveTab('overtime')}
+                  className={`flex-1 py-2 rounded-lg transition-all ${
+                    adjustActiveTab === 'overtime' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  فقط اضافه کار
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdjustActiveTab('welfare')}
+                  className={`flex-1 py-2 rounded-lg transition-all ${
+                    adjustActiveTab === 'welfare' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  فقط رفاهی
+                </button>
+              </div>
+
+              <form onSubmit={handleAdjustTotalsSubmit} className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Overtime Card Input */}
+                  {(adjustActiveTab === 'overtime' || adjustActiveTab === 'both') && (
+                    <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/60 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                          <DollarSign className="w-4 h-4 text-primary-600" />
+                          مجموع مبلغ اضافه کار
+                        </label>
+                        <span className="text-[11px] text-gray-500 font-medium">
+                          فعلی: {formatNumber(totalOvertime)}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] text-gray-600 block mb-1">مبلغ جدید مورد نظر (ریال):</span>
+                        <input
+                          type="text"
+                          dir="ltr"
+                          value={targetOtInput}
+                          onChange={(e) => {
+                            setTargetOtInput(e.target.value)
+                            setOtPercentInput('')
+                          }}
+                          placeholder="مثلاً 55,000,000,000"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left font-mono focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] text-gray-600 block mb-1">یا تغییر درصدی (+/-):</span>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            dir="ltr"
+                            step="0.01"
+                            value={otPercentInput}
+                            onChange={(e) => {
+                              setOtPercentInput(e.target.value)
+                              const pct = parseFloat(e.target.value)
+                              if (!isNaN(pct)) {
+                                const newTotal = Math.round(totalOvertime * (1 + pct / 100))
+                                setTargetOtInput(newTotal.toString())
+                              }
+                            }}
+                            placeholder="مثلاً -4.5 یا 5"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm text-left font-mono focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white"
+                          />
+                          <span className="absolute right-2.5 top-2.5 text-xs text-gray-400 font-bold">٪</span>
+                        </div>
+                      </div>
+
+                      {targetOtInput && !isNaN(parseInt(targetOtInput.replace(/,/g, ''), 10)) && (
+                        <div className="text-[11px] pt-1 text-gray-600 border-t border-gray-200/80 flex items-center justify-between">
+                          <span>اختلاف با مقدار فعلی:</span>
+                          <span
+                            dir="ltr"
+                            className={`font-semibold ${
+                              parseInt(targetOtInput.replace(/,/g, ''), 10) - totalOvertime >= 0
+                                ? 'text-emerald-600'
+                                : 'text-red-600'
+                            }`}
+                          >
+                            {(parseInt(targetOtInput.replace(/,/g, ''), 10) - totalOvertime).toLocaleString('fa-IR')}{' '}
+                            ریال
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Welfare Card Input */}
+                  {(adjustActiveTab === 'welfare' || adjustActiveTab === 'both') && (
+                    <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/60 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                          <DollarSign className="w-4 h-4 text-primary-600" />
+                          مجموع مبلغ رفاهی
+                        </label>
+                        <span className="text-[11px] text-gray-500 font-medium">
+                          فعلی: {formatNumber(totalWelfare)}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] text-gray-600 block mb-1">مبلغ جدید مورد نظر (ریال):</span>
+                        <input
+                          type="text"
+                          dir="ltr"
+                          value={targetWfInput}
+                          onChange={(e) => {
+                            setTargetWfInput(e.target.value)
+                            setWfPercentInput('')
+                          }}
+                          placeholder="مثلاً 70,000,000,000"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left font-mono focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] text-gray-600 block mb-1">یا تغییر درصدی (+/-):</span>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            dir="ltr"
+                            step="0.01"
+                            value={wfPercentInput}
+                            onChange={(e) => {
+                              setWfPercentInput(e.target.value)
+                              const pct = parseFloat(e.target.value)
+                              if (!isNaN(pct)) {
+                                const newTotal = Math.round(totalWelfare * (1 + pct / 100))
+                                setTargetWfInput(newTotal.toString())
+                              }
+                            }}
+                            placeholder="مثلاً -2.5 یا 3"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm text-left font-mono focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white"
+                          />
+                          <span className="absolute right-2.5 top-2.5 text-xs text-gray-400 font-bold">٪</span>
+                        </div>
+                      </div>
+
+                      {targetWfInput && !isNaN(parseInt(targetWfInput.replace(/,/g, ''), 10)) && (
+                        <div className="text-[11px] pt-1 text-gray-600 border-t border-gray-200/80 flex items-center justify-between">
+                          <span>اختلاف با مقدار فعلی:</span>
+                          <span
+                            dir="ltr"
+                            className={`font-semibold ${
+                              parseInt(targetWfInput.replace(/,/g, ''), 10) - totalWelfare >= 0
+                                ? 'text-emerald-600'
+                                : 'text-red-600'
+                            }`}
+                          >
+                            {(parseInt(targetWfInput.replace(/,/g, ''), 10) - totalWelfare).toLocaleString('fa-IR')}{' '}
+                            ریال
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-100 flex items-start gap-2.5">
+                  <Sparkles className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-blue-900 leading-relaxed">
+                    با ذخیره این فرم، ضریب تناسب محاسبه شده و به طور خودکار بر روی کلیه ادارات استان و نفرات اعمال خواهد شد، به طوری که مجموع کل جدید دقیقاً برابر ارقام تنظیمی شما خواهد بود.
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdjustTotalsOpen(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                  >
+                    انصراف
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingAdjustTotals}
+                    className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm disabled:opacity-50"
+                  >
+                    {submittingAdjustTotals ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    اعمال و بازتوزیع مبالغ
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Tweak Department Values Modal */}
+        {editingDept && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+              <div className="flex justify-between items-center pb-4 border-b border-gray-200 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200">
+                    <SlidersHorizontal className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">
+                      ویرایش مقادیر اداره: {editingDept.departmentName}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      تعداد پرسنل: {formatNumber(editingDept.employeeCount)} نفر
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditingDept(null)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-base font-bold transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleDeptTweakSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    سرانه پایه اداره (ضریب سرانه):
+                  </label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={deptBaseCapInput}
+                    onChange={(e) => setDeptBaseCapInput(e.target.value)}
+                    placeholder="مثلاً 1,653"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left font-mono focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    جمع مبلغ اضافه کار اداره (ریال):
+                  </label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={deptOtInput}
+                    onChange={(e) => setDeptOtInput(e.target.value)}
+                    placeholder="مثلاً 806,499,135"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left font-mono focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  />
+                  {deptOtInput && !isNaN(parseInt(deptOtInput.replace(/,/g, ''), 10)) && (
+                    <span className="text-[11px] text-gray-400 block mt-1">
+                      معادل: {parseInt(deptOtInput.replace(/,/g, ''), 10).toLocaleString('fa-IR')} ریال
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    جمع مبلغ رفاهی اداره (ریال):
+                  </label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={deptWfInput}
+                    onChange={(e) => setDeptWfInput(e.target.value)}
+                    placeholder="مثلاً 1,011,555,140"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left font-mono focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  />
+                  {deptWfInput && !isNaN(parseInt(deptWfInput.replace(/,/g, ''), 10)) && (
+                    <span className="text-[11px] text-gray-400 block mt-1">
+                      معادل: {parseInt(deptWfInput.replace(/,/g, ''), 10).toLocaleString('fa-IR')} ریال
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    با ویرایش ارقام این اداره، مبالغ پرسنل به تناسب تنظیم شده و مجموع کل استان نیز به روزرسانی خواهد شد.
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setEditingDept(null)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                  >
+                    انصراف
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingDeptTweak}
+                    className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm disabled:opacity-50"
+                  >
+                    {submittingDeptTweak ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    ذخیره تغییرات اداره
                   </button>
                 </div>
               </form>

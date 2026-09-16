@@ -152,6 +152,21 @@ export interface ReviewDepartmentDto {
   rejectionReason?: string | null
 }
 
+export interface AdjustCycleTotalsDto {
+  targetTotalOvertimeAmount?: number | null
+  targetTotalWelfareAmount?: number | null
+  overtimeAdjustmentPercentage?: number | null
+  welfareAdjustmentPercentage?: number | null
+}
+
+export interface TweakDepartmentValuesDto {
+  baseOvertimeCap?: number | null
+  baseWelfareCap?: number | null
+  totalOvertimeAmount?: number | null
+  totalWelfareAmount?: number | null
+}
+
+
 export const CYCLE_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   OpenForSubmission: { label: 'در حال دریافت اطلاعات ادارات', color: 'bg-blue-100 text-blue-800 border-blue-200' },
   UnderReview: { label: 'در حال بررسی نهایی', color: 'bg-amber-100 text-amber-800 border-amber-200' },
@@ -258,4 +273,20 @@ export const payrollCyclesApi = {
     })
     return response.data as Blob
   },
+
+  sendToOffices: async (id: string): Promise<PayrollCycleDetailDto> => {
+    const response = await apiClient.post<PayrollCycleDetailDto>(`${CYCLES_BASE}/${id}/send-to-offices`)
+    return response.data
+  },
+
+  adjustCycleTotals: async (id: string, dto: AdjustCycleTotalsDto): Promise<PayrollCycleDetailDto> => {
+    const response = await apiClient.put<PayrollCycleDetailDto>(`${CYCLES_BASE}/${id}/adjust-totals`, dto)
+    return response.data
+  },
+
+  tweakDepartmentValues: async (departmentEntryId: string, dto: TweakDepartmentValuesDto): Promise<PayrollDepartmentEntrySummaryDto> => {
+    const response = await apiClient.put<PayrollDepartmentEntrySummaryDto>(`${CYCLES_BASE}/departments/${departmentEntryId}/tweak-values`, dto)
+    return response.data
+  },
 }
+

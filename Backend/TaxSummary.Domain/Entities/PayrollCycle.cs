@@ -11,7 +11,7 @@ public class PayrollCycle
     public string ProcessType { get; private set; } = string.Empty;
     public int FiscalYear { get; private set; }
     public int FiscalMonth { get; private set; }
-    public string Status { get; private set; } = PayrollCycleStatus.OpenForSubmission;
+    public string Status { get; private set; } = PayrollCycleStatus.Draft;
     public DateTime? Deadline { get; private set; }
     public string? Notes { get; private set; }
     public Guid CreatedByUserId { get; private set; }
@@ -51,7 +51,7 @@ public class PayrollCycle
             ProcessType = processType.Trim(),
             FiscalYear = fiscalYear,
             FiscalMonth = fiscalMonth,
-            Status = PayrollCycleStatus.OpenForSubmission,
+            Status = PayrollCycleStatus.Draft,
             Deadline = deadline,
             Notes = notes?.Trim(),
             CreatedByUserId = createdByUserId,
@@ -69,6 +69,15 @@ public class PayrollCycle
     public void UpdateStatus(string status)
     {
         Status = status;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SendToOffices()
+    {
+        if (Status != PayrollCycleStatus.Draft)
+            throw new InvalidOperationException("تنها دوره‌هایی که در وضعیت پیش‌نویس هستند امکان ارسال به ادارات را دارند.");
+
+        Status = PayrollCycleStatus.OpenForSubmission;
         UpdatedAt = DateTime.UtcNow;
     }
 

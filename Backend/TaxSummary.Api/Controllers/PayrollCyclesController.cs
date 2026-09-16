@@ -235,6 +235,81 @@ public class PayrollCyclesController : ControllerBase
     }
 
     /// <summary>
+    /// Send draft payroll cycle to offices (opens it for submissions)
+    /// </summary>
+    [HttpPost("{id:guid}/send-to-offices")]
+    [RequireModuleAccess("action_payroll_cycles")]
+    [ProducesResponseType(typeof(PayrollCycleDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PayrollCycleDetailDto>> SendCycleToOffices(Guid id, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        var role = GetCurrentUserRole();
+
+        try
+        {
+            var result = await _cycleService.SendCycleToOfficesAsync(id, userId, role, cancellationToken);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Adjust overall cycle overtime and welfare totals (with proportional department scaling)
+    /// </summary>
+    [HttpPut("{id:guid}/adjust-totals")]
+    [RequireModuleAccess("action_payroll_cycles")]
+    [ProducesResponseType(typeof(PayrollCycleDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PayrollCycleDetailDto>> AdjustCycleTotals(
+        Guid id,
+        [FromBody] AdjustCycleTotalsDto dto,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        var role = GetCurrentUserRole();
+
+        try
+        {
+            var result = await _cycleService.AdjustCycleTotalsAsync(id, dto, userId, role, cancellationToken);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Tweak individual department base cap, overtime, and welfare amounts
+    /// </summary>
+    [HttpPut("departments/{departmentEntryId:guid}/tweak-values")]
+    [RequireModuleAccess("action_payroll_cycles")]
+    [ProducesResponseType(typeof(PayrollDepartmentEntrySummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PayrollDepartmentEntrySummaryDto>> TweakDepartmentValues(
+        Guid departmentEntryId,
+        [FromBody] TweakDepartmentValuesDto dto,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        var role = GetCurrentUserRole();
+
+        try
+        {
+            var result = await _cycleService.TweakDepartmentValuesAsync(departmentEntryId, dto, userId, role, cancellationToken);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Finalize entire payroll cycle
     /// </summary>
     [HttpPost("{id:guid}/finalize")]
