@@ -24,6 +24,7 @@ public class TaxRefundCase
     public string TaxpayerName { get; private set; } = string.Empty;
     public string EconomicCode { get; private set; } = string.Empty;
     public string? NationalId { get; private set; }
+    public ActivityType ActivityType { get; private set; } = ActivityType.Services;
     public string TaxUnitCode { get; private set; } = string.Empty;
     public string GroupCode { get; private set; } = string.Empty;
     public string OfficeCode { get; private set; } = string.Empty;
@@ -94,7 +95,8 @@ public class TaxRefundCase
         string seniorAuditorName,
         Guid createdByUserId,
         string? nationalId = null,
-        string? directorGeneralName = null)
+        string? directorGeneralName = null,
+        ActivityType activityType = ActivityType.Services)
     {
         if (string.IsNullOrWhiteSpace(caseTrackingNumber))
             throw new ArgumentException("شماره پیگیری پرونده نمی‌تواند خالی باشد", nameof(caseTrackingNumber));
@@ -119,6 +121,7 @@ public class TaxRefundCase
             TaxpayerName = taxpayerName.Trim(),
             EconomicCode = ValueObjects.EconomicCode.NormalizeDigits(economicCode.Trim()),
             NationalId = nationalId?.Trim(),
+            ActivityType = activityType,
             TaxUnitCode = hierarchy.TaxUnitCode,
             GroupCode = hierarchy.GroupCode,
             OfficeCode = hierarchy.OfficeCode,
@@ -154,7 +157,8 @@ public class TaxRefundCase
         string bankName,
         string shebaNumber,
         string docketNumber,
-        string? nationalId = null)
+        string? nationalId = null,
+        ActivityType? activityType = null)
     {
         EnsureModifiable();
 
@@ -185,7 +189,16 @@ public class TaxRefundCase
             DocketNumber = docketNumber.Trim();
         if (nationalId != null)
             NationalId = string.IsNullOrWhiteSpace(nationalId) ? null : nationalId.Trim();
+        if (activityType.HasValue)
+            ActivityType = activityType.Value;
 
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetActivityType(ActivityType activityType)
+    {
+        EnsureModifiable();
+        ActivityType = activityType;
         UpdatedAt = DateTime.UtcNow;
     }
 

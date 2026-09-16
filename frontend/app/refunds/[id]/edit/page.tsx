@@ -25,6 +25,8 @@ import {
   TaxRefundCase,
   TaxSourceType,
   TaxSourceLabels,
+  ActivityType,
+  ActivityTypeLabels,
   FinalizationMethod,
   FinalizationMethodLabels,
   FinalityStage,
@@ -69,6 +71,7 @@ export default function EditTaxRefundCasePage() {
   const [taxpayerName, setTaxpayerName] = useState('')
   const [economicCode, setEconomicCode] = useState('')
   const [nationalId, setNationalId] = useState('')
+  const [activityType, setActivityType] = useState<ActivityType>(ActivityType.Services)
   const [taxUnitCode, setTaxUnitCode] = useState('')
   const [province, setProvince] = useState('')
   const [city, setCity] = useState('')
@@ -127,6 +130,7 @@ export default function EditTaxRefundCasePage() {
       setTaxpayerName(data.taxpayerName || '')
         setEconomicCode(data.economicCode || '')
         setNationalId(data.nationalId || '')
+        if (data.activityType) setActivityType(data.activityType)
         setTaxUnitCode(data.taxUnitCode || '')
         setProvince(data.province || 'خوزستان')
         setCity(data.city || 'اهواز')
@@ -427,6 +431,7 @@ export default function EditTaxRefundCasePage() {
         taxpayerName: taxpayerName.trim(),
         economicCode: economicCode.trim(),
         nationalId: nationalId.trim() || undefined,
+        activityType,
         taxUnitCode: taxUnitCode.trim(),
         province: province.trim(),
         city: city.trim(),
@@ -734,6 +739,19 @@ export default function EditTaxRefundCasePage() {
                         placeholder="مثال: ۸۷"
                         className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 font-bold mb-1">نوع فعالیت *</label>
+                      <select
+                        value={activityType}
+                        onChange={(e) => setActivityType(Number(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-purple-500"
+                      >
+                        {Object.entries(ActivityTypeLabels).map(([key, label]) => (
+                          <option key={key} value={key}>{label}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>

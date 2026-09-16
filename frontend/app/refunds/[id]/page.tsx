@@ -34,6 +34,7 @@ import {
   TaxRefundLetterTypeLabels,
   FinalizationMethodLabels,
   FinalityStageLabels,
+  ActivityTypeLabels,
 } from '@/types/taxRefund'
 import { DocumentsSection } from '@/components/refunds/DocumentsSection'
 import { PdfViewerModal } from '@/components/refunds/PdfViewerModal'
@@ -241,6 +242,7 @@ export default function TaxRefundDetailPage() {
               <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 font-medium">
                 <span>شماره پیگیری: <strong className="font-mono text-purple-900">{refundCase.caseTrackingNumber}</strong></span>
                 <span>کد اقتصادی: <strong className="font-mono text-gray-800">{refundCase.economicCode}</strong></span>
+                <span>نوع فعالیت: <strong className="text-blue-900 font-bold bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200">{ActivityTypeLabels[refundCase.activityType] || refundCase.activityTypeName || 'خدماتی'}</strong></span>
                 <span>سال مالیاتی: <strong className="font-mono text-gray-800">{refundCase.taxYear}</strong></span>
                 <span>منبع: <strong className="text-gray-800">{refundCase.taxSourceDescription}</strong></span>
                 <span>واحد مالیاتی: <strong className="font-mono text-gray-800">{refundCase.taxUnitCode} ({refundCase.city})</strong></span>

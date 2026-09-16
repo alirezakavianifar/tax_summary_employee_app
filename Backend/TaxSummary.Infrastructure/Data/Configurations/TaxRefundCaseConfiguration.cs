@@ -88,6 +88,10 @@ public class TaxRefundCaseConfiguration : IEntityTypeConfiguration<TaxRefundCase
             .HasConversion<int>()
             .IsRequired();
 
+        builder.Property(c => c.ActivityType)
+            .HasConversion<int>()
+            .HasDefaultValue(ActivityType.Services);
+
         builder.Property(c => c.Status)
             .HasConversion<int>()
             .IsRequired();

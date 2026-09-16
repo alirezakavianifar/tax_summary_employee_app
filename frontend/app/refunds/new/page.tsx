@@ -22,6 +22,8 @@ import { taxRefundApi } from '@/lib/api/taxRefund'
 import {
   TaxSourceType,
   TaxSourceLabels,
+  ActivityType,
+  ActivityTypeLabels,
   FinalizationMethod,
   FinalizationMethodLabels,
   FinalityStage,
@@ -56,6 +58,7 @@ export default function NewTaxRefundCasePage() {
   const [taxpayerName, setTaxpayerName] = useState('')
   const [economicCode, setEconomicCode] = useState('')
   const [nationalId, setNationalId] = useState('')
+  const [activityType, setActivityType] = useState<ActivityType>(ActivityType.Services)
   const [taxUnitCode, setTaxUnitCode] = useState('')
   const [province, setProvince] = useState('')
   const [city, setCity] = useState('')
@@ -275,6 +278,7 @@ export default function NewTaxRefundCasePage() {
         taxpayerName: taxpayerName.trim(),
         economicCode: economicCode.trim(),
         nationalId: nationalId.trim() || undefined,
+        activityType,
         taxUnitCode: taxUnitCode.trim(),
         province: province.trim(),
         city: city.trim(),
@@ -461,6 +465,19 @@ export default function NewTaxRefundCasePage() {
                       placeholder="مثال: ۸۷"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">نوع فعالیت *</label>
+                    <select
+                      value={activityType}
+                      onChange={(e) => setActivityType(Number(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-purple-500"
+                    >
+                      {Object.entries(ActivityTypeLabels).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>

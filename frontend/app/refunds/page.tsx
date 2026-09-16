@@ -27,6 +27,7 @@ import {
   TaxRefundCaseSummary,
   TaxSourceType,
   TaxSourceLabels,
+  ActivityTypeLabels,
   RefundCaseStatus,
   RefundCaseStatusLabels,
 } from '@/types/taxRefund'
@@ -367,7 +368,14 @@ export default function RefundsDashboardPage() {
                             {c.caseTrackingNumber}
                           </Link>
                         </td>
-                        <td className="py-3 px-4 font-bold text-gray-900">{c.taxpayerName}</td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-gray-900">{c.taxpayerName}</div>
+                          {(c.activityTypeName || c.activityType) && (
+                            <span className="inline-block text-[10px] text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded mt-0.5 font-medium">
+                              {c.activityTypeName || (c.activityType ? ActivityTypeLabels[c.activityType] : '')}
+                            </span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 font-mono text-gray-700">{c.economicCode}</td>
                         <td className="py-3 px-4">
                           <div className="flex flex-col gap-0.5">

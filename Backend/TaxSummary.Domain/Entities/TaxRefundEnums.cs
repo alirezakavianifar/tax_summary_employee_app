@@ -42,6 +42,28 @@ public enum TaxSourceType
 }
 
 /// <summary>
+/// Business activity type of the taxpayer
+/// نوع فعالیت مودی
+/// </summary>
+public enum ActivityType
+{
+    /// <summary>
+    /// خدماتی
+    /// </summary>
+    Services = 1,
+
+    /// <summary>
+    /// تولیدی
+    /// </summary>
+    Manufacturing = 2,
+
+    /// <summary>
+    /// بازرگانی
+    /// </summary>
+    Commercial = 3
+}
+
+/// <summary>
 /// Method by which the tax assessment was finalized
 /// نحوه قطعی شدن پرونده مالیاتی
 /// </summary>

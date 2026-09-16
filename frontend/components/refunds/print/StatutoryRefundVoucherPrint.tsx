@@ -2,6 +2,7 @@
 
 import React from 'react'
 import type { PrintableDocument } from '@/types/taxRefund'
+import { ActivityTypeLabels } from '@/types/taxRefund'
 import { getTodayJalaliString, toPersianDigits } from '@/lib/jalali'
 import { PrintContainer, PrintHeader, SignatureBox } from './PrintContainer'
 
@@ -62,6 +63,10 @@ export function StatutoryRefundVoucherPrint({ data }: StatutoryRefundVoucherPrin
         <div>
           <span className="font-bold text-gray-700">شناسه ملی: </span>
           <span>{data.nationalId ? toPersianDigits(data.nationalId) : '-'}</span>
+        </div>
+        <div>
+          <span className="font-bold text-gray-700">نوع فعالیت: </span>
+          <span className="font-bold">{data.activityTypeName || (data.activityType ? ActivityTypeLabels[data.activityType] : 'خدماتی')}</span>
         </div>
         <div>
           <span className="font-bold text-gray-700">منبع مالیاتی: </span>

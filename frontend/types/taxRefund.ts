@@ -18,6 +18,18 @@ export const TaxSourceLabels: Record<TaxSourceType, string> = {
   [TaxSourceType.Vehicles]: 'مالیات بر خودرو',
 }
 
+export enum ActivityType {
+  Services = 1,
+  Manufacturing = 2,
+  Commercial = 3,
+}
+
+export const ActivityTypeLabels: Record<ActivityType, string> = {
+  [ActivityType.Services]: 'خدماتی',
+  [ActivityType.Manufacturing]: 'تولیدی',
+  [ActivityType.Commercial]: 'بازرگانی',
+}
+
 export enum FinalizationMethod {
   ReturnAccepted = 1,
   AuditBooks = 2,
@@ -242,6 +254,8 @@ export interface TaxRefundCase {
   taxpayerName: string
   economicCode: string
   nationalId?: string
+  activityType: ActivityType
+  activityTypeName?: string
   taxUnitCode: string
   groupCode?: string
   officeCode?: string
@@ -336,6 +350,8 @@ export interface TaxRefundCaseSummary {
   docketNumber: string
   taxpayerName: string
   economicCode: string
+  activityType?: ActivityType
+  activityTypeName?: string
   taxUnitCode?: string
   groupCode?: string
   officeCode?: string
@@ -362,6 +378,7 @@ export interface CreateTaxRefundCaseInput {
   taxpayerName: string
   economicCode: string
   nationalId?: string
+  activityType?: ActivityType
   taxUnitCode: string
   province: string
   city: string
@@ -388,6 +405,7 @@ export interface UpdateTaxRefundCaseInput {
   taxpayerName: string
   economicCode: string
   nationalId?: string
+  activityType?: ActivityType
   taxUnitCode: string
   province: string
   city: string
@@ -445,6 +463,8 @@ export interface PrintableDocument {
   taxpayerName: string
   economicCode: string
   nationalId?: string
+  activityType?: ActivityType
+  activityTypeName?: string
   taxUnitCode: string
   province: string
   city: string

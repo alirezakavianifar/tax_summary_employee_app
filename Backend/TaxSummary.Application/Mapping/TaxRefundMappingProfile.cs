@@ -41,6 +41,7 @@ public class TaxRefundMappingProfile : Profile
             .ForMember(dest => dest.OfficeName, opt => opt.MapFrom(src => src.Office != null ? src.Office.Name : null))
             .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => GetStatusName(src.Status)))
             .ForMember(dest => dest.TaxSourceName, opt => opt.MapFrom(src => GetTaxSourceName(src.TaxSource)))
+            .ForMember(dest => dest.ActivityTypeName, opt => opt.MapFrom(src => GetActivityTypeName(src.ActivityType)))
             .ForMember(dest => dest.Calculation, opt => opt.Ignore());
 
         CreateMap<TaxRefundCase, TaxRefundCaseSummaryDto>()
@@ -48,11 +49,20 @@ public class TaxRefundMappingProfile : Profile
             .ForMember(dest => dest.OfficeName, opt => opt.MapFrom(src => src.Office != null ? src.Office.Name : null))
             .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => GetStatusName(src.Status)))
             .ForMember(dest => dest.TaxSourceName, opt => opt.MapFrom(src => GetTaxSourceName(src.TaxSource)))
+            .ForMember(dest => dest.ActivityTypeName, opt => opt.MapFrom(src => GetActivityTypeName(src.ActivityType)))
             .ForMember(dest => dest.ReceiptsCount, opt => opt.MapFrom(src => src.Receipts.Count))
             .ForMember(dest => dest.TotalPaidAmount, opt => opt.MapFrom(src => src.Receipts.Sum(r => r.AmountRials)))
             .ForMember(dest => dest.PrincipalTaxRefund, opt => opt.MapFrom(src => src.Breakdown.PrincipalTaxRefund))
             .ForMember(dest => dest.GrandTotalRefundable, opt => opt.MapFrom(src => src.Breakdown.GrandTotalRefundable));
     }
+
+    public static string GetActivityTypeName(ActivityType activityType) => activityType switch
+    {
+        ActivityType.Services => "خدماتی",
+        ActivityType.Manufacturing => "تولیدی",
+        ActivityType.Commercial => "بازرگانی",
+        _ => "خدماتی"
+    };
 
     public static string GetStatusName(RefundCaseStatus status) => status switch
     {

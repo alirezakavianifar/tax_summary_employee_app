@@ -270,7 +270,8 @@ public static class DbInitializer
                     seniorAuditorName: "مهدی دلفی",
                     createdByUserId: adminUserId,
                     nationalId: "10102345678",
-                    directorGeneralName: "علی خورشیدی"
+                    directorGeneralName: "علی خورشیدی",
+                    activityType: ActivityType.Manufacturing
                 );
 
                 if (off1602 != null)
@@ -338,7 +339,8 @@ public static class DbInitializer
             seniorAuditorName: "مهدی دلفی",
             createdByUserId: adminUserId,
             nationalId: "10100000000",
-            directorGeneralName: "علی خورشیدی"
+            directorGeneralName: "علی خورشیدی",
+            activityType: ActivityType.Commercial
         );
 
         // Assessment Info

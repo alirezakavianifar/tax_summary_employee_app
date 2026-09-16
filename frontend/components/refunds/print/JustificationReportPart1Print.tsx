@@ -2,6 +2,7 @@
 
 import React from 'react'
 import type { PrintableDocument } from '@/types/taxRefund'
+import { ActivityTypeLabels } from '@/types/taxRefund'
 import { getTodayJalaliString, toPersianDigits } from '@/lib/jalali'
 import { PrintContainer, PrintHeader, SignatureBox } from './PrintContainer'
 
@@ -38,6 +39,10 @@ export function JustificationReportPart1Print({ data }: JustificationReportPart1
         <div>
           <span className="font-bold text-gray-700">شماره اقتصادی: </span>
           <span className="font-bold">{toPersianDigits(data.economicCode)}</span>
+        </div>
+        <div>
+          <span className="font-bold text-gray-700">نوع فعالیت: </span>
+          <span className="font-bold">{data.activityTypeName || (data.activityType ? ActivityTypeLabels[data.activityType] : 'خدماتی')}</span>
         </div>
         <div>
           <span className="font-bold text-gray-700">عملکرد منتهی به سال: </span>

@@ -20,6 +20,8 @@ import {
   TaxRefundCaseSummary,
   TaxSourceType,
   TaxSourceLabels,
+  ActivityType,
+  ActivityTypeLabels,
   RefundCaseStatus,
 } from '@/types/taxRefund'
 import { decomposeTaxUnitCode } from '@/lib/taxHierarchy'
@@ -41,6 +43,7 @@ export function QuickEditCaseModal({
     taxpayerName: '',
     economicCode: '',
     nationalId: '',
+    activityType: ActivityType.Services,
     taxYear: 1402,
     taxSource: TaxSourceType.CorporateIncome,
     taxUnitCode: '',
@@ -66,6 +69,7 @@ export function QuickEditCaseModal({
       taxpayerName: caseItem.taxpayerName || '',
       economicCode: caseItem.economicCode || '',
       nationalId: '',
+      activityType: caseItem.activityType || ActivityType.Services,
       taxYear: caseItem.taxYear || 1402,
       taxSource: caseItem.taxSource || TaxSourceType.CorporateIncome,
       taxUnitCode: '',
@@ -92,6 +96,7 @@ export function QuickEditCaseModal({
             taxpayerName: fullCase.taxpayerName || caseItem.taxpayerName || '',
             economicCode: fullCase.economicCode || caseItem.economicCode || '',
             nationalId: fullCase.nationalId || '',
+            activityType: fullCase.activityType || caseItem.activityType || ActivityType.Services,
             taxYear: fullCase.taxYear || caseItem.taxYear || 1402,
             taxSource: fullCase.taxSource || caseItem.taxSource || TaxSourceType.CorporateIncome,
             taxUnitCode: fullCase.taxUnitCode || '',
@@ -146,6 +151,7 @@ export function QuickEditCaseModal({
         taxpayerName: formData.taxpayerName.trim(),
         economicCode: formData.economicCode.trim(),
         nationalId: formData.nationalId.trim() || undefined,
+        activityType: formData.activityType,
         taxYear: Number(formData.taxYear),
         taxSource: Number(formData.taxSource) as TaxSourceType,
         taxUnitCode: formData.taxUnitCode.trim(),
@@ -302,6 +308,22 @@ export function QuickEditCaseModal({
                   placeholder="مثال: 87"
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  نوع فعالیت <span className="text-red-500">*</span>
+                </label>
+                <select
+                  disabled={isLocked}
+                  value={formData.activityType}
+                  onChange={(e) => setFormData({ ...formData, activityType: Number(e.target.value) as ActivityType })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
+                >
+                  {Object.entries(ActivityTypeLabels).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

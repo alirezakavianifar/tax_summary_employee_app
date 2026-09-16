@@ -263,4 +263,77 @@ public class TaxRefundCaseTests
         // Assert
         Assert.Empty(refundCase.Documents);
     }
+
+    [Theory]
+    [InlineData(ActivityType.Services)]
+    [InlineData(ActivityType.Manufacturing)]
+    [InlineData(ActivityType.Commercial)]
+    public void Create_WithActivityType_SetsActivityTypeCorrectly(ActivityType activityType)
+    {
+        // Act
+        var refundCase = TaxRefundCase.Create(
+            caseTrackingNumber: "REF-1402-ACT",
+            docketNumber: "100",
+            taxpayerName: "شرکت بازرگانی تست",
+            economicCode: "411395768531",
+            taxUnitCode: "160211",
+            province: "خوزستان",
+            city: "اهواز",
+            address: "اهواز",
+            bankName: "ملی",
+            shebaNumber: "IR980170000000123456789012",
+            taxYear: 1402,
+            period: 1,
+            taxSource: TaxSourceType.CorporateIncome,
+            refundReason: "اضافه پرداختی",
+            administrationHeadName: "غلامرضا اسلامی",
+            groupHeadName: "مسعود بصیر",
+            seniorAuditorName: "مهدی دلفی",
+            createdByUserId: Guid.NewGuid(),
+            nationalId: "10102345678",
+            directorGeneralName: "علی خورشیدی",
+            activityType: activityType);
+
+        // Assert
+        Assert.Equal(activityType, refundCase.ActivityType);
+    }
+
+    [Fact]
+    public void UpdateTaxpayerInfo_WithActivityType_UpdatesSuccessfully()
+    {
+        // Arrange
+        var refundCase = CreateSampleCase();
+        Assert.Equal(ActivityType.Services, refundCase.ActivityType);
+
+        // Act
+        refundCase.UpdateTaxpayerInfo(
+            taxpayerName: "شرکت تولیدی فولاد",
+            economicCode: "1234567890",
+            taxUnitCode: "160211",
+            province: "خوزستان",
+            city: "اهواز",
+            address: "شهرک صنعتی",
+            bankName: "ملی",
+            shebaNumber: "IR160120000000001234567890",
+            docketNumber: "88",
+            nationalId: "10102345678",
+            activityType: ActivityType.Manufacturing);
+
+        // Assert
+        Assert.Equal("شرکت تولیدی فولاد", refundCase.TaxpayerName);
+        Assert.Equal(ActivityType.Manufacturing, refundCase.ActivityType);
+    }
+
+    [Fact]
+    public void SetActivityType_UpdatesActivityTypeCorrectly()
+    {
+        // Arrange
+        var refundCase = CreateSampleCase();
+
+        // Act
+        refundCase.SetActivityType(ActivityType.Commercial);
+
+        // Assert
+        Assert.Equal(ActivityType.Commercial, refundCase.ActivityType);
+    }
 }

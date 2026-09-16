@@ -1,3 +1,5 @@
+using TaxSummary.Domain.Entities;
+
 namespace TaxSummary.Application.DTOs.TaxRefund;
 
 /// <summary>
@@ -16,6 +18,8 @@ public class PrintableDocumentDto
     public string TaxpayerName { get; set; } = string.Empty;
     public string EconomicCode { get; set; } = string.Empty;
     public string? NationalId { get; set; }
+    public ActivityType ActivityType { get; set; } = ActivityType.Services;
+    public string ActivityTypeName { get; set; } = string.Empty;
     public string TaxUnitCode { get; set; } = string.Empty;
     public string Province { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;

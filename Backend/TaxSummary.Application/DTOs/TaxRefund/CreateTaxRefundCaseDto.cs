@@ -19,6 +19,8 @@ public class TaxRefundCaseSummaryDto
     public int Period { get; set; }
     public TaxSourceType TaxSource { get; set; }
     public string TaxSourceName { get; set; } = string.Empty;
+    public ActivityType ActivityType { get; set; } = ActivityType.Services;
+    public string ActivityTypeName { get; set; } = string.Empty;
     public RefundCaseStatus Status { get; set; }
     public string StatusName { get; set; } = string.Empty;
     public int ReceiptsCount { get; set; }
@@ -36,6 +38,7 @@ public class CreateTaxRefundCaseDto
     public string TaxpayerName { get; set; } = string.Empty;
     public string EconomicCode { get; set; } = string.Empty;
     public string? NationalId { get; set; }
+    public ActivityType ActivityType { get; set; } = ActivityType.Services;
     public string TaxUnitCode { get; set; } = string.Empty;
     public string Province { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;
@@ -65,6 +68,7 @@ public class UpdateTaxRefundCaseDto
     public string TaxpayerName { get; set; } = string.Empty;
     public string EconomicCode { get; set; } = string.Empty;
     public string? NationalId { get; set; }
+    public ActivityType? ActivityType { get; set; }
     public string TaxUnitCode { get; set; } = string.Empty;
     public string Province { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;
