@@ -64,6 +64,9 @@ public class TaxRefundCaseConfiguration : IEntityTypeConfiguration<TaxRefundCase
             .IsRequired()
             .HasMaxLength(100);
 
+        builder.Property(c => c.BankBranch)
+            .HasMaxLength(100);
+
         builder.Property(c => c.ShebaNumber)
             .IsRequired()
             .HasMaxLength(30);

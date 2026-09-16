@@ -34,6 +34,8 @@ import LiveCalculationCard from '@/components/refunds/LiveCalculationCard'
 import ReceiptsTableEditor, { ReceiptItem } from '@/components/refunds/ReceiptsTableEditor'
 import InquiriesEditor, { LetterItem } from '@/components/refunds/InquiriesEditor'
 import TableBAllocationEditor, { AllocationItem } from '@/components/refunds/TableBAllocationEditor'
+import ShebaInput from '@/components/refunds/ShebaInput'
+import { IRANIAN_PROVINCES, IRANIAN_BANKS } from '@/lib/iranData'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
 import { decomposeTaxUnitCode, isUserAuthorizedForUnit } from '@/lib/taxHierarchy'
@@ -60,10 +62,11 @@ export default function NewTaxRefundCasePage() {
   const [nationalId, setNationalId] = useState('')
   const [activityType, setActivityType] = useState<ActivityType>(ActivityType.Services)
   const [taxUnitCode, setTaxUnitCode] = useState('')
-  const [province, setProvince] = useState('')
+  const [province, setProvince] = useState('خوزستان')
   const [city, setCity] = useState('')
   const [address, setAddress] = useState('')
-  const [bankName, setBankName] = useState('')
+  const [bankName, setBankName] = useState('ملی')
+  const [bankBranch, setBankBranch] = useState('')
   const [shebaNumber, setShebaNumber] = useState('')
   const [taxYear, setTaxYear] = useState<number | ''>('')
   const [period, setPeriod] = useState<number>(1)
@@ -161,8 +164,13 @@ export default function NewTaxRefundCasePage() {
         setStepError('نام بانک مودی الزامی است')
         return false
       }
-      if (!shebaNumber.trim() || !shebaNumber.trim().toUpperCase().startsWith('IR') || shebaNumber.trim().length < 20) {
-        setStepError('شماره شبا باید با IR آغاز شده و حداقل ۲۰ کاراکتر باشد')
+      const shebaDigits = shebaNumber.replace(/^IR/i, '').trim()
+      if (!shebaDigits) {
+        setStepError('شماره شبا حساب مودی الزامی است')
+        return false
+      }
+      if (shebaDigits.length !== 24) {
+        setStepError('شماره شبا باید شامل ۲۴ رقم (پس از پیشوند ثابت IR) باشد')
         return false
       }
       if (!refundReason.trim()) {
@@ -284,6 +292,7 @@ export default function NewTaxRefundCasePage() {
         city: city.trim(),
         address: address.trim(),
         bankName: bankName.trim(),
+        bankBranch: bankBranch.trim() || undefined,
         shebaNumber: shebaNumber.trim().toUpperCase(),
         taxYear: Number(taxYear),
         period,
@@ -585,13 +594,17 @@ export default function NewTaxRefundCasePage() {
 
                   <div>
                     <label className="block text-gray-700 font-bold mb-1">استان *</label>
-                    <input
-                      type="text"
+                    <select
                       value={province}
                       onChange={(e) => setProvince(e.target.value)}
-                      placeholder="مثال: خوزستان"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl"
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                    >
+                      {IRANIAN_PROVINCES.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -607,23 +620,36 @@ export default function NewTaxRefundCasePage() {
 
                   <div>
                     <label className="block text-gray-700 font-bold mb-1">بانک مودی *</label>
-                    <input
-                      type="text"
+                    <select
                       value={bankName}
                       onChange={(e) => setBankName(e.target.value)}
-                      placeholder="مثال: ملی، ملت، صادرات..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                    >
+                      {IRANIAN_BANKS.map((b) => (
+                        <option key={b} value={b}>
+                          {b}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">شعبه</label>
+                    <input
+                      type="text"
+                      value={bankBranch}
+                      onChange={(e) => setBankBranch(e.target.value)}
+                      placeholder="مثال: مرکزی اهواز، کد ۱۲۳۴..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-gray-700 font-bold mb-1">شماره شبا حساب مودی (IR...) *</label>
-                    <input
-                      type="text"
+                  <div className="sm:col-span-2">
+                    <label className="block text-gray-700 font-bold mb-1">شماره شبا حساب مودی *</label>
+                    <ShebaInput
                       value={shebaNumber}
-                      onChange={(e) => setShebaNumber(e.target.value.toUpperCase())}
-                      placeholder="IR..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono uppercase"
+                      onChange={setShebaNumber}
+                      placeholder="۲۴ رقم شماره شبا..."
                     />
                   </div>
 

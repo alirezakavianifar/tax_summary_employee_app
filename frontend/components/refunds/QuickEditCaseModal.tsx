@@ -25,6 +25,8 @@ import {
   RefundCaseStatus,
 } from '@/types/taxRefund'
 import { decomposeTaxUnitCode } from '@/lib/taxHierarchy'
+import ShebaInput from '@/components/refunds/ShebaInput'
+import { IRANIAN_PROVINCES, IRANIAN_BANKS } from '@/lib/iranData'
 
 interface QuickEditCaseModalProps {
   caseItem: TaxRefundCaseSummary | null
@@ -50,7 +52,8 @@ export function QuickEditCaseModal({
     province: 'خوزستان',
     city: 'اهواز',
     address: '',
-    bankName: '',
+    bankName: 'ملی',
+    bankBranch: '',
     shebaNumber: '',
     docketNumber: '',
     refundReason: '',
@@ -76,7 +79,8 @@ export function QuickEditCaseModal({
       province: 'خوزستان',
       city: caseItem.city || 'اهواز',
       address: '',
-      bankName: '',
+      bankName: 'ملی',
+      bankBranch: '',
       shebaNumber: '',
       docketNumber: caseItem.docketNumber || '',
       refundReason: '',
@@ -103,7 +107,8 @@ export function QuickEditCaseModal({
             province: fullCase.province || 'خوزستان',
             city: fullCase.city || caseItem.city || 'اهواز',
             address: fullCase.address || '',
-            bankName: fullCase.bankName || '',
+            bankName: fullCase.bankName || 'ملی',
+            bankBranch: fullCase.bankBranch || '',
             shebaNumber: fullCase.shebaNumber || '',
             docketNumber: fullCase.docketNumber || caseItem.docketNumber || '',
             refundReason: fullCase.refundReason || '',
@@ -143,6 +148,14 @@ export function QuickEditCaseModal({
       return
     }
 
+    if (formData.shebaNumber) {
+      const shebaDigits = formData.shebaNumber.replace(/^IR/i, '').trim()
+      if (shebaDigits.length > 0 && shebaDigits.length !== 24) {
+        setError('شماره شبا باید شامل ۲۴ رقم (پس از پیشوند ثابت IR) باشد')
+        return
+      }
+    }
+
     try {
       setSubmitting(true)
       setError(null)
@@ -159,6 +172,7 @@ export function QuickEditCaseModal({
         city: formData.city.trim(),
         address: formData.address.trim() || undefined,
         bankName: formData.bankName.trim(),
+        bankBranch: formData.bankBranch.trim() || undefined,
         shebaNumber: formData.shebaNumber.trim().toUpperCase(),
         docketNumber: formData.docketNumber.trim(),
         refundReason: formData.refundReason.trim() || undefined,
@@ -402,6 +416,24 @@ export function QuickEditCaseModal({
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
+                  استان
+                </label>
+                <select
+                  disabled={isLocked}
+                  value={formData.province}
+                  onChange={(e) => setFormData({ ...formData, province: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
+                >
+                  {IRANIAN_PROVINCES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
                   شهرستان
                 </label>
                 <input
@@ -426,29 +458,46 @@ export function QuickEditCaseModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  نام بانک
+                  بانک مودی
                 </label>
-                <input
-                  type="text"
+                <select
                   disabled={isLocked}
                   value={formData.bankName}
                   onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                  placeholder="مثال: بانک ملی ایران"
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
-                />
+                >
+                  {IRANIAN_BANKS.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  شماره شبا
+                  شعبه
                 </label>
                 <input
                   type="text"
                   disabled={isLocked}
+                  value={formData.bankBranch}
+                  onChange={(e) => setFormData({ ...formData, bankBranch: e.target.value })}
+                  placeholder="مثال: مرکزی اهواز، کد ۱۲۳۴..."
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  شماره شبا
+                </label>
+                <ShebaInput
+                  disabled={isLocked}
                   value={formData.shebaNumber}
-                  onChange={(e) => setFormData({ ...formData, shebaNumber: e.target.value })}
-                  placeholder="IR..."
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60 text-left"
+                  onChange={(val) => setFormData({ ...formData, shebaNumber: val })}
+                  placeholder="۲۴ رقم شماره شبا..."
+                  className="text-xs"
                 />
               </div>
             </div>

@@ -27,6 +27,7 @@ public class PrintableDocumentDto
 
     // Banking
     public string BankName { get; set; } = string.Empty;
+    public string? BankBranch { get; set; }
     public string ShebaNumber { get; set; } = string.Empty;
 
     // Period & Scope

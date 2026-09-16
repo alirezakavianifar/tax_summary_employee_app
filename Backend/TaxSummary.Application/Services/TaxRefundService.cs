@@ -179,7 +179,8 @@ public class TaxRefundService : ITaxRefundService
                 currentUserId,
                 dto.NationalId,
                 dgName,
-                dto.ActivityType);
+                dto.ActivityType,
+                dto.BankBranch);
 
             // Add initial receipts if provided
             if (dto.Receipts != null)
@@ -330,7 +331,8 @@ public class TaxRefundService : ITaxRefundService
                 dto.ShebaNumber,
                 dto.DocketNumber,
                 dto.NationalId,
-                dto.ActivityType);
+                dto.ActivityType,
+                dto.BankBranch);
 
             await LinkOfficeAsync(refundCase, ct);
 
@@ -964,6 +966,7 @@ public class TaxRefundService : ITaxRefundService
             City = refundCase.City,
             Address = refundCase.Address,
             BankName = refundCase.BankName,
+            BankBranch = refundCase.BankBranch,
             ShebaNumber = refundCase.ShebaNumber,
             TaxYear = refundCase.TaxYear,
             Period = refundCase.Period,

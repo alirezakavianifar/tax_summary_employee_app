@@ -97,6 +97,11 @@
     direction: rtl;
   }
 
+  [dir="ltr"],
+  [dir="ltr"] * {
+    direction: ltr;
+  }
+
   body {
     @apply text-gray-900;
   }

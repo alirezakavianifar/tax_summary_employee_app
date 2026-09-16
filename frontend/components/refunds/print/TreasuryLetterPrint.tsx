@@ -56,7 +56,7 @@ export function TreasuryLetterPrint({ data }: TreasuryLetterPrintProps) {
           اقدام و مبلغ <span className="font-bold">{toPersianDigits(data.grandTotalRefundableFormatted)} ریال</span> طبق درخواست کتبی مودی
           به حساب بانکی وی به شماره شبا{' '}
           <span className="font-bold text-base tracking-wider inline-block font-sans" dir="ltr">{data.shebaNumber}</span> نزد بانک{' '}
-          <span className="font-bold">{data.bankName}</span> واریز و تصویر حواله پرداختی را جهت ضبط در پرونده مالیاتی به
+          <span className="font-bold">{data.bankName}{data.bankBranch ? ` شعبه ${data.bankBranch}` : ''}</span> واریز و تصویر حواله پرداختی را جهت ضبط در پرونده مالیاتی به
           این اداره ارسال فرمایند.
         </p>
 
@@ -67,7 +67,7 @@ export function TreasuryLetterPrint({ data }: TreasuryLetterPrintProps) {
               <span className="font-semibold text-gray-700">نام صاحب حساب:</span> {data.taxpayerName}
             </div>
             <div>
-              <span className="font-semibold text-gray-700">بانک عامل:</span> {data.bankName}
+              <span className="font-semibold text-gray-700">بانک عامل:</span> {data.bankName}{data.bankBranch ? ` (شعبه ${data.bankBranch})` : ''}
             </div>
             <div className="col-span-2">
               <span className="font-semibold text-gray-700">شماره شبا:</span>{' '}

@@ -15,6 +15,7 @@ public class TaxRefundCaseSummaryDto
     public Guid? OfficeId { get; set; }
     public string? OfficeName { get; set; }
     public string City { get; set; } = string.Empty;
+    public string? BankBranch { get; set; }
     public int TaxYear { get; set; }
     public int Period { get; set; }
     public TaxSourceType TaxSource { get; set; }
@@ -44,6 +45,7 @@ public class CreateTaxRefundCaseDto
     public string City { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
     public string BankName { get; set; } = string.Empty;
+    public string? BankBranch { get; set; }
     public string ShebaNumber { get; set; } = string.Empty;
     public int TaxYear { get; set; }
     public int Period { get; set; } = 1;
@@ -74,6 +76,7 @@ public class UpdateTaxRefundCaseDto
     public string City { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
     public string BankName { get; set; } = string.Empty;
+    public string? BankBranch { get; set; }
     public string ShebaNumber { get; set; } = string.Empty;
     public string RefundReason { get; set; } = string.Empty;
     public string? DirectorGeneralName { get; set; }

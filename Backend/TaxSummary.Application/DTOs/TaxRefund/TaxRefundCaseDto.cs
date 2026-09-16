@@ -25,6 +25,7 @@ public class TaxRefundCaseDto
 
     // Banking Details
     public string BankName { get; set; } = string.Empty;
+    public string? BankBranch { get; set; }
     public string ShebaNumber { get; set; } = string.Empty;
 
     // Case Scope

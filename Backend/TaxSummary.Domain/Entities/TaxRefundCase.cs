@@ -36,6 +36,7 @@ public class TaxRefundCase
 
     // Banking Details (اطلاعات بانکی مودی جهت استرداد)
     public string BankName { get; private set; } = string.Empty;
+    public string? BankBranch { get; private set; }
     public string ShebaNumber { get; private set; } = string.Empty;
 
     // Tax Case Scope (دامنه و منبع پرونده)
@@ -96,7 +97,8 @@ public class TaxRefundCase
         Guid createdByUserId,
         string? nationalId = null,
         string? directorGeneralName = null,
-        ActivityType activityType = ActivityType.Services)
+        ActivityType activityType = ActivityType.Services,
+        string? bankBranch = null)
     {
         if (string.IsNullOrWhiteSpace(caseTrackingNumber))
             throw new ArgumentException("شماره پیگیری پرونده نمی‌تواند خالی باشد", nameof(caseTrackingNumber));
@@ -129,6 +131,7 @@ public class TaxRefundCase
             City = city.Trim(),
             Address = address.Trim(),
             BankName = bankName.Trim(),
+            BankBranch = !string.IsNullOrWhiteSpace(bankBranch) ? bankBranch.Trim() : null,
             ShebaNumber = shebaNumber.Trim().ToUpperInvariant(),
             TaxYear = taxYear,
             Period = period,
@@ -158,7 +161,8 @@ public class TaxRefundCase
         string shebaNumber,
         string docketNumber,
         string? nationalId = null,
-        ActivityType? activityType = null)
+        ActivityType? activityType = null,
+        string? bankBranch = null)
     {
         EnsureModifiable();
 
@@ -183,6 +187,8 @@ public class TaxRefundCase
             Address = address.Trim();
         if (!string.IsNullOrWhiteSpace(bankName))
             BankName = bankName.Trim();
+        if (bankBranch != null)
+            BankBranch = string.IsNullOrWhiteSpace(bankBranch) ? null : bankBranch.Trim();
         if (!string.IsNullOrWhiteSpace(shebaNumber))
             ShebaNumber = shebaNumber.Trim().ToUpperInvariant();
         if (!string.IsNullOrWhiteSpace(docketNumber))

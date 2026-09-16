@@ -265,6 +265,7 @@ export interface TaxRefundCase {
   city: string
   address: string
   bankName: string
+  bankBranch?: string
   shebaNumber: string
   taxYear: number
   period: number
@@ -384,6 +385,7 @@ export interface CreateTaxRefundCaseInput {
   city: string
   address?: string
   bankName: string
+  bankBranch?: string
   shebaNumber: string
   taxYear: number
   period: number
@@ -411,6 +413,7 @@ export interface UpdateTaxRefundCaseInput {
   city: string
   address?: string
   bankName?: string
+  bankBranch?: string
   shebaNumber?: string
   taxYear?: number
   taxSource?: TaxSourceType
@@ -470,6 +473,7 @@ export interface PrintableDocument {
   city: string
   address: string
   bankName: string
+  bankBranch?: string
   shebaNumber: string
   taxYear: number
   period: number

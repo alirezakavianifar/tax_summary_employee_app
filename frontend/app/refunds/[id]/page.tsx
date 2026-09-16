@@ -281,7 +281,7 @@ export default function TaxRefundDetailPage() {
                 {formatNumber(refundCase.breakdown.principalTaxRefund + refundCase.breakdown.delayDamages)} <span className="text-xs font-bold text-purple-700">ریال</span>
               </div>
               <div className="text-[11px] text-gray-500 mt-1">
-                شماره شبا: <span className="font-mono font-bold text-gray-800">{refundCase.shebaNumber}</span> ({refundCase.bankName})
+                شماره شبا: <span className="font-mono font-bold text-gray-800 inline-block" dir="ltr">{refundCase.shebaNumber}</span> ({refundCase.bankName}{refundCase.bankBranch ? ` - شعبه ${refundCase.bankBranch}` : ''})
               </div>
             </div>
           </div>
