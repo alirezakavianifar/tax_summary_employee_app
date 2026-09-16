@@ -52,6 +52,9 @@ public static class DbInitializer
 
         // Seed Tax Refund benchmark case
         await SeedTaxRefundDataAsync(context);
+
+        // Backfill unique CycleCodes for any existing PayrollCycles
+        await BackfillPayrollCycleCodesAsync(context);
     }
 
     private static async Task SeedSampleDataAsync(TaxSummaryDbContext context)
@@ -534,6 +537,19 @@ public static class DbInitializer
             }
         }
 
+        // Clean up legacy Manager role from action_payroll_create_cycle if OfficeHead is not in AllowedRoles
+        var cycleCreateSetting = await context.MenuSettings
+            .FirstOrDefaultAsync(m => m.MenuKey == "action_payroll_create_cycle");
+        if (cycleCreateSetting != null && cycleCreateSetting.AllowedRoles.Contains("Manager") && !cycleCreateSetting.AllowedRoles.Contains("OfficeHead"))
+        {
+            var cleanRoles = cycleCreateSetting.AllowedRoles
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(r => !string.Equals(r, "Manager", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            cycleCreateSetting.UpdateRoles(cleanRoles);
+            hasModified = true;
+        }
+
         if (hasModified)
         {
             await context.SaveChangesAsync();
@@ -737,6 +753,45 @@ public static class DbInitializer
                     isActive: true,
                     displayOrder: def.DisplayOrder,
                     isSystem: true));
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task BackfillPayrollCycleCodesAsync(TaxSummaryDbContext context)
+    {
+        var cyclesWithoutCode = await context.PayrollCycles
+            .Where(c => string.IsNullOrEmpty(c.CycleCode))
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync();
+
+        if (!cyclesWithoutCode.Any()) return;
+
+        var periodGroups = cyclesWithoutCode
+            .GroupBy(c => new { c.FiscalYear, c.FiscalMonth, c.ProcessType });
+
+        foreach (var group in periodGroups)
+        {
+            var prefix = group.Key.ProcessType switch
+            {
+                "OvertimeWelfareRated" => "OWR",
+                "OvertimeWelfareMonetary" => "OWM",
+                "HalfPercentBonus" => "HPB",
+                _ => "GEN"
+            };
+
+            int existingAssigned = await context.PayrollCycles
+                .CountAsync(c => c.FiscalYear == group.Key.FiscalYear &&
+                                 c.FiscalMonth == group.Key.FiscalMonth &&
+                                 c.ProcessType == group.Key.ProcessType &&
+                                 !string.IsNullOrEmpty(c.CycleCode));
+
+            int seq = existingAssigned + 1;
+            foreach (var cycle in group)
+            {
+                cycle.SetCycleCode($"PAY-{group.Key.FiscalYear}{group.Key.FiscalMonth:D2}-{prefix}-{seq:D2}");
+                seq++;
             }
         }
 

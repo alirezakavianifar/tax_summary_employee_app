@@ -53,12 +53,22 @@ public class MenuSettingsService : IMenuSettingsService
             var key = updateItem.MenuKey.Trim().ToLowerInvariant();
             if (settingsDict.TryGetValue(key, out var existingSetting))
             {
+                var incomingRoles = updateItem.AllowedRoles?.ToList() ?? new List<string>();
+                if (!incomingRoles.Any(r => string.Equals(r, "OfficeHead", StringComparison.OrdinalIgnoreCase)))
+                {
+                    incomingRoles.RemoveAll(r => string.Equals(r, "Manager", StringComparison.OrdinalIgnoreCase));
+                }
+                if (!incomingRoles.Any(r => string.Equals(r, "Expert", StringComparison.OrdinalIgnoreCase)))
+                {
+                    incomingRoles.RemoveAll(r => string.Equals(r, "Employee", StringComparison.OrdinalIgnoreCase));
+                }
+
                 existingSetting.UpdateVisibility(
                     updateItem.IsVisible,
                     updateItem.AdminOnly,
                     updateItem.DisplayOrder,
                     currentUserId,
-                    updateItem.AllowedRoles);
+                    incomingRoles);
                 modified.Add(existingSetting);
             }
             else

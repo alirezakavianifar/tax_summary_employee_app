@@ -12,6 +12,9 @@ public class PayrollCycleConfiguration : IEntityTypeConfiguration<PayrollCycle>
 
         builder.HasKey(c => c.Id);
 
+        builder.Property(c => c.CycleCode)
+            .HasMaxLength(50);
+
         builder.Property(c => c.Title)
             .IsRequired()
             .HasMaxLength(200);
@@ -44,5 +47,6 @@ public class PayrollCycleConfiguration : IEntityTypeConfiguration<PayrollCycle>
 
         builder.HasIndex(c => new { c.FiscalYear, c.FiscalMonth });
         builder.HasIndex(c => c.Status);
+        builder.HasIndex(c => c.CycleCode);
     }
 }

@@ -152,8 +152,18 @@ function MenuSettingsAdminContent() {
       setLoading(true)
       setStatusMessage(null)
       const data = await menuSettingsApi.getAllSettingsForAdmin()
-      setItems(data)
-      setOriginalItems(JSON.parse(JSON.stringify(data)))
+      const sanitized = data.map((item) => {
+        let roles = item.allowedRoles ? [...item.allowedRoles] : []
+        if (!roles.some((r) => r.toLowerCase() === 'officehead')) {
+          roles = roles.filter((r) => r.toLowerCase() !== 'manager')
+        }
+        if (!roles.some((r) => r.toLowerCase() === 'expert')) {
+          roles = roles.filter((r) => r.toLowerCase() !== 'employee')
+        }
+        return { ...item, allowedRoles: roles }
+      })
+      setItems(sanitized)
+      setOriginalItems(JSON.parse(JSON.stringify(sanitized)))
     } catch (err: any) {
       setStatusMessage({
         type: 'error',
@@ -265,23 +275,20 @@ function MenuSettingsAdminContent() {
 
           if (hasRole) {
             newRoles = currentRoles.filter((r) => r.toLowerCase() !== role.toLowerCase())
-            if (role.toLowerCase() === 'officehead') {
-              newRoles = newRoles.filter((r) => r.toLowerCase() !== 'manager')
-            }
-            if (role.toLowerCase() === 'expert') {
-              newRoles = newRoles.filter((r) => r.toLowerCase() !== 'employee')
-            }
-            if (newRoles.length === 0) {
-              newRoles = ['Admin']
-            }
           } else {
             newRoles = [...currentRoles, role]
-            if (role.toLowerCase() === 'officehead' && !newRoles.some((r) => r.toLowerCase() === 'manager')) {
-              newRoles.push('Manager')
-            }
-            if (role.toLowerCase() === 'expert' && !newRoles.some((r) => r.toLowerCase() === 'employee')) {
-              newRoles.push('Employee')
-            }
+          }
+
+          // Ensure legacy aliases are purged if primary role is not selected
+          if (!newRoles.some((r) => r.toLowerCase() === 'officehead')) {
+            newRoles = newRoles.filter((r) => r.toLowerCase() !== 'manager')
+          }
+          if (!newRoles.some((r) => r.toLowerCase() === 'expert')) {
+            newRoles = newRoles.filter((r) => r.toLowerCase() !== 'employee')
+          }
+
+          if (newRoles.length === 0) {
+            newRoles = ['Admin']
           }
 
           // Ensure Admin is always included
@@ -364,13 +371,22 @@ function MenuSettingsAdminContent() {
       setSaving(true)
       setStatusMessage(null)
 
-      const updatePayload: UpdateMenuSettingItem[] = items.map((i) => ({
-        menuKey: i.menuKey,
-        isVisible: i.isVisible,
-        adminOnly: i.adminOnly,
-        allowedRoles: i.allowedRoles || (i.adminOnly ? ['Admin'] : ['Admin', 'Manager', 'Employee']),
-        displayOrder: i.displayOrder,
-      }))
+      const updatePayload: UpdateMenuSettingItem[] = items.map((i) => {
+        let roles = i.allowedRoles ? [...i.allowedRoles] : (i.adminOnly ? ['Admin'] : ['Admin', 'Manager', 'Employee'])
+        if (!roles.some((r) => r.toLowerCase() === 'officehead')) {
+          roles = roles.filter((r) => r.toLowerCase() !== 'manager')
+        }
+        if (!roles.some((r) => r.toLowerCase() === 'expert')) {
+          roles = roles.filter((r) => r.toLowerCase() !== 'employee')
+        }
+        return {
+          menuKey: i.menuKey,
+          isVisible: i.isVisible,
+          adminOnly: i.adminOnly,
+          allowedRoles: roles,
+          displayOrder: i.displayOrder,
+        }
+      })
 
       const updated = await menuSettingsApi.updateMenuSettings({ settings: updatePayload })
       setItems(updated)

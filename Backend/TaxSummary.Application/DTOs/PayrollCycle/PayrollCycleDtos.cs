@@ -3,6 +3,7 @@ namespace TaxSummary.Application.DTOs.PayrollCycle;
 public class PayrollCycleSummaryDto
 {
     public Guid Id { get; set; }
+    public string CycleCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string ProcessType { get; set; } = string.Empty;
     public int FiscalYear { get; set; }
@@ -23,6 +24,7 @@ public class PayrollCycleSummaryDto
 public class PayrollCycleDetailDto
 {
     public Guid Id { get; set; }
+    public string CycleCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string ProcessType { get; set; } = string.Empty;
     public int FiscalYear { get; set; }
@@ -35,6 +37,17 @@ public class PayrollCycleDetailDto
     public DateTime? FinalizedAt { get; set; }
     public string? FinalizedByUsername { get; set; }
     public List<PayrollDepartmentEntrySummaryDto> DepartmentEntries { get; set; } = new();
+}
+
+public class PayrollCycleFilterDto
+{
+    public string? SearchTerm { get; set; }
+    public int? FiscalYear { get; set; }
+    public int? FiscalMonth { get; set; }
+    public string? ProcessType { get; set; }
+    public string? Status { get; set; }
+    public string? SortBy { get; set; }
+    public bool SortDescending { get; set; } = true;
 }
 
 public class PayrollDepartmentEntrySummaryDto

@@ -26,7 +26,7 @@ public static class DefaultMenuSettings
             // 3. Payroll Module & Actions
             MenuSetting.Create("module_payroll", "حقوق و اضافه کار", "/payroll/cycles", null, "Calculator", true, false, 3, "سامانه مشارکتی محاسبه و تخصیص حقوق و اضافه کار", null, AllGeneralRoles),
             MenuSetting.Create("action_payroll_cycles", "دوره‌های محاسبه و داشبورد تجمیعی", "/payroll/cycles", "module_payroll", "FileSpreadsheet", true, false, 1, "مشاهده دوره‌های محاسبه و پایش پیشرفت", null, AllGeneralRoles),
-            MenuSetting.Create("action_payroll_create_cycle", "تعریف دوره جدید حقوق و اضافه کار", "/payroll/cycles/create", "module_payroll", "PlusCircle", true, false, 2, "تعریف و بارگذاری فایل‌های پایه دوره محاسبه جدید ماهانه", null, "Admin,DirectorGeneral,Manager"),
+            MenuSetting.Create("action_payroll_create_cycle", "تعریف دوره جدید حقوق و اضافه کار", "/payroll/cycles/create", "module_payroll", "PlusCircle", true, false, 2, "تعریف و بارگذاری فایل‌های پایه دوره محاسبه جدید ماهانه", null, "Admin,DirectorGeneral"),
             MenuSetting.Create("action_payroll_delete_cycle", "حذف دوره محاسبه حقوق و اضافه کار", "/payroll/cycles/delete", "module_payroll", "Trash2", true, true, 3, "حذف دوره محاسبه و پاکسازی کاربرگ ادارات تابعه", null, AdminOnlyRoles),
             MenuSetting.Create("action_payroll_department", "کارپوشه اختصاصی اداره من", "/payroll/my-department", "module_payroll", "Building2", true, false, 4, "تکمیل ساعات، نرخ‌ها و ارسال کاربرگ واحد سازمانی", null, AllGeneralRoles),
             MenuSetting.Create("action_payroll_quick", "محاسبه و ادغام سریع تک‌نشست", "/payroll", "module_payroll", "Calculator", true, false, 5, "پردازش و ادغام سریع فایل‌های اکسل بدون چرخه", null, AllGeneralRoles),

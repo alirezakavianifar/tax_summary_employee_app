@@ -31,6 +31,16 @@ import {
   Sparkles,
   Shield,
   Lock,
+  Search,
+  Filter,
+  X,
+  Copy,
+  Check,
+  Hash,
+  RefreshCw,
+  BarChart3,
+  Layers,
+  ArrowUpDown,
 } from 'lucide-react'
 
 function formatNumber(v: number | null | undefined): string {
@@ -61,6 +71,24 @@ export default function PayrollCyclesPage() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Search, Filter & Sort states
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterYear, setFilterYear] = useState<string>('ALL')
+  const [filterMonth, setFilterMonth] = useState<string>('ALL')
+  const [filterProcessType, setFilterProcessType] = useState<string>('ALL')
+  const [filterStatus, setFilterStatus] = useState<string>('ALL')
+  const [sortBy, setSortBy] = useState<'createdAt' | 'fiscalPeriod' | 'title' | 'cycleCode'>('createdAt')
+  const [sortDescending, setSortDescending] = useState(true)
+
+  // Copy CycleCode feedback
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  const copyCycleCode = (code: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(code)
+    setCopiedCode(code)
+    setTimeout(() => setCopiedCode(null), 2000)
+  }
+
   // Current Shamsi date for auto-filling
   const currentJalali = useMemo(() => getTodayJalali(), [])
 
@@ -74,6 +102,122 @@ export default function PayrollCyclesPage() {
   const [isTitleManual, setIsTitleManual] = useState(false)
   const [deadline, setDeadline] = useState('')
   const [notes, setNotes] = useState('')
+
+  // Live Modal Cycle Code Preview & Duplicate check
+  const samePeriodExistingCycles = useMemo(() => {
+    return cycles.filter(
+      (c) => c.fiscalYear === fiscalYear && c.fiscalMonth === fiscalMonth && c.processType === processType
+    )
+  }, [cycles, fiscalYear, fiscalMonth, processType])
+
+  const modalPreviewCode = useMemo(() => {
+    const prefix =
+      processType === 'OvertimeWelfareRated'
+        ? 'OWR'
+        : processType === 'OvertimeWelfareMonetary'
+        ? 'OWM'
+        : processType === 'HalfPercentBonus'
+        ? 'HPB'
+        : 'GEN'
+    const nextSeq = samePeriodExistingCycles.length + 1
+    return `PAY-${fiscalYear}${String(fiscalMonth).padStart(2, '0')}-${prefix}-${String(nextSeq).padStart(2, '0')}`
+  }, [processType, fiscalYear, fiscalMonth, samePeriodExistingCycles.length])
+
+  // KPI Summary Statistics across all loaded cycles
+  const stats = useMemo(() => {
+    const totalCycles = cycles.length
+    const openCycles = cycles.filter((c) => c.status === 'OpenForSubmission').length
+    const underReviewCycles = cycles.filter((c) => c.status === 'UnderReview').length
+    const finalizedCycles = cycles.filter((c) => c.status === 'Finalized').length
+    const totalDepts = cycles.reduce((sum, c) => sum + (c.totalDepartments || 0), 0)
+    const submittedDepts = cycles.reduce((sum, c) => sum + (c.submittedDepartments || 0), 0)
+    const overallSubmissionRate = totalDepts > 0 ? Math.round((submittedDepts / totalDepts) * 100) : 0
+    const totalEmployees = cycles.reduce((sum, c) => sum + (c.totalEmployees || 0), 0)
+    const totalOvertime = cycles.reduce((sum, c) => sum + (c.totalOvertimeAmount || 0), 0)
+    const totalBonus = cycles.reduce((sum, c) => sum + (c.totalBonusAmount || 0), 0)
+
+    return {
+      totalCycles,
+      openCycles,
+      underReviewCycles,
+      finalizedCycles,
+      totalDepts,
+      submittedDepts,
+      overallSubmissionRate,
+      totalEmployees,
+      totalOvertime,
+      totalBonus,
+    }
+  }, [cycles])
+
+  // Distinct available fiscal years
+  const availableYears = useMemo(() => {
+    const years = new Set<number>()
+    years.add(currentJalali.jy)
+    cycles.forEach((c) => {
+      if (c.fiscalYear) years.add(c.fiscalYear)
+    })
+    return Array.from(years).sort((a, b) => b - a)
+  }, [cycles, currentJalali.jy])
+
+  // Filtered & Sorted Cycles list
+  const filteredCycles = useMemo(() => {
+    return cycles
+      .filter((c) => {
+        if (searchQuery.trim()) {
+          const q = searchQuery.trim().toLowerCase()
+          const matchTitle = c.title?.toLowerCase().includes(q)
+          const matchCode = c.cycleCode?.toLowerCase().includes(q)
+          const matchCreatedBy = c.createdByUsername?.toLowerCase().includes(q)
+          if (!matchTitle && !matchCode && !matchCreatedBy) return false
+        }
+        if (filterYear !== 'ALL' && c.fiscalYear !== Number(filterYear)) {
+          return false
+        }
+        if (filterMonth !== 'ALL' && c.fiscalMonth !== Number(filterMonth)) {
+          return false
+        }
+        if (filterProcessType !== 'ALL' && c.processType !== filterProcessType) {
+          return false
+        }
+        if (filterStatus !== 'ALL' && c.status !== filterStatus) {
+          return false
+        }
+        return true
+      })
+      .sort((a, b) => {
+        let comparison = 0
+        if (sortBy === 'fiscalPeriod') {
+          comparison = a.fiscalYear !== b.fiscalYear ? a.fiscalYear - b.fiscalYear : a.fiscalMonth - b.fiscalMonth
+        } else if (sortBy === 'title') {
+          comparison = (a.title || '').localeCompare(b.title || '')
+        } else if (sortBy === 'cycleCode') {
+          comparison = (a.cycleCode || '').localeCompare(b.cycleCode || '')
+        } else {
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        }
+        return sortDescending ? -comparison : comparison
+      })
+  }, [cycles, searchQuery, filterYear, filterMonth, filterProcessType, filterStatus, sortBy, sortDescending])
+
+  const isFilterActive =
+    searchQuery.trim() !== '' ||
+    filterYear !== 'ALL' ||
+    filterMonth !== 'ALL' ||
+    filterProcessType !== 'ALL' ||
+    filterStatus !== 'ALL' ||
+    sortBy !== 'createdAt' ||
+    !sortDescending
+
+  const resetFilters = () => {
+    setSearchQuery('')
+    setFilterYear('ALL')
+    setFilterMonth('ALL')
+    setFilterProcessType('ALL')
+    setFilterStatus('ALL')
+    setSortBy('createdAt')
+    setSortDescending(true)
+  }
 
   const handleProcessTypeChange = (newType: string) => {
     setProcessType(newType)
@@ -312,6 +456,215 @@ export default function PayrollCyclesPage() {
           </div>
         )}
 
+        {/* KPI Summary Statistics Ribbon */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Card 1: Total Cycles */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-gray-500">کل دوره‌های پردازش</p>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-bold text-gray-900">{formatNumber(stats.totalCycles)}</span>
+                <span className="text-xs text-gray-400">دوره</span>
+              </div>
+            </div>
+            <div className="w-11 h-11 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600">
+              <Calendar className="w-5 h-5" />
+            </div>
+          </div>
+
+          {/* Card 2: Open Cycles */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-gray-500">در حال دریافت و فعال</p>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-bold text-blue-600">{formatNumber(stats.openCycles)}</span>
+                <span className="text-xs text-blue-500">دوره جاری</span>
+              </div>
+            </div>
+            <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+              <Clock className="w-5 h-5" />
+            </div>
+          </div>
+
+          {/* Card 3: Overall Department Submission Rate */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-gray-500">پیشرفت تجمیعی ادارات</p>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-bold text-emerald-600">
+                  {formatNumber(stats.overallSubmissionRate)}٪
+                </span>
+                <span className="text-xs text-gray-400">
+                  ({formatNumber(stats.submittedDepts)} از {formatNumber(stats.totalDepts)})
+                </span>
+              </div>
+            </div>
+            <div className="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </div>
+
+          {/* Card 4: Total Employees Covered */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-gray-500">مجموع کارکنان تحت پوشش</p>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-bold text-purple-600">{formatNumber(stats.totalEmployees)}</span>
+                <span className="text-xs text-gray-400">نفر</span>
+              </div>
+            </div>
+            <div className="w-11 h-11 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+        </div>
+
+        {/* Search & Filter Toolbar */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs mb-6">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="جستجو بر اساس عنوان دوره، شناسه یکتا (PAY-...)، کاربر ثبت‌کننده..."
+                className="w-full pr-9 pl-8 py-2 text-xs md:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none placeholder:text-gray-400"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                  title="پاک کردن متن جستجو"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Filters Group */}
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              {/* Year Filter */}
+              <select
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+                className="border border-gray-300 rounded-lg px-2.5 py-2 text-xs text-gray-700 bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
+                title="فیلتر سال مالی"
+              >
+                <option value="ALL">همه سال‌ها</option>
+                {availableYears.map((y) => (
+                  <option key={y} value={y.toString()}>
+                    سال {y}
+                  </option>
+                ))}
+              </select>
+
+              {/* Month Filter */}
+              <select
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="border border-gray-300 rounded-lg px-2.5 py-2 text-xs text-gray-700 bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
+                title="فیلتر ماه مالی"
+              >
+                <option value="ALL">همه ماه‌ها</option>
+                {PERSIAN_MONTH_NAMES.map((name, i) => (
+                  <option key={i + 1} value={(i + 1).toString()}>
+                    {name} ({i + 1})
+                  </option>
+                ))}
+              </select>
+
+              {/* Process Type Filter */}
+              <select
+                value={filterProcessType}
+                onChange={(e) => setFilterProcessType(e.target.value)}
+                className="border border-gray-300 rounded-lg px-2.5 py-2 text-xs text-gray-700 bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
+                title="نوع فرآیند"
+              >
+                <option value="ALL">همه انواع فرآیند</option>
+                <option value="OvertimeWelfareRated">اضافه کار و رفاهی (نرخی)</option>
+                <option value="OvertimeWelfareMonetary">اضافه کار و رفاهی مبلغی</option>
+                <option value="HalfPercentBonus">پاداش نیم درصد</option>
+              </select>
+
+              {/* Status Filter */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="border border-gray-300 rounded-lg px-2.5 py-2 text-xs text-gray-700 bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
+                title="وضعیت دوره"
+              >
+                <option value="ALL">همه وضعیت‌ها</option>
+                <option value="OpenForSubmission">در حال دریافت اطلاعات</option>
+                <option value="UnderReview">در حال بررسی</option>
+                <option value="Finalized">نهایی شده</option>
+              </select>
+
+              {/* Sort By */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="border border-gray-300 rounded-lg px-2.5 py-2 text-xs text-gray-700 bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
+                title="مرتب‌سازی بر اساس"
+              >
+                <option value="createdAt">تاریخ ثبت</option>
+                <option value="fiscalPeriod">دوره مالی (سال/ماه)</option>
+                <option value="title">عنوان دوره</option>
+                <option value="cycleCode">شناسه یکتا (Cycle Code)</option>
+              </select>
+
+              {/* Sort Order Button */}
+              <button
+                type="button"
+                onClick={() => setSortDescending(!sortDescending)}
+                className={`p-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-600 transition-colors ${
+                  !sortDescending ? 'bg-primary-50 text-primary-600 border-primary-300' : ''
+                }`}
+                title={sortDescending ? 'نزولی (جدیدترین به قدیمی‌ترین)' : 'صعودی (قدیمی‌ترین به جدیدترین)'}
+              >
+                <ArrowUpDown className="w-4 h-4" />
+              </button>
+
+              {/* Refresh Button */}
+              <button
+                type="button"
+                onClick={loadCycles}
+                disabled={loading}
+                className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-600 transition-colors disabled:opacity-50"
+                title="بروزرسانی داده‌ها"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+
+              {/* Reset Filters */}
+              {isFilterActive && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="px-2.5 py-2 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1"
+                  title="پاک کردن تمامی فیلترها و بازنشانی"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  پاکسازی فیلترها
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Results Counter Bar */}
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+            <span>
+              نمایش <strong className="text-gray-800 font-semibold">{formatNumber(filteredCycles.length)}</strong> دوره از مجموع{' '}
+              <strong className="text-gray-800 font-semibold">{formatNumber(cycles.length)}</strong> دوره ثبت شده
+            </span>
+            {isFilterActive && (
+              <span className="text-primary-600 font-medium">فیلترهای جستجو فعال هستند</span>
+            )}
+          </div>
+        </div>
+
         {/* Cycles List */}
         {loading ? (
           <div className="flex justify-center items-center py-20">
@@ -334,9 +687,24 @@ export default function PayrollCyclesPage() {
               </button>
             )}
           </div>
+        ) : filteredCycles.length === 0 ? (
+          <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
+            <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-1">هیچ دوره‌ای با فیلترهای انتخابی یافت نشد</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              می‌توانید عبارت جستجو یا فیلترهای اعمال‌شده را تغییر دهید تا نتایج نمایش داده شوند.
+            </p>
+            <button
+              onClick={resetFilters}
+              className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+            >
+              <X className="w-4 h-4" />
+              پاکسازی فیلترها و مشاهده همه
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cycles.map((cycle) => {
+            {filteredCycles.map((cycle) => {
               const statusInfo = CYCLE_STATUS_LABELS[cycle.status] || {
                 label: cycle.status,
                 color: 'bg-gray-100 text-gray-700 border-gray-200',
@@ -346,25 +714,47 @@ export default function PayrollCyclesPage() {
                   ? Math.round((cycle.submittedDepartments / cycle.totalDepartments) * 100)
                   : 0
 
+              const displayCode = cycle.cycleCode || 'PAY-LEGACY'
+              const isCopied = copiedCode === displayCode
+
               return (
                 <div
                   key={cycle.id}
                   onClick={() => router.push(`/payroll/cycles/${cycle.id}`)}
-                  className="bg-white rounded-xl border border-gray-200 hover:border-primary-400 hover:shadow-md transition-all cursor-pointer p-5 flex flex-col justify-between"
+                  className="bg-white rounded-xl border border-gray-200 hover:border-primary-400 hover:shadow-md transition-all cursor-pointer p-5 flex flex-col justify-between group"
                 >
                   <div>
                     {/* Header */}
                     <div className="flex justify-between items-start gap-2 mb-3">
-                      <div>
-                        <span className="text-xs font-semibold text-primary-700 bg-primary-50 px-2 py-0.5 rounded">
-                          {PROCESS_TYPE_LABELS[cycle.processType] || cycle.processType}
-                        </span>
-                        <h3 className="text-base font-bold text-gray-900 mt-2 hover:text-primary-600 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        {/* Process Type & Cycle Code Badges */}
+                        <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                          <span className="text-xs font-semibold text-primary-700 bg-primary-50 px-2 py-0.5 rounded">
+                            {PROCESS_TYPE_LABELS[cycle.processType] || cycle.processType}
+                          </span>
+
+                          {/* Monospace CycleCode Badge with copy button */}
+                          <div
+                            onClick={(e) => copyCycleCode(displayCode, e)}
+                            title="کلیک جهت کپی شناسه یکتای دوره"
+                            className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-100 px-2 py-0.5 rounded font-mono text-[11px] font-semibold tracking-wider transition-colors border border-slate-700 cursor-pointer select-none"
+                          >
+                            <Hash className="w-3 h-3 text-amber-400" />
+                            <span>{displayCode}</span>
+                            {isCopied ? (
+                              <Check className="w-3 h-3 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3 h-3 text-slate-400 group-hover:text-slate-200" />
+                            )}
+                          </div>
+                        </div>
+
+                        <h3 className="text-base font-bold text-gray-900 mt-1 hover:text-primary-600 transition-colors line-clamp-2">
                           {cycle.title}
                         </h3>
                       </div>
                       <span
-                        className={`text-xs font-medium px-2.5 py-1 rounded-full border ${statusInfo.color}`}
+                        className={`text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 ${statusInfo.color}`}
                       >
                         {statusInfo.label}
                       </span>
@@ -379,6 +769,9 @@ export default function PayrollCyclesPage() {
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-gray-400" />
                         <span>تاریخ ثبت: {new Date(cycle.createdAt).toLocaleDateString('fa-IR')}</span>
+                        {cycle.createdByUsername && (
+                          <span className="text-gray-400">({cycle.createdByUsername})</span>
+                        )}
                       </div>
                       {cycle.deadline && (
                         <div className="flex items-center gap-1.5 text-amber-600 font-medium">
@@ -532,6 +925,39 @@ export default function PayrollCyclesPage() {
                     onChange={(val) => setDeadline(val)}
                     placeholder="مثال: ۱۴۰۵/۰۶/۱۵"
                   />
+                </div>
+
+                {/* Unique CycleCode Live Preview & Duplicate Detection */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Hash className="w-4 h-4 text-primary-600" />
+                      <span className="text-xs font-semibold text-slate-700">شناسه یکتای سیستمی دوره (Cycle Code):</span>
+                    </div>
+                    <span className="font-mono text-xs font-bold px-2.5 py-1 bg-slate-900 text-amber-400 rounded-md border border-slate-700 tracking-wider shadow-xs self-start sm:self-auto">
+                      {modalPreviewCode}
+                    </span>
+                  </div>
+
+                  {samePeriodExistingCycles.length > 0 ? (
+                    <div className="text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-lg p-3 flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="leading-relaxed">
+                        <span className="font-bold">ثبت دوره تکمیلی/مجدد برای این ماه:</span> قبلاً برای این ماه و نوع فرآیند،{' '}
+                        <strong>{samePeriodExistingCycles.length} دوره</strong> در سیستم ثبت شده است (
+                        <span className="font-mono font-semibold">
+                          {samePeriodExistingCycles.map((c) => c.cycleCode || c.title).join(', ')}
+                        </span>
+                        ). دوره جدید به صورت خودکار با پیشوند نسخه{' '}
+                        <strong className="font-mono text-amber-800">{modalPreviewCode}</strong> (نسخه شماره{' '}
+                        {samePeriodExistingCycles.length + 1}) ثبت و متمایز می‌گردد.
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      این شناسه به صورت هوشمند و یکتا جهت رهگیری کاربرگ‌ها، جستجوی تفکیکی و بایگانی سیستمی اختصاص می‌یابد.
+                    </p>
+                  )}
                 </div>
 
                 {/* File Uploaders */}

@@ -6,6 +6,7 @@ namespace TaxSummary.Domain.Entities;
 public class PayrollCycle
 {
     public Guid Id { get; private set; }
+    public string CycleCode { get; private set; } = string.Empty;
     public string Title { get; private set; } = string.Empty;
     public string ProcessType { get; private set; } = string.Empty;
     public int FiscalYear { get; private set; }
@@ -33,7 +34,8 @@ public class PayrollCycle
         int fiscalMonth,
         Guid createdByUserId,
         DateTime? deadline = null,
-        string? notes = null)
+        string? notes = null,
+        string? cycleCode = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("عنوان دوره نمی‌تواند خالی باشد", nameof(title));
@@ -44,6 +46,7 @@ public class PayrollCycle
         return new PayrollCycle
         {
             Id = Guid.NewGuid(),
+            CycleCode = cycleCode?.Trim() ?? string.Empty,
             Title = title.Trim(),
             ProcessType = processType.Trim(),
             FiscalYear = fiscalYear,
@@ -55,6 +58,12 @@ public class PayrollCycle
             CreatedAt = now,
             UpdatedAt = now
         };
+    }
+
+    public void SetCycleCode(string cycleCode)
+    {
+        CycleCode = cycleCode?.Trim() ?? string.Empty;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void UpdateStatus(string status)

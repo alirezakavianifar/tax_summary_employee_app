@@ -2,6 +2,7 @@ import { apiClient } from './client'
 
 export interface PayrollCycleSummaryDto {
   id: string
+  cycleCode: string
   title: string
   processType: string
   fiscalYear: number
@@ -17,6 +18,16 @@ export interface PayrollCycleSummaryDto {
   totalOvertimeAmount: number
   totalWelfareAmount: number
   totalBonusAmount: number
+}
+
+export interface PayrollCycleFilters {
+  searchTerm?: string
+  fiscalYear?: number
+  fiscalMonth?: number
+  processType?: string
+  status?: string
+  sortBy?: string
+  sortDescending?: boolean
 }
 
 export interface PayrollDepartmentEntrySummaryDto {
@@ -46,6 +57,7 @@ export interface PayrollDepartmentEntrySummaryDto {
 
 export interface PayrollCycleDetailDto {
   id: string
+  cycleCode: string
   title: string
   processType: string
   fiscalYear: number
@@ -166,8 +178,20 @@ export const payrollCyclesApi = {
     return response.data
   },
 
-  getCycles: async (): Promise<PayrollCycleSummaryDto[]> => {
-    const response = await apiClient.get<PayrollCycleSummaryDto[]>(CYCLES_BASE)
+  getCycles: async (filters?: PayrollCycleFilters): Promise<PayrollCycleSummaryDto[]> => {
+    const params = new URLSearchParams()
+    if (filters) {
+      if (filters.searchTerm) params.append('searchTerm', filters.searchTerm)
+      if (filters.fiscalYear) params.append('fiscalYear', filters.fiscalYear.toString())
+      if (filters.fiscalMonth) params.append('fiscalMonth', filters.fiscalMonth.toString())
+      if (filters.processType && filters.processType !== 'ALL') params.append('processType', filters.processType)
+      if (filters.status && filters.status !== 'ALL') params.append('status', filters.status)
+      if (filters.sortBy) params.append('sortBy', filters.sortBy)
+      if (filters.sortDescending !== undefined) params.append('sortDescending', filters.sortDescending.toString())
+    }
+    const queryString = params.toString()
+    const url = queryString ? `${CYCLES_BASE}?${queryString}` : CYCLES_BASE
+    const response = await apiClient.get<PayrollCycleSummaryDto[]>(url)
     return response.data
   },
 

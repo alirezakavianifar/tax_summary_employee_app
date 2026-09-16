@@ -95,13 +95,15 @@ public class PayrollCyclesController : ControllerBase
     }
 
     /// <summary>
-    /// Get list of all payroll cycles
+    /// Get list of all payroll cycles with optional search and filtering
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<PayrollCycleSummaryDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<PayrollCycleSummaryDto>>> GetCycles(CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<PayrollCycleSummaryDto>>> GetCycles(
+        [FromQuery] PayrollCycleFilterDto? filter,
+        CancellationToken cancellationToken)
     {
-        var list = await _cycleService.GetCyclesAsync(cancellationToken);
+        var list = await _cycleService.GetCyclesAsync(filter, cancellationToken);
         return Ok(list);
     }
 

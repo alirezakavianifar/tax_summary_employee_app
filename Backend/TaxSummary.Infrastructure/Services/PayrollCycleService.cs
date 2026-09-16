@@ -51,7 +51,18 @@ public class PayrollCycleService : IPayrollCycleService
         Stream? nim,
         CancellationToken cancellationToken = default)
     {
-        var cycle = PayrollCycle.Create(title, processType, fiscalYear, fiscalMonth, userId, deadline, notes);
+        string prefix = processType switch
+        {
+            "OvertimeWelfareRated" => "OWR",
+            "OvertimeWelfareMonetary" => "OWM",
+            "HalfPercentBonus" => "HPB",
+            _ => "GEN"
+        };
+        int existingCount = await _cycleRepository.GetCountForPeriodAsync(fiscalYear, fiscalMonth, processType, cancellationToken);
+        int sequence = existingCount + 1;
+        string cycleCode = $"PAY-{fiscalYear}{fiscalMonth:D2}-{prefix}-{sequence:D2}";
+
+        var cycle = PayrollCycle.Create(title, processType, fiscalYear, fiscalMonth, userId, deadline, notes, cycleCode);
 
         // Parse files based on process type
         var deptRows = deptMapping != null ? ReadExcel(deptMapping) : new List<IDictionary<string, object>>();
@@ -361,8 +372,28 @@ public class PayrollCycleService : IPayrollCycleService
         return MapToSummary(cycle);
     }
 
-    public async Task<IEnumerable<PayrollCycleSummaryDto>> GetCyclesAsync(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<PayrollCycleSummaryDto>> GetCyclesAsync(PayrollCycleFilterDto? filter = null, CancellationToken cancellationToken = default)
     {
+        if (filter != null && (
+            !string.IsNullOrWhiteSpace(filter.SearchTerm) ||
+            filter.FiscalYear.HasValue ||
+            filter.FiscalMonth.HasValue ||
+            !string.IsNullOrWhiteSpace(filter.ProcessType) ||
+            !string.IsNullOrWhiteSpace(filter.Status) ||
+            !string.IsNullOrWhiteSpace(filter.SortBy)))
+        {
+            var filtered = await _cycleRepository.GetFilteredCyclesAsync(
+                filter.SearchTerm,
+                filter.FiscalYear,
+                filter.FiscalMonth,
+                filter.ProcessType,
+                filter.Status,
+                filter.SortBy,
+                filter.SortDescending,
+                cancellationToken);
+            return filtered.Select(MapToSummary);
+        }
+
         var cycles = await _cycleRepository.GetCyclesAsync(cancellationToken);
         return cycles.Select(MapToSummary);
     }
@@ -392,6 +423,7 @@ public class PayrollCycleService : IPayrollCycleService
         return new PayrollCycleDetailDto
         {
             Id = cycle.Id,
+            CycleCode = cycle.CycleCode,
             Title = cycle.Title,
             ProcessType = cycle.ProcessType,
             FiscalYear = cycle.FiscalYear,
@@ -840,6 +872,7 @@ public class PayrollCycleService : IPayrollCycleService
         return new PayrollCycleSummaryDto
         {
             Id = c.Id,
+            CycleCode = c.CycleCode,
             Title = c.Title,
             ProcessType = c.ProcessType,
             FiscalYear = c.FiscalYear,
