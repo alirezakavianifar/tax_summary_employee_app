@@ -19,8 +19,11 @@ import {
   Scale,
   ArrowRight,
   RotateCcw,
+  Sparkles,
 } from 'lucide-react'
 import { taxRefundApi } from '@/lib/api/taxRefund'
+import { taxSourcesApi } from '@/lib/api/taxSources'
+import { finalityStagesApi } from '@/lib/api/finalityStages'
 import {
   TaxRefundCase,
   TaxSourceType,
@@ -83,13 +86,27 @@ export default function EditTaxRefundCasePage() {
   const [shebaNumber, setShebaNumber] = useState('')
   const [taxYear, setTaxYear] = useState<number | ''>(1402)
   const [period, setPeriod] = useState<number>(1)
-  const [taxSource, setTaxSource] = useState<TaxSourceType>(TaxSourceType.CorporateIncome)
+  const [taxSource, setTaxSource] = useState<number>(TaxSourceType.CorporateIncome)
+  const [dynamicSources, setDynamicSources] = useState<{ id: number; title: string }[]>([])
   const [refundReason, setRefundReason] = useState('')
   const [docketNumber, setDocketNumber] = useState('')
-  const [directorGeneralName, setDirectorGeneralName] = useState('')
+  const [directorGeneralName, setDirectorGeneralName] = useState('علی خورشیدی')
   const [adminHeadName, setAdminHeadName] = useState('')
   const [groupHeadName, setGroupHeadName] = useState('')
   const [seniorAuditorName, setSeniorAuditorName] = useState('')
+  const [loadingOfficers, setLoadingOfficers] = useState(false)
+
+  // Load dynamic active tax sources
+  useEffect(() => {
+    taxSourcesApi
+      .getActiveSources()
+      .then((items) => {
+        if (items && items.length > 0) {
+          setDynamicSources(items.map((x) => ({ id: x.id, title: x.title })))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   // Step 2: Table A Receipts
   const [receipts, setReceipts] = useState<ReceiptItem[]>([])
@@ -105,6 +122,19 @@ export default function EditTaxRefundCasePage() {
   const [returnDateJalali, setReturnDateJalali] = useState('')
   const [finalizationMethod, setFinalizationMethod] = useState<FinalizationMethod>(FinalizationMethod.AliRas)
   const [finalityStage, setFinalityStage] = useState<FinalityStage>(FinalityStage.Tamkin)
+  const [dynamicFinalityStages, setDynamicFinalityStages] = useState<{ id: number; title: string }[]>([])
+
+  // Load dynamic active finality stages
+  useEffect(() => {
+    finalityStagesApi
+      .getActiveStages()
+      .then((items) => {
+        if (items && items.length > 0) {
+          setDynamicFinalityStages(items.map((x) => ({ id: x.id, title: x.title })))
+        }
+      })
+      .catch(() => {})
+  }, [])
   const [finalNoticeNumber, setFinalNoticeNumber] = useState('')
   const [finalNoticeDateJalali, setFinalNoticeDateJalali] = useState('')
   const [assessedIncomeStr, setAssessedIncomeStr] = useState('')
@@ -146,7 +176,7 @@ export default function EditTaxRefundCasePage() {
         setTaxSource(data.taxSource || TaxSourceType.CorporateIncome)
         setRefundReason(data.refundReason || '')
         setDocketNumber(data.docketNumber || '')
-        setDirectorGeneralName(data.directorGeneralName || '')
+        setDirectorGeneralName(data.directorGeneralName || 'علی خورشیدی')
         setAdminHeadName(data.administrationHeadName || '')
         setGroupHeadName(data.groupHeadName || '')
         setSeniorAuditorName(data.seniorAuditorName || '')
@@ -238,6 +268,23 @@ export default function EditTaxRefundCasePage() {
         setLoading(false)
       }
     }
+
+  const fetchPresidingOfficers = async (unitCode?: string) => {
+    try {
+      setLoadingOfficers(true)
+      const data = await taxRefundApi.getPresidingOfficers(unitCode)
+      if (data) {
+        if (data.directorGeneralName) setDirectorGeneralName(data.directorGeneralName)
+        if (data.administrationHeadName) setAdminHeadName(data.administrationHeadName)
+        if (data.groupHeadName) setGroupHeadName(data.groupHeadName)
+        if (data.seniorAuditorName) setSeniorAuditorName(data.seniorAuditorName)
+      }
+    } catch (err) {
+      console.warn('Failed to fetch presiding officers in edit page', err)
+    } finally {
+      setLoadingOfficers(false)
+    }
+  }
 
   useEffect(() => {
     if (caseId) {
@@ -781,12 +828,18 @@ export default function EditTaxRefundCasePage() {
                       <label className="block text-gray-700 font-bold mb-1">منبع مالیات *</label>
                       <select
                         value={taxSource}
-                        onChange={(e) => setTaxSource(Number(e.target.value) as TaxSourceType)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-xl"
+                        onChange={(e) => setTaxSource(Number(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                       >
-                        {Object.entries(TaxSourceLabels).map(([val, label]) => (
-                          <option key={val} value={val}>
-                            {label}
+                        {(dynamicSources.length > 0
+                          ? dynamicSources
+                          : Object.entries(TaxSourceLabels).map(([val, label]) => ({
+                              id: Number(val),
+                              title: label,
+                            }))
+                        ).map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.title}
                           </option>
                         ))}
                       </select>
@@ -957,49 +1010,78 @@ export default function EditTaxRefundCasePage() {
 
                   {/* Presiding Officers */}
                   <div className="border-t border-gray-200 pt-4 mt-4">
-                    <h4 className="text-xs font-bold text-gray-700 mb-3">مقامات مسئول پرونده:</h4>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-gray-800">مقامات مسئول پرونده:</h4>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-full">
+                          <Sparkles className="w-3 h-3 text-purple-600" />
+                          تکمیل خودکار بر اساس سلسله‌مراتب سازمانی
+                        </span>
+                      </div>
+                      {!isLocked && (
+                        <button
+                          type="button"
+                          onClick={() => fetchPresidingOfficers(taxUnitCode)}
+                          disabled={loadingOfficers}
+                          className="text-[11px] font-semibold text-gray-600 hover:text-purple-700 bg-gray-100 hover:bg-purple-50 px-2.5 py-1 rounded-lg border border-gray-200 hover:border-purple-200 transition-colors flex items-center gap-1.5"
+                          title="بروزرسانی مجدد مقامات بر اساس ساختار سازمانی واحد مالیاتی"
+                        >
+                          <RotateCcw className={`w-3 h-3 ${loadingOfficers ? 'animate-spin text-purple-600' : ''}`} />
+                          {loadingOfficers ? 'در حال دریافت...' : 'بازنشانی خودکار'}
+                        </button>
+                      )}
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                       <div>
-                        <label className="block text-gray-500 mb-1">مدیر کل امور مالیاتی</label>
+                        <label className="block text-gray-600 font-medium mb-1">
+                          مدیر کل امور مالیاتی <span className="text-[10px] text-gray-400">(مشترک استان)</span>
+                        </label>
                         <input
                           type="text"
                           value={directorGeneralName}
                           onChange={(e) => setDirectorGeneralName(e.target.value)}
                           placeholder="پیش‌فرض: علی خورشیدی"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-gray-50/50"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-gray-50/50 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                           disabled={isLocked}
                         />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">رئیس امور مالیاتی *</label>
+                        <label className="block text-gray-600 font-medium mb-1">
+                          رئیس امور مالیاتی * <span className="text-[10px] text-gray-400">(سطح ۱ اداره)</span>
+                        </label>
                         <input
                           type="text"
                           value={adminHeadName}
                           onChange={(e) => setAdminHeadName(e.target.value)}
                           placeholder="نام و نام خانوادگی"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-xl"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                           disabled={isLocked}
                         />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">رئیس گروه مالیاتی *</label>
+                        <label className="block text-gray-600 font-medium mb-1">
+                          رئیس گروه مالیاتی * <span className="text-[10px] text-gray-400">(سطح ۲ گروه)</span>
+                        </label>
                         <input
                           type="text"
                           value={groupHeadName}
                           onChange={(e) => setGroupHeadName(e.target.value)}
                           placeholder="نام و نام خانوادگی"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-xl"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                           disabled={isLocked}
                         />
                       </div>
                       <div>
-                        <label className="block text-gray-500 mb-1">کارشناس ارشد مالیاتی *</label>
+                        <label className="block text-gray-600 font-medium mb-1">
+                          کارشناس ارشد مالیاتی * <span className="text-[10px] text-gray-400">(کاربر رسیدگی‌کننده)</span>
+                        </label>
                         <input
                           type="text"
                           value={seniorAuditorName}
                           onChange={(e) => setSeniorAuditorName(e.target.value)}
                           placeholder="نام و نام خانوادگی"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-xl"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                           disabled={isLocked}
                         />
                       </div>
@@ -1065,11 +1147,17 @@ export default function EditTaxRefundCasePage() {
                       <select
                         value={finalityStage}
                         onChange={(e) => setFinalityStage(Number(e.target.value) as FinalityStage)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-xl"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                       >
-                        {Object.entries(FinalityStageLabels).map(([val, label]) => (
-                          <option key={val} value={val}>
-                            {label}
+                        {(dynamicFinalityStages.length > 0
+                          ? dynamicFinalityStages
+                          : Object.entries(FinalityStageLabels).map(([key, label]) => ({
+                              id: Number(key),
+                              title: label,
+                            }))
+                        ).map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.title}
                           </option>
                         ))}
                       </select>

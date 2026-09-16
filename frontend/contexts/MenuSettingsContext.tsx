@@ -50,6 +50,10 @@ const ACTION_ROUTE_MAP: Record<string, string> = {
   '/admin/users': 'action_admin_users',
   '/admin/roles': 'action_admin_roles',
   '/admin/menu-settings': 'action_admin_menus',
+  '/admin/tax-sources': 'action_admin_tax_sources',
+  'action_admin_tax_sources': 'action_admin_tax_sources',
+  '/admin/finality-stages': 'action_admin_finality_stages',
+  'action_admin_finality_stages': 'action_admin_finality_stages',
 }
 
 const MenuSettingsContext = createContext<MenuSettingsContextType | undefined>(undefined)

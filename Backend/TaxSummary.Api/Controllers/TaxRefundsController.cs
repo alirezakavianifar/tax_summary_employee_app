@@ -57,6 +57,24 @@ public class TaxRefundsController : ControllerBase
     }
 
     /// <summary>
+    /// Retrieve default or hierarchical presiding officers for the current user and tax unit
+    /// دریافت مشخصات مقامات مسئول پرونده بر اساس کاربر جاری و واحد مالیاتی
+    /// </summary>
+    [HttpGet("presiding-officers")]
+    [ProducesResponseType(typeof(PresidingOfficersDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PresidingOfficersDto>> GetPresidingOfficers(
+        [FromQuery] string? taxUnitCode,
+        CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        var result = await _refundService.GetPresidingOfficersAsync(userId, taxUnitCode, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
     /// Retrieve paginated or filtered list of tax refund cases
     /// دریافت فهرست پرونده‌های استرداد همراه با فیلتر سال، منبع، وضعیت و جستجو
     /// </summary>

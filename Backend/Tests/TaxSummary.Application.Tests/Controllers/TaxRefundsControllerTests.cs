@@ -261,4 +261,30 @@ public class TaxRefundsControllerTests
         Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileResult.ContentType);
         Assert.Equal(mockBytes, fileResult.FileContents);
     }
+
+    [Fact]
+    public async Task GetPresidingOfficers_ReturnsOkWithOfficers()
+    {
+        // Arrange
+        var expected = new PresidingOfficersDto
+        {
+            DirectorGeneralName = "علی خورشیدی",
+            AdministrationHeadName = "غلامرضا اسلامی",
+            GroupHeadName = "مسعود بصیر",
+            SeniorAuditorName = "مهدی دلفی"
+        };
+
+        _mockService.Setup(s => s.GetPresidingOfficersAsync(It.IsAny<Guid>(), "160211", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(expected));
+
+        // Act
+        var result = await _controller.GetPresidingOfficers("160211", CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var value = Assert.IsType<PresidingOfficersDto>(okResult.Value);
+        Assert.Equal("علی خورشیدی", value.DirectorGeneralName);
+        Assert.Equal("مهدی دلفی", value.SeniorAuditorName);
+    }
 }
+

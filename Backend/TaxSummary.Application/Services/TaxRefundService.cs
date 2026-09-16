@@ -1485,4 +1485,136 @@ public class TaxRefundService : ITaxRefundService
 
         return "علی خورشیدی"; // Default fallback
     }
+
+    public async Task<Result<PresidingOfficersDto>> GetPresidingOfficersAsync(
+        Guid currentUserId,
+        string? taxUnitCode = null,
+        CancellationToken ct = default)
+    {
+        var result = new PresidingOfficersDto();
+
+        // 1. Director General (مدیر کل امور مالیاتی استان) - shared across the entire province
+        result.DirectorGeneralName = await GetCurrentDirectorGeneralNameAsync(ct);
+
+        // 2. Senior Auditor (کارشناس ارشد مالیاتی) - typically the logged-in user creating the case
+        var currentUserResult = await _userRepository.GetByIdAsync(currentUserId, ct);
+        User? currentUser = currentUserResult.IsSuccess ? currentUserResult.Value : null;
+
+        if (currentUser != null)
+        {
+            if (currentUser.Employee != null && (!string.IsNullOrWhiteSpace(currentUser.Employee.FirstName) || !string.IsNullOrWhiteSpace(currentUser.Employee.LastName)))
+            {
+                result.SeniorAuditorName = $"{currentUser.Employee.FirstName} {currentUser.Employee.LastName}".Trim();
+            }
+            else if (!string.IsNullOrWhiteSpace(currentUser.Username))
+            {
+                result.SeniorAuditorName = currentUser.Username;
+            }
+        }
+
+        // Infer tax unit code if not provided
+        var effectiveUnitCode = taxUnitCode?.Trim();
+        if (string.IsNullOrWhiteSpace(effectiveUnitCode) && currentUser != null)
+        {
+            if (!string.IsNullOrWhiteSpace(currentUser.Employee?.ServiceUnit))
+            {
+                effectiveUnitCode = currentUser.Employee.ServiceUnit.Trim();
+                result.InferredTaxUnitCode = effectiveUnitCode;
+            }
+            else if (currentUser.UserOffices != null && currentUser.UserOffices.Any())
+            {
+                var officeCode = currentUser.UserOffices.First().Office?.Code;
+                if (!string.IsNullOrWhiteSpace(officeCode))
+                {
+                    effectiveUnitCode = officeCode.Trim();
+                    result.InferredTaxUnitCode = effectiveUnitCode;
+                }
+            }
+        }
+
+        var hierarchy = !string.IsNullOrWhiteSpace(effectiveUnitCode)
+            ? Domain.ValueObjects.TaxHierarchy.Decompose(effectiveUnitCode)
+            : null;
+
+        // 3. Resolve Group Head (رئیس گروه مالیاتی)
+        try
+        {
+            var groupHeadResult = await _userRepository.GetPagedAsync(role: "GroupHead", pageSize: 50, cancellationToken: ct);
+            if (groupHeadResult.IsSuccess && groupHeadResult.Value.Items.Any())
+            {
+                var groupHeads = groupHeadResult.Value.Items.ToList();
+                User? matchedGroupHead = null;
+
+                if (hierarchy != null && hierarchy.IsValid)
+                {
+                    matchedGroupHead = groupHeads.FirstOrDefault(gh => gh.HasAccessToTaxHierarchy(hierarchy.GroupCode));
+                }
+
+                matchedGroupHead ??= groupHeads.FirstOrDefault();
+
+                if (matchedGroupHead != null)
+                {
+                    if (matchedGroupHead.Employee != null && (!string.IsNullOrWhiteSpace(matchedGroupHead.Employee.FirstName) || !string.IsNullOrWhiteSpace(matchedGroupHead.Employee.LastName)))
+                    {
+                        result.GroupHeadName = $"{matchedGroupHead.Employee.FirstName} {matchedGroupHead.Employee.LastName}".Trim();
+                    }
+                    else if (!string.IsNullOrWhiteSpace(matchedGroupHead.Username))
+                    {
+                        result.GroupHeadName = matchedGroupHead.Username;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to resolve GroupHead user for presiding officers");
+        }
+
+        // 4. Resolve Office Head (رئیس امور / رئیس اداره مالیاتی)
+        try
+        {
+            var officeHeadResult = await _userRepository.GetPagedAsync(role: "OfficeHead", pageSize: 50, cancellationToken: ct);
+            if (officeHeadResult.IsSuccess && officeHeadResult.Value.Items.Any())
+            {
+                var officeHeads = officeHeadResult.Value.Items.ToList();
+                User? matchedOfficeHead = null;
+
+                if (hierarchy != null)
+                {
+                    matchedOfficeHead = officeHeads.FirstOrDefault(oh => oh.HasAccessToTaxHierarchy(hierarchy.OfficeCode));
+                }
+
+                matchedOfficeHead ??= officeHeads.FirstOrDefault();
+
+                if (matchedOfficeHead != null)
+                {
+                    if (matchedOfficeHead.Employee != null && (!string.IsNullOrWhiteSpace(matchedOfficeHead.Employee.FirstName) || !string.IsNullOrWhiteSpace(matchedOfficeHead.Employee.LastName)))
+                    {
+                        result.AdministrationHeadName = $"{matchedOfficeHead.Employee.FirstName} {matchedOfficeHead.Employee.LastName}".Trim();
+                    }
+                    else if (!string.IsNullOrWhiteSpace(matchedOfficeHead.Username))
+                    {
+                        result.AdministrationHeadName = matchedOfficeHead.Username;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to resolve OfficeHead user for presiding officers");
+        }
+
+        // Standard Ahvaz defaults if roles have no users assigned in DB yet
+        if (string.IsNullOrWhiteSpace(result.GroupHeadName))
+        {
+            result.GroupHeadName = "مسعود بصیر";
+        }
+
+        if (string.IsNullOrWhiteSpace(result.AdministrationHeadName))
+        {
+            result.AdministrationHeadName = "غلامرضا اسلامی";
+        }
+
+        return Result.Success(result);
+    }
 }

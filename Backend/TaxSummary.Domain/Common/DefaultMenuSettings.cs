@@ -41,7 +41,9 @@ public static class DefaultMenuSettings
             MenuSetting.Create("module_admin", "مدیریت سیستم", "/admin/users", null, "ShieldCheck", true, true, 5, "پنل راهبری و مدیریت سامانه (مخصوص مدیران)", null, AdminOnlyRoles),
             MenuSetting.Create("action_admin_users", "مدیریت کاربران", "/admin/users", "module_admin", "Users", true, true, 1, "تعریف کاربر، تغییر کلمه عبور و سطوح دسترسی", null, AdminOnlyRoles),
             MenuSetting.Create("action_admin_menus", "مدیریت منوها و دسترسی‌ها", "/admin/menu-settings", "module_admin", "Menu", true, true, 2, "پیکربندی نمایش و مخفی‌سازی گزینه‌های منو", null, AdminOnlyRoles),
-            MenuSetting.Create("action_admin_audit_logs", "لاگ‌ها و رویدادهای امنیتی", "/admin/audit-logs", "module_admin", "History", true, true, 3, "مشاهده و پایش تاریخچه تغییرات و رخدادهای امنیتی سامانه", null, AdminOnlyRoles)
+            MenuSetting.Create("action_admin_tax_sources", "مدیریت منابع مالیاتی", "/admin/tax-sources", "module_admin", "Coins", true, true, 3, "پیکربندی و تعریف منابع مالیاتی در پرونده‌های استرداد", null, AdminOnlyRoles),
+            MenuSetting.Create("action_admin_finality_stages", "مدیریت مراحل قطعیت", "/admin/finality-stages", "module_admin", "FileCheck", true, true, 4, "پیکربندی و تعریف مراحل قطعیت پرونده‌های استرداد", null, AdminOnlyRoles),
+            MenuSetting.Create("action_admin_audit_logs", "لاگ‌ها و رویدادهای امنیتی", "/admin/audit-logs", "module_admin", "History", true, true, 5, "مشاهده و پایش تاریخچه تغییرات و رخدادهای امنیتی سامانه", null, AdminOnlyRoles)
         };
     }
 }

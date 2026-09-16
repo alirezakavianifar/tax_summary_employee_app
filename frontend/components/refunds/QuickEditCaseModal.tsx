@@ -16,6 +16,7 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 import { taxRefundApi } from '@/lib/api/taxRefund'
+import { taxSourcesApi } from '@/lib/api/taxSources'
 import {
   TaxRefundCaseSummary,
   TaxSourceType,
@@ -63,6 +64,19 @@ export function QuickEditCaseModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [dynamicSources, setDynamicSources] = useState<{ id: number; title: string }[]>([])
+
+  // Load active sources
+  useEffect(() => {
+    taxSourcesApi
+      .getActiveSources()
+      .then((items) => {
+        if (items && items.length > 0) {
+          setDynamicSources(items.map((x) => ({ id: x.id, title: x.title })))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   // Pre-fill initial summary fields and fetch full case details
   useEffect(() => {
@@ -376,9 +390,15 @@ export function QuickEditCaseModal({
                   onChange={(e) => setFormData({ ...formData, taxSource: Number(e.target.value) as TaxSourceType })}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                 >
-                  {Object.entries(TaxSourceLabels).map(([val, label]) => (
-                    <option key={val} value={val}>
-                      {label}
+                  {(dynamicSources.length > 0
+                    ? dynamicSources
+                    : Object.entries(TaxSourceLabels).map(([val, label]) => ({
+                        id: Number(val),
+                        title: label,
+                      }))
+                  ).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.title}
                     </option>
                   ))}
                 </select>

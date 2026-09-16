@@ -41,6 +41,12 @@ public static class DbInitializer
         // Seed Menu & Module Visibility Settings
         await SeedMenuSettingsAsync(context);
 
+        // Seed Tax Sources
+        await SeedTaxSourcesAsync(context);
+
+        // Seed Finality Stages
+        await SeedFinalityStagesAsync(context);
+
         // Seed and synchronize Offices and UserOffices
         await SeedOfficesAndUserOfficesAsync(context);
 
@@ -665,6 +671,72 @@ public static class DbInitializer
             else
             {
                 existing.Update(def.Title, def.Description, existing.IsActive, def.Order);
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedTaxSourcesAsync(TaxSummaryDbContext context)
+    {
+        var defaultSources = new[]
+        {
+            (Id: 1, Code: "CorporateIncome", Title: "عملکرد اشخاص حقوقی (شرکت‌ها)", Description: "مالیات بر درآمد اشخاص حقوقی و شرکت‌ها موضوع فصل پنجم باب سوم قانون مالیات‌های مستقیم", DisplayOrder: 1),
+            (Id: 2, Code: "PersonalBusiness", Title: "عملکرد مشاغل و اشخاص حقیقی", Description: "مالیات بر درآمد مشاغل موضوع فصل چهارم باب سوم قانون مالیات‌های مستقیم", DisplayOrder: 2),
+            (Id: 3, Code: "SalaryPayroll", Title: "مالیات بر حقوق", Description: "مالیات بر درآمد حقوق موضوع فصل سوم باب سوم قانون مالیات‌های مستقیم", DisplayOrder: 3),
+            (Id: 4, Code: "ValueAddedTax", Title: "مالیات بر ارزش افزوده", Description: "مالیات و عوارض بر ارزش افزوده کالاها و خدمات", DisplayOrder: 4),
+            (Id: 5, Code: "PropertyRental", Title: "درآمد اجاره املاک", Description: "مالیات بر درآمد املاک و اجاره موضوع فصل اول باب سوم قانون مالیات‌های مستقیم", DisplayOrder: 5),
+            (Id: 6, Code: "PropertyTransfer", Title: "نقل و انتقال املاک", Description: "مالیات بر نقل و انتقال قطعی املاک و حق واگذاری موضوع ماده ۵۹", DisplayOrder: 6),
+            (Id: 7, Code: "Vehicles", Title: "مالیات بر خودرو", Description: "مالیات بر انواع خودروهای سواری و وانت دوکابین گران‌قیمت و نقل و انتقال", DisplayOrder: 7)
+        };
+
+        foreach (var def in defaultSources)
+        {
+            var existing = await context.TaxSources.FirstOrDefaultAsync(t => t.Id == def.Id);
+            if (existing == null)
+            {
+                await context.TaxSources.AddAsync(TaxSource.Create(
+                    id: def.Id,
+                    code: def.Code,
+                    title: def.Title,
+                    description: def.Description,
+                    isActive: true,
+                    displayOrder: def.DisplayOrder,
+                    isSystem: true));
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedFinalityStagesAsync(TaxSummaryDbContext context)
+    {
+        var defaultStages = new[]
+        {
+            (Id: 1, Code: "Tamkin", Title: "تمکین", Description: "تمکین مودی به برگ تشخیص مالیات ابلاغی موضوع ماده ۲۳۸ و ۲۳۹ ق.م.م", DisplayOrder: 1),
+            (Id: 2, Code: "Agreement", Title: "توافق", Description: "توافق با رئیس امور مالیاتی موضوع ماده ۲۳۸ قانون مالیات‌های مستقیم", DisplayOrder: 2),
+            (Id: 3, Code: "PrimaryBoard244", Title: "رای هیات بدوی ۲۴۴", Description: "صدور رای قطعی یا لازم‌الاجرا در هیات حل اختلاف مالیاتی بدوی موضوع ماده ۲۴۴", DisplayOrder: 3),
+            (Id: 4, Code: "AppellateBoard247", Title: "رای هیأت تجدیدنظر ۲۴۷", Description: "صدور رای قطعی در هیات حل اختلاف مالیاتی تجدیدنظر موضوع ماده ۲۴۷", DisplayOrder: 4),
+            (Id: 5, Code: "SupremeTaxCouncil251", Title: "شورای عالی مالیاتی ۲۵۱", Description: "رسیدگی و نقض یا تایید رای در شعب شورای عالی مالیاتی موضوع ماده ۲۵۱", DisplayOrder: 5),
+            (Id: 6, Code: "Board251Repeated", Title: "هیات ۲۵۱ مکرر", Description: "رسیدگی به ادعای غیرعادلانه بودن مالیات در هیات ماده ۲۵۱ مکرر به دستور وزیر امور اقتصادی و دارایی", DisplayOrder: 6),
+            (Id: 7, Code: "Board257", Title: "هیات ۲۵۷", Description: "رسیدگی مجدد در هیات حل اختلاف مالیاتی هم‌عرض موضوع ماده ۲۵۷", DisplayOrder: 7),
+            (Id: 8, Code: "Board216", Title: "هیات ۲۱۶", Description: "شکایت از اقدامات اجرایی وصول مالیات در هیات حل اختلاف مالیاتی موضوع ماده ۲۱۶", DisplayOrder: 8),
+            (Id: 9, Code: "ParallelBoard", Title: "هیات هم عرض", Description: "رسیدگی در هیات هم‌عرض پیرو احکام مراجع قضایی یا دیوان عدالت اداری", DisplayOrder: 9)
+        };
+
+        foreach (var def in defaultStages)
+        {
+            var existing = await context.FinalityStages.FirstOrDefaultAsync(t => t.Id == def.Id);
+            if (existing == null)
+            {
+                await context.FinalityStages.AddAsync(TaxFinalityStage.Create(
+                    id: def.Id,
+                    code: def.Code,
+                    title: def.Title,
+                    description: def.Description,
+                    isActive: true,
+                    displayOrder: def.DisplayOrder,
+                    isSystem: true));
             }
         }
 

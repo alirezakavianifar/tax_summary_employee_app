@@ -23,6 +23,7 @@ import {
   Pencil,
 } from 'lucide-react'
 import { taxRefundApi } from '@/lib/api/taxRefund'
+import { taxSourcesApi } from '@/lib/api/taxSources'
 import {
   TaxRefundCaseSummary,
   TaxSourceType,
@@ -48,9 +49,21 @@ export default function RefundsDashboardPage() {
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined)
-  const [selectedSource, setSelectedSource] = useState<TaxSourceType | undefined>(undefined)
+  const [selectedSource, setSelectedSource] = useState<number | undefined>(undefined)
   const [selectedStatus, setSelectedStatus] = useState<RefundCaseStatus | undefined>(undefined)
   const [selectedOfficeCode, setSelectedOfficeCode] = useState<string | undefined>(undefined)
+  const [dynamicSources, setDynamicSources] = useState<{ id: number; title: string }[]>([])
+
+  useEffect(() => {
+    taxSourcesApi
+      .getActiveSources()
+      .then((items) => {
+        if (items && items.length > 0) {
+          setDynamicSources(items.map((x) => ({ id: x.id, title: x.title })))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const fetchCases = async () => {
     try {
@@ -255,11 +268,17 @@ export default function RefundsDashboardPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs bg-white focus:ring-2 focus:ring-purple-500"
               >
                 <option value="">همه منابع مالیاتی</option>
-                <option value={TaxSourceType.CorporateIncome}>عملکرد اشخاص حقوقی</option>
-                <option value={TaxSourceType.PersonalBusiness}>عملکرد مشاغل</option>
-                <option value={TaxSourceType.SalaryPayroll}>مالیات حقوق</option>
-                <option value={TaxSourceType.ValueAddedTax}>ارزش افزوده</option>
-                <option value={TaxSourceType.PropertyRental}>درآمد املاک</option>
+                {(dynamicSources.length > 0
+                  ? dynamicSources
+                  : Object.entries(TaxSourceLabels).map(([key, label]) => ({
+                      id: Number(key),
+                      title: label,
+                    }))
+                ).map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
               </select>
             </div>
 

@@ -19,6 +19,7 @@ import type {
   JustificationReport,
   UpdateJustificationReportInput,
   FinalizeJustificationReportInput,
+  PresidingOfficers,
 } from '@/types/taxRefund'
 
 export const taxRefundApi = {
@@ -294,6 +295,16 @@ export const taxRefundApi = {
    */
   async finalizeJustificationReport(caseId: string, input?: FinalizeJustificationReportInput): Promise<JustificationReport> {
     const response = await apiClient.post<JustificationReport>(`/tax-refunds/${caseId}/justification-report/finalize`, input || {})
+    return response.data
+  },
+
+  /**
+   * Retrieve default or hierarchical presiding officers based on current user and tax unit
+   */
+  async getPresidingOfficers(taxUnitCode?: string): Promise<PresidingOfficers> {
+    const response = await apiClient.get<PresidingOfficers>('/tax-refunds/presiding-officers', {
+      params: { taxUnitCode: taxUnitCode || undefined },
+    })
     return response.data
   },
 }

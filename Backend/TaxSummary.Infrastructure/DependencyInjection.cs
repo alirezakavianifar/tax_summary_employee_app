@@ -91,6 +91,8 @@ public static class DependencyInjection
         services.AddScoped<IRefundDocumentStorageService, RefundDocumentStorageService>();
         services.AddScoped<ITaxRefundService, TaxRefundService>();
         services.AddScoped<ITaxRefundExcelService, TaxRefundExcelService>();
+        services.AddScoped<ITaxSourceService, TaxSourceService>();
+        services.AddScoped<IFinalityStageService, FinalityStageService>();
 
         // Register Menu Settings Services
         services.AddScoped<IMenuSettingsRepository, MenuSettingsRepository>();

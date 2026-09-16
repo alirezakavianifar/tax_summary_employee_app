@@ -505,3 +505,11 @@ export interface PrintableDocument {
   letters: TaxRefundLetter[]
   justificationReport?: JustificationReport
 }
+
+export interface PresidingOfficers {
+  directorGeneralName: string
+  administrationHeadName: string
+  groupHeadName: string
+  seniorAuditorName: string
+  inferredTaxUnitCode?: string
+}

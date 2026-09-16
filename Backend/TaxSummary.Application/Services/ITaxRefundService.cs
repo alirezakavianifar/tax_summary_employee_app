@@ -41,4 +41,6 @@ public interface ITaxRefundService
     Task<Result<JustificationReportDto>> GenerateDefaultDraftAsync(Guid caseId, CancellationToken ct = default);
     Task<Result<JustificationReportDto>> SaveJustificationReportAsync(Guid caseId, UpdateJustificationReportDto dto, Guid currentUserId, string currentUserName, CancellationToken ct = default);
     Task<Result<JustificationReportDto>> FinalizeJustificationReportAsync(Guid caseId, FinalizeJustificationReportDto dto, Guid currentUserId, string currentUserName, CancellationToken ct = default);
+
+    Task<Result<PresidingOfficersDto>> GetPresidingOfficersAsync(Guid currentUserId, string? taxUnitCode = null, CancellationToken ct = default);
 }

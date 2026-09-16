@@ -454,4 +454,34 @@ public class TaxRefundServiceTests
         Assert.False(result.IsSuccess);
         Assert.Contains("مجاز به تایید این پرونده", result.Error);
     }
+
+    [Fact]
+    public async Task GetPresidingOfficersAsync_ReturnsCurrentUserAsSeniorAuditorAndDefaultDirectorGeneral()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var auditorUser = User.Create("delfi", "delfi@tax.gov.ir", "hash", "Expert");
+        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TaxSummary.Domain.Common.Result.Success(auditorUser));
+
+        _mockUserRepo.Setup(r => r.GetPagedAsync(
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<Guid?>(),
+            It.IsAny<int>(),
+            It.IsAny<int>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TaxSummary.Domain.Common.Result.Success((Enumerable.Empty<User>(), 0)));
+
+        // Act
+        var result = await _service.GetPresidingOfficersAsync(userId, "160211");
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal("delfi", result.Value.SeniorAuditorName);
+        Assert.Equal("علی خورشیدی", result.Value.DirectorGeneralName);
+        Assert.Equal("مسعود بصیر", result.Value.GroupHeadName);
+        Assert.Equal("غلامرضا اسلامی", result.Value.AdministrationHeadName);
+    }
 }
+
