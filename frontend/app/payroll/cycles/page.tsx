@@ -29,6 +29,8 @@ import {
   ChevronRight,
   Upload,
   Sparkles,
+  Shield,
+  Lock,
 } from 'lucide-react'
 
 function formatNumber(v: number | null | undefined): string {
@@ -51,7 +53,7 @@ function getDefaultCycleTitle(processType: string, year: number, month: number):
 
 export default function PayrollCyclesPage() {
   const { user } = useAuth()
-  const { isActionVisible, isModuleVisible } = useMenuSettings()
+  const { isActionVisible, isModuleVisible, settings } = useMenuSettings()
   const router = useRouter()
   const [cycles, setCycles] = useState<PayrollCycleSummaryDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -217,14 +219,23 @@ export default function PayrollCyclesPage() {
   }
 
   const isAdmin = user?.role === 'Admin'
+
+  const cycleCreateSetting = useMemo(() => {
+    return settings.find((s) => s.menuKey.toLowerCase() === 'action_payroll_create_cycle')
+  }, [settings])
+
+  const isCreationSuspended = cycleCreateSetting?.isVisible === false
+
   const canCreateCycle =
+    !isCreationSuspended &&
+    (isAdmin ||
+      isActionVisible('action_payroll_create_cycle', 'module_payroll') ||
+      isActionVisible('/payroll/cycles/create', 'module_payroll'))
+
+  const canDeleteCycle =
     isAdmin ||
-    isActionVisible('action_payroll_create_cycle', 'module_payroll') ||
-    isActionVisible('/payroll/cycles/create', 'module_payroll')
-  const canManageCycles =
-    isAdmin ||
-    isActionVisible('action_payroll_cycles', 'module_payroll') ||
-    isActionVisible('/payroll/cycles', 'module_payroll')
+    isActionVisible('action_payroll_delete_cycle', 'module_payroll') ||
+    isActionVisible('/payroll/cycles/delete', 'module_payroll')
 
   return (
     <ProtectedRoute requiredModule="module_payroll">
@@ -241,7 +252,18 @@ export default function PayrollCyclesPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {isAdmin && (
+              <Link
+                href="/admin/menu-settings?highlight=action_payroll_create_cycle"
+                className="inline-flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-3 py-2 rounded-lg font-medium shadow-xs transition-colors text-xs"
+                title="پیکربندی دسترسی نقش‌ها به تعریف دوره جدید"
+              >
+                <Shield className="w-4 h-4 text-purple-600" />
+                <span>پیکربندی دسترسی</span>
+              </Link>
+            )}
+
             <Link
               href="/payroll/my-department"
               className="inline-flex items-center gap-2 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors text-sm"
@@ -261,6 +283,27 @@ export default function PayrollCyclesPage() {
             )}
           </div>
         </div>
+
+        {/* Administrative Period Creation Suspension Notice */}
+        {isCreationSuspended && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl flex items-center justify-between text-xs font-medium shadow-xs animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <span>
+                امکان تعریف دوره جدید در حال حاضر توسط مدیر ارشد غیرفعال (مسدود) شده است.
+                {isAdmin && ' (شما به عنوان مدیر ارشد می‌توانید از دکمه پیکربندی دسترسی، وضعیت را مجدداً فعال نمایید)'}
+              </span>
+            </div>
+            {isAdmin && (
+              <Link
+                href="/admin/menu-settings?highlight=action_payroll_create_cycle"
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors shrink-0 mr-3"
+              >
+                مدیریت و رفع مسدودی
+              </Link>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2 text-sm">
@@ -380,7 +423,7 @@ export default function PayrollCyclesPage() {
                       ورود به داشبورد و بازبینی <ChevronRight className="w-3.5 h-3.5" />
                     </span>
 
-                    {canManageCycles && (
+                    {canDeleteCycle && (
                       <button
                         onClick={(e) => handleDelete(cycle.id, e)}
                         className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"

@@ -249,7 +249,7 @@ public class PayrollCyclesController : ControllerBase
     /// Delete payroll cycle
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [RequireModuleAccess("action_payroll_cycles")]
+    [RequireModuleAccess("action_payroll_delete_cycle")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteCycle(Guid id, CancellationToken cancellationToken)
     {

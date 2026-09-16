@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, Suspense } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 import { menuSettingsApi } from '@/lib/api/menuSettings'
@@ -33,6 +34,7 @@ import {
   Building2,
   History,
   PlusCircle,
+  Trash2,
 } from 'lucide-react'
 
 // Helper icon resolver
@@ -49,6 +51,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Scale,
   ShieldCheck,
   Menu: Sliders,
+  Trash2,
 }
 
 interface RoleDef {
@@ -129,7 +132,9 @@ const getRoleLabel = (role: string): string => {
   }
 };
 
-export default function MenuSettingsAdminPage() {
+function MenuSettingsAdminContent() {
+  const searchParams = useSearchParams()
+  const highlightKey = searchParams?.get('highlight') || null
   const { refreshSettings } = useMenuSettings()
   const [items, setItems] = useState<MenuSettingItem[]>([])
   const [originalItems, setOriginalItems] = useState<MenuSettingItem[]>([])
@@ -162,6 +167,28 @@ export default function MenuSettingsAdminPage() {
   useEffect(() => {
     loadData()
   }, [])
+
+  // Auto-expand parent module and scroll to highlighted item if requested
+  useEffect(() => {
+    if (highlightKey && items.length > 0) {
+      const target = items.find(
+        (i) => i.menuKey.toLowerCase() === highlightKey.toLowerCase()
+      )
+      if (target?.parentKey) {
+        setCollapsedParents((prev) => ({
+          ...prev,
+          [target.parentKey!]: false,
+        }))
+      }
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`menu-item-${highlightKey.toLowerCase()}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 350)
+      return () => clearTimeout(timer)
+    }
+  }, [highlightKey, items])
 
   // Check if any changes are made
   const hasChanges = useMemo(() => {
@@ -858,12 +885,18 @@ export default function MenuSettingsAdminPage() {
                           {children.map((child) => {
                             const ChildIcon = ICON_MAP[child.iconName || ''] || FileText
                             const isChildInactive = !child.isVisible || isParentHidden
+                            const isHighlighted = Boolean(
+                              highlightKey && child.menuKey.toLowerCase() === highlightKey.toLowerCase()
+                            )
 
                             return (
                               <div
                                 key={child.id}
+                                id={`menu-item-${child.menuKey.toLowerCase()}`}
                                 className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                                  isChildInactive
+                                  isHighlighted
+                                    ? 'ring-2 ring-primary-500 bg-primary-50/30 border-primary-400 shadow-md'
+                                    : isChildInactive
                                     ? 'bg-gray-100/70 border-gray-200 text-gray-500'
                                     : child.adminOnly
                                     ? 'bg-white border-purple-200 shadow-xs'
@@ -873,7 +906,9 @@ export default function MenuSettingsAdminPage() {
                                 <div className="flex items-center gap-3 min-w-0">
                                   <div
                                     className={`p-2 rounded-lg flex-shrink-0 ${
-                                      isChildInactive
+                                      isHighlighted
+                                        ? 'bg-primary-600 text-white shadow-xs'
+                                        : isChildInactive
                                         ? 'bg-gray-200 text-gray-400'
                                         : child.adminOnly
                                         ? 'bg-purple-50 text-purple-600'
@@ -887,6 +922,11 @@ export default function MenuSettingsAdminPage() {
                                       <span className="text-xs font-bold text-gray-900 truncate block">
                                         {child.title}
                                       </span>
+                                      {isHighlighted && (
+                                        <span className="text-[9px] font-black text-white bg-primary-600 px-2 py-0.5 rounded-full shadow-xs animate-pulse">
+                                          تنظیم انتخابی
+                                        </span>
+                                      )}
                                       {child.adminOnly ? (
                                         <span className="text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
                                           فقط مدیر
@@ -906,9 +946,19 @@ export default function MenuSettingsAdminPage() {
                                         </div>
                                       )}
                                     </div>
-                                    <span className="text-[10px] text-gray-400 font-mono block truncate mt-0.5">
-                                      {child.route}
-                                    </span>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <span className="text-[10px] text-gray-400 font-mono block truncate">
+                                        {child.route}
+                                      </span>
+                                      {child.description && (
+                                        <>
+                                          <span className="text-gray-300 text-[10px]">•</span>
+                                          <span className="text-[10px] text-gray-500 truncate block" title={child.description}>
+                                            {child.description}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
 
@@ -1042,5 +1092,19 @@ export default function MenuSettingsAdminPage() {
         </div>
       </div>
     </ProtectedRoute>
+  )
+}
+
+export default function MenuSettingsAdminPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex justify-center items-center py-20">
+          <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <MenuSettingsAdminContent />
+    </Suspense>
   )
 }
