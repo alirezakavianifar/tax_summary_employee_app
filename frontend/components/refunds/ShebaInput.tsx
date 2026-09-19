@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { toEnglishDigits } from '@/lib/jalali'
+import { toEnglishDigits, handleNumericKeyDown, handleNumericBeforeInput } from '@/lib/jalali'
 
 interface ShebaInputProps {
   value: string
@@ -50,16 +50,19 @@ export default function ShebaInput({
   const handleDigitsChange = (newDigits: string) => {
     const cleaned = extractShebaDigits(newDigits)
     onChange(cleaned ? `IR${cleaned}` : '')
+    return cleaned
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleDigitsChange(e.target.value)
+    const cleaned = handleDigitsChange(e.target.value)
+    e.currentTarget.value = cleaned
   }
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault()
     const pastedText = e.clipboardData.getData('text')
-    handleDigitsChange(pastedText)
+    const cleaned = handleDigitsChange(pastedText)
+    e.currentTarget.value = cleaned
   }
 
   const handleClear = () => {
@@ -99,6 +102,8 @@ export default function ShebaInput({
           disabled={disabled}
           maxLength={24}
           value={digits}
+          onKeyDown={handleNumericKeyDown}
+          onBeforeInput={handleNumericBeforeInput}
           onChange={handleChange}
           onPaste={handlePaste}
           placeholder={placeholder}

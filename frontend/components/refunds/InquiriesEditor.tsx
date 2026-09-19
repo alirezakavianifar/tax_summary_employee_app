@@ -5,10 +5,16 @@ import { Mail, Plus, Trash2, ShieldAlert, CheckCircle, AlertCircle } from 'lucid
 import { TaxRefundLetterType, TaxRefundLetterTypeLabels } from '@/types/taxRefund'
 import {
   toEnglishDigits,
+  toPersianDigits,
   sanitizeNumericInput,
   formatJalaliDateMask,
   normalizeJalaliDateString,
   getTodayJalaliString,
+  handleDateKeyDown,
+  handleDateBeforeInput,
+  handleNumericKeyDown,
+  handleNumericBeforeInput,
+  validateJalaliDate,
 } from '@/lib/jalali'
 
 export interface LetterItem {
@@ -45,6 +51,7 @@ export default function InquiriesEditor({
   const [newYear, setNewYear] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [letterError, setLetterError] = useState<string | null>(null)
+  const [petitionDateError, setPetitionDateError] = useState<string | null>(null)
 
   const handleAddLetter = () => {
     setLetterError(null)
@@ -55,12 +62,12 @@ export default function InquiriesEditor({
 
     let normDate = newDate.trim()
     if (normDate) {
-      const parsed = normalizeJalaliDateString(normDate)
-      if (!parsed) {
-        setLetterError('فرمت تاریخ استعلام نامعتبر است. نمونه صحیح: ۱۴۰۳/۰۵/۰۱')
+      const chk = validateJalaliDate(normDate, { allowFuture: false })
+      if (!chk.isValid) {
+        setLetterError(chk.error || 'فرمت تاریخ استعلام نامعتبر است')
         return
       }
-      normDate = parsed
+      normDate = normalizeJalaliDateString(normDate)!
     }
 
     const parsedDebt = parseFloat(toEnglishDigits(newDebt).replace(/,/g, '')) || 0
@@ -86,7 +93,8 @@ export default function InquiriesEditor({
   }
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('fa-IR').format(Math.round(num))
+    if (num == null || isNaN(num)) return '۰'
+    return toPersianDigits(Math.round(num).toLocaleString('en-US'))
   }
 
   const totalDebts = letters.reduce((sum, l) => sum + (l.debtAmount || 0), 0)
@@ -125,7 +133,11 @@ export default function InquiriesEditor({
               {!disabled && (
                 <button
                   type="button"
-                  onClick={() => onPetitionChange(petitionNumber, getTodayJalaliString())}
+                  onClick={() => {
+                    const todayStr = getTodayJalaliString()
+                    onPetitionChange(petitionNumber, todayStr)
+                    setPetitionDateError(null)
+                  }}
                   className="text-[10px] text-purple-600 hover:text-purple-800 hover:underline cursor-pointer"
                   title="درج تاریخ امروز"
                 >
@@ -139,20 +151,45 @@ export default function InquiriesEditor({
               dir="ltr"
               value={petitionDate}
               disabled={disabled}
+              onKeyDown={handleDateKeyDown}
+              onBeforeInput={handleDateBeforeInput}
               onChange={(e) => {
                 const masked = formatJalaliDateMask(e.target.value)
+                e.currentTarget.value = masked
                 onPetitionChange(petitionNumber, masked)
+                if (petitionDateError) setPetitionDateError(null)
               }}
               onBlur={() => {
                 if (petitionDate.trim()) {
                   const norm = normalizeJalaliDateString(petitionDate)
-                  if (norm) onPetitionChange(petitionNumber, norm)
+                  if (norm) {
+                    onPetitionChange(petitionNumber, norm)
+                    const chk = validateJalaliDate(norm, { allowFuture: false })
+                    if (!chk.isValid) {
+                      setPetitionDateError(chk.error || 'تاریخ نامعتبر است')
+                    } else {
+                      setPetitionDateError(null)
+                    }
+                  } else {
+                    setPetitionDateError('تاریخ باید به فرمت کامل سال/ماه/روز باشد (مثال: ۱۴۰۳/۰۵/۰۱)')
+                  }
+                } else {
+                  setPetitionDateError(null)
                 }
               }}
-              placeholder="مثال: ۱۴۰۵/۰۱/۲۵"
+              placeholder="مثال: ۱۴۰۳/۰۱/۲۵"
               maxLength={10}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono text-center focus:ring-2 focus:ring-purple-500"
+              className={`w-full px-3 py-1.5 border rounded-lg text-xs font-mono text-center transition-colors ${
+                petitionDateError
+                  ? 'border-rose-500 bg-rose-50/40 text-rose-900 focus:ring-rose-500 focus:border-rose-500'
+                  : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
+              }`}
             />
+            {petitionDateError && (
+              <p className="text-[10px] text-rose-600 mt-1 font-medium leading-tight">
+                {petitionDateError}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -194,10 +231,12 @@ export default function InquiriesEditor({
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 items-start">
               {/* Type */}
               <div className="md:col-span-2">
-                <label className="block text-[11px] text-gray-600 font-medium mb-1">مرجع / نوع استعلام</label>
+                <div className="flex items-center justify-between mb-1.5 h-5">
+                  <label className="block text-[11px] text-gray-600 font-medium whitespace-nowrap">مرجع / نوع استعلام</label>
+                </div>
                 <select
                   value={newType}
                   onChange={(e) => setNewType(Number(e.target.value) as TaxRefundLetterType)}
@@ -226,7 +265,9 @@ export default function InquiriesEditor({
 
               {/* Number */}
               <div>
-                <label className="block text-[11px] text-gray-600 font-medium mb-1">شماره نامه</label>
+                <div className="flex items-center justify-between mb-1.5 h-5">
+                  <label className="block text-[11px] text-gray-600 font-medium whitespace-nowrap">شماره نامه</label>
+                </div>
                 <input
                   type="text"
                   value={newNumber}
@@ -241,12 +282,12 @@ export default function InquiriesEditor({
 
               {/* Date */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] text-gray-600 font-medium">تاریخ نامه</label>
+                <div className="flex items-center justify-between mb-1.5 h-5">
+                  <label className="block text-[11px] text-gray-600 font-medium whitespace-nowrap">تاریخ نامه</label>
                   <button
                     type="button"
                     onClick={() => setNewDate(getTodayJalaliString())}
-                    className="text-[10px] text-amber-700 hover:text-amber-900 hover:underline cursor-pointer"
+                    className="text-[10px] text-amber-700 hover:text-amber-900 hover:underline cursor-pointer whitespace-nowrap"
                     title="درج تاریخ امروز"
                   >
                     امروز
@@ -257,18 +298,31 @@ export default function InquiriesEditor({
                   inputMode="numeric"
                   dir="ltr"
                   value={newDate}
+                  onKeyDown={handleDateKeyDown}
+                  onBeforeInput={handleDateBeforeInput}
                   onChange={(e) => {
                     const masked = formatJalaliDateMask(e.target.value)
+                    e.currentTarget.value = masked
                     setNewDate(masked)
                     if (letterError) setLetterError(null)
                   }}
                   onBlur={() => {
                     if (newDate.trim()) {
                       const norm = normalizeJalaliDateString(newDate)
-                      if (norm) setNewDate(norm)
+                      if (norm) {
+                        setNewDate(norm)
+                        const chk = validateJalaliDate(norm, { allowFuture: false })
+                        if (!chk.isValid) {
+                          setLetterError(`تاریخ نامه: ${chk.error}`)
+                        } else {
+                          setLetterError(null)
+                        }
+                      } else {
+                        setLetterError('فرمت تاریخ استعلام نامعتبر است (مثال: ۱۴۰۳/۰۵/۰۱)')
+                      }
                     }
                   }}
-                  placeholder="۱۴۰۵/۰۲/۰۱"
+                  placeholder="۱۴۰۳/۰۲/۰۱"
                   maxLength={10}
                   className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono text-center"
                 />
@@ -276,28 +330,35 @@ export default function InquiriesEditor({
 
               {/* Debt */}
               <div>
-                <label className="block text-[11px] text-gray-600 font-medium mb-1">مبلغ بدهی (ریال)</label>
+                <div className="flex items-center justify-between mb-1.5 h-5">
+                  <label className="block text-[11px] text-gray-600 font-medium whitespace-nowrap">مبلغ بدهی (ریال)</label>
+                </div>
                 <input
                   type="text"
                   inputMode="numeric"
                   dir="ltr"
                   value={newDebt}
+                  onKeyDown={handleNumericKeyDown}
+                  onBeforeInput={handleNumericBeforeInput}
                   onChange={(e) => {
                     const val = sanitizeNumericInput(e.target.value, 18)
-                    setNewDebt(val ? Number(val).toLocaleString() : '0')
+                    const formatted = val ? Number(val).toLocaleString('en-US') : '0'
+                    e.currentTarget.value = formatted
+                    setNewDebt(formatted)
                     if (letterError) setLetterError(null)
                   }}
                   placeholder="۰"
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-left"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-left font-mono"
                 />
               </div>
 
               {/* Button */}
-              <div className="flex items-end">
+              <div className="flex flex-col justify-end">
+                <div className="h-5 mb-1.5 hidden md:block"></div>
                 <button
                   type="button"
                   onClick={handleAddLetter}
-                  className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <Plus className="w-4 h-4" />
                   ثبت استعلام

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { Sparkles, CheckCircle, AlertTriangle, Layers } from 'lucide-react'
-import { toEnglishDigits } from '@/lib/jalali'
+import { toEnglishDigits, toPersianDigits } from '@/lib/jalali'
 import type { ReceiptItem } from './ReceiptsTableEditor'
 
 export interface AllocationItem {
@@ -37,7 +37,8 @@ export default function TableBAllocationEditor({
   const initialPopulatedRef = useRef<boolean>(false)
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('fa-IR').format(Math.round(num))
+    if (num == null || isNaN(num)) return '۰'
+    return toPersianDigits(Math.round(num).toLocaleString('en-US'))
   }
 
   const totalAllocated = allocations.reduce((sum, a) => sum + (a.refundableAmount || 0), 0)

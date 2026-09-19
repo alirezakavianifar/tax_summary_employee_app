@@ -40,11 +40,26 @@ import ReceiptsTableEditor, { ReceiptItem } from '@/components/refunds/ReceiptsT
 import InquiriesEditor, { LetterItem } from '@/components/refunds/InquiriesEditor'
 import TableBAllocationEditor, { AllocationItem } from '@/components/refunds/TableBAllocationEditor'
 import ShebaInput from '@/components/refunds/ShebaInput'
+import CustomSelect from '@/components/CustomSelect'
 import { IRANIAN_PROVINCES, IRANIAN_BANKS } from '@/lib/iranData'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
 import { decomposeTaxUnitCode, isUserAuthorizedForUnit } from '@/lib/taxHierarchy'
-import { sanitizeNumericInput, formatJalaliDateMask, normalizeJalaliDateString } from '@/lib/jalali'
+import {
+  toPersianDigits,
+  sanitizeNumericInput,
+  formatJalaliDateMask,
+  normalizeJalaliDateString,
+  handleNumericKeyDown,
+  handleNumericBeforeInput,
+  handleDateKeyDown,
+  handleDateBeforeInput,
+  isValidShamsiYear,
+  sanitizeShamsiYearInput,
+  validateJalaliDate,
+  MIN_SHAMSI_YEAR,
+  MAX_SHAMSI_YEAR,
+} from '@/lib/jalali'
 
 const WIZARD_STEPS = [
   { id: 1, title: 'مشخصات عمومی و مودی', icon: Building },
@@ -61,25 +76,9 @@ export default function NewTaxRefundCasePage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [stepError, setStepError] = useState<string | null>(null)
-
-  const handleNumericKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (
-      e.key === 'Backspace' ||
-      e.key === 'Tab' ||
-      e.key === 'Delete' ||
-      e.key === 'ArrowLeft' ||
-      e.key === 'ArrowRight' ||
-      e.key === 'Home' ||
-      e.key === 'End' ||
-      e.ctrlKey ||
-      e.metaKey
-    ) {
-      return
-    }
-    if (!/^[0-9۰-۹٠-٩]$/.test(e.key)) {
-      e.preventDefault()
-    }
-  }
+  const [taxYearError, setTaxYearError] = useState<string | null>(null)
+  const [returnDateError, setReturnDateError] = useState<string | null>(null)
+  const [finalNoticeDateError, setFinalNoticeDateError] = useState<string | null>(null)
 
   // Step 1: General & Taxpayer Info
   const [taxpayerName, setTaxpayerName] = useState('')
@@ -259,6 +258,9 @@ export default function NewTaxRefundCasePage() {
   // Validation before advancing to next step
   const validateStep = (step: number): boolean => {
     setStepError(null)
+    setTaxYearError(null)
+    setReturnDateError(null)
+    setFinalNoticeDateError(null)
 
     if (step === 1) {
       if (!taxpayerName.trim()) {
@@ -269,8 +271,10 @@ export default function NewTaxRefundCasePage() {
         setStepError('شماره اقتصادی باید بین ۱۰ تا ۱۴ رقم باشد')
         return false
       }
-      if (!taxYear || Number(taxYear) < 1300 || Number(taxYear) > 1500) {
-        setStepError('سال استرداد باید بین ۱۳۰۰ تا ۱۵۰۰ باشد')
+      if (!taxYear || !isValidShamsiYear(taxYear)) {
+        const errMsg = `سال مالیاتی استرداد باید یک سال معتبر شمسی بین ${toPersianDigits(MIN_SHAMSI_YEAR)} تا ${toPersianDigits(MAX_SHAMSI_YEAR)} باشد`
+        setStepError(errMsg)
+        setTaxYearError(errMsg)
         return false
       }
       if (!taxUnitCode.trim()) {
@@ -337,9 +341,30 @@ export default function NewTaxRefundCasePage() {
         setStepError('تاریخ ثبت وارده درخواست مودی در دبیرخانه الزامی است')
         return false
       }
+      const petitionChk = validateJalaliDate(petitionDate, { allowFuture: false })
+      if (!petitionChk.isValid) {
+        setStepError(`تاریخ ثبت وارده درخواست مودی: ${petitionChk.error}`)
+        return false
+      }
     }
 
     if (step === 4) {
+      if (returnDateJalali.trim()) {
+        const rChk = validateJalaliDate(returnDateJalali, { allowFuture: false })
+        if (!rChk.isValid) {
+          setStepError(`تاریخ تسلیم اظهارنامه: ${rChk.error}`)
+          setReturnDateError(rChk.error || 'تاریخ تسلیم اظهارنامه نامعتبر است')
+          return false
+        }
+      }
+      if (finalNoticeDateJalali.trim()) {
+        const nChk = validateJalaliDate(finalNoticeDateJalali, { allowFuture: false })
+        if (!nChk.isValid) {
+          setStepError(`تاریخ ابلاغ برگ قطعی: ${nChk.error}`)
+          setFinalNoticeDateError(nChk.error || 'تاریخ ابلاغ برگ قطعی نامعتبر است')
+          return false
+        }
+      }
       if (assessedTax <= 0 && assessedIncome <= 0) {
         setStepError('مبلغ مالیات یا درآمد تشخیصی قطعی الزامی است')
         return false
@@ -486,7 +511,7 @@ export default function NewTaxRefundCasePage() {
   }
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('fa-IR').format(Math.round(num))
+    return toPersianDigits(new Intl.NumberFormat('fa-IR').format(Math.round(num)))
   }
 
   return (
@@ -583,7 +608,18 @@ export default function NewTaxRefundCasePage() {
                       dir="ltr"
                       value={economicCode}
                       onKeyDown={handleNumericKeyDown}
-                      onChange={(e) => setEconomicCode(sanitizeNumericInput(e.target.value, 14))}
+                      onBeforeInput={handleNumericBeforeInput}
+                      onPaste={(e) => {
+                        e.preventDefault()
+                        const val = sanitizeNumericInput(e.clipboardData.getData('text'), 14)
+                        e.currentTarget.value = val
+                        setEconomicCode(val)
+                      }}
+                      onChange={(e) => {
+                        const val = sanitizeNumericInput(e.target.value, 14)
+                        e.currentTarget.value = val
+                        setEconomicCode(val)
+                      }}
                       placeholder="مثال: ۴۱۱۳۹۵۷۶۸۵۳۱"
                       maxLength={14}
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-left focus:ring-2 focus:ring-purple-500"
@@ -600,7 +636,18 @@ export default function NewTaxRefundCasePage() {
                       dir="ltr"
                       value={nationalId}
                       onKeyDown={handleNumericKeyDown}
-                      onChange={(e) => setNationalId(sanitizeNumericInput(e.target.value, 11))}
+                      onBeforeInput={handleNumericBeforeInput}
+                      onPaste={(e) => {
+                        e.preventDefault()
+                        const val = sanitizeNumericInput(e.clipboardData.getData('text'), 11)
+                        e.currentTarget.value = val
+                        setNationalId(val)
+                      }}
+                      onChange={(e) => {
+                        const val = sanitizeNumericInput(e.target.value, 11)
+                        e.currentTarget.value = val
+                        setNationalId(val)
+                      }}
                       placeholder="مثال: ۱۰۱۰۲۳۴۵۶۷۸"
                       maxLength={11}
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-left"
@@ -617,7 +664,18 @@ export default function NewTaxRefundCasePage() {
                       dir="ltr"
                       value={docketNumber}
                       onKeyDown={handleNumericKeyDown}
-                      onChange={(e) => setDocketNumber(sanitizeNumericInput(e.target.value, 20))}
+                      onBeforeInput={handleNumericBeforeInput}
+                      onPaste={(e) => {
+                        e.preventDefault()
+                        const val = sanitizeNumericInput(e.clipboardData.getData('text'), 20)
+                        e.currentTarget.value = val
+                        setDocketNumber(val)
+                      }}
+                      onChange={(e) => {
+                        const val = sanitizeNumericInput(e.target.value, 20)
+                        e.currentTarget.value = val
+                        setDocketNumber(val)
+                      }}
                       placeholder="مثال: ۸۷"
                       maxLength={20}
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-left"
@@ -626,47 +684,82 @@ export default function NewTaxRefundCasePage() {
 
                   <div>
                     <label className="block text-gray-700 font-bold mb-1">نوع فعالیت *</label>
-                    <select
+                    <CustomSelect
                       value={activityType}
-                      onChange={(e) => setActivityType(Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-purple-500"
-                    >
-                      {Object.entries(ActivityTypeLabels).map(([key, label]) => (
-                        <option key={key} value={key}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-700 font-bold mb-1">سال استرداد *</label>
-                    <input
-                      type="number"
-                      value={taxYear}
-                      onChange={(e) => setTaxYear(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="مثال: ۱۴۰۲"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
+                      onChange={(val) => setActivityType(Number(val))}
+                      options={Object.entries(ActivityTypeLabels).map(([key, label]) => ({
+                        value: Number(key),
+                        label,
+                      }))}
                     />
                   </div>
 
                   <div>
+                    <label className="block text-gray-700 font-bold mb-1">
+                      سال مالیاتی استرداد * <span className="text-xs text-gray-400 font-normal">(۴ رقم، فقط عدد شمسی)</span>
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      dir="ltr"
+                      maxLength={4}
+                      value={taxYear}
+                      onKeyDown={handleNumericKeyDown}
+                      onBeforeInput={handleNumericBeforeInput}
+                      onPaste={(e) => {
+                        e.preventDefault()
+                        const val = sanitizeShamsiYearInput(e.clipboardData.getData('text'))
+                        e.currentTarget.value = val
+                        setTaxYear(val === '' ? '' : Number(val))
+                        if (taxYearError) setTaxYearError(null)
+                      }}
+                      onChange={(e) => {
+                        const val = sanitizeShamsiYearInput(e.target.value)
+                        e.currentTarget.value = val
+                        setTaxYear(val === '' ? '' : Number(val))
+                        if (taxYearError) setTaxYearError(null)
+                      }}
+                      onBlur={() => {
+                        if (taxYear) {
+                          if (!isValidShamsiYear(taxYear)) {
+                            setTaxYearError(`سال مالیاتی باید بین ${toPersianDigits(MIN_SHAMSI_YEAR)} تا ${toPersianDigits(MAX_SHAMSI_YEAR)} باشد`)
+                          } else {
+                            setTaxYearError(null)
+                          }
+                        } else {
+                          setTaxYearError(null)
+                        }
+                      }}
+                      placeholder="مثال: ۱۴۰۲"
+                      className={`w-full px-3 py-2 border rounded-xl font-mono text-left transition-colors ${
+                        taxYearError
+                          ? 'border-rose-500 bg-rose-50/40 text-rose-900 focus:ring-rose-500 focus:border-rose-500'
+                          : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
+                      }`}
+                    />
+                    {taxYearError && (
+                      <p className="text-[10px] text-rose-600 mt-1 font-medium leading-tight">
+                        {taxYearError}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
                     <label className="block text-gray-700 font-bold mb-1">منبع مالیاتی *</label>
-                    <select
+                    <CustomSelect
                       value={taxSource}
-                      onChange={(e) => setTaxSource(Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                    >
-                      {(dynamicSources.length > 0
+                      onChange={(val) => setTaxSource(Number(val))}
+                      options={(dynamicSources.length > 0
                         ? dynamicSources
                         : Object.entries(TaxSourceLabels).map(([key, label]) => ({
                             id: Number(key),
                             title: label,
                           }))
-                      ).map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.title}
-                        </option>
-                      ))}
-                    </select>
+                      ).map((item) => ({
+                        value: item.id,
+                        label: item.title,
+                      }))}
+                    />
                   </div>
 
                   <div>
@@ -715,7 +808,7 @@ export default function NewTaxRefundCasePage() {
                             <div className="text-[10px] text-gray-500 font-medium">سطح ۱: اداره کل / امور مالیاتی (مسئول رسیدگی)</div>
                             <div className="font-bold text-gray-900 mt-1 flex items-center justify-between">
                               <span className="line-clamp-1">{h.officeName}</span>
-                              <span className="font-mono text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded text-[11px] flex-shrink-0">{h.officeCode}</span>
+                              <span className="font-mono text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded text-[11px] flex-shrink-0">{toPersianDigits(h.officeCode)}</span>
                             </div>
                           </div>
 
@@ -724,7 +817,7 @@ export default function NewTaxRefundCasePage() {
                             <div className="text-[10px] text-gray-500 font-medium">سطح ۲: رئیس گروه مالیاتی</div>
                             <div className="font-bold text-gray-900 mt-1 flex items-center justify-between">
                               <span>{h.groupName}</span>
-                              <span className="font-mono text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded text-[11px] flex-shrink-0">{h.groupCode}</span>
+                              <span className="font-mono text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded text-[11px] flex-shrink-0">{toPersianDigits(h.groupCode)}</span>
                             </div>
                           </div>
 
@@ -733,7 +826,7 @@ export default function NewTaxRefundCasePage() {
                             <div className="text-[10px] text-gray-500 font-medium">سطح ۳: کارشناس ارشد / واحد مالیاتی</div>
                             <div className="font-bold text-gray-900 mt-1 flex items-center justify-between">
                               <span>{h.unitName}</span>
-                              <span className="font-mono text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded text-[11px] flex-shrink-0">{h.taxUnitCode}</span>
+                              <span className="font-mono text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded text-[11px] flex-shrink-0">{toPersianDigits(h.taxUnitCode)}</span>
                             </div>
                           </div>
                         </div>
@@ -741,7 +834,7 @@ export default function NewTaxRefundCasePage() {
                         {!isAuthorized && (
                           <div className="text-[11px] text-rose-700 bg-rose-50 p-2.5 rounded-xl border border-rose-200 flex items-center gap-2">
                             <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
-                            <span>کاربر گرامی، حساب شما به اداره مالیاتی <strong>{h.officeCode}</strong> انتساب ندارد و امکان ثبت پرونده برای آن مسدود است.</span>
+                            <span>کاربر گرامی، حساب شما به اداره مالیاتی <strong>{toPersianDigits(h.officeCode)}</strong> انتساب ندارد و امکان ثبت پرونده برای آن مسدود است.</span>
                           </div>
                         )}
                       </div>
@@ -750,17 +843,14 @@ export default function NewTaxRefundCasePage() {
 
                   <div>
                     <label className="block text-gray-700 font-bold mb-1">استان *</label>
-                    <select
+                    <CustomSelect
                       value={province}
-                      onChange={(e) => setProvince(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                    >
-                      {IRANIAN_PROVINCES.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setProvince(val)}
+                      options={IRANIAN_PROVINCES.map((p) => ({
+                        value: p,
+                        label: p,
+                      }))}
+                    />
                   </div>
 
                   <div>
@@ -776,17 +866,14 @@ export default function NewTaxRefundCasePage() {
 
                   <div>
                     <label className="block text-gray-700 font-bold mb-1">بانک مودی *</label>
-                    <select
+                    <CustomSelect
                       value={bankName}
-                      onChange={(e) => setBankName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                    >
-                      {IRANIAN_BANKS.map((b) => (
-                        <option key={b} value={b}>
-                          {b}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setBankName(val)}
+                      options={IRANIAN_BANKS.map((b) => ({
+                        value: b,
+                        label: b,
+                      }))}
+                    />
                   </div>
 
                   <div>
@@ -947,48 +1034,44 @@ export default function NewTaxRefundCasePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
                     <label className="block text-gray-700 font-bold mb-1">مودی اظهارنامه تسلیم نموده است؟</label>
-                    <select
+                    <CustomSelect
                       value={hasReturnFiled ? 'true' : 'false'}
-                      onChange={(e) => setHasReturnFiled(e.target.value === 'true')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white"
-                    >
-                      <option value="true">بله</option>
-                      <option value="false">خیر</option>
-                    </select>
+                      onChange={(val) => setHasReturnFiled(val === 'true')}
+                      options={[
+                        { value: 'true', label: 'بله' },
+                        { value: 'false', label: 'خیر' },
+                      ]}
+                    />
                   </div>
 
                   <div>
                     <label className="block text-gray-700 font-bold mb-1">نحوه قطعی شدن پرونده *</label>
-                    <select
+                    <CustomSelect
                       value={finalizationMethod}
-                      onChange={(e) => setFinalizationMethod(Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white"
-                    >
-                      {Object.entries(FinalizationMethodLabels).map(([k, lbl]) => (
-                        <option key={k} value={k}>{lbl}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setFinalizationMethod(Number(val))}
+                      options={Object.entries(FinalizationMethodLabels).map(([k, lbl]) => ({
+                        value: Number(k),
+                        label: lbl,
+                      }))}
+                    />
                   </div>
 
                   <div>
                     <label className="block text-gray-700 font-bold mb-1">مرحله قطعیت مالیات *</label>
-                    <select
+                    <CustomSelect
                       value={finalityStage}
-                      onChange={(e) => setFinalityStage(Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                    >
-                      {(dynamicFinalityStages.length > 0
+                      onChange={(val) => setFinalityStage(Number(val))}
+                      options={(dynamicFinalityStages.length > 0
                         ? dynamicFinalityStages
                         : Object.entries(FinalityStageLabels).map(([key, label]) => ({
                             id: Number(key),
                             title: label,
                           }))
-                      ).map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.title}
-                        </option>
-                      ))}
-                    </select>
+                      ).map((item) => ({
+                        value: item.id,
+                        label: item.title,
+                      }))}
+                    />
                   </div>
 
                   <div>
@@ -1001,7 +1084,18 @@ export default function NewTaxRefundCasePage() {
                       dir="ltr"
                       value={returnNumber}
                       onKeyDown={handleNumericKeyDown}
-                      onChange={(e) => setReturnNumber(sanitizeNumericInput(e.target.value, 25))}
+                      onBeforeInput={handleNumericBeforeInput}
+                      onPaste={(e) => {
+                        e.preventDefault()
+                        const val = sanitizeNumericInput(e.clipboardData.getData('text'), 25)
+                        e.currentTarget.value = val
+                        setReturnNumber(val)
+                      }}
+                      onChange={(e) => {
+                        const val = sanitizeNumericInput(e.target.value, 25)
+                        e.currentTarget.value = val
+                        setReturnNumber(val)
+                      }}
                       placeholder="مثال: ۶۵۴۳۲۱۹۸۷"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-left"
                     />
@@ -1014,17 +1108,52 @@ export default function NewTaxRefundCasePage() {
                       inputMode="numeric"
                       dir="ltr"
                       value={returnDateJalali}
-                      onChange={(e) => setReturnDateJalali(formatJalaliDateMask(e.target.value))}
+                      onKeyDown={handleDateKeyDown}
+                      onBeforeInput={handleDateBeforeInput}
+                      onPaste={(e) => {
+                        e.preventDefault()
+                        const val = formatJalaliDateMask(e.clipboardData.getData('text'))
+                        e.currentTarget.value = val
+                        setReturnDateJalali(val)
+                        if (returnDateError) setReturnDateError(null)
+                      }}
+                      onChange={(e) => {
+                        const val = formatJalaliDateMask(e.target.value)
+                        e.currentTarget.value = val
+                        setReturnDateJalali(val)
+                        if (returnDateError) setReturnDateError(null)
+                      }}
                       onBlur={() => {
                         if (returnDateJalali.trim()) {
                           const norm = normalizeJalaliDateString(returnDateJalali)
-                          if (norm) setReturnDateJalali(norm)
+                          if (norm) {
+                            setReturnDateJalali(norm)
+                            const chk = validateJalaliDate(norm, { allowFuture: false })
+                            if (!chk.isValid) {
+                              setReturnDateError(chk.error || 'تاریخ نامعتبر است')
+                            } else {
+                              setReturnDateError(null)
+                            }
+                          } else {
+                            setReturnDateError('تاریخ باید به فرمت کامل سال/ماه/روز باشد (مثال: ۱۴۰۳/۰۴/۳۱)')
+                          }
+                        } else {
+                          setReturnDateError(null)
                         }
                       }}
                       placeholder="۱۴۰۳/۰۴/۳۱"
                       maxLength={10}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-center"
+                      className={`w-full px-3 py-2 border rounded-xl font-mono text-center transition-colors ${
+                        returnDateError
+                          ? 'border-rose-500 bg-rose-50/40 text-rose-900 focus:ring-rose-500 focus:border-rose-500'
+                          : 'border-gray-300'
+                      }`}
                     />
+                    {returnDateError && (
+                      <p className="text-[10px] text-rose-600 mt-1 font-medium leading-tight">
+                        {returnDateError}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -1037,7 +1166,18 @@ export default function NewTaxRefundCasePage() {
                       dir="ltr"
                       value={finalNoticeNumber}
                       onKeyDown={handleNumericKeyDown}
-                      onChange={(e) => setFinalNoticeNumber(sanitizeNumericInput(e.target.value, 25))}
+                      onBeforeInput={handleNumericBeforeInput}
+                      onPaste={(e) => {
+                        e.preventDefault()
+                        const val = sanitizeNumericInput(e.clipboardData.getData('text'), 25)
+                        e.currentTarget.value = val
+                        setFinalNoticeNumber(val)
+                      }}
+                      onChange={(e) => {
+                        const val = sanitizeNumericInput(e.target.value, 25)
+                        e.currentTarget.value = val
+                        setFinalNoticeNumber(val)
+                      }}
                       placeholder="مثال: ۳۲۶۵۴۱۷۸۹"
                       className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-left"
                     />
@@ -1050,17 +1190,52 @@ export default function NewTaxRefundCasePage() {
                       inputMode="numeric"
                       dir="ltr"
                       value={finalNoticeDateJalali}
-                      onChange={(e) => setFinalNoticeDateJalali(formatJalaliDateMask(e.target.value))}
+                      onKeyDown={handleDateKeyDown}
+                      onBeforeInput={handleDateBeforeInput}
+                      onPaste={(e) => {
+                        e.preventDefault()
+                        const val = formatJalaliDateMask(e.clipboardData.getData('text'))
+                        e.currentTarget.value = val
+                        setFinalNoticeDateJalali(val)
+                        if (finalNoticeDateError) setFinalNoticeDateError(null)
+                      }}
+                      onChange={(e) => {
+                        const val = formatJalaliDateMask(e.target.value)
+                        e.currentTarget.value = val
+                        setFinalNoticeDateJalali(val)
+                        if (finalNoticeDateError) setFinalNoticeDateError(null)
+                      }}
                       onBlur={() => {
                         if (finalNoticeDateJalali.trim()) {
                           const norm = normalizeJalaliDateString(finalNoticeDateJalali)
-                          if (norm) setFinalNoticeDateJalali(norm)
+                          if (norm) {
+                            setFinalNoticeDateJalali(norm)
+                            const chk = validateJalaliDate(norm, { allowFuture: false })
+                            if (!chk.isValid) {
+                              setFinalNoticeDateError(chk.error || 'تاریخ نامعتبر است')
+                            } else {
+                              setFinalNoticeDateError(null)
+                            }
+                          } else {
+                            setFinalNoticeDateError('تاریخ باید به فرمت کامل سال/ماه/روز باشد (مثال: ۱۴۰۳/۱۰/۲۰)')
+                          }
+                        } else {
+                          setFinalNoticeDateError(null)
                         }
                       }}
                       placeholder="۱۴۰۳/۱۰/۲۰"
                       maxLength={10}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-center"
+                      className={`w-full px-3 py-2 border rounded-xl font-mono text-center transition-colors ${
+                        finalNoticeDateError
+                          ? 'border-rose-500 bg-rose-50/40 text-rose-900 focus:ring-rose-500 focus:border-rose-500'
+                          : 'border-gray-300'
+                      }`}
                     />
+                    {finalNoticeDateError && (
+                      <p className="text-[10px] text-rose-600 mt-1 font-medium leading-tight">
+                        {finalNoticeDateError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="sm:col-span-2 border-t border-gray-200 pt-3">
@@ -1168,12 +1343,27 @@ export default function NewTaxRefundCasePage() {
                       تاخیر در پرداخت بیش از مهلت قانونی ماده ۲۴۲ (تعداد ماه):
                     </label>
                     <input
-                      type="number"
-                      min={0}
-                      max={60}
+                      type="text"
+                      inputMode="numeric"
+                      dir="ltr"
+                      maxLength={2}
                       value={delayMonths}
-                      onChange={(e) => setDelayMonths(Math.max(0, Number(e.target.value)))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl font-bold text-purple-900"
+                      onKeyDown={handleNumericKeyDown}
+                      onBeforeInput={handleNumericBeforeInput}
+                      onPaste={(e) => {
+                        e.preventDefault()
+                        const val = sanitizeNumericInput(e.clipboardData.getData('text'), 2)
+                        const num = Math.min(60, Math.max(0, Number(val) || 0))
+                        e.currentTarget.value = num.toString()
+                        setDelayMonths(num)
+                      }}
+                      onChange={(e) => {
+                        const val = sanitizeNumericInput(e.target.value, 2)
+                        const num = Math.min(60, Math.max(0, Number(val) || 0))
+                        e.currentTarget.value = num.toString()
+                        setDelayMonths(num)
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl font-bold text-purple-900 text-left font-mono"
                     />
                     <span className="text-[11px] text-gray-500 block mt-1">
                       طبق تبصره ماده ۲۴۳، نرخ خسارت تاخیر معادل ۱.۵٪ در هر ماه می‌باشد.

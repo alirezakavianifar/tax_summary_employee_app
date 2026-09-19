@@ -1,3 +1,5 @@
+import { toPersianDigits } from './jalali'
+
 export interface TaxHierarchyInfo {
   taxUnitCode: string
   groupCode: string
@@ -74,15 +76,15 @@ export function decomposeTaxUnitCode(code?: string | null): TaxHierarchyInfo {
       if (officePrefix.startsWith('16') && officePrefix.length === 4) {
         const num = parseInt(officePrefix.substring(2), 10)
         if (!isNaN(num)) {
-          officeName = `اداره امور مالیاتی ${num} اهواز`
+          officeName = `اداره امور مالیاتی ${toPersianDigits(num)} اهواز`
         }
       }
       if (!officeName) {
-        officeName = `اداره امور مالیاتی ${officePrefix}`
+        officeName = `اداره امور مالیاتی ${toPersianDigits(officePrefix)}`
       }
     }
-    const groupName = `گروه رسیدگی ${groupDigit}`
-    const unitName = `واحد مالیاتی ${unitDigit}`
+    const groupName = `گروه رسیدگی ${toPersianDigits(groupDigit)}`
+    const unitName = `واحد مالیاتی ${toPersianDigits(unitDigit)}`
 
     return {
       taxUnitCode,

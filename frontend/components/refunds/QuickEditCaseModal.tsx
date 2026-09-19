@@ -27,7 +27,18 @@ import {
 } from '@/types/taxRefund'
 import { decomposeTaxUnitCode } from '@/lib/taxHierarchy'
 import ShebaInput from '@/components/refunds/ShebaInput'
+import CustomSelect from '@/components/CustomSelect'
 import { IRANIAN_PROVINCES, IRANIAN_BANKS } from '@/lib/iranData'
+import {
+  sanitizeNumericInput,
+  handleNumericKeyDown,
+  handleNumericBeforeInput,
+  isValidShamsiYear,
+  sanitizeShamsiYearInput,
+  MIN_SHAMSI_YEAR,
+  MAX_SHAMSI_YEAR,
+  toPersianDigits,
+} from '@/lib/jalali'
 
 interface QuickEditCaseModalProps {
   caseItem: TaxRefundCaseSummary | null
@@ -159,6 +170,11 @@ export function QuickEditCaseModal({
 
     if (!formData.economicCode.trim()) {
       setError('کد اقتصادی مودی الزامی است')
+      return
+    }
+
+    if (!formData.taxYear || !isValidShamsiYear(formData.taxYear)) {
+      setError(`سال مالیاتی باید یک سال معتبر شمسی بین ${toPersianDigits(MIN_SHAMSI_YEAR)} تا ${toPersianDigits(MAX_SHAMSI_YEAR)} باشد`)
       return
     }
 
@@ -297,44 +313,89 @@ export function QuickEditCaseModal({
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  کد اقتصادی <span className="text-red-500">*</span>
+                  کد اقتصادی / تین <span className="text-red-500">*</span> <span className="text-[10px] text-gray-400 font-normal">(فقط عدد)</span>
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  dir="ltr"
                   disabled={isLocked}
                   value={formData.economicCode}
-                  onChange={(e) => setFormData({ ...formData, economicCode: e.target.value })}
-                  placeholder="مثال: 1234567890"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
+                  onKeyDown={handleNumericKeyDown}
+                  onBeforeInput={handleNumericBeforeInput}
+                  onPaste={(e) => {
+                    e.preventDefault()
+                    const val = sanitizeNumericInput(e.clipboardData.getData('text'), 14)
+                    e.currentTarget.value = val
+                    setFormData({ ...formData, economicCode: val })
+                  }}
+                  onChange={(e) => {
+                    const val = sanitizeNumericInput(e.target.value, 14)
+                    e.currentTarget.value = val
+                    setFormData({ ...formData, economicCode: val })
+                  }}
+                  placeholder="مثال: ۴۱۱۳۹۵۷۶۸۵۳۱"
+                  maxLength={14}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold text-left focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  شناسه ملی / کد ملی
+                  شناسه ملی / کد ملی <span className="text-[10px] text-gray-400 font-normal">(فقط عدد)</span>
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  dir="ltr"
                   disabled={isLocked}
                   value={formData.nationalId}
-                  onChange={(e) => setFormData({ ...formData, nationalId: e.target.value })}
+                  onKeyDown={handleNumericKeyDown}
+                  onBeforeInput={handleNumericBeforeInput}
+                  onPaste={(e) => {
+                    e.preventDefault()
+                    const val = sanitizeNumericInput(e.clipboardData.getData('text'), 11)
+                    e.currentTarget.value = val
+                    setFormData({ ...formData, nationalId: val })
+                  }}
+                  onChange={(e) => {
+                    const val = sanitizeNumericInput(e.target.value, 11)
+                    e.currentTarget.value = val
+                    setFormData({ ...formData, nationalId: val })
+                  }}
                   placeholder="۱۰ یا ۱۱ رقم..."
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
+                  maxLength={11}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold text-left focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  شماره پرونده
+                  شماره پرونده <span className="text-[10px] text-gray-400 font-normal">(فقط عدد)</span>
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  dir="ltr"
                   disabled={isLocked}
                   value={formData.docketNumber}
-                  onChange={(e) => setFormData({ ...formData, docketNumber: e.target.value })}
+                  onKeyDown={handleNumericKeyDown}
+                  onBeforeInput={handleNumericBeforeInput}
+                  onPaste={(e) => {
+                    e.preventDefault()
+                    const val = sanitizeNumericInput(e.clipboardData.getData('text'), 20)
+                    e.currentTarget.value = val
+                    setFormData({ ...formData, docketNumber: val })
+                  }}
+                  onChange={(e) => {
+                    const val = sanitizeNumericInput(e.target.value, 20)
+                    e.currentTarget.value = val
+                    setFormData({ ...formData, docketNumber: val })
+                  }}
                   placeholder="مثال: 87"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
+                  maxLength={20}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold text-left focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                 />
               </div>
 
@@ -342,16 +403,15 @@ export function QuickEditCaseModal({
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   نوع فعالیت <span className="text-red-500">*</span>
                 </label>
-                <select
+                <CustomSelect
                   disabled={isLocked}
                   value={formData.activityType}
-                  onChange={(e) => setFormData({ ...formData, activityType: Number(e.target.value) as ActivityType })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
-                >
-                  {Object.entries(ActivityTypeLabels).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, activityType: Number(val) as ActivityType })}
+                  options={Object.entries(ActivityTypeLabels).map(([key, label]) => ({
+                    value: Number(key),
+                    label,
+                  }))}
+                />
               </div>
             </div>
           </div>
@@ -366,16 +426,30 @@ export function QuickEditCaseModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  سال مالیاتی <span className="text-red-500">*</span>
+                  سال مالیاتی <span className="text-red-500">*</span> <span className="text-[10px] text-gray-400 font-normal">(۴ رقم، فقط عدد شمسی)</span>
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  dir="ltr"
+                  maxLength={4}
                   disabled={isLocked}
-                  value={formData.taxYear}
-                  onChange={(e) => setFormData({ ...formData, taxYear: Number(e.target.value) })}
-                  min={1390}
-                  max={1410}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
+                  value={formData.taxYear || ''}
+                  onKeyDown={handleNumericKeyDown}
+                  onBeforeInput={handleNumericBeforeInput}
+                  onPaste={(e) => {
+                    e.preventDefault()
+                    const val = sanitizeShamsiYearInput(e.clipboardData.getData('text'))
+                    e.currentTarget.value = val
+                    setFormData({ ...formData, taxYear: Number(val) || 0 })
+                  }}
+                  onChange={(e) => {
+                    const val = sanitizeShamsiYearInput(e.target.value)
+                    e.currentTarget.value = val
+                    setFormData({ ...formData, taxYear: Number(val) || 0 })
+                  }}
+                  placeholder="مثال: ۱۴۰۲"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60 text-left"
                   required
                 />
               </div>
@@ -384,24 +458,21 @@ export function QuickEditCaseModal({
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   منبع مالیات <span className="text-red-500">*</span>
                 </label>
-                <select
+                <CustomSelect
                   disabled={isLocked}
                   value={formData.taxSource}
-                  onChange={(e) => setFormData({ ...formData, taxSource: Number(e.target.value) as TaxSourceType })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
-                >
-                  {(dynamicSources.length > 0
+                  onChange={(val) => setFormData({ ...formData, taxSource: Number(val) as TaxSourceType })}
+                  options={(dynamicSources.length > 0
                     ? dynamicSources
                     : Object.entries(TaxSourceLabels).map(([val, label]) => ({
                         id: Number(val),
                         title: label,
                       }))
-                  ).map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.title}
-                    </option>
-                  ))}
-                </select>
+                  ).map((item) => ({
+                    value: item.id,
+                    label: item.title,
+                  }))}
+                />
               </div>
 
               <div>
@@ -413,7 +484,7 @@ export function QuickEditCaseModal({
                   disabled={isLocked}
                   value={formData.taxUnitCode}
                   onChange={(e) => setFormData({ ...formData, taxUnitCode: e.target.value })}
-                  placeholder="مثال: 160211"
+                  placeholder="مثال: ۱۶۰۲۱۱"
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
                 />
                 {(() => {
@@ -438,18 +509,15 @@ export function QuickEditCaseModal({
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   استان
                 </label>
-                <select
+                <CustomSelect
                   disabled={isLocked}
                   value={formData.province}
-                  onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
-                >
-                  {IRANIAN_PROVINCES.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, province: val })}
+                  options={IRANIAN_PROVINCES.map((p) => ({
+                    value: p,
+                    label: p,
+                  }))}
+                />
               </div>
 
               <div>
@@ -480,18 +548,15 @@ export function QuickEditCaseModal({
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   بانک مودی
                 </label>
-                <select
+                <CustomSelect
                   disabled={isLocked}
                   value={formData.bankName}
-                  onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 disabled:opacity-60"
-                >
-                  {IRANIAN_BANKS.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, bankName: val })}
+                  options={IRANIAN_BANKS.map((b) => ({
+                    value: b,
+                    label: b,
+                  }))}
+                />
               </div>
 
               <div>

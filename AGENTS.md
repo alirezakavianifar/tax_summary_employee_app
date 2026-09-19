@@ -27,6 +27,24 @@ When the user uses the keyword "push" in a request (e.g., "please push these cha
 
 **Note:** You should proactively execute these commands without asking for extra confirmation if the user explicitly said "push".
 
+## Minimum Zipped Update Package Workflow
+
+After performing any modifications to the source code (frontend or backend), you MUST always generate and provide ONLY the minimum zipped update version needed for production:
+
+1. **Verify Code Correctness**: Ensure the modifications build without errors (`npm run build` in `frontend` or `dotnet build` in `Backend`).
+2. **Build Minimal Update Package**:
+   Run the lightweight update build command from the repository root:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\build_deployment.ps1 -UpdateOnly
+   ```
+3. **Package Details**:
+   - The command outputs `deployment_update.zip` (~4 MB compressed).
+   - This package contains **only** the modified application binaries (TaxSummary DLLs/exe) and the Next.js standalone build.
+   - It excludes heavy runtimes (Node.js, .NET runtime), the database (`tax_summary.db`), and user photo uploads, preventing any risk of overwriting existing production data.
+4. **Deliver to User**:
+   Always report `deployment_update.zip` to the user with quick deployment instructions (`Extract next to deployment folder -> Run APPLY_UPDATE.bat -> Run START_ALL.bat`).
+
 ## Language Policy
 
 **Always respond in English.** Regardless of the language used in prompts or queries, all explanations, responses, and communications must be written in English.
+

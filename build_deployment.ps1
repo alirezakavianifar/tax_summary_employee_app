@@ -72,26 +72,103 @@ if ($UpdateOnly) {
     New-Item -ItemType Directory -Path $backendOut -Force | Out-Null
     New-Item -ItemType Directory -Path $frontendOut -Force | Out-Null
 
-    # 3. Assemble Backend application update binaries
-    Write-Host "`n[3/5] Assembling Backend application update binaries..." -ForegroundColor Cyan
-    $existingBackend = Join-Path $PSScriptRoot "deployment\backend"
-    $appFiles = Get-ChildItem -Path "$existingBackend\*" -Include "TaxSummary*.dll", "TaxSummary*.exe", "TaxSummary*.deps.json", "TaxSummary*.runtimeconfig.json", "Microsoft.AspNetCore.Authentication.JwtBearer.dll", "Microsoft.IdentityModel*.dll", "appsettings*.json" -File
-    foreach ($f in $appFiles) {
-        Copy-Item $f.FullName -Destination $backendOut -Force
+    # 3. Publish and assemble Backend application update binaries
+    Write-Host "`n[3/5] Publishing and assembling Backend application update binaries..." -ForegroundColor Cyan
+    $backendProject = Join-Path $PSScriptRoot "Backend\TaxSummary.Api\TaxSummary.Api.csproj"
+    $tempBackendPublish = Join-Path $env:TEMP ("taxsummary_backend_pub_" + [System.Guid]::NewGuid().ToString("N"))
+    try {
+        dotnet publish $backendProject `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=false `
+            -o $tempBackendPublish
+
+        $deployBackend = Join-Path $PSScriptRoot "deployment\backend"
+        $appFiles = Get-ChildItem -Path "$tempBackendPublish\*" -Include "TaxSummary*.dll", "TaxSummary*.exe", "TaxSummary*.deps.json", "TaxSummary*.runtimeconfig.json", "Microsoft.AspNetCore.Authentication.JwtBearer.dll", "Microsoft.IdentityModel*.dll", "appsettings*.json" -File
+        foreach ($f in $appFiles) {
+            Copy-Item $f.FullName -Destination $backendOut -Force
+            if (Test-Path $deployBackend) {
+                Copy-Item $f.FullName -Destination $deployBackend -Force
+            }
+        }
+
+        # Copy Resources folder (position mappings Excel, etc.)
+        $resSrc = Join-Path $PSScriptRoot "Backend\TaxSummary.Infrastructure\Resources"
+        if (Test-Path $resSrc) {
+            $destResources = Join-Path $backendOut "Resources"
+            New-Item -ItemType Directory -Path $destResources -Force | Out-Null
+            Copy-Item "$resSrc\*" -Destination $destResources -Recurse -Force
+            if (Test-Path $deployBackend) {
+                Copy-Item "$resSrc\*" -Destination (Join-Path $deployBackend "Resources") -Recurse -Force
+            }
+        }
+    } finally {
+        Remove-Item -Recurse -Force $tempBackendPublish -ErrorAction SilentlyContinue
     }
 
-    # Copy Resources folder (position mappings Excel, etc.)
-    $resourcesSource = Join-Path $existingBackend "Resources"
-    if (Test-Path $resourcesSource) {
-        $destResources = Join-Path $backendOut "Resources"
-        New-Item -ItemType Directory -Path $destResources -Force | Out-Null
-        Copy-Item "$resourcesSource\*" -Destination $destResources -Recurse -Force
+    # 4. Build and Assemble Frontend application files
+    Write-Host "`n[4/5] Building Next.js Frontend in Standalone Mode..." -ForegroundColor Cyan
+    $frontendDir = Join-Path $PSScriptRoot "frontend"
+    Push-Location $frontendDir
+    try {
+        npm run build
+    } finally {
+        Pop-Location
     }
 
-    # 4. Copy Frontend application files
-    Write-Host "`n[4/5] Assembling Frontend application files..." -ForegroundColor Cyan
-    $existingFrontend = Join-Path $PSScriptRoot "deployment\frontend"
-    Copy-Item "$existingFrontend\*" -Destination $frontendOut -Recurse -Force
+    $standaloneDir = Join-Path $frontendDir ".next\standalone"
+    if (-not (Test-Path $standaloneDir)) {
+        throw "Standalone build directory was not found at $standaloneDir. Ensure output: 'standalone' is enabled in next.config.js."
+    }
+
+    $deployFrontend = Join-Path $PSScriptRoot "deployment\frontend"
+
+    # Helper scriptblock to assemble standalone frontend
+    $copyStandalone = {
+        param([string]$targetDir, [bool]$includeNM)
+        if (-not (Test-Path $targetDir)) {
+            New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+        }
+        Copy-Item (Join-Path $standaloneDir "server.js") -Destination $targetDir -Force
+        if (Test-Path (Join-Path $standaloneDir "package.json")) {
+            Copy-Item (Join-Path $standaloneDir "package.json") -Destination $targetDir -Force
+        }
+        $standaloneNext = Join-Path $standaloneDir ".next"
+        $destNext = Join-Path $targetDir ".next"
+        if (Test-Path $destNext) {
+            Remove-Item -Recurse -Force $destNext -ErrorAction SilentlyContinue
+        }
+        New-Item -ItemType Directory -Path $destNext -Force | Out-Null
+        Copy-Item "$standaloneNext\*" -Destination $destNext -Recurse -Force
+
+        $staticSource = Join-Path $frontendDir ".next\static"
+        $staticDest = Join-Path $destNext "static"
+        New-Item -ItemType Directory -Path $staticDest -Force | Out-Null
+        Copy-Item "$staticSource\*" -Destination $staticDest -Recurse -Force
+
+        $publicSource = Join-Path $frontendDir "public"
+        $publicDest = Join-Path $targetDir "public"
+        New-Item -ItemType Directory -Path $publicDest -Force | Out-Null
+        Copy-Item "$publicSource\*" -Destination $publicDest -Recurse -Force
+
+        if ($includeNM) {
+            $nmSource = Join-Path $standaloneDir "node_modules"
+            if (Test-Path $nmSource) {
+                Copy-Item $nmSource -Destination (Join-Path $targetDir "node_modules") -Recurse -Force
+            }
+        }
+
+        Remove-Item -Recurse -Force (Join-Path $destNext "cache") -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force (Join-Path $destNext "standalone") -ErrorAction SilentlyContinue
+    }
+
+    # Update deployment_update\frontend
+    & $copyStandalone $frontendOut $IncludeNodeModules
+    # Also update deployment\frontend so both are current
+    if (Test-Path $deployFrontend) {
+        & $copyStandalone $deployFrontend $true
+    }
 
     # Copy updated launcher scripts into update package
     $distFiles = @("START_ALL.bat", "START_BACKEND.bat", "START_FRONTEND.bat")
@@ -122,38 +199,86 @@ timeout /t 2 /nobreak >nul
 
 REM 2. Determine target deployment folder
 set "TARGET="
-if exist "%~dp0..\deployment\backend" (
+
+if exist "%~dp0..\node\node.exe" (
+    set "TARGET=%~dp0.."
+) else if exist "%~dp0..\deployment\backend" (
     set "TARGET=%~dp0..\deployment"
+) else if exist "%~dp0..\backend" (
+    set "TARGET=%~dp0.."
 ) else if exist "%~dp0backend" (
     set "TARGET=%~dp0"
 ) else (
-    echo [ERROR] Target deployment directory not found.
-    echo Please ensure this folder is placed alongside 'deployment'
-    echo or enter the deployment directory path below:
-    set /p "TARGET=Enter path to deployment folder: "
+    echo [NOTICE] Target deployment directory not automatically detected.
+    echo Please enter the path to your deployment folder below
+    echo (for example: C:\Users\alkav\Desktop\deployment\deployment)
+    set /p "TARGET=Deployment path: "
 )
 
+REM Remove surrounding quotes if user entered them
+set TARGET=!TARGET:"=!
+REM Remove trailing backslash if present
+if "!TARGET:~-1!"=="\" set "TARGET=!TARGET:~0,-1!"
+
 if not exist "!TARGET!\backend" (
-    echo [ERROR] Invalid target directory: "!TARGET!"
+    echo [ERROR] Target directory "!TARGET!" does not contain a backend folder.
+    echo Please verify the path.
     pause
     exit /b 1
 )
 
-echo [2/3] Updating files in !TARGET!...
-echo Updating Backend binaries (preserves database and employee photos)...
-xcopy /Y /E "%~dp0backend\*" "!TARGET!\backend\" >nul
+echo.
+echo Target deployment folder: "!TARGET!"
+echo.
 
-echo Updating Frontend application files...
-xcopy /Y /E "%~dp0frontend\*" "!TARGET!\frontend\" >nul
+REM Normalize source path
+set "SOURCE=%~dp0"
+if "!SOURCE:~-1!"=="\" set "SOURCE=!SOURCE:~0,-1!"
 
-echo Updating launcher scripts...
-copy /Y "%~dp0START_*.bat" "!TARGET!\" >nul
+if /i "!SOURCE!"=="!TARGET!" (
+    echo Update files are already located directly inside the deployment folder.
+    echo No file copying required.
+    goto :finish
+)
 
+echo [2/3] Copying updated files to "!TARGET!"...
+
+REM Copy Backend binaries
+echo - Updating Backend binaries...
+robocopy "!SOURCE!\backend" "!TARGET!\backend" /E /R:1 /W:1 /NFL /NDL /NJH /NJS >nul
+if errorlevel 8 (
+    echo   Fallback copying backend using xcopy...
+    xcopy /Y /E /H /I "!SOURCE!\backend\*" "!TARGET!\backend\" >nul
+)
+
+REM Copy Frontend application files (including .next and BUILD_ID)
+echo - Updating Frontend files (including .next and BUILD_ID)...
+robocopy "!SOURCE!\frontend" "!TARGET!\frontend" /E /R:1 /W:1 /NFL /NDL /NJH /NJS >nul
+if errorlevel 8 (
+    echo   Fallback copying frontend using xcopy...
+    xcopy /Y /E /H /I "!SOURCE!\frontend\*" "!TARGET!\frontend\" >nul
+)
+
+REM Verify BUILD_ID was copied successfully
+if exist "!TARGET!\frontend\.next\BUILD_ID" (
+    echo   [OK] Frontend .next\BUILD_ID verified.
+) else (
+    echo   [WARNING] .next\BUILD_ID not detected. Copying directly...
+    xcopy /Y /E /H /I "!SOURCE!\frontend\.next\*" "!TARGET!\frontend\.next\" >nul
+)
+
+REM Copy launcher batch files
+if exist "!SOURCE!\START_ALL.bat" copy /Y "!SOURCE!\START_*.bat" "!TARGET!\" >nul
+
+:finish
 echo.
 echo [3/3] Update applied successfully!
 echo ========================================================
 echo You can now restart the application using START_ALL.bat
 echo located in "!TARGET!".
+echo.
+echo NOTE: On client browsers, press Ctrl + F5 (or Ctrl + Shift + R)
+echo to force reload the newest scripts and clear old cache.
 echo ========================================================
 echo.
 pause

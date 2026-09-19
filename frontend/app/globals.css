@@ -92,6 +92,30 @@
   font-display: block;
 }
 
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-FD-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-FD-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-FD-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   * {
     direction: rtl;
@@ -104,6 +128,23 @@
 
   body {
     @apply text-gray-900;
+    font-family: 'Vazirmatn', var(--font-vazirmatn), sans-serif;
+    font-feature-settings: "ss01" 1, "locl" 1;
+  }
+
+  input,
+  select,
+  textarea,
+  button,
+  option,
+  optgroup {
+    font-family: 'Vazirmatn', var(--font-vazirmatn), sans-serif !important;
+    font-feature-settings: "ss01" 1, "locl" 1;
+  }
+
+  select,
+  select::picker(select) {
+    appearance: base-select;
   }
 }
 

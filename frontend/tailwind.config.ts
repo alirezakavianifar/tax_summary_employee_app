@@ -10,6 +10,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
+        sans: ['var(--font-vazirmatn)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-vazirmatn)', 'ui-monospace', 'monospace'],
         vazirmatn: ['var(--font-vazirmatn)', 'sans-serif'],
         nazanin: ['var(--font-nazanin)', '"B Nazanin"', 'Tahoma', 'sans-serif'],
         titr: ['var(--font-titr)', '"B Titr"', 'Tahoma', 'sans-serif'],

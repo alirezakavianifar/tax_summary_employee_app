@@ -246,6 +246,108 @@ export function formatIsoToJalali(
 /**
  * Parses user input in Shamsi format (e.g., "1405/06/15" or "1405-6-15" or Persian digits)
  */
+export const MIN_SHAMSI_YEAR = 1380
+export const MAX_SHAMSI_YEAR = 1405
+export const MAX_SHAMSI_DATE_YEAR = 1410
+
+/**
+ * Validates whether a given year is an allowable Shamsi tax year (1380 - 1405)
+ */
+export function isValidShamsiYear(year: number | string | null | undefined): boolean {
+  if (year == null || year === '') return false
+  const num = typeof year === 'number' ? year : parseInt(toEnglishDigits(year.toString().trim()), 10)
+  return !isNaN(num) && num >= MIN_SHAMSI_YEAR && num <= MAX_SHAMSI_YEAR
+}
+
+/**
+ * Sanitizes typing for a 4-digit Shamsi tax year (1380 - 1405):
+ * - Digit 1: Must be '1'
+ * - Digit 2: Must be '3' or '4' (13xx or 14xx)
+ * - Digit 3: If '13', must be '8' or '9'; If '14', must be '0'
+ * - Digit 4: If '140', must be 0..5
+ * Blocks non-Shamsi years (e.g. 1988, 1212, 2024).
+ */
+export function sanitizeShamsiYearInput(val: string): string {
+  if (!val) return ''
+  const digits = toEnglishDigits(val).replace(/\D/g, '').slice(0, 4)
+  if (!digits) return ''
+
+  if (digits[0] !== '1') return ''
+  if (digits.length >= 2 && digits[1] !== '3' && digits[1] !== '4') return '1'
+
+  if (digits.length >= 3) {
+    if (digits.startsWith('13') && digits[2] !== '8' && digits[2] !== '9') return '13'
+    if (digits.startsWith('14') && digits[2] !== '0') return '14'
+  }
+
+  if (digits.length === 4) {
+    const num = parseInt(digits, 10)
+    if (num < MIN_SHAMSI_YEAR || num > MAX_SHAMSI_YEAR) return digits.slice(0, 3)
+  }
+
+  return digits
+}
+
+/**
+ * Internal helper to sanitize year segment of a date
+ */
+function sanitizeDateYearSegment(val: string): string {
+  if (!val) return ''
+  const digits = val.replace(/\D/g, '').slice(0, 4)
+  if (!digits) return ''
+  if (digits[0] !== '1') return ''
+  if (digits.length >= 2 && digits[1] !== '3' && digits[1] !== '4') return '1'
+  if (digits.length >= 3) {
+    if (digits.startsWith('13') && digits[2] !== '8' && digits[2] !== '9') return '13'
+    if (digits.startsWith('14') && digits[2] !== '0' && digits[2] !== '1') return '14'
+  }
+  if (digits.length === 4) {
+    const num = parseInt(digits, 10)
+    if (num < MIN_SHAMSI_YEAR || num > MAX_SHAMSI_DATE_YEAR) return digits.slice(0, 3)
+  }
+  return digits
+}
+
+/**
+ * Internal helper to sanitize month segment of a date (01 - 12)
+ */
+function sanitizeDateMonthSegment(val: string): string {
+  if (!val) return ''
+  const digits = val.replace(/\D/g, '').slice(0, 2)
+  if (!digits) return ''
+  if (digits.length === 1) {
+    if (digits === '0' || digits === '1') return digits
+    return '0' + digits // 2..9 expands to 02..09
+  }
+  const m = parseInt(digits, 10)
+  if (isNaN(m) || m <= 0) return '01'
+  if (m > 12) {
+    if (digits[0] === '1') return '12'
+    return '0' + digits[0]
+  }
+  return digits
+}
+
+/**
+ * Internal helper to sanitize day segment of a date (01 - maxDays)
+ */
+function sanitizeDateDaySegment(val: string, maxDays = 31): string {
+  if (!val) return ''
+  const digits = val.replace(/\D/g, '').slice(0, 2)
+  if (!digits) return ''
+  if (digits.length === 1) {
+    if (['0', '1', '2', '3'].includes(digits)) return digits
+    return '0' + digits // 4..9 expands to 04..09
+  }
+  const d = parseInt(digits, 10)
+  if (isNaN(d) || d <= 0) return '01'
+  if (d > maxDays) return String(maxDays).padStart(2, '0')
+  return digits
+}
+
+/**
+ * Parses user input in Shamsi format (e.g., "1405/06/15" or "1405-6-15" or Persian digits)
+ */
 export function parseJalaliInput(input: string): { jy: number; jm: number; jd: number } | null {
   if (!input) return null
   const normalized = toEnglishDigits(input.trim())
@@ -257,7 +359,7 @@ export function parseJalaliInput(input: string): { jy: number; jm: number; jd: n
   const jd = parseInt(parts[2], 10)
 
   if (isNaN(jy) || isNaN(jm) || isNaN(jd)) return null
-  if (jy < 1300 || jy > 1500) return null
+  if (jy < MIN_SHAMSI_YEAR || jy > MAX_SHAMSI_DATE_YEAR) return null
   if (jm < 1 || jm > 12) return null
 
   const maxDays = getDaysInJalaliMonth(jy, jm)
@@ -276,39 +378,102 @@ export function sanitizeNumericInput(val: string, maxLength = 30): string {
 
 /**
  * Smart formatting / masking for Jalali date input:
- * - Strips any characters that are not digits or slashes
- * - Auto-inserts slashes when typing digits continuously (e.g. 14030501 -> 1403/05/01)
- * - Restricts input length to max 10 characters (YYYY/MM/DD)
+ * - Restricts years strictly to valid Shamsi years (1380 - 1410). Blocks 19xx, 12xx, 20xx.
+ * - Restricts months strictly to 01 - 12 (blocks 88, 23, etc.).
+ * - Restricts days strictly to 01 - 31 (and according to month max days).
+ * - Auto-inserts slashes when typing digits continuously or after year/month completion.
+ * - Preserves backspace deletion of slashes.
  */
 export function formatJalaliDateMask(val: string): string {
   if (!val) return ''
   const eng = toEnglishDigits(val)
-  // Strip any Persian/English letters or symbols other than digits and slash
   const clean = eng.replace(/[^\d/]/g, '')
+  if (!clean) return ''
 
-  // If there are no slashes, auto-format by digit count
+  const endsWithSlash = clean.endsWith('/')
+  const rawParts = clean.split('/').filter((_, i) => i < 3)
+
+  // Case 1: user typed continuously without slashes (e.g. 14030501)
   if (!clean.includes('/')) {
-    const digits = clean.slice(0, 8)
-    if (digits.length <= 4) return digits
-    if (digits.length <= 6) return `${digits.slice(0, 4)}/${digits.slice(4)}`
-    return `${digits.slice(0, 4)}/${digits.slice(4, 6)}/${digits.slice(6, 8)}`
+    const d = clean.slice(0, 8)
+    const y = sanitizeDateYearSegment(d.slice(0, 4))
+    if (y.length < 4 || d.length === 4) return y
+
+    const m = sanitizeDateMonthSegment(d.slice(4, 6))
+    if (m.length < 2 || d.length <= 6) return y + '/' + m
+
+    const mNum = parseInt(m, 10)
+    const maxD = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? getDaysInJalaliMonth(parseInt(y, 10) || 1403, mNum) : 31
+    const day = sanitizeDateDaySegment(d.slice(6, 8), maxD)
+    return y + '/' + m + '/' + day
   }
 
-  // If user entered slashes manually, format each segment
-  const parts = clean.split('/')
-  const year = parts[0].slice(0, 4)
-  if (parts.length === 1) return year
-
-  const month = parts[1].slice(0, 2)
-  if (parts.length === 2) {
-    return clean.endsWith('/') && parts[1] === '' ? `${year}/` : `${year}/${month}`
+  // Case 2: user typed with slashes
+  const y = sanitizeDateYearSegment(rawParts[0] || '')
+  if (rawParts.length === 1) {
+    return endsWithSlash && y.length === 4 ? y + '/' : y
   }
 
-  const day = parts[2].slice(0, 2)
-  if (parts.length >= 3 && parts[2] === '' && clean.endsWith('/')) {
-    return `${year}/${month}/`
+  const mRaw = rawParts[1] || ''
+  const m = sanitizeDateMonthSegment(mRaw)
+
+  if (rawParts.length === 2) {
+    if (endsWithSlash && m.length === 2) {
+      return y + '/' + m + '/'
+    }
+    return y + '/' + m
   }
-  return `${year}/${month}/${day}`
+
+  const mNum = parseInt(m, 10)
+  const maxD = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? getDaysInJalaliMonth(parseInt(y, 10) || 1403, mNum) : 31
+  const dRaw = rawParts[2] || ''
+  const day = sanitizeDateDaySegment(dRaw, maxD)
+
+  return y + '/' + m + '/' + day
+}
+
+/**
+ * Validates a Jalali date and returns a human-readable Persian error message if invalid
+ */
+export function validateJalaliDate(
+  val: string,
+  options?: { allowFuture?: boolean; minYear?: number; maxYear?: number }
+): { isValid: boolean; error?: string } {
+  if (!val || !val.trim()) {
+    return { isValid: false, error: 'تاریخ الزامی است' }
+  }
+
+  const parsed = parseJalaliInput(val)
+  if (!parsed) {
+    return {
+      isValid: false,
+      error: 'تاریخ باید یک تاریخ معتبر و کامل شمسی با فرمت سال/ماه/روز باشد (مثال: ۱۴۰۳/۰۵/۰۱)',
+    }
+  }
+
+  const minYear = options?.minYear ?? MIN_SHAMSI_YEAR
+  const maxYear = options?.maxYear ?? MAX_SHAMSI_DATE_YEAR
+
+  if (parsed.jy < minYear || parsed.jy > maxYear) {
+    return {
+      isValid: false,
+      error: `سال تاریخ باید بین ${minYear} تا ${maxYear} باشد`,
+    }
+  }
+
+  if (options?.allowFuture === false) {
+    const today = getTodayJalali()
+    const valKey = parsed.jy * 10000 + parsed.jm * 100 + parsed.jd
+    const todayKey = today.jy * 10000 + today.jm * 100 + today.jd
+    if (valKey > todayKey) {
+      return {
+        isValid: false,
+        error: 'تاریخ ثبت شده نمی‌تواند در آینده باشد',
+      }
+    }
+  }
+
+  return { isValid: true }
 }
 
 /**
@@ -338,4 +503,72 @@ export function compareJalaliDates(date1: string, date2: string): number {
   const v1 = p1.jy * 10000 + p1.jm * 100 + p1.jd
   const v2 = p2.jy * 10000 + p2.jm * 100 + p2.jd
   return v1 - v2
+}
+
+/**
+ * Blocks non-digit keystrokes (allows navigation, backspace, etc.)
+ */
+export function handleNumericKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (
+    e.key === 'Backspace' ||
+    e.key === 'Tab' ||
+    e.key === 'Delete' ||
+    e.key === 'ArrowLeft' ||
+    e.key === 'ArrowRight' ||
+    e.key === 'Home' ||
+    e.key === 'End' ||
+    e.key === 'Enter' ||
+    e.key === 'Escape' ||
+    e.ctrlKey ||
+    e.metaKey
+  ) {
+    return
+  }
+  if (!/^[0-9۰-۹٠-٩]$/.test(e.key)) {
+    e.preventDefault()
+  }
+}
+
+/**
+ * Blocks non-digit characters on beforeinput event (IME, virtual keyboard, drag/drop)
+ */
+export function handleNumericBeforeInput(e: React.FormEvent<HTMLInputElement>) {
+  const inputEvent = e.nativeEvent as InputEvent
+  if (inputEvent.data && !/^[0-9۰-۹٠-٩]+$/.test(inputEvent.data)) {
+    e.preventDefault()
+  }
+}
+
+/**
+ * Blocks non-date keystrokes (only digits and slash)
+ */
+export function handleDateKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (
+    e.key === 'Backspace' ||
+    e.key === 'Tab' ||
+    e.key === 'Delete' ||
+    e.key === 'ArrowLeft' ||
+    e.key === 'ArrowRight' ||
+    e.key === 'Home' ||
+    e.key === 'End' ||
+    e.key === 'Enter' ||
+    e.key === 'Escape' ||
+    e.ctrlKey ||
+    e.metaKey
+  ) {
+    return
+  }
+  if (!/^[0-9۰-۹٠-٩/]$/.test(e.key)) {
+    e.preventDefault()
+  }
+}
+
+/**
+ * Blocks non-date characters on beforeinput event
+ */
+export function handleDateBeforeInput(e: React.FormEvent<HTMLInputElement>) {
+  const inputEvent = e.nativeEvent as InputEvent
+  if (inputEvent.data && !/^[0-9۰-۹٠-٩/]+$/.test(inputEvent.data)) {
+    e.preventDefault()
+  }
 }

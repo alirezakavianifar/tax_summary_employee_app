@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { Calculator, AlertCircle, CheckCircle2, TrendingDown, Scale } from 'lucide-react'
+import { toPersianDigits } from '@/lib/jalali'
 
 interface LiveCalculationCardProps {
   totalPaidAmount: number
@@ -38,11 +39,13 @@ export default function LiveCalculationCard({
   const grandTotal = principalRefund + stampDuty + other + penalties + delayDamages
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('fa-IR').format(Math.round(num))
+    if (num == null || isNaN(num)) return '۰'
+    return toPersianDigits(Math.round(num).toLocaleString('en-US'))
   }
 
   const toToman = (num: number) => {
-    return new Intl.NumberFormat('fa-IR').format(Math.round(num / 10))
+    if (num == null || isNaN(num)) return '۰'
+    return toPersianDigits(Math.round(num / 10).toLocaleString('en-US'))
   }
 
   return (
@@ -101,7 +104,7 @@ export default function LiveCalculationCard({
         <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
           <span className="text-gray-600 flex items-center gap-1">
             <TrendingDown className="w-3.5 h-3.5 text-purple-600" />
-            مازاد پرداختی ناخالص (J):
+            مازاد پرداختی ناخالص (ل):
           </span>
           <span className={`font-black ${isOverpaid ? 'text-emerald-600' : 'text-gray-500'}`}>
             {isOverpaid ? `-${formatNumber(grossSurplus)}` : '۰'} ریال
