@@ -2,6 +2,15 @@
 
 import React, { useState } from 'react'
 import { Plus, Trash2, Receipt, AlertCircle, Calendar } from 'lucide-react'
+import {
+  toEnglishDigits,
+  sanitizeNumericInput,
+  formatJalaliDateMask,
+  isValidJalaliDate,
+  normalizeJalaliDateString,
+  compareJalaliDates,
+  getTodayJalaliString,
+} from '@/lib/jalali'
 
 export interface ReceiptItem {
   id?: string
@@ -38,19 +47,53 @@ export default function ReceiptsTableEditor({
   const handleAddReceipt = () => {
     setInputError(null)
 
-    if (!newReceiptNumber.trim()) {
-      setInputError('شماره قبض الزامی است')
+    const cleanReceiptNo = sanitizeNumericInput(newReceiptNumber, 25)
+    if (!cleanReceiptNo) {
+      setInputError('شماره قبض الزامی است و باید فقط شامل عدد باشد.')
+      return
+    }
+
+    if (cleanReceiptNo.length < 4) {
+      setInputError('شماره قبض باید حداقل ۴ رقم باشد.')
+      return
+    }
+
+    if (receipts.some((r) => r.receiptNumber === cleanReceiptNo)) {
+      setInputError(`قبض با شماره ${cleanReceiptNo} قبلاً در جدول ثبت شده است.`)
       return
     }
 
     if (!newIssueDate.trim()) {
-      setInputError('تاریخ صدور قبض الزامی است')
+      setInputError('تاریخ صدور قبض الزامی است.')
       return
     }
 
-    const parsedAmount = parseFloat(newAmount.replace(/,/g, ''))
+    const normIssueDate = normalizeJalaliDateString(newIssueDate)
+    if (!normIssueDate) {
+      setInputError('تاریخ صدور قبض نامعتبر است. نمونه صحیح تاریخ شمسی: ۱۴۰۳/۰۵/۰۱')
+      return
+    }
+
+    let normPaymentDate = normIssueDate
+    if (newPaymentDate.trim()) {
+      const parsedPayment = normalizeJalaliDateString(newPaymentDate)
+      if (!parsedPayment) {
+        setInputError('تاریخ وصول بانک نامعتبر است. نمونه صحیح تاریخ شمسی: ۱۴۰۳/۰۵/۰۱')
+        return
+      }
+
+      if (compareJalaliDates(parsedPayment, normIssueDate) < 0) {
+        setInputError('تاریخ وصول بانک نمی‌تواند قبل از تاریخ صدور قبض باشد.')
+        return
+      }
+
+      normPaymentDate = parsedPayment
+    }
+
+    const cleanAmount = toEnglishDigits(newAmount).replace(/,/g, '')
+    const parsedAmount = parseFloat(cleanAmount)
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setInputError('مبلغ قبض باید عددی مثبت باشد')
+      setInputError('مبلغ قبض باید عددی مثبت و بزرگتر از صفر باشد.')
       return
     }
 
@@ -58,9 +101,9 @@ export default function ReceiptsTableEditor({
 
     const newReceipt: ReceiptItem = {
       rowIndex: nextIndex,
-      receiptNumber: newReceiptNumber.trim(),
-      issueDateJalali: newIssueDate.trim(),
-      paymentDateJalali: newPaymentDate.trim() || newIssueDate.trim(),
+      receiptNumber: cleanReceiptNo,
+      issueDateJalali: normIssueDate,
+      paymentDateJalali: normPaymentDate,
       amountRials: parsedAmount,
       bankBranch: newBankBranch.trim() || undefined,
       city: newCity.trim() || undefined,
@@ -71,6 +114,8 @@ export default function ReceiptsTableEditor({
 
     // Reset inputs
     setNewReceiptNumber('')
+    setNewIssueDate('')
+    setNewPaymentDate('')
     setNewAmount('')
     setNewLedgerRow('')
   }
@@ -87,6 +132,47 @@ export default function ReceiptsTableEditor({
   }
 
   const totalAmount = receipts.reduce((sum, r) => sum + (r.amountRials || 0), 0)
+
+  // Keyboard navigation & key restriction helpers
+  const handleNumericKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      e.key === 'Backspace' ||
+      e.key === 'Tab' ||
+      e.key === 'Delete' ||
+      e.key === 'ArrowLeft' ||
+      e.key === 'ArrowRight' ||
+      e.key === 'Home' ||
+      e.key === 'End' ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
+      return
+    }
+    // Only allow digits 0-9 and Persian/Arabic digits
+    if (!/^[0-9۰-۹٠-٩]$/.test(e.key)) {
+      e.preventDefault()
+    }
+  }
+
+  const handleDateKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      e.key === 'Backspace' ||
+      e.key === 'Tab' ||
+      e.key === 'Delete' ||
+      e.key === 'ArrowLeft' ||
+      e.key === 'ArrowRight' ||
+      e.key === 'Home' ||
+      e.key === 'End' ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
+      return
+    }
+    // Only allow digits and slash
+    if (!/^[0-9۰-۹٠-٩/]$/.test(e.key)) {
+      e.preventDefault()
+    }
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
@@ -125,45 +211,107 @@ export default function ReceiptsTableEditor({
           </div>
 
           {inputError && (
-            <div className="mb-3 p-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs flex items-center gap-1.5">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {inputError}
+            <div className="mb-3 p-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-xs flex items-center gap-2 animate-shake">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
+              <span className="font-medium">{inputError}</span>
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
             {/* Receipt Number */}
             <div className="lg:col-span-2">
-              <label className="block text-[11px] text-gray-600 font-medium mb-1">شماره قبض *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] text-gray-600 font-medium">
+                  شماره قبض * <span className="text-[10px] text-gray-400 font-normal">(فقط عدد)</span>
+                </label>
+              </div>
               <input
                 type="text"
+                inputMode="numeric"
+                dir="ltr"
                 value={newReceiptNumber}
-                onChange={(e) => setNewReceiptNumber(e.target.value)}
+                onKeyDown={handleNumericKeyDown}
+                onChange={(e) => {
+                  const sanitized = sanitizeNumericInput(e.target.value, 25)
+                  setNewReceiptNumber(sanitized)
+                  if (inputError) setInputError(null)
+                }}
                 placeholder="مثال: ۹۸۷۶۵۴۳۲۱"
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono"
+                maxLength={25}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-left"
               />
             </div>
 
             {/* Issue Date */}
             <div>
-              <label className="block text-[11px] text-gray-600 font-medium mb-1">تاریخ صدور</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] text-gray-600 font-medium">تاریخ صدور *</label>
+                <button
+                  type="button"
+                  onClick={() => setNewIssueDate(getTodayJalaliString())}
+                  className="text-[10px] text-purple-600 hover:text-purple-800 hover:underline cursor-pointer"
+                  title="درج تاریخ امروز"
+                >
+                  امروز
+                </button>
+              </div>
               <input
                 type="text"
+                inputMode="numeric"
+                dir="ltr"
                 value={newIssueDate}
-                onChange={(e) => setNewIssueDate(e.target.value)}
+                onKeyDown={handleDateKeyDown}
+                onChange={(e) => {
+                  const masked = formatJalaliDateMask(e.target.value)
+                  setNewIssueDate(masked)
+                  if (inputError) setInputError(null)
+                }}
+                onBlur={() => {
+                  if (newIssueDate.trim()) {
+                    const norm = normalizeJalaliDateString(newIssueDate)
+                    if (norm) setNewIssueDate(norm)
+                  }
+                }}
                 placeholder="۱۴۰۳/۰۵/۰۱"
+                maxLength={10}
                 className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-center"
               />
             </div>
 
             {/* Payment Date */}
             <div>
-              <label className="block text-[11px] text-gray-600 font-medium mb-1">تاریخ وصول بانک</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] text-gray-600 font-medium">تاریخ وصول بانک</label>
+                {newIssueDate && (
+                  <button
+                    type="button"
+                    onClick={() => setNewPaymentDate(newIssueDate)}
+                    className="text-[10px] text-purple-600 hover:text-purple-800 hover:underline cursor-pointer"
+                    title="یکسان‌سازی با تاریخ صدور"
+                  >
+                    همان صدور
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
+                inputMode="numeric"
+                dir="ltr"
                 value={newPaymentDate}
-                onChange={(e) => setNewPaymentDate(e.target.value)}
+                onKeyDown={handleDateKeyDown}
+                onChange={(e) => {
+                  const masked = formatJalaliDateMask(e.target.value)
+                  setNewPaymentDate(masked)
+                  if (inputError) setInputError(null)
+                }}
+                onBlur={() => {
+                  if (newPaymentDate.trim()) {
+                    const norm = normalizeJalaliDateString(newPaymentDate)
+                    if (norm) setNewPaymentDate(norm)
+                  }
+                }}
                 placeholder="۱۴۰۳/۰۵/۰۱"
+                maxLength={10}
                 className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-center"
               />
             </div>
@@ -173,13 +321,17 @@ export default function ReceiptsTableEditor({
               <label className="block text-[11px] text-gray-600 font-medium mb-1">مبلغ به ریال *</label>
               <input
                 type="text"
+                inputMode="numeric"
+                dir="ltr"
                 value={newAmount}
+                onKeyDown={handleNumericKeyDown}
                 onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, '')
+                  const val = sanitizeNumericInput(e.target.value, 18)
                   setNewAmount(val ? Number(val).toLocaleString() : '')
+                  if (inputError) setInputError(null)
                 }}
                 placeholder="مثال: ۳۰۰,۰۰۰,۰۰۰"
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-bold text-gray-900"
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-bold text-gray-900 text-left"
               />
             </div>
 
@@ -188,7 +340,7 @@ export default function ReceiptsTableEditor({
               <button
                 type="button"
                 onClick={handleAddReceipt}
-                className="w-full px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                className="w-full px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 ثبت قبض

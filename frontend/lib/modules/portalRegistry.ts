@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   History,
   Scale,
+  Coins,
+  FileCheck,
 } from 'lucide-react'
 import { BasePortalModule, PortalAction } from '@/types/portal'
 
@@ -166,6 +168,24 @@ export class TaxRefundPortalModule extends BasePortalModule {
       description: 'آزمون آنی فرمول‌های مواد ۲۴۲ و ۲۴۳ قانون مالیات‌ها',
       icon: Calculator,
       variant: 'outline',
+    },
+    {
+      id: 'refunds-tax-sources',
+      title: 'مدیریت منابع مالیاتی',
+      href: '/admin/tax-sources',
+      description: 'تعریف و پیکربندی منابع پرونده‌های استرداد',
+      icon: Coins,
+      variant: 'outline',
+      minRole: 'Admin',
+    },
+    {
+      id: 'refunds-finality-stages',
+      title: 'مدیریت مراحل قطعیت',
+      href: '/admin/finality-stages',
+      description: 'تعریف و پیکربندی مراحل قطعیت پرونده‌های استرداد',
+      icon: FileCheck,
+      variant: 'outline',
+      minRole: 'Admin',
     },
   ]
 

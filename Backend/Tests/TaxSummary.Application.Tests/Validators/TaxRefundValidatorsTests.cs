@@ -94,6 +94,40 @@ public class TaxRefundValidatorsTests
         result.ShouldHaveValidationErrorFor(x => x.AmountRials);
     }
 
+    [Theory]
+    [InlineData("بیبسیبسی")]
+    [InlineData("RCP-1234")]
+    [InlineData("abc")]
+    public void CreateTaxRefundReceiptValidator_NonNumericReceiptNumber_ShouldHaveError(string invalidReceiptNo)
+    {
+        var dto = new CreateTaxRefundReceiptDto
+        {
+            ReceiptNumber = invalidReceiptNo,
+            AmountRials = 100_000_000,
+            IssueDateJalali = "1403/05/01",
+            PaymentDateJalali = "1403/05/01"
+        };
+        var result = _receiptValidator.TestValidate(dto);
+        result.ShouldHaveValidationErrorFor(x => x.ReceiptNumber);
+    }
+
+    [Theory]
+    [InlineData("یبب")]
+    [InlineData("1403/5/1")]
+    [InlineData("invalid-date")]
+    public void CreateTaxRefundReceiptValidator_InvalidDateFormat_ShouldHaveError(string invalidDate)
+    {
+        var dto = new CreateTaxRefundReceiptDto
+        {
+            ReceiptNumber = "987654321",
+            AmountRials = 100_000_000,
+            IssueDateJalali = invalidDate,
+            PaymentDateJalali = "1403/05/01"
+        };
+        var result = _receiptValidator.TestValidate(dto);
+        result.ShouldHaveValidationErrorFor(x => x.IssueDateJalali);
+    }
+
     [Fact]
     public void CreateRefundableReceiptAllocationValidator_AmountExceedingTotal_ShouldHaveError()
     {

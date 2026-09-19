@@ -288,8 +288,8 @@ export default function TaxSourcesManagementPage() {
               سامانه جامع
             </Link>
             <span>/</span>
-            <Link href="/admin/users" className="hover:text-purple-600 transition-colors">
-              مدیریت سیستم
+            <Link href="/refunds" className="hover:text-purple-600 transition-colors">
+              استرداد مالیات
             </Link>
             <span>/</span>
             <span className="text-gray-800 font-bold">مدیریت منابع مالیاتی</span>

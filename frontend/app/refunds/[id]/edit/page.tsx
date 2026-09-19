@@ -47,6 +47,7 @@ import { WorkflowReturnModal } from '@/components/refunds/WorkflowReturnModal'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
 import { decomposeTaxUnitCode, isUserAuthorizedForUnit } from '@/lib/taxHierarchy'
+import { sanitizeNumericInput, formatJalaliDateMask, normalizeJalaliDateString } from '@/lib/jalali'
 
 const WIZARD_STEPS = [
   { id: 1, title: 'مشخصات عمومی و مودی', icon: Building },
@@ -62,6 +63,25 @@ export default function EditTaxRefundCasePage() {
   const router = useRouter()
   const { user } = useAuth()
   const caseId = params.id as string
+
+  const handleNumericKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      e.key === 'Backspace' ||
+      e.key === 'Tab' ||
+      e.key === 'Delete' ||
+      e.key === 'ArrowLeft' ||
+      e.key === 'ArrowRight' ||
+      e.key === 'Home' ||
+      e.key === 'End' ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
+      return
+    }
+    if (!/^[0-9۰-۹٠-٩]$/.test(e.key)) {
+      e.preventDefault()
+    }
+  }
 
   const [loading, setLoading] = useState(true)
   const [initialError, setInitialError] = useState<string | null>(null)
@@ -766,35 +786,53 @@ export default function EditTaxRefundCasePage() {
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 font-bold mb-1">تین مودی *</label>
+                      <label className="block text-gray-700 font-bold mb-1">
+                        تین مودی * <span className="text-xs text-gray-400 font-normal">(فقط عدد)</span>
+                      </label>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        dir="ltr"
                         value={economicCode}
-                        onChange={(e) => setEconomicCode(e.target.value)}
+                        onKeyDown={handleNumericKeyDown}
+                        onChange={(e) => setEconomicCode(sanitizeNumericInput(e.target.value, 14))}
                         placeholder="مثال: ۴۱۱۳۹۵۷۶۸۵۳۱"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono focus:ring-2 focus:ring-purple-500"
+                        maxLength={14}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-left focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 font-bold mb-1">شناسه ملی / کد ملی</label>
+                      <label className="block text-gray-700 font-bold mb-1">
+                        شناسه ملی / کد ملی <span className="text-xs text-gray-400 font-normal">(فقط عدد)</span>
+                      </label>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        dir="ltr"
                         value={nationalId}
-                        onChange={(e) => setNationalId(e.target.value)}
+                        onKeyDown={handleNumericKeyDown}
+                        onChange={(e) => setNationalId(sanitizeNumericInput(e.target.value, 11))}
                         placeholder="مثال: ۱۰۱۰۲۳۴۵۶۷۸"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
+                        maxLength={11}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-left"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 font-bold mb-1">شماره پرونده مالیاتی</label>
+                      <label className="block text-gray-700 font-bold mb-1">
+                        شماره پرونده مالیاتی <span className="text-xs text-gray-400 font-normal">(فقط عدد)</span>
+                      </label>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        dir="ltr"
                         value={docketNumber}
-                        onChange={(e) => setDocketNumber(e.target.value)}
+                        onKeyDown={handleNumericKeyDown}
+                        onChange={(e) => setDocketNumber(sanitizeNumericInput(e.target.value, 20))}
                         placeholder="مثال: ۸۷"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
+                        maxLength={20}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-left"
                       />
                     </div>
 
@@ -1164,13 +1202,18 @@ export default function EditTaxRefundCasePage() {
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 font-bold mb-1">شماره برگ قطعی / توافق</label>
+                      <label className="block text-gray-700 font-bold mb-1">
+                        شماره برگ قطعی / توافق <span className="text-xs text-gray-400 font-normal">(فقط عدد)</span>
+                      </label>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        dir="ltr"
                         value={finalNoticeNumber}
-                        onChange={(e) => setFinalNoticeNumber(e.target.value)}
+                        onKeyDown={handleNumericKeyDown}
+                        onChange={(e) => setFinalNoticeNumber(sanitizeNumericInput(e.target.value, 25))}
                         placeholder="مثال: ۲۴۸۶۰"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-left"
                       />
                     </div>
 
@@ -1178,10 +1221,19 @@ export default function EditTaxRefundCasePage() {
                       <label className="block text-gray-700 font-bold mb-1">تاریخ برگ قطعی (شمسی)</label>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        dir="ltr"
                         value={finalNoticeDateJalali}
-                        onChange={(e) => setFinalNoticeDateJalali(e.target.value)}
+                        onChange={(e) => setFinalNoticeDateJalali(formatJalaliDateMask(e.target.value))}
+                        onBlur={() => {
+                          if (finalNoticeDateJalali.trim()) {
+                            const norm = normalizeJalaliDateString(finalNoticeDateJalali)
+                            if (norm) setFinalNoticeDateJalali(norm)
+                          }
+                        }}
                         placeholder="مثال: ۱۴۰۳/۰۴/۱۵"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono"
+                        maxLength={10}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-xl font-mono text-center"
                       />
                     </div>
 

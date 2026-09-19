@@ -87,8 +87,8 @@ public class PayrollEmployeeItem
             BaseWelfareAmount = baseWelfareAmount,
             BaseBonusAmount = baseBonusAmount,
             AdjustedBonusAmount = null,     // empty by default
-            CalculatedOvertimeAmount = calculatedOvertimeAmount,
-            CalculatedWelfareAmount = calculatedWelfareAmount,
+            CalculatedOvertimeAmount = null,
+            CalculatedWelfareAmount = null,
             IsLaborPosition = isLaborPosition,
             PositionTier = resolvedTier,
             PositionTitle = positionTitle?.Trim(),

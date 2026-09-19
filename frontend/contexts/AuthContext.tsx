@@ -5,6 +5,7 @@ import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
 import * as authApi from '@/lib/api/auth';
 import { tokenManager } from '@/lib/api/tokenManager';
+import { getApiUrl } from '@/lib/api/config';
 import { AuthContextType, User, LoginRequest } from '@/types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,6 +104,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         } catch (error: any) {
             console.error('Login failed:', error);
+            if (!error.response) {
+                throw new Error(`خطا در برقراری ارتباط با سرور (${getApiUrl()}). لطفاً از در دسترس بودن سرویس بک‌اند اطمینان حاصل فرمایید`);
+            }
             const serverError = error.response?.data?.error || error.response?.data?.message;
             throw new Error(serverError || 'نام کاربری یا رمز عبور اشتباه است');
         } finally {

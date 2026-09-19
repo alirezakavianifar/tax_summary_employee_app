@@ -329,49 +329,6 @@ export default function Navbar() {
                           </Link>
                         )}
 
-                        {isActionVisible('/admin/tax-sources', 'admin') && (
-                          <Link
-                            href="/admin/tax-sources"
-                            onClick={() => setOpenDropdown(null)}
-                            className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
-                              pathname === '/admin/tax-sources'
-                                ? 'bg-purple-50 text-purple-800 font-bold'
-                                : 'hover:bg-gray-50 text-gray-700'
-                            }`}
-                          >
-                            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
-                              <Coins className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="text-xs font-bold block">مدیریت منابع مالیاتی</span>
-                              <span className="text-[11px] text-gray-400 font-normal">
-                                تعریف و پیکربندی منابع پرونده‌های استرداد
-                              </span>
-                            </div>
-                          </Link>
-                        )}
-
-                        {isActionVisible('/admin/finality-stages', 'admin') && (
-                          <Link
-                            href="/admin/finality-stages"
-                            onClick={() => setOpenDropdown(null)}
-                            className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
-                              pathname === '/admin/finality-stages'
-                                ? 'bg-purple-50 text-purple-800 font-bold'
-                                : 'hover:bg-gray-50 text-gray-700'
-                            }`}
-                          >
-                            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
-                              <FileCheck className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="text-xs font-bold block">مدیریت مراحل قطعیت</span>
-                              <span className="text-[11px] text-gray-400 font-normal">
-                                تعریف و پیکربندی مراحل قطعیت پرونده‌های استرداد
-                              </span>
-                            </div>
-                          </Link>
-                        )}
 
                         {isActionVisible('/admin/audit-logs', 'admin') && (
                           <Link
@@ -608,26 +565,7 @@ export default function Navbar() {
                           <span>مدیریت منوها و دسترسی‌ها</span>
                         </Link>
                       )}
-                      {isActionVisible('/admin/tax-sources', 'admin') && (
-                        <Link
-                          href="/admin/tax-sources"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
-                        >
-                          <Coins className="w-4 h-4 text-purple-500" />
-                          <span>مدیریت منابع مالیاتی</span>
-                        </Link>
-                      )}
-                      {isActionVisible('/admin/finality-stages', 'admin') && (
-                        <Link
-                          href="/admin/finality-stages"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
-                        >
-                          <FileCheck className="w-4 h-4 text-purple-500" />
-                          <span>مدیریت مراحل قطعیت</span>
-                        </Link>
-                      )}
+
                       {isActionVisible('/admin/audit-logs', 'admin') && (
                         <Link
                           href="/admin/audit-logs"

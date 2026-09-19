@@ -9,7 +9,7 @@ import { rolesApi, RoleDto } from '@/lib/api/roles';
 import { EmployeeDto, OfficeDto } from '@/lib/api/types';
 import { User, UserRole, getRolePersianName, formatRoleTitle } from '@/types/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { Building2, Search, CheckSquare, Square, X, FileSpreadsheet, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Loader2, RotateCcw, Shield } from 'lucide-react';
+import { Building2, Search, CheckSquare, Square, X, FileSpreadsheet, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Loader2, RotateCcw, Shield, Eye, EyeOff } from 'lucide-react';
 import PersonnelImportModal from '@/components/admin/PersonnelImportModal';
 
 const getPaginationItems = (currentPage: number, total: number) => {
@@ -127,6 +127,7 @@ export default function UsersPage() {
     const [resetModalUser, setResetModalUser] = useState<User | null>(null);
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showResetPassword, setShowResetPassword] = useState(false);
 
     // Delete User Modal State
     const [deleteModalUser, setDeleteModalUser] = useState<User | null>(null);
@@ -344,6 +345,7 @@ export default function UsersPage() {
         setResetModalUser(user);
         setNewPassword('');
         setConfirmPassword('');
+        setShowResetPassword(false);
         setActionError(null);
     };
 
@@ -351,6 +353,7 @@ export default function UsersPage() {
         setResetModalUser(null);
         setNewPassword('');
         setConfirmPassword('');
+        setShowResetPassword(false);
         setActionError(null);
     };
 
@@ -905,32 +908,45 @@ export default function UsersPage() {
                                             تنظیم بر روی کد ملی ({resetModalUser.username})
                                         </button>
                                     </div>
-                                    <input
-                                        type="password"
-                                        value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
-                                        placeholder="••••••••"
-                                        required
-                                        minLength={6}
-                                        dir="ltr"
-                                        className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-hidden transition"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type={showResetPassword ? "text" : "password"}
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="••••••••"
+                                            required
+                                            minLength={6}
+                                            dir="ltr"
+                                            className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-hidden transition pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowResetPassword(!showResetPassword)}
+                                            className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                                            tabIndex={-1}
+                                            title={showResetPassword ? "پنهان کردن رمز عبور" : "نمایش رمز عبور"}
+                                        >
+                                            {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                                         تکرار رمز عبور جدید
                                     </label>
-                                    <input
-                                        type="password"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        placeholder="••••••••"
-                                        required
-                                        minLength={6}
-                                        dir="ltr"
-                                        className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-hidden transition"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type={showResetPassword ? "text" : "password"}
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            placeholder="••••••••"
+                                            required
+                                            minLength={6}
+                                            dir="ltr"
+                                            className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-hidden transition pr-10"
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="pt-3 flex items-center justify-end gap-2.5">

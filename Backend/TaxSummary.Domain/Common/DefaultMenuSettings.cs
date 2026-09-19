@@ -37,14 +37,14 @@ public static class DefaultMenuSettings
             MenuSetting.Create("action_refund_list", "کارپوشه و مدیریت پرونده‌ها", "/refunds", "module_tax_refund", "FileSpreadsheet", true, false, 1, "مشاهده سوابق، گردش کار تاییدات و پیگیری", null, AllGeneralRoles),
             MenuSetting.Create("action_refund_new", "ثبت پرونده استرداد جدید (جادوگر)", "/refunds/new", "module_tax_refund", "PlusCircle", true, false, 2, "ورود مشخصات، قبوض و محاسبه سیستمی اضافه پرداختی", null, AllGeneralRoles),
             MenuSetting.Create("action_refund_calculator", "شبیه‌ساز و محاسبه‌گر برخط", "/refunds/calculator", "module_tax_refund", "Calculator", true, false, 3, "آزمون آنی فرمول‌های مواد ۲۴۲ و ۲۴۳ قانون مالیات‌ها", null, AllGeneralRoles),
+            MenuSetting.Create("action_admin_tax_sources", "مدیریت منابع مالیاتی", "/admin/tax-sources", "module_tax_refund", "Coins", true, true, 4, "پیکربندی و تعریف منابع مالیاتی در پرونده‌های استرداد", null, AdminOnlyRoles),
+            MenuSetting.Create("action_admin_finality_stages", "مدیریت مراحل قطعیت", "/admin/finality-stages", "module_tax_refund", "FileCheck", true, true, 5, "پیکربندی و تعریف مراحل قطعیت پرونده‌های استرداد", null, AdminOnlyRoles),
 
             // 5. Admin System Management
             MenuSetting.Create("module_admin", "مدیریت سیستم", "/admin/users", null, "ShieldCheck", true, true, 5, "پنل راهبری و مدیریت سامانه (مخصوص مدیران)", null, AdminOnlyRoles),
             MenuSetting.Create("action_admin_users", "مدیریت کاربران", "/admin/users", "module_admin", "Users", true, true, 1, "تعریف کاربر، تغییر کلمه عبور و سطوح دسترسی", null, AdminOnlyRoles),
             MenuSetting.Create("action_admin_menus", "مدیریت منوها و دسترسی‌ها", "/admin/menu-settings", "module_admin", "Menu", true, true, 2, "پیکربندی نمایش و مخفی‌سازی گزینه‌های منو", null, AdminOnlyRoles),
-            MenuSetting.Create("action_admin_tax_sources", "مدیریت منابع مالیاتی", "/admin/tax-sources", "module_admin", "Coins", true, true, 3, "پیکربندی و تعریف منابع مالیاتی در پرونده‌های استرداد", null, AdminOnlyRoles),
-            MenuSetting.Create("action_admin_finality_stages", "مدیریت مراحل قطعیت", "/admin/finality-stages", "module_admin", "FileCheck", true, true, 4, "پیکربندی و تعریف مراحل قطعیت پرونده‌های استرداد", null, AdminOnlyRoles),
-            MenuSetting.Create("action_admin_audit_logs", "لاگ‌ها و رویدادهای امنیتی", "/admin/audit-logs", "module_admin", "History", true, true, 5, "مشاهده و پایش تاریخچه تغییرات و رخدادهای امنیتی سامانه", null, AdminOnlyRoles)
+            MenuSetting.Create("action_admin_audit_logs", "لاگ‌ها و رویدادهای امنیتی", "/admin/audit-logs", "module_admin", "History", true, true, 3, "مشاهده و پایش تاریخچه تغییرات و رخدادهای امنیتی سامانه", null, AdminOnlyRoles)
         };
     }
 }

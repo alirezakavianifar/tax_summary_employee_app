@@ -265,3 +265,77 @@ export function parseJalaliInput(input: string): { jy: number; jm: number; jd: n
 
   return { jy, jm, jd }
 }
+
+/**
+ * Sanitizes numeric input by converting Persian/Arabic digits to English and removing non-digits.
+ */
+export function sanitizeNumericInput(val: string, maxLength = 30): string {
+  if (!val) return ''
+  return toEnglishDigits(val).replace(/\D/g, '').slice(0, maxLength)
+}
+
+/**
+ * Smart formatting / masking for Jalali date input:
+ * - Strips any characters that are not digits or slashes
+ * - Auto-inserts slashes when typing digits continuously (e.g. 14030501 -> 1403/05/01)
+ * - Restricts input length to max 10 characters (YYYY/MM/DD)
+ */
+export function formatJalaliDateMask(val: string): string {
+  if (!val) return ''
+  const eng = toEnglishDigits(val)
+  // Strip any Persian/English letters or symbols other than digits and slash
+  const clean = eng.replace(/[^\d/]/g, '')
+
+  // If there are no slashes, auto-format by digit count
+  if (!clean.includes('/')) {
+    const digits = clean.slice(0, 8)
+    if (digits.length <= 4) return digits
+    if (digits.length <= 6) return `${digits.slice(0, 4)}/${digits.slice(4)}`
+    return `${digits.slice(0, 4)}/${digits.slice(4, 6)}/${digits.slice(6, 8)}`
+  }
+
+  // If user entered slashes manually, format each segment
+  const parts = clean.split('/')
+  const year = parts[0].slice(0, 4)
+  if (parts.length === 1) return year
+
+  const month = parts[1].slice(0, 2)
+  if (parts.length === 2) {
+    return clean.endsWith('/') && parts[1] === '' ? `${year}/` : `${year}/${month}`
+  }
+
+  const day = parts[2].slice(0, 2)
+  if (parts.length >= 3 && parts[2] === '' && clean.endsWith('/')) {
+    return `${year}/${month}/`
+  }
+  return `${year}/${month}/${day}`
+}
+
+/**
+ * Checks if a string is a valid complete Jalali date
+ */
+export function isValidJalaliDate(val: string): boolean {
+  return parseJalaliInput(val) !== null
+}
+
+/**
+ * Normalizes a Jalali date string into canonical "YYYY/MM/DD" with zero-padding
+ */
+export function normalizeJalaliDateString(val: string): string | null {
+  const parsed = parseJalaliInput(val)
+  if (!parsed) return null
+  return formatJalaliDateString(parsed.jy, parsed.jm, parsed.jd)
+}
+
+/**
+ * Compare two Jalali date strings (format: "YYYY/MM/DD" or any format supported by parseJalaliInput)
+ * Returns <0 if date1 < date2, 0 if date1 == date2, >0 if date1 > date2
+ */
+export function compareJalaliDates(date1: string, date2: string): number {
+  const p1 = parseJalaliInput(date1)
+  const p2 = parseJalaliInput(date2)
+  if (!p1 || !p2) return NaN
+  const v1 = p1.jy * 10000 + p1.jm * 100 + p1.jd
+  const v2 = p2.jy * 10000 + p2.jm * 100 + p2.jd
+  return v1 - v2
+}

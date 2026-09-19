@@ -1,8 +1,15 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Mail, Plus, Trash2, ShieldAlert, CheckCircle } from 'lucide-react'
+import { Mail, Plus, Trash2, ShieldAlert, CheckCircle, AlertCircle } from 'lucide-react'
 import { TaxRefundLetterType, TaxRefundLetterTypeLabels } from '@/types/taxRefund'
+import {
+  toEnglishDigits,
+  sanitizeNumericInput,
+  formatJalaliDateMask,
+  normalizeJalaliDateString,
+  getTodayJalaliString,
+} from '@/lib/jalali'
 
 export interface LetterItem {
   id?: string
@@ -37,16 +44,31 @@ export default function InquiriesEditor({
   const [newDebt, setNewDebt] = useState<string>('0')
   const [newYear, setNewYear] = useState('')
   const [newDesc, setNewDesc] = useState('')
+  const [letterError, setLetterError] = useState<string | null>(null)
 
   const handleAddLetter = () => {
-    if (!newNumber.trim()) return
+    setLetterError(null)
+    if (!newNumber.trim()) {
+      setLetterError('شماره استعلام / نامه الزامی است')
+      return
+    }
 
-    const parsedDebt = parseFloat(newDebt.replace(/,/g, '')) || 0
+    let normDate = newDate.trim()
+    if (normDate) {
+      const parsed = normalizeJalaliDateString(normDate)
+      if (!parsed) {
+        setLetterError('فرمت تاریخ استعلام نامعتبر است. نمونه صحیح: ۱۴۰۳/۰۵/۰۱')
+        return
+      }
+      normDate = parsed
+    }
+
+    const parsedDebt = parseFloat(toEnglishDigits(newDebt).replace(/,/g, '')) || 0
 
     const newLetter: LetterItem = {
       letterType: newType,
       letterNumber: newNumber.trim(),
-      letterDateJalali: newDate.trim(),
+      letterDateJalali: normDate,
       description: newDesc.trim() || undefined,
       debtAmount: parsedDebt,
       debtYear: newYear.trim() || undefined,
@@ -98,13 +120,37 @@ export default function InquiriesEditor({
             />
           </div>
           <div>
-            <label className="block text-[11px] text-gray-600 font-medium mb-1">تاریخ ثبت وارده *</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[11px] text-gray-600 font-medium">تاریخ ثبت وارده *</label>
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => onPetitionChange(petitionNumber, getTodayJalaliString())}
+                  className="text-[10px] text-purple-600 hover:text-purple-800 hover:underline cursor-pointer"
+                  title="درج تاریخ امروز"
+                >
+                  امروز
+                </button>
+              )}
+            </div>
             <input
               type="text"
+              inputMode="numeric"
+              dir="ltr"
               value={petitionDate}
               disabled={disabled}
-              onChange={(e) => onPetitionChange(petitionNumber, e.target.value)}
+              onChange={(e) => {
+                const masked = formatJalaliDateMask(e.target.value)
+                onPetitionChange(petitionNumber, masked)
+              }}
+              onBlur={() => {
+                if (petitionDate.trim()) {
+                  const norm = normalizeJalaliDateString(petitionDate)
+                  if (norm) onPetitionChange(petitionNumber, norm)
+                }
+              }}
               placeholder="مثال: ۱۴۰۵/۰۱/۲۵"
+              maxLength={10}
               className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono text-center focus:ring-2 focus:ring-purple-500"
             />
           </div>
@@ -138,17 +184,24 @@ export default function InquiriesEditor({
           <div className="p-4 bg-amber-50/30 border-b border-gray-200">
             <div className="text-xs font-bold text-gray-700 mb-2.5 flex items-center gap-1.5">
               <Plus className="w-4 h-4 text-amber-600" />
-              افزودن پاسخ استعلام جدید:
+              ثبت نتیجه استعلام یا بدهی جدید:
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            {letterError && (
+              <div className="mb-3 p-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
+                <span className="font-medium">{letterError}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5">
               {/* Type */}
-              <div className="lg:col-span-2">
-                <label className="block text-[11px] text-gray-600 font-medium mb-1">واحد مالیاتی مرجع</label>
+              <div className="md:col-span-2">
+                <label className="block text-[11px] text-gray-600 font-medium mb-1">مرجع / نوع استعلام</label>
                 <select
                   value={newType}
-                  onChange={(e) => setNewType(Number(e.target.value))}
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-purple-500 bg-white"
+                  onChange={(e) => setNewType(Number(e.target.value) as TaxRefundLetterType)}
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500"
                 >
                   <option value={TaxRefundLetterType.CollectionAndEnforcementInquiry}>
                     {TaxRefundLetterTypeLabels[TaxRefundLetterType.CollectionAndEnforcementInquiry]}
@@ -165,15 +218,6 @@ export default function InquiriesEditor({
                   <option value={TaxRefundLetterType.VatInquiry}>
                     {TaxRefundLetterTypeLabels[TaxRefundLetterType.VatInquiry]}
                   </option>
-                  <option value={TaxRefundLetterType.RefundVoucher}>
-                    {TaxRefundLetterTypeLabels[TaxRefundLetterType.RefundVoucher]}
-                  </option>
-                  <option value={TaxRefundLetterType.JustificationReport}>
-                    {TaxRefundLetterTypeLabels[TaxRefundLetterType.JustificationReport]}
-                  </option>
-                  <option value={TaxRefundLetterType.OfficeCommitment}>
-                    {TaxRefundLetterTypeLabels[TaxRefundLetterType.OfficeCommitment]}
-                  </option>
                   <option value={TaxRefundLetterType.TreasuryLetter}>
                     {TaxRefundLetterTypeLabels[TaxRefundLetterType.TreasuryLetter]}
                   </option>
@@ -186,7 +230,10 @@ export default function InquiriesEditor({
                 <input
                   type="text"
                   value={newNumber}
-                  onChange={(e) => setNewNumber(e.target.value)}
+                  onChange={(e) => {
+                    setNewNumber(e.target.value)
+                    if (letterError) setLetterError(null)
+                  }}
                   placeholder="مثال: ۱۲۳۵۴۶۵"
                   className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono"
                 />
@@ -194,12 +241,35 @@ export default function InquiriesEditor({
 
               {/* Date */}
               <div>
-                <label className="block text-[11px] text-gray-600 font-medium mb-1">تاریخ نامه</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] text-gray-600 font-medium">تاریخ نامه</label>
+                  <button
+                    type="button"
+                    onClick={() => setNewDate(getTodayJalaliString())}
+                    className="text-[10px] text-amber-700 hover:text-amber-900 hover:underline cursor-pointer"
+                    title="درج تاریخ امروز"
+                  >
+                    امروز
+                  </button>
+                </div>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  dir="ltr"
                   value={newDate}
-                  onChange={(e) => setNewDate(e.target.value)}
+                  onChange={(e) => {
+                    const masked = formatJalaliDateMask(e.target.value)
+                    setNewDate(masked)
+                    if (letterError) setLetterError(null)
+                  }}
+                  onBlur={() => {
+                    if (newDate.trim()) {
+                      const norm = normalizeJalaliDateString(newDate)
+                      if (norm) setNewDate(norm)
+                    }
+                  }}
                   placeholder="۱۴۰۵/۰۲/۰۱"
+                  maxLength={10}
                   className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono text-center"
                 />
               </div>
@@ -209,13 +279,16 @@ export default function InquiriesEditor({
                 <label className="block text-[11px] text-gray-600 font-medium mb-1">مبلغ بدهی (ریال)</label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  dir="ltr"
                   value={newDebt}
                   onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '')
+                    const val = sanitizeNumericInput(e.target.value, 18)
                     setNewDebt(val ? Number(val).toLocaleString() : '0')
+                    if (letterError) setLetterError(null)
                   }}
                   placeholder="۰"
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-left"
                 />
               </div>
 
@@ -224,7 +297,7 @@ export default function InquiriesEditor({
                 <button
                   type="button"
                   onClick={handleAddLetter}
-                  className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   ثبت استعلام

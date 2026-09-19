@@ -151,21 +151,45 @@ public class PayrollDepartmentEntry
             // Overtime and Welfare
             if (BaseOvertimeCap.HasValue && BaseOvertimeCap.Value > 0)
             {
-                var totalOvertime = nonExcluded.Sum(i => i.CalculatedOvertimeAmount ?? (long)Math.Ceiling(i.AdjustedOvertimeRate ?? 0));
-                if (totalOvertime > BaseOvertimeCap.Value)
+                if (BaseOvertimeCap.Value <= 50000)
                 {
-                    throw new InvalidOperationException(
-                        $"مجموع اضافه کار تخصیص داده شده ({totalOvertime:N0}) از سقف مجاز اداره ({BaseOvertimeCap.Value:N0}) فراتر رفته است.");
+                    var totalHours = nonExcluded.Sum(i => i.AdjustedOvertimeRate ?? 0);
+                    if (totalHours > BaseOvertimeCap.Value)
+                    {
+                        throw new InvalidOperationException(
+                            $"مجموع ساعت اضافه کار تخصیص داده شده ({totalHours:N0} ساعت) از سقف مجاز اداره ({BaseOvertimeCap.Value:N0} ساعت) فراتر رفته است.");
+                    }
+                }
+                else
+                {
+                    var totalOvertime = nonExcluded.Sum(i => i.CalculatedOvertimeAmount ?? 0);
+                    if (totalOvertime > BaseOvertimeCap.Value)
+                    {
+                        throw new InvalidOperationException(
+                            $"مجموع اضافه کار تخصیص داده شده ({totalOvertime:N0} ریال) از سقف مجاز اداره ({BaseOvertimeCap.Value:N0} ریال) فراتر رفته است.");
+                    }
                 }
             }
 
             if (BaseWelfareCap.HasValue && BaseWelfareCap.Value > 0)
             {
-                var totalWelfare = nonExcluded.Sum(i => i.CalculatedWelfareAmount ?? 0);
-                if (totalWelfare > BaseWelfareCap.Value)
+                if (BaseWelfareCap.Value <= 10000)
                 {
-                    throw new InvalidOperationException(
-                        $"مجموع رفاهی تخصیص داده شده ({totalWelfare:N0}) از سقف مجاز اداره ({BaseWelfareCap.Value:N0}) فراتر رفته است.");
+                    var totalWelfareRate = nonExcluded.Sum(i => i.AdjustedWelfareRate ?? 0);
+                    if (totalWelfareRate > BaseWelfareCap.Value)
+                    {
+                        throw new InvalidOperationException(
+                            $"مجموع درصد رفاهی تخصیص داده شده ({totalWelfareRate:N0}٪) از سقف مجاز اداره ({BaseWelfareCap.Value:N0}٪) فراتر رفته است.");
+                    }
+                }
+                else
+                {
+                    var totalWelfare = nonExcluded.Sum(i => i.CalculatedWelfareAmount ?? 0);
+                    if (totalWelfare > BaseWelfareCap.Value)
+                    {
+                        throw new InvalidOperationException(
+                            $"مجموع رفاهی تخصیص داده شده ({totalWelfare:N0} ریال) از سقف مجاز اداره ({BaseWelfareCap.Value:N0} ریال) فراتر رفته است.");
+                    }
                 }
             }
         }

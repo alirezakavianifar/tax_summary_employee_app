@@ -11,11 +11,11 @@ export const getApiUrl = () => {
 
     // If we are in the browser, use the current window location's hostname.
     if (typeof window !== 'undefined') {
-        return `http://${window.location.hostname}:5005`;
+        return `http://${window.location.hostname}:5000`;
     }
 
     // Fallback for Server-Side Rendering (SSR).
-    return 'http://localhost:5005';
+    return 'http://localhost:5000';
 };
 
 export const API_URL = getApiUrl();

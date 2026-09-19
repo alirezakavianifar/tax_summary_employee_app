@@ -152,16 +152,41 @@ export default function DepartmentWorkspacePage() {
     return items.filter((i) => !i.isExcluded).reduce((sum, i) => sum + (i.adjustedBonusAmount ?? i.baseBonusAmount ?? 0), 0)
   }, [items])
 
+  // Overtime and Welfare Rate sums for Rated process
+  const totalOvertimeHoursLive = useMemo(() => {
+    return items.filter((i) => !i.isExcluded).reduce((sum, i) => sum + (i.adjustedOvertimeRate || 0), 0)
+  }, [items])
+
+  const totalWelfarePercentLive = useMemo(() => {
+    return items.filter((i) => !i.isExcluded).reduce((sum, i) => sum + (i.adjustedWelfareRate || 0), 0)
+  }, [items])
+
+  const isOvertimeCapInHours = useMemo(() => {
+    return dept?.processType === 'OvertimeWelfareRated' && (dept.baseOvertimeCap ?? 0) <= 50000
+  }, [dept])
+
+  const isWelfareCapInPercent = useMemo(() => {
+    return dept?.processType === 'OvertimeWelfareRated' && (dept.baseWelfareCap ?? 0) <= 10000
+  }, [dept])
+
   // Budget violations check
   const isOvertimeOverBudget = useMemo(() => {
     if (!dept || dept.processType === 'HalfPercentBonus') return false
-    return dept.baseOvertimeCap ? totalOvertimeLive > dept.baseOvertimeCap : false
-  }, [dept, totalOvertimeLive])
+    if (!dept.baseOvertimeCap) return false
+    if (isOvertimeCapInHours) {
+      return totalOvertimeHoursLive > dept.baseOvertimeCap
+    }
+    return totalOvertimeLive > dept.baseOvertimeCap
+  }, [dept, isOvertimeCapInHours, totalOvertimeHoursLive, totalOvertimeLive])
 
   const isWelfareOverBudget = useMemo(() => {
     if (!dept || dept.processType === 'HalfPercentBonus') return false
-    return dept.baseWelfareCap ? totalWelfareLive > dept.baseWelfareCap : false
-  }, [dept, totalWelfareLive])
+    if (!dept.baseWelfareCap) return false
+    if (isWelfareCapInPercent) {
+      return totalWelfarePercentLive > dept.baseWelfareCap
+    }
+    return totalWelfareLive > dept.baseWelfareCap
+  }, [dept, isWelfareCapInPercent, totalWelfarePercentLive, totalWelfareLive])
 
   const isBonusOverBudget = useMemo(() => {
     if (!dept || dept.processType !== 'HalfPercentBonus') return false
@@ -457,12 +482,22 @@ export default function DepartmentWorkspacePage() {
             <ul className="list-disc list-inside text-xs space-y-1 text-amber-900">
               {isOvertimeOverBudget && (
                 <li>
-                  <strong>تخطی از سقف اضافه کار اداره:</strong> مجموع اضافه کار محاسبه شده ({formatNumber(totalOvertimeLive)} ریال) از سقف مصوب اداره ({formatNumber(dept.baseOvertimeCap)} ریال) بیشتر است.
+                  <strong>تخطی از سقف اضافه کار اداره:</strong>{' '}
+                  {isOvertimeCapInHours ? (
+                    <>مجموع ساعت اضافه کار تخصیص داده شده ({formatNumber(totalOvertimeHoursLive)} ساعت) از سقف مصوب اداره ({formatNumber(dept.baseOvertimeCap)} ساعت) بیشتر است.</>
+                  ) : (
+                    <>مجموع اضافه کار محاسبه شده ({formatNumber(totalOvertimeLive)} ریال) از سقف مصوب اداره ({formatNumber(dept.baseOvertimeCap)} ریال) بیشتر است.</>
+                  )}
                 </li>
               )}
               {isWelfareOverBudget && (
                 <li>
-                  <strong>تخطی از سقف رفاهی اداره:</strong> مجموع رفاهی محاسبه شده ({formatNumber(totalWelfareLive)} ریال) از سقف مصوب اداره ({formatNumber(dept.baseWelfareCap)} ریال) بیشتر است.
+                  <strong>تخطی از سقف رفاهی اداره:</strong>{' '}
+                  {isWelfareCapInPercent ? (
+                    <>مجموع درصد رفاهی تخصیص داده شده ({formatNumber(totalWelfarePercentLive)}٪) از سقف مصوب اداره ({formatNumber(dept.baseWelfareCap)}٪) بیشتر است.</>
+                  ) : (
+                    <>مجموع رفاهی محاسبه شده ({formatNumber(totalWelfareLive)} ریال) از سقف مصوب اداره ({formatNumber(dept.baseWelfareCap)} ریال) بیشتر است.</>
+                  )}
                 </li>
               )}
               {isBonusOverBudget && (
@@ -599,14 +634,29 @@ export default function DepartmentWorkspacePage() {
 
               <div className={`rounded-xl p-4 border ${isOvertimeOverBudget ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-100'}`}>
                 <div className="flex justify-between items-start">
-                  <span className="text-xs text-gray-500 block mb-1">سقف اضافه کار مصوب</span>
+                  <span className="text-xs text-gray-500 block mb-1">
+                    {isOvertimeCapInHours ? 'سقف ساعت اضافه کار مصوب' : 'سقف بودجه اضافه کار مصوب'}
+                  </span>
                   {dept.baseOvertimeCap && (
-                    <span className="text-[10px] text-gray-400">سقف: {formatNumber(dept.baseOvertimeCap)}</span>
+                    <span className="text-[10px] text-gray-400">
+                      سقف: {formatNumber(dept.baseOvertimeCap)} {isOvertimeCapInHours ? 'ساعت' : 'ریال'}
+                    </span>
                   )}
                 </div>
-                <span className={`text-lg font-bold ${isOvertimeOverBudget ? 'text-red-700' : 'text-primary-700'}`}>
-                  {formatNumber(totalOvertimeLive)} ریال
-                </span>
+                {isOvertimeCapInHours ? (
+                  <div>
+                    <div className={`text-lg font-bold ${isOvertimeOverBudget ? 'text-red-700' : 'text-primary-700'}`}>
+                      {formatNumber(totalOvertimeHoursLive)} ساعت
+                    </div>
+                    <div className="text-[11px] text-gray-500 mt-0.5 font-medium">
+                      مبلغ کل: {formatNumber(totalOvertimeLive)} ریال
+                    </div>
+                  </div>
+                ) : (
+                  <span className={`text-lg font-bold ${isOvertimeOverBudget ? 'text-red-700' : 'text-primary-700'}`}>
+                    {formatNumber(totalOvertimeLive)} ریال
+                  </span>
+                )}
                 {isOvertimeOverBudget && (
                   <span className="block text-[10px] text-red-600 font-bold mt-1">مازاد بر سقف بودجه اداره</span>
                 )}
@@ -614,14 +664,29 @@ export default function DepartmentWorkspacePage() {
 
               <div className={`rounded-xl p-4 border ${isWelfareOverBudget ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-100'}`}>
                 <div className="flex justify-between items-start">
-                  <span className="text-xs text-gray-500 block mb-1">سقف رفاهی مصوب</span>
+                  <span className="text-xs text-gray-500 block mb-1">
+                    {isWelfareCapInPercent ? 'سقف درصد رفاهی مصوب' : 'سقف بودجه رفاهی مصوب'}
+                  </span>
                   {dept.baseWelfareCap && (
-                    <span className="text-[10px] text-gray-400">سقف: {formatNumber(dept.baseWelfareCap)}</span>
+                    <span className="text-[10px] text-gray-400">
+                      سقف: {formatNumber(dept.baseWelfareCap)}{isWelfareCapInPercent ? '٪' : ' ریال'}
+                    </span>
                   )}
                 </div>
-                <span className={`text-lg font-bold ${isWelfareOverBudget ? 'text-red-700' : 'text-emerald-700'}`}>
-                  {formatNumber(totalWelfareLive)} ریال
-                </span>
+                {isWelfareCapInPercent ? (
+                  <div>
+                    <div className={`text-lg font-bold ${isWelfareOverBudget ? 'text-red-700' : 'text-emerald-700'}`}>
+                      {formatNumber(totalWelfarePercentLive)}٪
+                    </div>
+                    <div className="text-[11px] text-gray-500 mt-0.5 font-medium">
+                      مبلغ کل: {formatNumber(totalWelfareLive)} ریال
+                    </div>
+                  </div>
+                ) : (
+                  <span className={`text-lg font-bold ${isWelfareOverBudget ? 'text-red-700' : 'text-emerald-700'}`}>
+                    {formatNumber(totalWelfareLive)} ریال
+                  </span>
+                )}
                 {isWelfareOverBudget && (
                   <span className="block text-[10px] text-red-600 font-bold mt-1">مازاد بر سقف بودجه اداره</span>
                 )}

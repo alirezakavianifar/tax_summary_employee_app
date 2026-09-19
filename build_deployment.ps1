@@ -55,9 +55,10 @@ if ($UpdateOnly) {
 Write-Host " Target Output: $OutputDir" -ForegroundColor Yellow
 Write-Host "========================================================" -ForegroundColor Green
 
-# 1. Stop any background API process that could lock DLLs
-Write-Host "`n[1/5] Ensuring no running backend process locks DLLs..." -ForegroundColor Cyan
+# 1. Stop any background API or Node processes that could lock files
+Write-Host "`n[1/5] Ensuring no running processes lock binaries..." -ForegroundColor Cyan
 Stop-Process -Name TaxSummary.Api -Force -ErrorAction SilentlyContinue
+Stop-Process -Name node -Force -ErrorAction SilentlyContinue
 
 # ==============================================================================
 # MODE A: LIGHTWEIGHT UPDATE ONLY
@@ -71,74 +72,34 @@ if ($UpdateOnly) {
     New-Item -ItemType Directory -Path $backendOut -Force | Out-Null
     New-Item -ItemType Directory -Path $frontendOut -Force | Out-Null
 
-    # 3. Build Backend (Release)
-    Write-Host "`n[3/5] Building .NET 8 Backend application binaries..." -ForegroundColor Cyan
-    $backendProject = Join-Path $PSScriptRoot "Backend\TaxSummary.Api\TaxSummary.Api.csproj"
-    dotnet build $backendProject -c Release
-
-    $releaseBin = Join-Path $PSScriptRoot "Backend\TaxSummary.Api\bin\Release\net8.0"
-    $appFiles = Get-ChildItem -Path "$releaseBin\*" -Include "TaxSummary*.dll", "TaxSummary*.exe", "TaxSummary*.json" -File
+    # 3. Assemble Backend application update binaries
+    Write-Host "`n[3/5] Assembling Backend application update binaries..." -ForegroundColor Cyan
+    $existingBackend = Join-Path $PSScriptRoot "deployment\backend"
+    $appFiles = Get-ChildItem -Path "$existingBackend\*" -Include "TaxSummary*.dll", "TaxSummary*.exe", "TaxSummary*.deps.json", "TaxSummary*.runtimeconfig.json", "Microsoft.AspNetCore.Authentication.JwtBearer.dll", "Microsoft.IdentityModel*.dll", "appsettings*.json" -File
     foreach ($f in $appFiles) {
         Copy-Item $f.FullName -Destination $backendOut -Force
     }
 
     # Copy Resources folder (position mappings Excel, etc.)
-    $resourcesSource = Join-Path $releaseBin "Resources"
+    $resourcesSource = Join-Path $existingBackend "Resources"
     if (Test-Path $resourcesSource) {
         $destResources = Join-Path $backendOut "Resources"
         New-Item -ItemType Directory -Path $destResources -Force | Out-Null
         Copy-Item "$resourcesSource\*" -Destination $destResources -Recurse -Force
     }
 
-    # 4. Build Next.js Frontend (Standalone)
-    Write-Host "`n[4/5] Building Next.js Frontend in Standalone Mode..." -ForegroundColor Cyan
-    $frontendDir = Join-Path $PSScriptRoot "frontend"
-    Push-Location $frontendDir
-    try {
-        Remove-Item -Recurse -Force (Join-Path $frontendDir ".next") -ErrorAction SilentlyContinue
-        npm run build
-    } finally {
-        Pop-Location
-    }
+    # 4. Copy Frontend application files
+    Write-Host "`n[4/5] Assembling Frontend application files..." -ForegroundColor Cyan
+    $existingFrontend = Join-Path $PSScriptRoot "deployment\frontend"
+    Copy-Item "$existingFrontend\*" -Destination $frontendOut -Recurse -Force
 
-    $standaloneDir = Join-Path $frontendDir ".next\standalone"
-    if (-not (Test-Path $standaloneDir)) {
-        throw "Standalone build directory not found at $standaloneDir."
-    }
-
-    # Copy server.js & package.json
-    Copy-Item (Join-Path $standaloneDir "server.js") -Destination $frontendOut -Force
-    if (Test-Path (Join-Path $standaloneDir "package.json")) {
-        Copy-Item (Join-Path $standaloneDir "package.json") -Destination $frontendOut -Force
-    }
-
-    # Copy compiled server files
-    $standaloneNext = Join-Path $standaloneDir ".next"
-    $destNext = Join-Path $frontendOut ".next"
-    New-Item -ItemType Directory -Path $destNext -Force | Out-Null
-    Copy-Item "$standaloneNext\*" -Destination $destNext -Recurse -Force
-
-    # Copy static assets into .next/static
-    $staticSource = Join-Path $frontendDir ".next\static"
-    $staticDest = Join-Path $destNext "static"
-    New-Item -ItemType Directory -Path $staticDest -Force | Out-Null
-    Copy-Item "$staticSource\*" -Destination $staticDest -Recurse -Force
-
-    # Copy public assets
-    $publicSource = Join-Path $frontendDir "public"
-    $publicDest = Join-Path $frontendOut "public"
-    New-Item -ItemType Directory -Path $publicDest -Force | Out-Null
-    Copy-Item "$publicSource\*" -Destination $publicDest -Recurse -Force
-
-    # Clean compiler cache
-    Remove-Item -Recurse -Force (Join-Path $destNext "cache") -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force (Join-Path $destNext "standalone") -ErrorAction SilentlyContinue
-
-    # Standalone node_modules (minimal runtime dependencies ~17 MB) is required by server.js
-    Write-Host "Including standalone frontend node_modules..." -ForegroundColor Gray
-    $nmSource = Join-Path $standaloneDir "node_modules"
-    if (Test-Path $nmSource) {
-        Copy-Item $nmSource -Destination (Join-Path $frontendOut "node_modules") -Recurse -Force
+    # Copy updated launcher scripts into update package
+    $distFiles = @("START_ALL.bat", "START_BACKEND.bat", "START_FRONTEND.bat")
+    foreach ($b in $distFiles) {
+        $src = Join-Path $PSScriptRoot "deployment\$b"
+        if (Test-Path $src) {
+            Copy-Item $src -Destination (Join-Path $OutputDir $b) -Force
+        }
     }
 
     # 5. Create APPLY_UPDATE.bat helper in update folder
@@ -185,6 +146,9 @@ xcopy /Y /E "%~dp0backend\*" "!TARGET!\backend\" >nul
 echo Updating Frontend application files...
 xcopy /Y /E "%~dp0frontend\*" "!TARGET!\frontend\" >nul
 
+echo Updating launcher scripts...
+copy /Y "%~dp0START_*.bat" "!TARGET!\" >nul
+
 echo.
 echo [3/3] Update applied successfully!
 echo ========================================================
@@ -223,11 +187,26 @@ pause
 # MODE B: FULL DEPLOYMENT PACKAGE
 # ==============================================================================
 
-# 2. Create Target Directory
+# 2. Create Target Directory & Clean Old Artifacts
 Write-Host "`n[2/6] Preparing output directory structure..." -ForegroundColor Cyan
 if (-not (Test-Path $OutputDir)) {
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 }
+
+# Clean backend output directory while preserving database
+$sourceDb = Join-Path $PSScriptRoot "Backend\TaxSummary.Api\taxsummary.db"
+$existingDb = Join-Path $backendOut "taxsummary.db"
+$tempDbBackup = $null
+if (Test-Path $existingDb) {
+    $tempDbBackup = Join-Path $env:TEMP ("taxsummary_db_bak_" + [System.Guid]::NewGuid().ToString("N") + ".db")
+    Copy-Item $existingDb $tempDbBackup -Force
+}
+
+if (Test-Path $backendOut) {
+    Write-Host "Cleaning previous backend build directory..." -ForegroundColor Gray
+    Remove-Item -Recurse -Force $backendOut -ErrorAction SilentlyContinue
+}
+New-Item -ItemType Directory -Path $backendOut -Force | Out-Null
 
 # 3. Publish .NET 8 Backend (Self-Contained Windows x64)
 Write-Host "`n[3/6] Publishing .NET 8 Backend (Win-x64 Self-Contained)..." -ForegroundColor Cyan
@@ -247,12 +226,31 @@ if (Test-Path $appsettingsPath) {
     $json | ConvertTo-Json -Depth 10 | Set-Content $appsettingsPath -Encoding UTF8
 }
 
-# Preserve or copy existing SQLite database if present
-$existingDb = Join-Path $PSScriptRoot "deployment\backend\taxsummary.db"
+# Restore/copy SQLite database
 $targetDb = Join-Path $backendOut "taxsummary.db"
-if ((Test-Path $existingDb) -and -not (Test-Path $targetDb)) {
-    Write-Host "Copying existing database file to new deployment..." -ForegroundColor Gray
-    Copy-Item $existingDb $targetDb -Force
+if ($tempDbBackup -and (Test-Path $tempDbBackup)) {
+    Write-Host "Restoring preserved database file..." -ForegroundColor Gray
+    Copy-Item $tempDbBackup $targetDb -Force
+    Remove-Item $tempDbBackup -Force -ErrorAction SilentlyContinue
+} elseif (Test-Path $sourceDb) {
+    Write-Host "Copying database file from Backend..." -ForegroundColor Gray
+    Copy-Item $sourceDb $targetDb -Force
+}
+
+# Copy PositionMappings and Resources if not already present
+$resSrc = Join-Path $PSScriptRoot "Backend\TaxSummary.Infrastructure\Resources"
+if (Test-Path $resSrc) {
+    $destRes = Join-Path $backendOut "Resources"
+    New-Item -ItemType Directory -Path $destRes -Force | Out-Null
+    Copy-Item "$resSrc\*" -Destination $destRes -Recurse -Force
+}
+
+# Copy employee photos into backend wwwroot
+$uploadsSrc = Join-Path $PSScriptRoot "Backend\TaxSummary.Api\wwwroot\uploads"
+if (Test-Path $uploadsSrc) {
+    $uploadsDst = Join-Path $backendOut "wwwroot\uploads"
+    New-Item -ItemType Directory -Path $uploadsDst -Force | Out-Null
+    Copy-Item "$uploadsSrc\*" -Destination $uploadsDst -Recurse -Force
 }
 
 # Clean any archive files that may have been in wwwroot
@@ -277,28 +275,46 @@ if (-not (Test-Path $standaloneDir)) {
     throw "Standalone build directory was not found at $standaloneDir. Ensure output: 'standalone' is enabled in next.config.js."
 }
 
-# Clean old destination files to avoid stale or nested artifacts
-Remove-Item -Recurse -Force (Join-Path $frontendOut ".next") -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force (Join-Path $frontendOut "public") -ErrorAction SilentlyContinue
-
-# Copy standalone directory contents into frontend destination
+# Clean old frontend destination files
+if (Test-Path $frontendOut) {
+    Remove-Item -Recurse -Force $frontendOut -ErrorAction SilentlyContinue
+}
 New-Item -ItemType Directory -Path $frontendOut -Force | Out-Null
-Copy-Item "$standaloneDir\*" -Destination $frontendOut -Recurse -Force
 
-# Next.js standalone requires static and public assets copied manually:
+# Copy server.js & package.json
+Copy-Item (Join-Path $standaloneDir "server.js") -Destination $frontendOut -Force
+if (Test-Path (Join-Path $standaloneDir "package.json")) {
+    Copy-Item (Join-Path $standaloneDir "package.json") -Destination $frontendOut -Force
+}
+
+# Copy compiled server files (.next)
+$standaloneNext = Join-Path $standaloneDir ".next"
+$destNext = Join-Path $frontendOut ".next"
+New-Item -ItemType Directory -Path $destNext -Force | Out-Null
+Copy-Item "$standaloneNext\*" -Destination $destNext -Recurse -Force
+
+# Copy static assets into .next/static
 $staticSource = Join-Path $frontendDir ".next\static"
-$staticDest = Join-Path $frontendOut ".next\static"
+$staticDest = Join-Path $destNext "static"
 New-Item -ItemType Directory -Path $staticDest -Force | Out-Null
 Copy-Item "$staticSource\*" -Destination $staticDest -Recurse -Force
 
+# Copy public assets
 $publicSource = Join-Path $frontendDir "public"
 $publicDest = Join-Path $frontendOut "public"
 New-Item -ItemType Directory -Path $publicDest -Force | Out-Null
 Copy-Item "$publicSource\*" -Destination $publicDest -Recurse -Force
 
+# Copy standalone node_modules
+$nmSource = Join-Path $standaloneDir "node_modules"
+if (Test-Path $nmSource) {
+    Copy-Item $nmSource -Destination (Join-Path $frontendOut "node_modules") -Recurse -Force
+}
+
 # Remove compiler cache and nested standalone to keep package compact
-Remove-Item -Recurse -Force (Join-Path $frontendOut ".next\cache") -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force (Join-Path $frontendOut ".next\standalone") -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force (Join-Path $destNext "cache") -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force (Join-Path $destNext "standalone") -ErrorAction SilentlyContinue
+
 
 # 6. Copy Portable Node runtime and starter scripts
 Write-Host "`n[6/6] Copying portable Node runtime and launcher scripts..." -ForegroundColor Cyan
