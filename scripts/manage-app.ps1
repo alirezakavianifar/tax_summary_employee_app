@@ -95,6 +95,12 @@ function Stop-PortProcess {
     )
     $listener = Get-PortListener -Port $Port
     if ($null -ne $listener) {
+        # Safeguard: Never terminate portfolio or critical system services
+        if ($listener.ProcessName -like "*portfolio*" -or $listener.ProcessName -in @("System", "Idle", "svchost", "w3wp", "inetinfo")) {
+            Write-Host "  [REFUSED] Port $Port is held by a protected system/portfolio process ($($listener.ProcessName), PID: $($listener.PID)). Refusing to terminate." -ForegroundColor Red
+            return
+        }
+
         Write-Host "Stopping $ServiceName (Port $Port, PID: $($listener.PID), Process: $($listener.ProcessName))..." -ForegroundColor Yellow
         try {
             Stop-Process -Id $listener.PID -Force -ErrorAction Stop
@@ -141,7 +147,12 @@ function Start-BackendService {
     
     $existing = Get-PortListener -Port $BackendHttpPort
     if ($null -ne $existing) {
-        Write-Host "  [WARN] Backend is already running on port $BackendHttpPort (PID: $($existing.PID))." -ForegroundColor Yellow
+        if ($existing.ProcessName -like "*portfolio*" -or $existing.ProcessName -in @("System", "Idle", "svchost", "w3wp", "inetinfo")) {
+            Write-Host "  [ERROR] Port $BackendHttpPort is occupied by protected external process '$($existing.ProcessName)' (PID: $($existing.PID))." -ForegroundColor Red
+            Write-Host "  Cannot start Tax Summary backend on port $BackendHttpPort without conflicting." -ForegroundColor Red
+            return
+        }
+        Write-Host "  [WARN] Backend is already running on port $BackendHttpPort (PID: $($existing.PID), Process: $($existing.ProcessName))." -ForegroundColor Yellow
         return
     }
 
@@ -196,7 +207,7 @@ function Start-FrontendService {
         }
     }
 
-    Start-DetachedProcess -ShellCommand "Write-Host 'Starting Next.js Frontend Server...' -ForegroundColor Green; npm run dev" -WorkingDirectory $FrontendDir
+    Start-DetachedProcess -ShellCommand "`$env:NEXT_PUBLIC_API_URL='http://localhost:$BackendHttpPort/api'; Write-Host 'Starting Next.js Frontend Server...' -ForegroundColor Green; npm run dev" -WorkingDirectory $FrontendDir
 
     Write-Host "  Frontend process launched in separate window." -ForegroundColor Green
     Write-Host "  Waiting for service to bind to port $FrontendPort..." -ForegroundColor Gray

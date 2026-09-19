@@ -55,10 +55,13 @@ if ($UpdateOnly) {
 Write-Host " Target Output: $OutputDir" -ForegroundColor Yellow
 Write-Host "========================================================" -ForegroundColor Green
 
-# 1. Stop any background API or Node processes that could lock files
+# 1. Stop any background Tax Summary API or dev frontend processes that could lock files
 Write-Host "`n[1/5] Ensuring no running processes lock binaries..." -ForegroundColor Cyan
 Stop-Process -Name TaxSummary.Api -Force -ErrorAction SilentlyContinue
-Stop-Process -Name node -Force -ErrorAction SilentlyContinue
+$taxFrontend = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($taxFrontend) {
+    Stop-Process -Id $taxFrontend.OwningProcess -Force -ErrorAction SilentlyContinue
+}
 
 # ==============================================================================
 # MODE A: LIGHTWEIGHT UPDATE ONLY
