@@ -176,23 +176,40 @@ export function canUserVerifyStage(
   const role = userRole.toLowerCase()
   if (role === 'admin') return true
 
+  const statusNum = typeof targetStatus === 'number' ? targetStatus : parseInt(targetStatus as string, 10)
+
+  // Status 5: Director General approval (مدیر کل امور مالیاتی استان)
+  if (statusNum === 5) {
+    return role === 'directorgeneral'
+  }
+
+  // Status 6: Treasury disbursement (ذیحساب و امور مالی)
+  if (statusNum === 6) {
+    return role === 'treasury'
+  }
+
+  // Director General has province-wide supervisory authority
+  if (role === 'directorgeneral') {
+    return true
+  }
+
   // Must have hierarchy access to the tax unit code
   if (!isUserAuthorizedForUnit(userRole, userOffices, taxUnitCode, serviceUnit)) {
     return false
   }
 
-  const statusNum = typeof targetStatus === 'number' ? targetStatus : parseInt(targetStatus as string, 10)
-
   // Status mapping:
-  // 1 = Audited (Auditor / Expert, GroupHead, OfficeHead, Admin)
-  // 2 = GroupHeadApproved (GroupHead, OfficeHead, Admin)
-  // 3 = AdministrationHeadApproved (OfficeHead, Admin)
+  // 1 = InquiriesPending
+  // 2 = Audited (Auditor / Expert, GroupHead, OfficeHead, Manager)
+  // 3 = GroupHeadApproved (GroupHead, OfficeHead)
+  // 4 = AdministrationHeadApproved (OfficeHead)
   switch (statusNum) {
     case 1:
-      return role === 'expert' || role === 'grouphead' || role === 'officehead' || role === 'manager'
     case 2:
-      return role === 'grouphead' || role === 'officehead'
+      return role === 'expert' || role === 'grouphead' || role === 'officehead' || role === 'manager'
     case 3:
+      return role === 'grouphead' || role === 'officehead'
+    case 4:
       return role === 'officehead'
     default:
       return true

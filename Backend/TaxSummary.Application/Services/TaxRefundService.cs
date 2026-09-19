@@ -364,8 +364,10 @@ public class TaxRefundService : ITaxRefundService
         if (refundCase == null)
             return Result.Failure("پرونده استرداد یافت نشد");
 
-        if (refundCase.Status == RefundCaseStatus.AdministrationHeadApproved || refundCase.Status == RefundCaseStatus.TreasuryDisbursed)
-            return Result.Failure("پرونده پس از تایید نهایی رئیس امور یا پرداخت در ذیحسابی قابل ویرایش نمی‌باشد");
+        if (refundCase.Status == RefundCaseStatus.AdministrationHeadApproved ||
+            refundCase.Status == RefundCaseStatus.DirectorGeneralApproved ||
+            refundCase.Status == RefundCaseStatus.TreasuryDisbursed)
+            return Result.Failure("پرونده پس از تایید نهایی رئیس امور، مدیر کل یا پرداخت در ذیحسابی قابل ویرایش نمی‌باشد");
 
         if (currentUserId.HasValue && currentUserId.Value != Guid.Empty && _userRepository != null)
         {
@@ -911,8 +913,12 @@ public class TaxRefundService : ITaxRefundService
 
         try
         {
-            // Snapshot active Director General if not set yet (e.g. at transition/sealing)
-            if (string.IsNullOrWhiteSpace(refundCase.DirectorGeneralName))
+            // Snapshot active Director General name
+            if (dto.NewStatus == RefundCaseStatus.DirectorGeneralApproved && !string.IsNullOrWhiteSpace(actorName))
+            {
+                refundCase.SetDirectorGeneralName(actorName);
+            }
+            else if (string.IsNullOrWhiteSpace(refundCase.DirectorGeneralName))
             {
                 var dgName = await GetCurrentDirectorGeneralNameAsync(ct);
                 refundCase.SetDirectorGeneralName(dgName);
@@ -1443,7 +1449,9 @@ public class TaxRefundService : ITaxRefundService
         var activeDg = await GetCurrentDirectorGeneralNameAsync(ct);
 
         // If the case is already sealed/finished, permanently persist this snapshot so it never changes in the future!
-        if (refundCase.Status == RefundCaseStatus.AdministrationHeadApproved || refundCase.Status == RefundCaseStatus.TreasuryDisbursed)
+        if (refundCase.Status == RefundCaseStatus.AdministrationHeadApproved ||
+            refundCase.Status == RefundCaseStatus.DirectorGeneralApproved ||
+            refundCase.Status == RefundCaseStatus.TreasuryDisbursed)
         {
             try
             {

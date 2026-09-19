@@ -191,6 +191,7 @@ export default function TaxRefundDetailPage() {
 
           <div className="flex items-center gap-2">
             {refundCase.status !== RefundCaseStatus.AdministrationHeadApproved &&
+              refundCase.status !== RefundCaseStatus.DirectorGeneralApproved &&
               refundCase.status !== RefundCaseStatus.TreasuryDisbursed && (
                 <Link
                   href={`/refunds/${refundCase.id}/edit`}
@@ -200,7 +201,8 @@ export default function TaxRefundDetailPage() {
                   ویرایش پرونده (۶ مرحله)
                 </Link>
               )}
-            {refundCase.status === RefundCaseStatus.AdministrationHeadApproved && (
+            {(refundCase.status === RefundCaseStatus.AdministrationHeadApproved ||
+              refundCase.status === RefundCaseStatus.DirectorGeneralApproved) && (
               <button
                 onClick={() => setIsReturnModalOpen(true)}
                 className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
@@ -560,25 +562,65 @@ export default function TaxRefundDetailPage() {
                   )
                 })()}
 
-                {refundCase.status === RefundCaseStatus.AdministrationHeadApproved && (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <button
-                      onClick={() => handleTransition(RefundCaseStatus.TreasuryDisbursed)}
-                      disabled={transitioning}
-                      className="flex-1 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
-                    >
-                      تایید پرداخت ذیحسابی
-                    </button>
-                    <button
-                      onClick={() => setIsReturnModalOpen(true)}
-                      disabled={transitioning}
-                      className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      عودت جهت اصلاح
-                    </button>
-                  </div>
-                )}
+                {refundCase.status === RefundCaseStatus.AdministrationHeadApproved && (() => {
+                  const canDirectorGeneralApprove = canUserVerifyStage(user?.role, user?.assignedOffices, user?.employee?.serviceUnit, RefundCaseStatus.DirectorGeneralApproved, refundCase.taxUnitCode)
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={() => handleTransition(RefundCaseStatus.DirectorGeneralApproved)}
+                          disabled={transitioning || !canDirectorGeneralApprove}
+                          className="flex-1 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          تایید و موافقت مدیر کل (ارسال به ذیحسابی)
+                        </button>
+                        <button
+                          onClick={() => setIsReturnModalOpen(true)}
+                          disabled={transitioning}
+                          className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          عودت جهت اصلاح
+                        </button>
+                      </div>
+                      {!canDirectorGeneralApprove && (
+                        <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200 text-center">
+                          تایید این مرحله منحصراً در صلاحیت مدیر کل امور مالیاتی استان یا مدیر ارشد سامانه می‌باشد.
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {refundCase.status === RefundCaseStatus.DirectorGeneralApproved && (() => {
+                  const canTreasuryDisburse = canUserVerifyStage(user?.role, user?.assignedOffices, user?.employee?.serviceUnit, RefundCaseStatus.TreasuryDisbursed, refundCase.taxUnitCode)
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={() => handleTransition(RefundCaseStatus.TreasuryDisbursed)}
+                          disabled={transitioning || !canTreasuryDisburse}
+                          className="flex-1 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          تایید و پرداخت نهایی ذیحسابی
+                        </button>
+                        <button
+                          onClick={() => setIsReturnModalOpen(true)}
+                          disabled={transitioning}
+                          className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          عودت جهت اصلاح
+                        </button>
+                      </div>
+                      {!canTreasuryDisburse && (
+                        <p className="text-[11px] text-teal-800 bg-teal-50 p-2 rounded-xl border border-teal-200 text-center">
+                          اقدام و ثبت پرداخت نهایی منحصراً در صلاحیت ذیحساب/امور مالی یا مدیر ارشد سامانه می‌باشد.
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {refundCase.status === RefundCaseStatus.TreasuryDisbursed && (
                   <span className="text-xs font-bold text-teal-800 py-2 block text-center">

@@ -622,6 +622,7 @@ export default function EditTaxRefundCasePage() {
 
   const isLocked =
     refundCase.status === RefundCaseStatus.AdministrationHeadApproved ||
+    refundCase.status === RefundCaseStatus.DirectorGeneralApproved ||
     refundCase.status === RefundCaseStatus.TreasuryDisbursed
 
   if (isLocked) {
@@ -630,14 +631,16 @@ export default function EditTaxRefundCasePage() {
         <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm max-w-lg w-full text-center space-y-4">
           <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
           <h2 className="text-base font-bold text-gray-900">
-            {refundCase.status === RefundCaseStatus.AdministrationHeadApproved
+            {refundCase.status === RefundCaseStatus.AdministrationHeadApproved ||
+            refundCase.status === RefundCaseStatus.DirectorGeneralApproved
               ? 'پرونده نیازمند عودت جهت ویرایش است'
               : 'پرونده مختومه و پرداخت گردیده است'}
           </h2>
           <p className="text-xs text-gray-600 leading-6">
-            {refundCase.status === RefundCaseStatus.AdministrationHeadApproved ? (
+            {refundCase.status === RefundCaseStatus.AdministrationHeadApproved ||
+            refundCase.status === RefundCaseStatus.DirectorGeneralApproved ? (
               <>
-                این پرونده با شماره پیگیری <strong className="font-mono text-purple-900">{refundCase.caseTrackingNumber}</strong> در مرحله «تایید نهایی رئیس امور» قرار دارد. برای بازگشایی قفل و ویرایش اطلاعات، پرونده باید توسط رئیس اداره یا مدیر عودت داده شود.
+                این پرونده با شماره پیگیری <strong className="font-mono text-purple-900">{refundCase.caseTrackingNumber}</strong> در مرحله «{refundCase.statusDescription || 'تایید نهایی / مدیر کل'}» قرار دارد. برای بازگشایی قفل و ویرایش اطلاعات، پرونده باید عودت داده شود.
               </>
             ) : (
               <>
@@ -653,7 +656,8 @@ export default function EditTaxRefundCasePage() {
               مشاهده پرونده
             </Link>
 
-            {refundCase.status === RefundCaseStatus.AdministrationHeadApproved && (
+            {(refundCase.status === RefundCaseStatus.AdministrationHeadApproved ||
+              refundCase.status === RefundCaseStatus.DirectorGeneralApproved) && (
               <button
                 type="button"
                 onClick={() => setIsReturnModalOpen(true)}

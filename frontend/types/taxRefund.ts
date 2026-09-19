@@ -76,8 +76,9 @@ export enum RefundCaseStatus {
   Audited = 2,
   GroupHeadApproved = 3,
   AdministrationHeadApproved = 4,
-  TreasuryDisbursed = 5,
-  Rejected = 6,
+  DirectorGeneralApproved = 5,
+  TreasuryDisbursed = 6,
+  Rejected = 7,
 }
 
 export const RefundCaseStatusLabels: Record<RefundCaseStatus, { text: string; color: string }> = {
@@ -86,6 +87,7 @@ export const RefundCaseStatusLabels: Record<RefundCaseStatus, { text: string; co
   [RefundCaseStatus.Audited]: { text: 'رسیدگی و تنظیم گزارش توجیهی', color: 'bg-blue-100 text-blue-800 border-blue-300' },
   [RefundCaseStatus.GroupHeadApproved]: { text: 'تایید رئیس گروه مالیاتی', color: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
   [RefundCaseStatus.AdministrationHeadApproved]: { text: 'تایید نهایی رئیس امور (دستور استرداد)', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  [RefundCaseStatus.DirectorGeneralApproved]: { text: 'تایید مدیر کل (در انتظار پرداخت ذیحسابی)', color: 'bg-purple-100 text-purple-800 border-purple-300' },
   [RefundCaseStatus.TreasuryDisbursed]: { text: 'استرداد شده توسط ذیحسابی', color: 'bg-teal-100 text-teal-800 border-teal-300' },
   [RefundCaseStatus.Rejected]: { text: 'رد شده', color: 'bg-red-100 text-red-800 border-red-300' },
 }

@@ -71,6 +71,7 @@ public class TaxRefundMappingProfile : Profile
         RefundCaseStatus.Audited => "گزارش توجیهی تنظیم شده",
         RefundCaseStatus.GroupHeadApproved => "تایید رئیس گروه",
         RefundCaseStatus.AdministrationHeadApproved => "تایید نهایی و دستور استرداد",
+        RefundCaseStatus.DirectorGeneralApproved => "تایید مدیر کل (در انتظار پرداخت ذیحسابی)",
         RefundCaseStatus.TreasuryDisbursed => "پرداخت شده توسط ذیحسابی",
         RefundCaseStatus.Rejected => "رد شده",
         _ => status.ToString()

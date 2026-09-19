@@ -509,9 +509,11 @@ public class TaxRefundCase
 
     private void EnsureModifiable()
     {
-        if (Status == RefundCaseStatus.AdministrationHeadApproved || Status == RefundCaseStatus.TreasuryDisbursed)
+        if (Status == RefundCaseStatus.AdministrationHeadApproved ||
+            Status == RefundCaseStatus.DirectorGeneralApproved ||
+            Status == RefundCaseStatus.TreasuryDisbursed)
         {
-            throw new InvalidOperationException("پرونده پس از تایید نهایی رئیس امور یا پرداخت در ذیحسابی قابل ویرایش نمی‌باشد");
+            throw new InvalidOperationException("پرونده پس از تایید نهایی رئیس امور، مدیر کل یا پرداخت در ذیحسابی قابل ویرایش نمی‌باشد");
         }
     }
 }

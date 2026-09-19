@@ -294,6 +294,7 @@ export default function RefundsDashboardPage() {
                 <option value={RefundCaseStatus.Audited}>رسیدگی شده</option>
                 <option value={RefundCaseStatus.GroupHeadApproved}>تایید رئیس گروه</option>
                 <option value={RefundCaseStatus.AdministrationHeadApproved}>تایید نهایی رئیس امور</option>
+                <option value={RefundCaseStatus.DirectorGeneralApproved}>تایید مدیر کل</option>
                 <option value={RefundCaseStatus.TreasuryDisbursed}>پرداخت شده در ذیحسابی</option>
               </select>
             </div>
@@ -427,13 +428,17 @@ export default function RefundsDashboardPage() {
                               <Eye className="w-4 h-4" />
                             </Link>
 
-                            <button
-                              onClick={() => setEditingCase(c)}
-                              className="p-1.5 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                              title="ویرایش مشخصات پرونده"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
+                            {c.status !== RefundCaseStatus.AdministrationHeadApproved &&
+                              c.status !== RefundCaseStatus.DirectorGeneralApproved &&
+                              c.status !== RefundCaseStatus.TreasuryDisbursed && (
+                                <button
+                                  onClick={() => setEditingCase(c)}
+                                  className="p-1.5 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                  title="ویرایش مشخصات پرونده"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              )}
 
                             <button
                               onClick={async () => {

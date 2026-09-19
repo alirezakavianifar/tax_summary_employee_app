@@ -415,12 +415,14 @@ public class User
 
                 return HasOfficeLevelAccess(hierarchy.OfficeCode);
 
+            case RefundCaseStatus.DirectorGeneralApproved:
+                // Director General (مدیر کل امور مالیاتی استان) or Admin
+                return Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase) ||
+                       Role.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+
             case RefundCaseStatus.TreasuryDisbursed:
-                // Treasury / DirectorGeneral / Office Head / Manager / Admin
+                // Treasury / Zihasab (ذیحساب و مدیر امور مالی) or Admin
                 return Role.Equals("Treasury", StringComparison.OrdinalIgnoreCase) ||
-                       Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase) ||
-                       Role.Equals("OfficeHead", StringComparison.OrdinalIgnoreCase) ||
-                       Role.Equals("Manager", StringComparison.OrdinalIgnoreCase) ||
                        Role.Equals("Admin", StringComparison.OrdinalIgnoreCase);
 
             case RefundCaseStatus.Draft:

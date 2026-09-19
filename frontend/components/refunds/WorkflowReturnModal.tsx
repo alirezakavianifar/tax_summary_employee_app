@@ -29,6 +29,7 @@ export function WorkflowReturnModal({
 }: WorkflowReturnModalProps) {
   // Default target status: Audited (2) if higher, otherwise Draft (0)
   const defaultTarget =
+    currentStatus === RefundCaseStatus.DirectorGeneralApproved ||
     currentStatus === RefundCaseStatus.AdministrationHeadApproved ||
     currentStatus === RefundCaseStatus.GroupHeadApproved
       ? RefundCaseStatus.Audited
@@ -115,7 +116,34 @@ export function WorkflowReturnModal({
               سطح عودت پرونده:
             </label>
             <div className="space-y-2">
-              {(currentStatus === RefundCaseStatus.AdministrationHeadApproved ||
+              {currentStatus === RefundCaseStatus.DirectorGeneralApproved && (
+                <label
+                  className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    targetStatus === RefundCaseStatus.AdministrationHeadApproved
+                      ? 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-600/20'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="targetStatus"
+                    checked={targetStatus === RefundCaseStatus.AdministrationHeadApproved}
+                    onChange={() => setTargetStatus(RefundCaseStatus.AdministrationHeadApproved)}
+                    className="mt-1 text-purple-600 focus:ring-purple-500"
+                  />
+                  <div>
+                    <div className="text-xs font-bold text-gray-900">
+                      مرحله رئیس امور (دستور استرداد)
+                    </div>
+                    <div className="text-[11px] text-gray-500 mt-0.5">
+                      پرونده جهت بازبینی دستور استرداد به رئیس امور مالیاتی بازمی‌گردد.
+                    </div>
+                  </div>
+                </label>
+              )}
+
+              {(currentStatus === RefundCaseStatus.DirectorGeneralApproved ||
+                currentStatus === RefundCaseStatus.AdministrationHeadApproved ||
                 currentStatus === RefundCaseStatus.GroupHeadApproved) && (
                 <label
                   className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${

@@ -127,14 +127,19 @@ public enum RefundCaseStatus
     AdministrationHeadApproved = 4,
 
     /// <summary>
+    /// تایید و موافقت مدیر کل امور مالیاتی جهت ارسال پرونده به ذیحسابی
+    /// </summary>
+    DirectorGeneralApproved = 5,
+
+    /// <summary>
     /// پرداخت و استرداد وجه توسط ذیحسابی انجام گردیده است
     /// </summary>
-    TreasuryDisbursed = 5,
+    TreasuryDisbursed = 6,
 
     /// <summary>
     /// پرونده استرداد رد شده است
     /// </summary>
-    Rejected = 6
+    Rejected = 7
 }
 
 /// <summary>

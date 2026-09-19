@@ -157,6 +157,7 @@ export function QuickEditCaseModal({
 
   const isLocked =
     caseItem.status === RefundCaseStatus.AdministrationHeadApproved ||
+    caseItem.status === RefundCaseStatus.DirectorGeneralApproved ||
     caseItem.status === RefundCaseStatus.TreasuryDisbursed
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -256,10 +257,11 @@ export function QuickEditCaseModal({
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                 <span>
-                  این پرونده قفل است ({caseItem.status === RefundCaseStatus.AdministrationHeadApproved ? 'تایید نهایی رئیس امور' : 'پرداخت در ذیحسابی'}).
+                  این پرونده قفل است ({caseItem.status === RefundCaseStatus.AdministrationHeadApproved ? 'تایید نهایی رئیس امور' : caseItem.status === RefundCaseStatus.DirectorGeneralApproved ? 'تایید مدیر کل' : 'پرداخت در ذیحسابی'}).
                 </span>
               </div>
-              {caseItem.status === RefundCaseStatus.AdministrationHeadApproved && (
+              {(caseItem.status === RefundCaseStatus.AdministrationHeadApproved ||
+                caseItem.status === RefundCaseStatus.DirectorGeneralApproved) && (
                 <div className="text-[11px] text-amber-700 font-normal pr-6">
                   جهت بازگشایی و ویرایش مجدد، می‌توانید از صفحه جزئیات پرونده اقدام به «عودت پرونده جهت اصلاح» نمایید.
                 </div>
