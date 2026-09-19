@@ -4,9 +4,9 @@
  * from different IP addresses or hostnames.
  */
 export const getApiUrl = () => {
-    // If an environment variable is explicitly set, use it.
+    // If an environment variable is explicitly set, use it (strip trailing /api if present).
     if (process.env.NEXT_PUBLIC_API_URL) {
-        return process.env.NEXT_PUBLIC_API_URL;
+        return process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, '').replace(/\/+$/, '');
     }
 
     // If we are in the browser, use the current window location's hostname.

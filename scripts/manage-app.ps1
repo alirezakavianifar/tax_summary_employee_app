@@ -48,8 +48,8 @@ $BackendDir  = Join-Path $ProjectRoot "Backend\TaxSummary.Api"
 $FrontendDir = Join-Path $ProjectRoot "frontend"
 
 # Standard Ports & URLs
-$BackendHttpPort  = 5005
-$BackendHttpsPort = 5006
+$BackendHttpPort  = 5000
+$BackendHttpsPort = 5001
 $FrontendPort     = 3000
 
 $BackendUrl  = "http://localhost:$BackendHttpPort"
@@ -207,7 +207,7 @@ function Start-FrontendService {
         }
     }
 
-    Start-DetachedProcess -ShellCommand "`$env:NEXT_PUBLIC_API_URL='http://localhost:$BackendHttpPort/api'; Write-Host 'Starting Next.js Frontend Server...' -ForegroundColor Green; npm run dev" -WorkingDirectory $FrontendDir
+    Start-DetachedProcess -ShellCommand "`$env:NEXT_PUBLIC_API_URL='http://localhost:$BackendHttpPort'; Write-Host 'Starting Next.js Frontend Server...' -ForegroundColor Green; npm run dev" -WorkingDirectory $FrontendDir
 
     Write-Host "  Frontend process launched in separate window." -ForegroundColor Green
     Write-Host "  Waiting for service to bind to port $FrontendPort..." -ForegroundColor Gray

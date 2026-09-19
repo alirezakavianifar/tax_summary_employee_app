@@ -107,6 +107,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!error.response) {
                 throw new Error(`خطا در برقراری ارتباط با سرور (${getApiUrl()}). لطفاً از در دسترس بودن سرویس بک‌اند اطمینان حاصل فرمایید`);
             }
+            if (error.response.status === 404) {
+                throw new Error(`سرویس احراز هویت در آدرس (${getApiUrl()}/api/auth/login) یافت نشد (404)`);
+            }
             const serverError = error.response?.data?.error || error.response?.data?.message;
             throw new Error(serverError || 'نام کاربری یا رمز عبور اشتباه است');
         } finally {
