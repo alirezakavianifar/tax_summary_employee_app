@@ -38,12 +38,21 @@ public class JwtTokenService : IJwtTokenService
     /// </summary>
     public string GenerateAccessToken(User user)
     {
+        var fullName = string.Empty;
+        if (user.Employee != null && (!string.IsNullOrWhiteSpace(user.Employee.FirstName) || !string.IsNullOrWhiteSpace(user.Employee.LastName)))
+        {
+            fullName = $"{user.Employee.FirstName} {user.Employee.LastName}".Trim();
+        }
+
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Name, !string.IsNullOrWhiteSpace(fullName) ? fullName : user.Username),
+            new Claim(ClaimTypes.GivenName, !string.IsNullOrWhiteSpace(fullName) ? fullName : user.Username),
+            new Claim("username", user.Username),
+            new Claim("fullName", fullName),
             new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
             new Claim(ClaimTypes.Role, user.Role),
             new Claim("employeeId", user.EmployeeId?.ToString() ?? string.Empty)

@@ -674,14 +674,37 @@ public class TaxRefundsController : ControllerBase
 
     private string GetCurrentUserName()
     {
-        return User.FindFirst(ClaimTypes.Name)?.Value ??
-               User.FindFirst(ClaimTypes.GivenName)?.Value ??
-               User.Identity?.Name ??
-               "کارشناس سامانه";
+        var fullName = User.FindFirst("fullName")?.Value;
+        if (!string.IsNullOrWhiteSpace(fullName))
+            return fullName.Trim();
+
+        var givenName = User.FindFirst(ClaimTypes.GivenName)?.Value;
+        if (!string.IsNullOrWhiteSpace(givenName) && !IsDigitsOnly(givenName))
+            return givenName.Trim();
+
+        var name = User.FindFirst(ClaimTypes.Name)?.Value;
+        if (!string.IsNullOrWhiteSpace(name) && !IsDigitsOnly(name))
+            return name.Trim();
+
+        return User.Identity?.Name ?? "کارشناس سامانه";
     }
 
     private string GetCurrentUserRole()
     {
-        return User.FindFirst(ClaimTypes.Role)?.Value ?? "کارشناس ارشد مالیاتی";
+        var role = User.FindFirst(ClaimTypes.Role)?.Value;
+        return !string.IsNullOrWhiteSpace(role)
+            ? TaxSummary.Application.Mapping.TaxRefundMappingProfile.GetRolePersianTitle(role)
+            : "کارشناس ارشد مالیاتی";
+    }
+
+    private static bool IsDigitsOnly(string str)
+    {
+        if (string.IsNullOrWhiteSpace(str)) return false;
+        foreach (char c in str)
+        {
+            if (c < '0' || c > '9')
+                return false;
+        }
+        return true;
     }
 }

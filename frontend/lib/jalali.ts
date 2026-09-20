@@ -244,6 +244,51 @@ export function formatIsoToJalali(
 }
 
 /**
+ * Formats an ISO date or Date object into a readable Jalali date & time string ("YYYY/MM/DD HH:mm:ss")
+ */
+export function formatIsoToJalaliDateTime(
+  isoStr: string | Date | null | undefined,
+  persianDigits = true,
+  includeSeconds = true
+): string {
+  if (!isoStr) return ''
+  const str = typeof isoStr === 'string' ? isoStr.trim() : isoStr.toISOString()
+  
+  // Check if string is already Jalali format (YYYY/MM/DD ...)
+  if (/^(?:13|14)\d{2}\/\d{1,2}\/\d{1,2}/.test(str)) {
+    return persianDigits ? toPersianDigits(str) : str
+  }
+
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/)
+  if (!match) {
+    const d = new Date(str)
+    if (isNaN(d.getTime())) return str
+    const [jy, jm, jd] = gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate())
+    const hh = String(d.getHours()).padStart(2, '0')
+    const mm = String(d.getMinutes()).padStart(2, '0')
+    const ss = String(d.getSeconds()).padStart(2, '0')
+    const datePart = `${jy}/${String(jm).padStart(2, '0')}/${String(jd).padStart(2, '0')}`
+    const timePart = includeSeconds ? `${hh}:${mm}:${ss}` : `${hh}:${mm}`
+    const res = `${datePart} ${timePart}`
+    return persianDigits ? toPersianDigits(res) : res
+  }
+
+  const gy = parseInt(match[1], 10)
+  const gm = parseInt(match[2], 10)
+  const gd = parseInt(match[3], 10)
+  const hh = match[4] || '00'
+  const mm = match[5] || '00'
+  const ss = match[6] || '00'
+
+  const [jy, jm, jd] = gregorianToJalali(gy, gm, gd)
+  const datePart = `${jy}/${String(jm).padStart(2, '0')}/${String(jd).padStart(2, '0')}`
+  const timePart = includeSeconds ? `${hh}:${mm}:${ss}` : `${hh}:${mm}`
+  const res = match[4] ? `${datePart} ${timePart}` : datePart
+
+  return persianDigits ? toPersianDigits(res) : res
+}
+
+/**
  * Parses user input in Shamsi format (e.g., "1405/06/15" or "1405-6-15" or Persian digits)
  */
 export const MIN_SHAMSI_YEAR = 1380

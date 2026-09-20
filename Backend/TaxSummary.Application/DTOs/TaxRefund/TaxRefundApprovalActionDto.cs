@@ -15,4 +15,5 @@ public class TaxRefundApprovalActionDto
     public string ActorRole { get; set; } = string.Empty;
     public string? Notes { get; set; }
     public DateTime ActionDate { get; set; }
+    public string ActionDateJalali { get; set; } = string.Empty;
 }

@@ -46,6 +46,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { decomposeTaxUnitCode, canUserVerifyStage } from '@/lib/taxHierarchy'
 import { refundWorkflowApi } from '@/lib/api/refundWorkflow'
 import type { RefundWorkflowStepItem } from '@/types/refundWorkflow'
+import { getRolePersianName } from '@/types/auth'
+import { toPersianDigits, formatIsoToJalaliDateTime } from '@/lib/jalali'
 
 const PRINT_FORMS = [
   { id: 'cheklist', title: 'چک‌لیست کنترل اسناد استردادی' },
@@ -671,10 +673,12 @@ export default function TaxRefundDetailPage() {
                   <div key={act.id} className="p-3 text-xs flex items-center justify-between bg-white">
                     <div>
                       <span className="font-bold text-gray-900">{act.actorName}</span>{' '}
-                      <span className="text-gray-500">({act.actorRole}):</span>{' '}
+                      <span className="text-gray-500 font-medium">({getRolePersianName(act.actorRole)}):</span>{' '}
                       <span className="text-gray-700">{act.notes || 'اقدام تایید انجام شد'}</span>
                     </div>
-                    <span className="text-gray-400 font-mono text-[11px]">{act.actionDate}</span>
+                    <span className="text-gray-400 font-mono text-[11px]" dir="ltr">
+                      {act.actionDateJalali ? toPersianDigits(act.actionDateJalali) : formatIsoToJalaliDateTime(act.actionDate)}
+                    </span>
                   </div>
                 ))}
               </div>

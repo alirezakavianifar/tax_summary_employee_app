@@ -111,9 +111,22 @@ public class UserService : IUserService
         if (!isRoleValid)
             return Result.Failure("نقش کاربری نامعتبر است");
 
+        // If employeeId is not set, try to auto-match from employee repository by username (National ID or Personnel Number)
+        var targetEmployeeId = request.EmployeeId;
+        if (!targetEmployeeId.HasValue && !string.IsNullOrWhiteSpace(request.Username ?? user.Username))
+        {
+            var lookupKey = (request.Username ?? user.Username).Trim();
+            var matchedEmp = await _employeeRepository.GetByNationalIdAsync(lookupKey, cancellationToken)
+                          ?? await _employeeRepository.GetByPersonnelNumberAsync(lookupKey, cancellationToken);
+            if (matchedEmp != null)
+            {
+                targetEmployeeId = matchedEmp.Id;
+            }
+        }
+
         // Update user
         User.RegisterCustomRole(request.Role);
-        user.UpdateDetails(request.Email, request.Role, request.IsActive, request.EmployeeId, request.Username);
+        user.UpdateDetails(request.Email, request.Role, request.IsActive, targetEmployeeId, request.Username);
 
         var updateResult = await _userRepository.UpdateAsync(user, cancellationToken);
         if (updateResult.IsFailure)

@@ -2,16 +2,16 @@
 export type UserRole = 'Admin' | 'DirectorGeneral' | 'Treasury' | 'OfficeHead' | 'GroupHead' | 'Expert' | 'ITSpecialist' | 'Manager' | 'Employee' | 'Auditor' | (string & {});
 
 export const ROLE_NAMES_FA: Record<string, string> = {
-    Admin: 'مدیر ارشد',
+    Admin: 'مدیر ارشد سامانه',
     DirectorGeneral: 'مدیر کل امور مالیاتی',
     Treasury: 'ذیحساب',
-    OfficeHead: 'رئیس اداره',
+    OfficeHead: 'رئیس اداره امور مالیاتی',
     GroupHead: 'رئیس گروه مالیاتی',
-    Expert: 'کارشناس (ممیز)',
-    ITSpecialist: 'کارشناس فناوری',
-    Manager: 'مدیر',
+    Expert: 'کارشناس ارشد مالیاتی',
+    ITSpecialist: 'کارشناس فناوری اطلاعات',
+    Manager: 'معاونت / مدیر',
     Employee: 'کارمند',
-    Auditor: 'حسابرس',
+    Auditor: 'حسابرس مالیاتی',
 };
 
 export function formatRoleTitle(title?: string | null): string {

@@ -21,6 +21,7 @@ public class TaxRefundService : ITaxRefundService
     private readonly RefundCalculationEngine _calculationEngine;
     private readonly IRefundDocumentStorageService _documentStorageService;
     private readonly IRefundWorkflowSettingsService? _workflowService;
+    private readonly IEmployeeRepository? _employeeRepository;
     private readonly ILogger<TaxRefundService> _logger;
 
     public TaxRefundService(
@@ -32,7 +33,8 @@ public class TaxRefundService : ITaxRefundService
         RefundCalculationEngine calculationEngine,
         IRefundDocumentStorageService documentStorageService,
         ILogger<TaxRefundService> logger,
-        IRefundWorkflowSettingsService? workflowService = null)
+        IRefundWorkflowSettingsService? workflowService = null,
+        IEmployeeRepository? employeeRepository = null)
     {
         _repository = repository;
         _userRepository = userRepository;
@@ -43,6 +45,7 @@ public class TaxRefundService : ITaxRefundService
         _documentStorageService = documentStorageService;
         _logger = logger;
         _workflowService = workflowService;
+        _employeeRepository = employeeRepository;
     }
 
     public async Task<Result<TaxRefundCaseDto>> GetByIdAsync(Guid id, Guid? currentUserId = null, CancellationToken ct = default)
@@ -68,6 +71,7 @@ public class TaxRefundService : ITaxRefundService
             dto.DirectorGeneralName = await GetOrSnapshotDirectorGeneralNameAsync(refundCase, ct);
         }
         dto.Calculation = CalculateForCase(refundCase);
+        await EnrichApprovalActionsAsync(dto.Approvals, ct);
 
         return Result.Success(dto);
     }
@@ -95,6 +99,7 @@ public class TaxRefundService : ITaxRefundService
             dto.DirectorGeneralName = await GetOrSnapshotDirectorGeneralNameAsync(refundCase, ct);
         }
         dto.Calculation = CalculateForCase(refundCase);
+        await EnrichApprovalActionsAsync(dto.Approvals, ct);
 
         return Result.Success(dto);
     }
@@ -924,9 +929,45 @@ public class TaxRefundService : ITaxRefundService
 
                 if (!canApprove)
                 {
-                    return Result.Failure($"شما با نقش '{actorRole}' و تشکیلات سازمانی انتسابی، مجاز به تایید این پرونده در مرحله مربوطه نمی‌باشید.");
+                    return Result.Failure($"شما با نقش '{TaxRefundMappingProfile.GetRolePersianTitle(actorRole)}' و تشکیلات سازمانی انتسابی، مجاز به تایید این پرونده در مرحله مربوطه نمی‌باشید.");
                 }
+
+                // Resolve real Persian full name of the acting user
+                string? resolvedName = null;
+                if (user.Employee != null && (!string.IsNullOrWhiteSpace(user.Employee.FirstName) || !string.IsNullOrWhiteSpace(user.Employee.LastName)))
+                {
+                    resolvedName = $"{user.Employee.FirstName} {user.Employee.LastName}".Trim();
+                }
+                else if (_employeeRepository != null && !string.IsNullOrWhiteSpace(user.Username))
+                {
+                    var emp = await _employeeRepository.GetByNationalIdAsync(user.Username, ct)
+                           ?? await _employeeRepository.GetByPersonnelNumberAsync(user.Username, ct);
+                    if (emp != null && (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName)))
+                    {
+                        resolvedName = $"{emp.FirstName} {emp.LastName}".Trim();
+                        try
+                        {
+                            user.UpdateDetails(user.Email, user.Role, user.IsActive, emp.Id, user.Username, validateRole: false);
+                            await _userRepository.UpdateAsync(user, ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to auto-link user {UserId} with employee {EmpId}", user.Id, emp.Id);
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(resolvedName))
+                {
+                    actorName = resolvedName;
+                }
+
+                actorRole = TaxRefundMappingProfile.GetRolePersianTitle(user.Role);
             }
+        }
+        else
+        {
+            actorRole = TaxRefundMappingProfile.GetRolePersianTitle(actorRole);
         }
 
         try
@@ -1046,7 +1087,53 @@ public class TaxRefundService : ITaxRefundService
             : defaultCaseDateJalali;
 
         var treasuryApproval = refundCase.Approvals.FirstOrDefault(a => a.ToStatus == RefundCaseStatus.TreasuryDisbursed);
-        doc.TreasuryOfficerName = treasuryApproval?.ActorName;
+        string? resolvedTreasuryName = treasuryApproval?.ActorName;
+
+        if (string.IsNullOrWhiteSpace(resolvedTreasuryName) || IsDigitsOnly(resolvedTreasuryName))
+        {
+            if (treasuryApproval != null)
+            {
+                if (treasuryApproval.ActorUserId != Guid.Empty && _userRepository != null)
+                {
+                    var uRes = await _userRepository.GetByIdAsync(treasuryApproval.ActorUserId, ct);
+                    if (uRes.IsSuccess && uRes.Value != null)
+                    {
+                        var u = uRes.Value;
+                        if (u.Employee != null && (!string.IsNullOrWhiteSpace(u.Employee.FirstName) || !string.IsNullOrWhiteSpace(u.Employee.LastName)))
+                        {
+                            resolvedTreasuryName = $"{u.Employee.FirstName} {u.Employee.LastName}".Trim();
+                        }
+                        else if (_employeeRepository != null && !string.IsNullOrWhiteSpace(u.Username))
+                        {
+                            var emp = await _employeeRepository.GetByNationalIdAsync(u.Username, ct)
+                                   ?? await _employeeRepository.GetByPersonnelNumberAsync(u.Username, ct);
+                            if (emp != null && (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName)))
+                            {
+                                resolvedTreasuryName = $"{emp.FirstName} {emp.LastName}".Trim();
+                            }
+                        }
+                    }
+                }
+
+                if ((string.IsNullOrWhiteSpace(resolvedTreasuryName) || IsDigitsOnly(resolvedTreasuryName)) &&
+                    !string.IsNullOrWhiteSpace(treasuryApproval.ActorName) && _employeeRepository != null)
+                {
+                    var emp = await _employeeRepository.GetByNationalIdAsync(treasuryApproval.ActorName.Trim(), ct)
+                           ?? await _employeeRepository.GetByPersonnelNumberAsync(treasuryApproval.ActorName.Trim(), ct);
+                    if (emp != null && (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName)))
+                    {
+                        resolvedTreasuryName = $"{emp.FirstName} {emp.LastName}".Trim();
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(resolvedTreasuryName) || IsDigitsOnly(resolvedTreasuryName))
+            {
+                resolvedTreasuryName = await GetCurrentTreasuryOfficerNameAsync(ct);
+            }
+        }
+
+        doc.TreasuryOfficerName = !string.IsNullOrWhiteSpace(resolvedTreasuryName) ? resolvedTreasuryName : null;
 
         var treasuryLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.TreasuryLetter);
         doc.TreasuryLetterNumber = !string.IsNullOrWhiteSpace(treasuryLetter?.LetterNumber)
@@ -1500,7 +1587,18 @@ public class TaxRefundService : ITaxRefundService
                     if (!string.IsNullOrWhiteSpace(name))
                         return name;
                 }
-                if (!string.IsNullOrWhiteSpace(user.Username))
+
+                if (_employeeRepository != null && !string.IsNullOrWhiteSpace(user.Username))
+                {
+                    var emp = await _employeeRepository.GetByNationalIdAsync(user.Username, ct)
+                           ?? await _employeeRepository.GetByPersonnelNumberAsync(user.Username, ct);
+                    if (emp != null && (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName)))
+                    {
+                        return $"{emp.FirstName} {emp.LastName}".Trim();
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(user.Username) && !IsDigitsOnly(user.Username))
                     return user.Username;
             }
         }
@@ -1510,6 +1608,124 @@ public class TaxRefundService : ITaxRefundService
         }
 
         return "علی خورشیدی"; // Default fallback
+    }
+
+    private async Task<string> GetCurrentTreasuryOfficerNameAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var paged = await _userRepository.GetPagedAsync(role: "Treasury", pageSize: 10, cancellationToken: ct);
+            if (paged.IsSuccess && paged.Value.Items.Any())
+            {
+                var user = paged.Value.Items.First();
+                if (user.Employee != null && (!string.IsNullOrWhiteSpace(user.Employee.FirstName) || !string.IsNullOrWhiteSpace(user.Employee.LastName)))
+                {
+                    var name = $"{user.Employee.FirstName} {user.Employee.LastName}".Trim();
+                    if (!string.IsNullOrWhiteSpace(name))
+                        return name;
+                }
+
+                if (_employeeRepository != null && !string.IsNullOrWhiteSpace(user.Username))
+                {
+                    var emp = await _employeeRepository.GetByNationalIdAsync(user.Username, ct)
+                           ?? await _employeeRepository.GetByPersonnelNumberAsync(user.Username, ct);
+                    if (emp != null && (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName)))
+                    {
+                        try
+                        {
+                            user.UpdateDetails(user.Email, user.Role, user.IsActive, emp.Id, user.Username, validateRole: false);
+                            await _userRepository.UpdateAsync(user, ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to persist auto-linked employee for Treasury user {UserId}", user.Id);
+                        }
+
+                        return $"{emp.FirstName} {emp.LastName}".Trim();
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(user.Username) && !IsDigitsOnly(user.Username))
+                    return user.Username;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to retrieve active Treasury user from repository");
+        }
+
+        return string.Empty;
+    }
+
+    private async Task EnrichApprovalActionsAsync(ICollection<TaxRefundApprovalActionDto>? approvals, CancellationToken ct = default)
+    {
+        if (approvals == null || !approvals.Any())
+            return;
+
+        foreach (var act in approvals)
+        {
+            // 1. Translate role to Persian if currently in English
+            act.ActorRole = TaxRefundMappingProfile.GetRolePersianTitle(act.ActorRole);
+
+            // 2. If ActorName is empty or contains purely numeric digits (National ID / Personnel Number), resolve real Persian full name
+            if (string.IsNullOrWhiteSpace(act.ActorName) || IsDigitsOnly(act.ActorName))
+            {
+                string? resolvedName = null;
+
+                // Try resolving via ActorUserId
+                if (act.ActorUserId != Guid.Empty && _userRepository != null)
+                {
+                    var uRes = await _userRepository.GetByIdAsync(act.ActorUserId, ct);
+                    if (uRes.IsSuccess && uRes.Value != null)
+                    {
+                        var u = uRes.Value;
+                        if (u.Employee != null && (!string.IsNullOrWhiteSpace(u.Employee.FirstName) || !string.IsNullOrWhiteSpace(u.Employee.LastName)))
+                        {
+                            resolvedName = $"{u.Employee.FirstName} {u.Employee.LastName}".Trim();
+                        }
+                        else if (_employeeRepository != null && !string.IsNullOrWhiteSpace(u.Username))
+                        {
+                            var emp = await _employeeRepository.GetByNationalIdAsync(u.Username, ct)
+                                   ?? await _employeeRepository.GetByPersonnelNumberAsync(u.Username, ct);
+                            if (emp != null && (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName)))
+                            {
+                                resolvedName = $"{emp.FirstName} {emp.LastName}".Trim();
+                            }
+                        }
+                    }
+                }
+
+                // Try resolving via ActorName lookup in employee repository
+                if (string.IsNullOrWhiteSpace(resolvedName) && !string.IsNullOrWhiteSpace(act.ActorName) && _employeeRepository != null)
+                {
+                    var emp = await _employeeRepository.GetByNationalIdAsync(act.ActorName.Trim(), ct)
+                           ?? await _employeeRepository.GetByPersonnelNumberAsync(act.ActorName.Trim(), ct);
+                    if (emp != null && (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName)))
+                    {
+                        resolvedName = $"{emp.FirstName} {emp.LastName}".Trim();
+                    }
+                }
+
+                // Try resolving via username lookup in user repository
+                if (string.IsNullOrWhiteSpace(resolvedName) && !string.IsNullOrWhiteSpace(act.ActorName) && _userRepository != null)
+                {
+                    var uRes = await _userRepository.GetByUsernameAsync(act.ActorName.Trim(), ct);
+                    if (uRes.IsSuccess && uRes.Value?.Employee != null)
+                    {
+                        var emp = uRes.Value.Employee;
+                        if (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName))
+                        {
+                            resolvedName = $"{emp.FirstName} {emp.LastName}".Trim();
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(resolvedName))
+                {
+                    act.ActorName = resolvedName;
+                }
+            }
+        }
     }
 
     public async Task<Result<PresidingOfficersDto>> GetPresidingOfficersAsync(
@@ -1532,7 +1748,16 @@ public class TaxRefundService : ITaxRefundService
             {
                 result.SeniorAuditorName = $"{currentUser.Employee.FirstName} {currentUser.Employee.LastName}".Trim();
             }
-            else if (!string.IsNullOrWhiteSpace(currentUser.Username))
+            else if (_employeeRepository != null && !string.IsNullOrWhiteSpace(currentUser.Username))
+            {
+                var emp = await _employeeRepository.GetByNationalIdAsync(currentUser.Username, ct)
+                       ?? await _employeeRepository.GetByPersonnelNumberAsync(currentUser.Username, ct);
+                if (emp != null && (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName)))
+                {
+                    result.SeniorAuditorName = $"{emp.FirstName} {emp.LastName}".Trim();
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(currentUser.Username) && !IsDigitsOnly(currentUser.Username))
             {
                 result.SeniorAuditorName = currentUser.Username;
             }
@@ -1584,7 +1809,16 @@ public class TaxRefundService : ITaxRefundService
                     {
                         result.GroupHeadName = $"{matchedGroupHead.Employee.FirstName} {matchedGroupHead.Employee.LastName}".Trim();
                     }
-                    else if (!string.IsNullOrWhiteSpace(matchedGroupHead.Username))
+                    else if (_employeeRepository != null && !string.IsNullOrWhiteSpace(matchedGroupHead.Username))
+                    {
+                        var emp = await _employeeRepository.GetByNationalIdAsync(matchedGroupHead.Username, ct)
+                               ?? await _employeeRepository.GetByPersonnelNumberAsync(matchedGroupHead.Username, ct);
+                        if (emp != null && (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName)))
+                        {
+                            result.GroupHeadName = $"{emp.FirstName} {emp.LastName}".Trim();
+                        }
+                    }
+                    else if (!string.IsNullOrWhiteSpace(matchedGroupHead.Username) && !IsDigitsOnly(matchedGroupHead.Username))
                     {
                         result.GroupHeadName = matchedGroupHead.Username;
                     }
@@ -1618,7 +1852,16 @@ public class TaxRefundService : ITaxRefundService
                     {
                         result.AdministrationHeadName = $"{matchedOfficeHead.Employee.FirstName} {matchedOfficeHead.Employee.LastName}".Trim();
                     }
-                    else if (!string.IsNullOrWhiteSpace(matchedOfficeHead.Username))
+                    else if (_employeeRepository != null && !string.IsNullOrWhiteSpace(matchedOfficeHead.Username))
+                    {
+                        var emp = await _employeeRepository.GetByNationalIdAsync(matchedOfficeHead.Username, ct)
+                               ?? await _employeeRepository.GetByPersonnelNumberAsync(matchedOfficeHead.Username, ct);
+                        if (emp != null && (!string.IsNullOrWhiteSpace(emp.FirstName) || !string.IsNullOrWhiteSpace(emp.LastName)))
+                        {
+                            result.AdministrationHeadName = $"{emp.FirstName} {emp.LastName}".Trim();
+                        }
+                    }
+                    else if (!string.IsNullOrWhiteSpace(matchedOfficeHead.Username) && !IsDigitsOnly(matchedOfficeHead.Username))
                     {
                         result.AdministrationHeadName = matchedOfficeHead.Username;
                     }
@@ -1642,5 +1885,16 @@ public class TaxRefundService : ITaxRefundService
         }
 
         return Result.Success(result);
+    }
+
+    private static bool IsDigitsOnly(string? str)
+    {
+        if (string.IsNullOrWhiteSpace(str)) return false;
+        foreach (char c in str.Trim())
+        {
+            if (c < '0' || c > '9')
+                return false;
+        }
+        return true;
     }
 }

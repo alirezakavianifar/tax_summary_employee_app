@@ -190,6 +190,7 @@ export interface TaxRefundApprovalAction {
   actorRole: string
   notes?: string
   actionDate: string
+  actionDateJalali?: string
 }
 
 export interface RefundCalculationResult {

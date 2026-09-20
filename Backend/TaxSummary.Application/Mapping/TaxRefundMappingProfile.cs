@@ -29,7 +29,9 @@ public class TaxRefundMappingProfile : Profile
         CreateMap<TaxRefundApprovalAction, TaxRefundApprovalActionDto>()
             .MaxDepth(5)
             .ForMember(dest => dest.FromStatusName, opt => opt.MapFrom(src => GetStatusName(src.FromStatus)))
-            .ForMember(dest => dest.ToStatusName, opt => opt.MapFrom(src => GetStatusName(src.ToStatus)));
+            .ForMember(dest => dest.ToStatusName, opt => opt.MapFrom(src => GetStatusName(src.ToStatus)))
+            .ForMember(dest => dest.ActorRole, opt => opt.MapFrom(src => GetRolePersianTitle(src.ActorRole)))
+            .ForMember(dest => dest.ActionDateJalali, opt => opt.MapFrom(src => FormatActionDateJalali(src.ActionDate)));
 
         CreateMap<TaxRefundDocument, TaxRefundDocumentDto>()
             .MaxDepth(5)
@@ -147,5 +149,37 @@ public class TaxRefundMappingProfile : Profile
         if (bytes < 1024) return $"{bytes} B";
         if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
         return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+
+    public static string GetRolePersianTitle(string? role)
+    {
+        if (string.IsNullOrWhiteSpace(role)) return string.Empty;
+        return role.Trim() switch
+        {
+            "DirectorGeneral" => "مدیر کل امور مالیاتی",
+            "Treasury" => "ذیحساب",
+            "OfficeHead" => "رئیس اداره امور مالیاتی",
+            "GroupHead" => "رئیس گروه مالیاتی",
+            "Expert" => "کارشناس ارشد مالیاتی",
+            "Auditor" => "حسابرس مالیاتی",
+            "Admin" => "مدیر ارشد سامانه",
+            "ITSpecialist" => "کارشناس فناوری اطلاعات",
+            "Manager" => "معاونت / مدیر",
+            "Employee" => "کارمند",
+            _ => role.Trim()
+        };
+    }
+
+    public static string FormatActionDateJalali(DateTime dt)
+    {
+        try
+        {
+            var jDate = TaxSummary.Domain.ValueObjects.JalaliDate.FromDateTime(dt);
+            return $"{jDate} {dt:HH:mm:ss}";
+        }
+        catch
+        {
+            return dt.ToString("yyyy/MM/dd HH:mm:ss");
+        }
     }
 }

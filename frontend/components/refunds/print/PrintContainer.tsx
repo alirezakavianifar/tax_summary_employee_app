@@ -101,11 +101,14 @@ interface SignatureBoxProps {
 }
 
 export function SignatureBox({ title, name, role, date }: SignatureBoxProps) {
+  // If name is purely digits (National ID or personnel number), do not display digits under signature
+  const displayName = name && /^\d+$/.test(name.trim()) ? '' : name;
+
   return (
     <div className="border border-black p-2.5 text-center flex flex-col justify-between min-h-[95px] bg-white font-nazanin">
       <div className="font-titr text-xs text-gray-900 font-bold">{title}</div>
       <div className="text-xs text-gray-800 font-semibold my-2">
-        {name || '................................'}
+        {displayName || '................................'}
       </div>
       <div className="text-[11px] text-gray-600 flex justify-between px-2">
         <span>مهر و امضاء</span>

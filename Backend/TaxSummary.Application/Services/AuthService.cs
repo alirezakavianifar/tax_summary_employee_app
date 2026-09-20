@@ -19,6 +19,7 @@ public class AuthService : IAuthService
     private readonly IRoleRepository _roleRepository;
     private readonly IMapper _mapper;
     private readonly IConfiguration _configuration;
+    private readonly IEmployeeRepository? _employeeRepository;
     private readonly int _maxFailedAttempts;
     private readonly int _accessTokenExpirationMinutes;
     private readonly int _refreshTokenExpirationDays;
@@ -29,7 +30,8 @@ public class AuthService : IAuthService
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         IMapper mapper,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IEmployeeRepository? employeeRepository = null)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _roleRepository = roleRepository ?? throw new ArgumentNullException(nameof(roleRepository));
@@ -37,6 +39,7 @@ public class AuthService : IAuthService
         _jwtTokenService = jwtTokenService ?? throw new ArgumentNullException(nameof(jwtTokenService));
         _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _employeeRepository = employeeRepository;
 
         _maxFailedAttempts = int.Parse(configuration["Authentication:MaxFailedAttempts"] ?? "5");
         _accessTokenExpirationMinutes = int.Parse(configuration["JwtSettings:AccessTokenExpirationMinutes"] ?? "15");
@@ -102,7 +105,38 @@ public class AuthService : IAuthService
 
         // Reset failed attempts on successful login
         user.ResetFailedLoginAttempts();
-        await _userRepository.UpdateAsync(user, cancellationToken);
+
+        // If user has no employee linked, try to auto-match by username (National ID or Personnel Number)
+        if (user.Employee == null && _employeeRepository != null && !string.IsNullOrWhiteSpace(user.Username))
+        {
+            try
+            {
+                var matchedEmp = await _employeeRepository.GetByNationalIdAsync(user.Username, cancellationToken)
+                              ?? await _employeeRepository.GetByPersonnelNumberAsync(user.Username, cancellationToken);
+                if (matchedEmp != null)
+                {
+                    user.UpdateDetails(user.Email, user.Role, user.IsActive, matchedEmp.Id, user.Username, validateRole: false);
+                    await _userRepository.UpdateAsync(user, cancellationToken);
+                    var reloadedUserResult = await _userRepository.GetByIdAsync(user.Id, cancellationToken);
+                    if (reloadedUserResult.IsSuccess && reloadedUserResult.Value != null)
+                    {
+                        user = reloadedUserResult.Value;
+                    }
+                }
+                else
+                {
+                    await _userRepository.UpdateAsync(user, cancellationToken);
+                }
+            }
+            catch
+            {
+                await _userRepository.UpdateAsync(user, cancellationToken);
+            }
+        }
+        else
+        {
+            await _userRepository.UpdateAsync(user, cancellationToken);
+        }
 
         // Generate tokens
         var accessToken = _jwtTokenService.GenerateAccessToken(user);
