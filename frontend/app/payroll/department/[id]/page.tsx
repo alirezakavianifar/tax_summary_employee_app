@@ -111,27 +111,45 @@ export default function DepartmentWorkspacePage() {
               ? updated.initialOvertimeRate
               : updated.baseOvertimeAmount ?? updated.initialOvertimeRate ?? 0
 
+          const baseHours =
+            updated.baseOvertimeAmount != null && updated.baseOvertimeAmount <= 1000
+              ? updated.baseOvertimeAmount
+              : updated.initialOvertimeRate != null && updated.initialOvertimeRate <= 1000
+              ? updated.initialOvertimeRate
+              : null
+
           if (hourlyRate && updated.adjustedOvertimeRate != null) {
             updated.calculatedOvertimeAmount = Math.ceil(
               hourlyRate * updated.adjustedOvertimeRate
             )
           } else if (updated.adjustedOvertimeRate == null) {
-            updated.calculatedOvertimeAmount = null
+            updated.calculatedOvertimeAmount = (hourlyRate && baseHours != null)
+              ? Math.ceil(hourlyRate * baseHours)
+              : null
           }
 
-          const baseWelfare =
+          const baseWelfareSalary =
             updated.baseWelfareAmount != null && updated.baseWelfareAmount > 1000
               ? updated.baseWelfareAmount
               : updated.initialWelfareRate != null && updated.initialWelfareRate > 1000
               ? updated.initialWelfareRate
               : updated.baseWelfareAmount ?? updated.initialWelfareRate ?? 0
 
-          if (baseWelfare && updated.adjustedWelfareRate != null) {
+          const baseWelfarePercent =
+            updated.baseWelfareAmount != null && updated.baseWelfareAmount <= 1000
+              ? updated.baseWelfareAmount
+              : updated.initialWelfareRate != null && updated.initialWelfareRate <= 1000
+              ? updated.initialWelfareRate
+              : null
+
+          if (baseWelfareSalary && updated.adjustedWelfareRate != null) {
             updated.calculatedWelfareAmount = Math.ceil(
-              (baseWelfare * updated.adjustedWelfareRate) / 100
+              (baseWelfareSalary * updated.adjustedWelfareRate) / 100
             )
           } else if (updated.adjustedWelfareRate == null) {
-            updated.calculatedWelfareAmount = null
+            updated.calculatedWelfareAmount = (baseWelfareSalary && baseWelfarePercent != null)
+              ? Math.ceil((baseWelfareSalary * baseWelfarePercent) / 100)
+              : null
           }
         }
         return updated

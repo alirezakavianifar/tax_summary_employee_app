@@ -362,4 +362,52 @@ public class PayrollRulesTests
         Assert.Null(dept.ApprovedByUserId);
         Assert.Null(dept.ApprovedAt);
     }
+
+    [Fact]
+    public void Create_PayrollEmployeeItem_RetainsCalculatedAmounts()
+    {
+        var item = PayrollEmployeeItem.Create(
+            departmentEntryId: Guid.NewGuid(),
+            personnelNumber: "12345",
+            employeeName: "تست کارمند",
+            initialOvertimeRate: 600000,
+            initialWelfareRate: 100000000,
+            baseOvertimeAmount: 80,
+            baseWelfareAmount: 60,
+            calculatedOvertimeAmount: 48000000,
+            calculatedWelfareAmount: 60000000
+        );
+
+        Assert.Equal(48000000, item.CalculatedOvertimeAmount);
+        Assert.Equal(60000000, item.CalculatedWelfareAmount);
+    }
+
+    [Fact]
+    public void UpdateAdjustments_NullAdjustedRates_PreservesBaselineCalculatedAmounts()
+    {
+        var item = PayrollEmployeeItem.Create(
+            departmentEntryId: Guid.NewGuid(),
+            personnelNumber: "12345",
+            employeeName: "تست کارمند",
+            initialOvertimeRate: 500000,
+            initialWelfareRate: 80000000,
+            baseOvertimeAmount: 90,
+            baseWelfareAmount: 70,
+            calculatedOvertimeAmount: 45000000,
+            calculatedWelfareAmount: 56000000
+        );
+
+        // Act: Save draft with null adjusted rates (unadjusted)
+        item.UpdateAdjustments(
+            adjustedOvertimeRate: null,
+            adjustedWelfareRate: null,
+            officerNotes: null,
+            isExcluded: false,
+            isRatedProcess: true
+        );
+
+        // Assert: Baseline amounts preserved
+        Assert.Equal(45000000, item.CalculatedOvertimeAmount);
+        Assert.Equal(56000000, item.CalculatedWelfareAmount);
+    }
 }

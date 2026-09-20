@@ -87,8 +87,8 @@ public class PayrollEmployeeItem
             BaseWelfareAmount = baseWelfareAmount,
             BaseBonusAmount = baseBonusAmount,
             AdjustedBonusAmount = null,     // empty by default
-            CalculatedOvertimeAmount = null,
-            CalculatedWelfareAmount = null,
+            CalculatedOvertimeAmount = calculatedOvertimeAmount,
+            CalculatedWelfareAmount = calculatedWelfareAmount,
             IsLaborPosition = isLaborPosition,
             PositionTier = resolvedTier,
             PositionTitle = positionTitle?.Trim(),
@@ -174,26 +174,42 @@ public class PayrollEmployeeItem
         }
         else if (isRatedProcess)
         {
+            var hourlyRate = (BaseOvertimeAmount.HasValue && BaseOvertimeAmount.Value > 1000)
+                ? BaseOvertimeAmount.Value
+                : (InitialOvertimeRate.HasValue && InitialOvertimeRate.Value > 1000 ? InitialOvertimeRate.Value : (BaseOvertimeAmount ?? InitialOvertimeRate ?? 0));
+
+            var baseHours = (BaseOvertimeAmount.HasValue && BaseOvertimeAmount.Value <= 1000)
+                ? BaseOvertimeAmount.Value
+                : (InitialOvertimeRate.HasValue && InitialOvertimeRate.Value <= 1000 ? InitialOvertimeRate.Value : (double?)null);
+
             if (AdjustedOvertimeRate.HasValue)
             {
-                var hourlyRate = (BaseOvertimeAmount.HasValue && BaseOvertimeAmount.Value > 1000)
-                    ? BaseOvertimeAmount.Value
-                    : (InitialOvertimeRate.HasValue && InitialOvertimeRate.Value > 1000 ? InitialOvertimeRate.Value : (BaseOvertimeAmount ?? InitialOvertimeRate ?? 0));
-
                 CalculatedOvertimeAmount = (long)Math.Ceiling(hourlyRate * AdjustedOvertimeRate.Value);
+            }
+            else if (baseHours.HasValue && hourlyRate > 0)
+            {
+                CalculatedOvertimeAmount = (long)Math.Ceiling(hourlyRate * baseHours.Value);
             }
             else
             {
                 CalculatedOvertimeAmount = null;
             }
 
+            var baseWelfareSalary = (BaseWelfareAmount.HasValue && BaseWelfareAmount.Value > 1000)
+                ? BaseWelfareAmount.Value
+                : (InitialWelfareRate.HasValue && InitialWelfareRate.Value > 1000 ? InitialWelfareRate.Value : (BaseWelfareAmount ?? InitialWelfareRate ?? 0));
+
+            var baseWelfarePercent = (BaseWelfareAmount.HasValue && BaseWelfareAmount.Value <= 1000)
+                ? BaseWelfareAmount.Value
+                : (InitialWelfareRate.HasValue && InitialWelfareRate.Value <= 1000 ? InitialWelfareRate.Value : (double?)null);
+
             if (AdjustedWelfareRate.HasValue)
             {
-                var baseWelfare = (BaseWelfareAmount.HasValue && BaseWelfareAmount.Value > 1000)
-                    ? BaseWelfareAmount.Value
-                    : (InitialWelfareRate.HasValue && InitialWelfareRate.Value > 1000 ? InitialWelfareRate.Value : (BaseWelfareAmount ?? InitialWelfareRate ?? 0));
-
-                CalculatedWelfareAmount = (long)Math.Ceiling(baseWelfare * AdjustedWelfareRate.Value / 100.0);
+                CalculatedWelfareAmount = (long)Math.Ceiling(baseWelfareSalary * AdjustedWelfareRate.Value / 100.0);
+            }
+            else if (baseWelfarePercent.HasValue && baseWelfareSalary > 0)
+            {
+                CalculatedWelfareAmount = (long)Math.Ceiling(baseWelfareSalary * baseWelfarePercent.Value / 100.0);
             }
             else
             {
