@@ -38,6 +38,7 @@ public class TaxSummaryDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<TaxSource> TaxSources => Set<TaxSource>();
     public DbSet<TaxFinalityStage> FinalityStages => Set<TaxFinalityStage>();
+    public DbSet<RefundWorkflowStep> RefundWorkflowSteps => Set<RefundWorkflowStep>();
 
     // Audit Logging
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();

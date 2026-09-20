@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -44,6 +44,8 @@ import { WorkflowReturnModal } from '@/components/refunds/WorkflowReturnModal'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
 import { decomposeTaxUnitCode, canUserVerifyStage } from '@/lib/taxHierarchy'
+import { refundWorkflowApi } from '@/lib/api/refundWorkflow'
+import type { RefundWorkflowStepItem } from '@/types/refundWorkflow'
 
 const PRINT_FORMS = [
   { id: 'cheklist', title: 'چک‌لیست کنترل اسناد استردادی' },
@@ -71,6 +73,118 @@ export default function TaxRefundDetailPage() {
   const [directViewingDoc, setDirectViewingDoc] = useState<TaxRefundDocument | null>(null)
   const [isReportEditorOpen, setIsReportEditorOpen] = useState(false)
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false)
+  const [workflowSteps, setWorkflowSteps] = useState<RefundWorkflowStepItem[]>([])
+
+  useEffect(() => {
+    const loadSteps = async () => {
+      try {
+        const data = await refundWorkflowApi.getAllSteps()
+        setWorkflowSteps(data || [])
+      } catch (err) {
+        console.warn('Could not load workflow steps, fallback to defaults:', err)
+      }
+    }
+    loadSteps()
+  }, [])
+
+  const activeWorkflowSteps = useMemo(() => {
+    return workflowSteps.filter((s) => s.isEnabled).sort((a, b) => a.stepOrder - b.stepOrder)
+  }, [workflowSteps])
+
+  const currentStepOrder = useMemo(() => {
+    if (!refundCase) return 0
+    const step = workflowSteps.find((s) => s.stage === refundCase.status)
+    if (step) return step.stepOrder
+
+    switch (refundCase.status) {
+      case RefundCaseStatus.Draft:
+      case RefundCaseStatus.InquiriesPending:
+        return 0
+      case RefundCaseStatus.Audited:
+        return 10
+      case RefundCaseStatus.GroupHeadApproved:
+        return 20
+      case RefundCaseStatus.AdministrationHeadApproved:
+        return 30
+      case RefundCaseStatus.DirectorGeneralApproved:
+        return 40
+      case RefundCaseStatus.TreasuryDisbursed:
+        return 50
+      default:
+        return 99
+    }
+  }, [workflowSteps, refundCase?.status])
+
+  const nextWorkflowStep = useMemo(() => {
+    if (!refundCase || refundCase.status === RefundCaseStatus.TreasuryDisbursed || refundCase.status === RefundCaseStatus.Rejected) {
+      return null
+    }
+
+    if (activeWorkflowSteps.length === 0) {
+      // Fallback if steps not yet loaded
+      switch (refundCase.status) {
+        case RefundCaseStatus.Draft:
+        case RefundCaseStatus.InquiriesPending:
+          return { stage: RefundCaseStatus.Audited, title: 'تایید کارشناس ارشد (Audited)', allowedRoles: 'Expert,Auditor,GroupHead,OfficeHead,Admin' }
+        case RefundCaseStatus.Audited:
+          return { stage: RefundCaseStatus.GroupHeadApproved, title: 'تایید رئیس گروه مالیاتی', allowedRoles: 'GroupHead,OfficeHead,Admin' }
+        case RefundCaseStatus.GroupHeadApproved:
+          return { stage: RefundCaseStatus.AdministrationHeadApproved, title: 'صدور دستور استرداد (رئیس امور)', allowedRoles: 'OfficeHead,DirectorGeneral,Admin' }
+        case RefundCaseStatus.AdministrationHeadApproved:
+          return { stage: RefundCaseStatus.DirectorGeneralApproved, title: 'تایید و موافقت مدیر کل (ارسال به ذیحسابی)', allowedRoles: 'DirectorGeneral,Admin' }
+        case RefundCaseStatus.DirectorGeneralApproved:
+          return { stage: RefundCaseStatus.TreasuryDisbursed, title: 'تایید و پرداخت نهایی ذیحسابی', allowedRoles: 'Treasury,Admin' }
+        default:
+          return null
+      }
+    }
+
+    return activeWorkflowSteps.find((s) => s.stepOrder > currentStepOrder) || null
+  }, [activeWorkflowSteps, currentStepOrder, refundCase?.status])
+
+  const prevWorkflowStep = useMemo(() => {
+    if (!refundCase || refundCase.status === RefundCaseStatus.Draft || refundCase.status === RefundCaseStatus.InquiriesPending) {
+      return null
+    }
+    const prevSteps = activeWorkflowSteps.filter((s) => s.stepOrder < currentStepOrder)
+    return prevSteps.length > 0 ? prevSteps[prevSteps.length - 1] : null
+  }, [activeWorkflowSteps, currentStepOrder, refundCase?.status])
+
+  const canVerifyNextStep = useMemo(() => {
+    if (!nextWorkflowStep || !user) return false
+    if (user.role?.toLowerCase() === 'admin') return true
+
+    // Check if user role is permitted in allowedRoles
+    if (nextWorkflowStep.allowedRoles) {
+      const roles = nextWorkflowStep.allowedRoles.split(',').map((r) => r.trim().toLowerCase())
+      if (!roles.includes(user.role.toLowerCase())) return false
+    }
+
+    return canUserVerifyStage(
+      user.role,
+      user.assignedOffices,
+      user.employee?.serviceUnit,
+      nextWorkflowStep.stage,
+      refundCase?.taxUnitCode
+    )
+  }, [nextWorkflowStep, user, refundCase?.taxUnitCode])
+
+  const getStageTheme = (stage: number) => {
+    switch (stage) {
+      case RefundCaseStatus.Audited:
+        return 'bg-blue-700 hover:bg-blue-800'
+      case RefundCaseStatus.GroupHeadApproved:
+        return 'bg-indigo-700 hover:bg-indigo-800'
+      case RefundCaseStatus.AdministrationHeadApproved:
+        return 'bg-emerald-700 hover:bg-emerald-800'
+      case RefundCaseStatus.DirectorGeneralApproved:
+        return 'bg-purple-700 hover:bg-purple-800'
+      case RefundCaseStatus.TreasuryDisbursed:
+        return 'bg-teal-700 hover:bg-teal-800'
+      default:
+        return 'bg-purple-700 hover:bg-purple-800'
+    }
+  }
 
   const fetchCase = async () => {
     try {
@@ -482,150 +596,67 @@ export default function TaxRefundDetailPage() {
               </div>
 
               <div>
-                {refundCase.status === RefundCaseStatus.Draft && (() => {
-                  const canAudit = canUserVerifyStage(user?.role, user?.assignedOffices, user?.employee?.serviceUnit, RefundCaseStatus.Audited, refundCase.taxUnitCode)
-                  return (
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => handleTransition(RefundCaseStatus.Audited)}
-                        disabled={transitioning || !canAudit}
-                        className="w-full py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-                      >
-                        تایید کارشناس ارشد (Audited)
-                      </button>
-                      {!canAudit && (
-                        <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200 text-center">
-                          تایید این مرحله منحصراً در صلاحیت کارشناس ارشد مالیاتی منتسب به این واحد/اداره می‌باشد.
-                        </p>
-                      )}
-                    </div>
-                  )
-                })()}
+                {/* Dynamic Next Workflow Action */}
+                {nextWorkflowStep && (() => {
+                  const targetStage = nextWorkflowStep.stage as RefundCaseStatus
+                  const btnColor = getStageTheme(targetStage)
 
-                {refundCase.status === RefundCaseStatus.Audited && (() => {
-                  const canGroupHeadApprove = canUserVerifyStage(user?.role, user?.assignedOffices, user?.employee?.serviceUnit, RefundCaseStatus.GroupHeadApproved, refundCase.taxUnitCode)
                   return (
                     <div className="space-y-2">
                       <div className="flex flex-col sm:flex-row gap-2">
                         <button
-                          onClick={() => handleTransition(RefundCaseStatus.GroupHeadApproved)}
-                          disabled={transitioning || !canGroupHeadApprove}
-                          className="flex-1 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleTransition(targetStage)}
+                          disabled={transitioning || !canVerifyNextStep}
+                          className={`flex-1 py-2.5 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${btnColor}`}
                         >
-                          تایید رئیس گروه مالیاتی
+                          {transitioning ? (
+                            <span className="flex items-center justify-center gap-1.5">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              در حال ثبت اقدام...
+                            </span>
+                          ) : (
+                            <span>{nextWorkflowStep.title}</span>
+                          )}
                         </button>
-                        <button
-                          onClick={() => setIsReturnModalOpen(true)}
-                          disabled={transitioning}
-                          className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          عودت به پیش‌نویس
-                        </button>
+
+                        {/* Return button if past Draft */}
+                        {refundCase.status !== RefundCaseStatus.Draft && refundCase.status !== RefundCaseStatus.InquiriesPending && (
+                          <button
+                            onClick={() => setIsReturnModalOpen(true)}
+                            disabled={transitioning}
+                            className="px-3.5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            {prevWorkflowStep ? `عودت جهت اصلاح` : 'عودت به پیش‌نویس'}
+                          </button>
+                        )}
                       </div>
-                      {!canGroupHeadApprove && (
-                        <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200 text-center">
-                          تایید این مرحله نیازمند دسترسی رئیس گروه مالیاتی (سطح ۲) حوزه انتسابی می‌باشد.
+
+                      {!canVerifyNextStep && (
+                        <p className="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-center leading-relaxed">
+                          تایید این مرحله نیازمند نقش مجاز ({nextWorkflowStep.allowedRoles}) و پوشش تشکیلات سازمانی مربوطه می‌باشد.
                         </p>
                       )}
                     </div>
                   )
                 })()}
 
-                {refundCase.status === RefundCaseStatus.GroupHeadApproved && (() => {
-                  const canOfficeHeadApprove = canUserVerifyStage(user?.role, user?.assignedOffices, user?.employee?.serviceUnit, RefundCaseStatus.AdministrationHeadApproved, refundCase.taxUnitCode)
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <button
-                          onClick={() => handleTransition(RefundCaseStatus.AdministrationHeadApproved)}
-                          disabled={transitioning || !canOfficeHeadApprove}
-                          className="flex-1 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          صدور دستور استرداد (رئیس امور)
-                        </button>
-                        <button
-                          onClick={() => setIsReturnModalOpen(true)}
-                          disabled={transitioning}
-                          className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          عودت جهت اصلاح
-                        </button>
-                      </div>
-                      {!canOfficeHeadApprove && (
-                        <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200 text-center">
-                          صدور دستور نهایی استرداد منحصراً بر عهده رئیس اداره/امور مالیاتی (سطح ۱) یا مدیر سامانه می‌باشد.
-                        </p>
-                      )}
-                    </div>
-                  )
-                })()}
-
-                {refundCase.status === RefundCaseStatus.AdministrationHeadApproved && (() => {
-                  const canDirectorGeneralApprove = canUserVerifyStage(user?.role, user?.assignedOffices, user?.employee?.serviceUnit, RefundCaseStatus.DirectorGeneralApproved, refundCase.taxUnitCode)
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <button
-                          onClick={() => handleTransition(RefundCaseStatus.DirectorGeneralApproved)}
-                          disabled={transitioning || !canDirectorGeneralApprove}
-                          className="flex-1 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          تایید و موافقت مدیر کل (ارسال به ذیحسابی)
-                        </button>
-                        <button
-                          onClick={() => setIsReturnModalOpen(true)}
-                          disabled={transitioning}
-                          className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          عودت جهت اصلاح
-                        </button>
-                      </div>
-                      {!canDirectorGeneralApprove && (
-                        <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200 text-center">
-                          تایید این مرحله منحصراً در صلاحیت مدیر کل امور مالیاتی استان یا مدیر ارشد سامانه می‌باشد.
-                        </p>
-                      )}
-                    </div>
-                  )
-                })()}
-
-                {refundCase.status === RefundCaseStatus.DirectorGeneralApproved && (() => {
-                  const canTreasuryDisburse = canUserVerifyStage(user?.role, user?.assignedOffices, user?.employee?.serviceUnit, RefundCaseStatus.TreasuryDisbursed, refundCase.taxUnitCode)
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <button
-                          onClick={() => handleTransition(RefundCaseStatus.TreasuryDisbursed)}
-                          disabled={transitioning || !canTreasuryDisburse}
-                          className="flex-1 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          تایید و پرداخت نهایی ذیحسابی
-                        </button>
-                        <button
-                          onClick={() => setIsReturnModalOpen(true)}
-                          disabled={transitioning}
-                          className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          عودت جهت اصلاح
-                        </button>
-                      </div>
-                      {!canTreasuryDisburse && (
-                        <p className="text-[11px] text-teal-800 bg-teal-50 p-2 rounded-xl border border-teal-200 text-center">
-                          اقدام و ثبت پرداخت نهایی منحصراً در صلاحیت ذیحساب/امور مالی یا مدیر ارشد سامانه می‌باشد.
-                        </p>
-                      )}
-                    </div>
-                  )
-                })()}
-
+                {/* Final status achieved */}
                 {refundCase.status === RefundCaseStatus.TreasuryDisbursed && (
-                  <span className="text-xs font-bold text-teal-800 py-2 block text-center">
-                    پرونده با موفقیت پرداخت گردیده است.
-                  </span>
+                  <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-center">
+                    <span className="text-xs font-bold text-teal-900 block">
+                      ✓ پرونده با موفقیت پرداخت و در ذیحسابی تسویه گردیده است.
+                    </span>
+                  </div>
+                )}
+
+                {/* Rejected status */}
+                {refundCase.status === RefundCaseStatus.Rejected && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-center">
+                    <span className="text-xs font-bold text-rose-900 block">
+                      این پرونده استرداد رد گردیده است.
+                    </span>
+                  </div>
                 )}
               </div>
             </div>

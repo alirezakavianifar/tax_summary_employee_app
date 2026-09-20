@@ -334,10 +334,10 @@ export default function CreateUserPage() {
                                             تخصیص ادارات مجاز (Offices)
                                         </h3>
                                         <span className="text-[11px] font-semibold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-full">
-                                            {selectedRole === 'Admin' || selectedRole === 'DirectorGeneral' ? 'دسترسی سراسری' : `${selectedOfficeIds.length} اداره انتخاب شده`}
+                                            {selectedRole === 'Admin' || selectedRole === 'DirectorGeneral' || selectedRole === 'Treasury' ? 'دسترسی سراسری' : `${selectedOfficeIds.length} اداره انتخاب شده`}
                                         </span>
                                     </div>
-                                    {selectedRole !== 'Admin' && selectedRole !== 'DirectorGeneral' && (
+                                    {selectedRole !== 'Admin' && selectedRole !== 'DirectorGeneral' && selectedRole !== 'Treasury' && (
                                         <div className="flex items-center gap-2 text-xs">
                                             <button
                                                 type="button"
@@ -358,9 +358,9 @@ export default function CreateUserPage() {
                                     )}
                                 </div>
 
-                                {selectedRole === 'Admin' || selectedRole === 'DirectorGeneral' ? (
+                                {selectedRole === 'Admin' || selectedRole === 'DirectorGeneral' || selectedRole === 'Treasury' ? (
                                     <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-                                        کاربران با نقش «{selectedRole === 'DirectorGeneral' ? 'مدیر کل امور مالیاتی' : 'مدیر ارشد سامانه'}» به صورت خودکار به تمامی کاربرگ‌ها و ادارات استان دسترسی کامل دارند.
+                                        کاربران با نقش «{selectedRole === 'DirectorGeneral' ? 'مدیر کل امور مالیاتی' : selectedRole === 'Treasury' ? 'ذیحساب' : 'مدیر ارشد سامانه'}» به صورت خودکار به تمامی کاربرگ‌ها و ادارات استان دسترسی کامل دارند.
                                     </p>
                                 ) : (
                                     <>
@@ -409,7 +409,32 @@ export default function CreateUserPage() {
                                         {loadingOffices ? (
                                             <div className="text-center py-4 text-xs text-gray-400">در حال دریافت لیست ادارات...</div>
                                         ) : filteredOffices.length === 0 ? (
-                                            <div className="text-center py-4 text-xs text-gray-400">اداره‌ای یافت نشد.</div>
+                                            <div className="text-center py-4 space-y-2">
+                                                <div className="text-xs text-gray-400">اداره یا گروهی با این مشخصات یافت نشد.</div>
+                                                {officeSearch.trim() && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            const code = officeSearch.trim();
+                                                            const name = code.length === 6 && code.endsWith('0') && !code.endsWith('00')
+                                                                ? `گروه رسیدگی (${code})`
+                                                                : `اداره/واحد (${code})`;
+                                                            try {
+                                                                const newOff = await officesApi.create({ code, name });
+                                                                setOffices(prev => [...prev, newOff]);
+                                                                setSelectedOfficeIds(prev => [...prev, newOff.id]);
+                                                                setOfficeSearch('');
+                                                            } catch (e: any) {
+                                                                setError(e.response?.data?.error || 'خطا در ثبت کد جدید');
+                                                            }
+                                                        }}
+                                                        className="px-3 py-1.5 bg-primary-50 hover:bg-primary-100 text-primary-700 text-xs font-semibold rounded-lg border border-primary-200 transition inline-flex items-center gap-1.5"
+                                                    >
+                                                        <span>+</span>
+                                                        <span>ایجاد و افزودن کد «{officeSearch.trim()}» به عنوان اداره/گروه مجاز</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                         ) : (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
                                                 {filteredOffices.map(office => {

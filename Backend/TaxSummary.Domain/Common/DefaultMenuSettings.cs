@@ -39,6 +39,7 @@ public static class DefaultMenuSettings
             MenuSetting.Create("action_refund_calculator", "شبیه‌ساز و محاسبه‌گر برخط", "/refunds/calculator", "module_tax_refund", "Calculator", true, false, 3, "آزمون آنی فرمول‌های مواد ۲۴۲ و ۲۴۳ قانون مالیات‌ها", null, AllGeneralRoles),
             MenuSetting.Create("action_admin_tax_sources", "مدیریت منابع مالیاتی", "/admin/tax-sources", "module_tax_refund", "Coins", true, true, 4, "پیکربندی و تعریف منابع مالیاتی در پرونده‌های استرداد", null, AdminOnlyRoles),
             MenuSetting.Create("action_admin_finality_stages", "مدیریت مراحل قطعیت", "/admin/finality-stages", "module_tax_refund", "FileCheck", true, true, 5, "پیکربندی و تعریف مراحل قطعیت پرونده‌های استرداد", null, AdminOnlyRoles),
+            MenuSetting.Create("action_admin_refund_workflow", "تنظیمات گردش کار استرداد", "/admin/refund-workflow", "module_tax_refund", "GitFork", true, true, 6, "پیکربندی مراحل تایید، حذف مراحل و تنظیم نقش‌های مجاز", null, AdminOnlyRoles),
 
             // 5. Admin System Management
             MenuSetting.Create("module_admin", "مدیریت سیستم", "/admin/users", null, "ShieldCheck", true, true, 5, "پنل راهبری و مدیریت سامانه (مخصوص مدیران)", null, AdminOnlyRoles),

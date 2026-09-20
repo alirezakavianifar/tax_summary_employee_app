@@ -483,5 +483,42 @@ public class TaxRefundServiceTests
         Assert.Equal("مسعود بصیر", result.Value.GroupHeadName);
         Assert.Equal("غلامرضا اسلامی", result.Value.AdministrationHeadName);
     }
+
+    [Theory]
+    [InlineData("DirectorGeneral")]
+    [InlineData("Treasury")]
+    public async Task GetCasesAsync_DirectorGeneralAndTreasury_AllowedCodesRemainNull(string role)
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = User.Create("officer", "officer@tax.gov.ir", "hash", role);
+        var office = Office.Create("160100", "اداره ۱");
+        user.AssignOffice(office);
+
+        _mockUserRepo.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TaxSummary.Domain.Common.Result.Success(user));
+
+        IEnumerable<string>? passedAllowedCodes = null;
+        _mockRepo.Setup(r => r.GetCasesAsync(
+            It.IsAny<int?>(),
+            It.IsAny<TaxSourceType?>(),
+            It.IsAny<RefundCaseStatus?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<IEnumerable<string>?>(),
+            It.IsAny<CancellationToken>()))
+            .Callback<int?, TaxSourceType?, RefundCaseStatus?, string?, string?, string?, string?, IEnumerable<string>?, CancellationToken>(
+                (y, s, st, t, o, g, u, allowed, ct) => passedAllowedCodes = allowed)
+            .ReturnsAsync(new List<TaxRefundCase>());
+
+        // Act
+        var result = await _service.GetCasesAsync(new TaxRefundFilterDto(), userId);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Null(passedAllowedCodes);
+    }
 }
 

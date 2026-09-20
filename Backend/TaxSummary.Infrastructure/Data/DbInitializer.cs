@@ -25,7 +25,14 @@ public static class DbInitializer
         }
         else
         {
-            await context.Database.MigrateAsync();
+            try
+            {
+                await context.Database.MigrateAsync();
+            }
+            catch
+            {
+                // Continue if already partially migrated or columns already present in SQLite
+            }
         }
 
         // Check if we already have both employees and users
@@ -46,6 +53,9 @@ public static class DbInitializer
 
         // Seed Finality Stages
         await SeedFinalityStagesAsync(context);
+
+        // Seed Tax Refund Workflow Steps
+        await SeedRefundWorkflowStepsAsync(context);
 
         // Seed and synchronize Offices and UserOffices
         await SeedOfficesAndUserOfficesAsync(context);
@@ -579,20 +589,28 @@ public static class DbInitializer
 
         var newOffices = new List<Office>();
 
-        var standardOffices = new (string Code, string Name)[]
+        for (int i = 1; i <= 22; i++)
         {
-            ("160100", "اداره امور مالیاتی ۱ اهواز (۱۶۰۱۰۰)"),
-            ("160200", "اداره امور مالیاتی ۲ اهواز (۱۶۰۲۰۰)"),
-            ("160300", "اداره امور مالیاتی ۳ اهواز (۱۶۰۳۰۰)")
-        };
-
-        foreach (var std in standardOffices)
-        {
-            if (!existingOfficeMap.ContainsKey(std.Code))
+            var prefix = $"16{i:D2}";
+            var officeCode = $"{prefix}00";
+            var officeName = $"اداره امور مالیاتی {i} اهواز ({officeCode})";
+            if (!existingOfficeMap.ContainsKey(officeCode))
             {
-                var off = Office.Create(std.Code, std.Name);
+                var off = Office.Create(officeCode, officeName);
                 newOffices.Add(off);
-                existingOfficeMap[std.Code] = off;
+                existingOfficeMap[officeCode] = off;
+            }
+
+            for (int g = 1; g <= 5; g++)
+            {
+                var groupCode = $"{prefix}{g}0";
+                var groupName = $"گروه {g} رسیدگی - اداره امور مالیاتی {i} اهواز ({groupCode})";
+                if (!existingOfficeMap.ContainsKey(groupCode))
+                {
+                    var grp = Office.Create(groupCode, groupName);
+                    newOffices.Add(grp);
+                    existingOfficeMap[groupCode] = grp;
+                }
             }
         }
 
@@ -792,6 +810,47 @@ public static class DbInitializer
             {
                 cycle.SetCycleCode($"PAY-{group.Key.FiscalYear}{group.Key.FiscalMonth:D2}-{prefix}-{seq:D2}");
                 seq++;
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedRefundWorkflowStepsAsync(TaxSummaryDbContext context)
+    {
+        // Safe ensure table exists in SQLite even before or alongside migrations
+        if (!context.Database.IsInMemory())
+        {
+            await context.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS RefundWorkflowSteps (
+                    Id TEXT PRIMARY KEY NOT NULL,
+                    Stage INTEGER NOT NULL,
+                    Title TEXT NOT NULL,
+                    Description TEXT NULL,
+                    StepOrder INTEGER NOT NULL,
+                    IsEnabled INTEGER NOT NULL,
+                    IsMandatory INTEGER NOT NULL,
+                    AllowedRoles TEXT NOT NULL,
+                    CreatedAt TEXT NOT NULL,
+                    UpdatedAt TEXT NOT NULL,
+                    UpdatedByUserId TEXT NULL
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_RefundWorkflowSteps_Stage ON RefundWorkflowSteps (Stage);
+                CREATE INDEX IF NOT EXISTS IX_RefundWorkflowSteps_StepOrder ON RefundWorkflowSteps (StepOrder);
+
+                INSERT OR IGNORE INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES ('20260916083000_AddCycleCodeToPayrollCycles', '8.0.1');
+                INSERT OR IGNORE INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES ('20260920051208_AddRefundWorkflowStepsTable', '8.0.1');
+            ");
+        }
+
+        var defaults = TaxSummary.Domain.Common.DefaultRefundWorkflowSteps.GetDefaults();
+
+        foreach (var def in defaults)
+        {
+            var existing = await context.RefundWorkflowSteps.FirstOrDefaultAsync(s => s.Stage == def.Stage);
+            if (existing == null)
+            {
+                await context.RefundWorkflowSteps.AddAsync(def);
             }
         }
 

@@ -118,7 +118,8 @@ export function isUserAuthorizedForUnit(
   serviceUnit?: string
 ): boolean {
   if (!userRole) return false
-  if (userRole.toLowerCase() === 'admin') return true
+  const roleLower = userRole.toLowerCase()
+  if (roleLower === 'admin' || roleLower === 'directorgeneral' || roleLower === 'treasury') return true
   if (!taxUnitCode) return false
 
   const hierarchy = decomposeTaxUnitCode(taxUnitCode)
@@ -208,7 +209,14 @@ export function canUserVerifyStage(
     case 2:
       return role === 'expert' || role === 'grouphead' || role === 'officehead' || role === 'manager'
     case 3:
-      return role === 'grouphead' || role === 'officehead'
+      if (role === 'officehead') return true
+      if (role === 'grouphead') {
+        const hierarchy = decomposeTaxUnitCode(taxUnitCode)
+        const codes = (userOffices || []).map((o) => o.code?.trim()).filter(Boolean) as string[]
+        if (serviceUnit) codes.push(serviceUnit.trim())
+        return codes.some((c) => c === hierarchy.groupCode)
+      }
+      return false
     case 4:
       return role === 'officehead'
     default:

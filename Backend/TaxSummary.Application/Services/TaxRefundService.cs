@@ -20,6 +20,7 @@ public class TaxRefundService : ITaxRefundService
     private readonly IMapper _mapper;
     private readonly RefundCalculationEngine _calculationEngine;
     private readonly IRefundDocumentStorageService _documentStorageService;
+    private readonly IRefundWorkflowSettingsService? _workflowService;
     private readonly ILogger<TaxRefundService> _logger;
 
     public TaxRefundService(
@@ -30,7 +31,8 @@ public class TaxRefundService : ITaxRefundService
         IMapper mapper,
         RefundCalculationEngine calculationEngine,
         IRefundDocumentStorageService documentStorageService,
-        ILogger<TaxRefundService> logger)
+        ILogger<TaxRefundService> logger,
+        IRefundWorkflowSettingsService? workflowService = null)
     {
         _repository = repository;
         _userRepository = userRepository;
@@ -40,6 +42,7 @@ public class TaxRefundService : ITaxRefundService
         _calculationEngine = calculationEngine;
         _documentStorageService = documentStorageService;
         _logger = logger;
+        _workflowService = workflowService;
     }
 
     public async Task<Result<TaxRefundCaseDto>> GetByIdAsync(Guid id, Guid? currentUserId = null, CancellationToken ct = default)
@@ -106,7 +109,9 @@ public class TaxRefundService : ITaxRefundService
             if (userResult != null && userResult.IsSuccess && userResult.Value != null)
             {
                 var user = userResult.Value;
-                if (!user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+                if (!user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) &&
+                    !user.Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase) &&
+                    !user.Role.Equals("Treasury", StringComparison.OrdinalIgnoreCase))
                 {
                     var assigned = user.GetAssignedOfficeCodes().ToList();
                     if (!assigned.Any() && user.Employee != null && !string.IsNullOrWhiteSpace(user.Employee.ServiceUnit))
@@ -898,15 +903,28 @@ public class TaxRefundService : ITaxRefundService
         if (refundCase == null)
             return Result.Failure("پرونده استرداد یافت نشد");
 
+        if (_workflowService != null)
+        {
+            var isEnabled = await _workflowService.IsStageEnabledAsync(dto.NewStatus, ct);
+            if (!isEnabled)
+            {
+                return Result.Failure($"مرحله انتخابی ({dto.NewStatus}) در گردش‌کار تنظیم شده توسط مدیر سامانه غیرفعال می‌باشد.");
+            }
+        }
+
         if (currentUserId != Guid.Empty && _userRepository != null)
         {
             var userResult = await _userRepository.GetByIdAsync(currentUserId, ct);
             if (userResult != null && userResult.IsSuccess && userResult.Value != null)
             {
                 var user = userResult.Value;
-                if (!user.CanVerifyStage(dto.NewStatus, refundCase.TaxUnitCode))
+                bool canApprove = _workflowService != null
+                    ? await _workflowService.CanUserApproveStageAsync(user, dto.NewStatus, refundCase.TaxUnitCode, ct)
+                    : user.CanVerifyStage(dto.NewStatus, refundCase.TaxUnitCode);
+
+                if (!canApprove)
                 {
-                    return Result.Failure($"شما با نقش '{actorRole}' و اداره انتسابی، مجاز به تایید این پرونده در مرحله مربوطه نمی‌باشید.");
+                    return Result.Failure($"شما با نقش '{actorRole}' و تشکیلات سازمانی انتسابی، مجاز به تایید این پرونده در مرحله مربوطه نمی‌باشید.");
                 }
             }
         }

@@ -114,7 +114,7 @@ public class MenuSettingsServiceTests
                     MenuKey = "module_payroll",
                     IsVisible = true,
                     AdminOnly = false,
-                    AllowedRoles = new List<string> { "Admin", "Manager" }
+                    AllowedRoles = new List<string> { "Admin", "OfficeHead" }
                 }
             }
         };
@@ -128,13 +128,13 @@ public class MenuSettingsServiceTests
         _mockRepo.Verify(r => r.UpdateRangeAsync(
             It.Is<IEnumerable<MenuSetting>>(list => list.Any(s =>
                 s.MenuKey == "module_payroll" &&
-                s.AllowedRoles == "Admin,Manager")),
+                s.AllowedRoles == "Admin,OfficeHead")),
             It.IsAny<CancellationToken>()), Times.Once);
 
         var updatedPayroll = result.FirstOrDefault(s => s.MenuKey == "module_payroll");
         Assert.NotNull(updatedPayroll);
         Assert.True(updatedPayroll.IsVisible);
-        Assert.Contains("Manager", updatedPayroll.AllowedRoles);
+        Assert.Contains("OfficeHead", updatedPayroll.AllowedRoles);
         Assert.DoesNotContain("Employee", updatedPayroll.AllowedRoles);
     }
 

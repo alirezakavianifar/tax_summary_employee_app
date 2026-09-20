@@ -346,7 +346,8 @@ public class User
     {
         if (string.IsNullOrWhiteSpace(taxUnitCode)) return false;
         if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
-            Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase)) return true;
+            Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase) ||
+            Role.Equals("Treasury", StringComparison.OrdinalIgnoreCase)) return true;
 
         var hierarchy = ValueObjects.TaxHierarchy.Decompose(taxUnitCode);
 
@@ -398,12 +399,19 @@ public class User
 
             case RefundCaseStatus.GroupHeadApproved:
                 // Level 2: Group Head (رئیس گروه مالیاتی)
-                // Must have role GroupHead (or OfficeHead/Admin) AND cover the GroupCode (e.g. 160210)
+                // Must have role GroupHead (or OfficeHead/Admin) AND cover the GroupCode (e.g. 161010)
                 if (!Role.Equals("GroupHead", StringComparison.OrdinalIgnoreCase) &&
                     !Role.Equals("OfficeHead", StringComparison.OrdinalIgnoreCase))
                     return false;
 
-                return HasGroupOrOfficeAccess(hierarchy.GroupCode, hierarchy.OfficeCode);
+                // Office Head has supervisory authority over the entire office and can approve for any group within it
+                if (Role.Equals("OfficeHead", StringComparison.OrdinalIgnoreCase))
+                {
+                    return HasOfficeLevelAccess(hierarchy.OfficeCode);
+                }
+
+                // Group Head is strictly restricted to their assigned group code (e.g. 161010)
+                return HasGroupAccess(hierarchy.GroupCode);
 
             case RefundCaseStatus.AdministrationHeadApproved:
                 // Level 1: Office Head (رئیس امور / رئیس اداره) or Director General (مدیر کل)
@@ -435,7 +443,7 @@ public class User
         }
     }
 
-    private bool HasGroupOrOfficeAccess(string groupCode, string officeCode)
+    private bool HasGroupAccess(string groupCode)
     {
         if (Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
             Role.Equals("DirectorGeneral", StringComparison.OrdinalIgnoreCase)) return true;
@@ -444,13 +452,21 @@ public class User
         {
             if (uo.Office == null) continue;
             var code = uo.Office.Code.Trim();
-            if (code.Equals(groupCode, StringComparison.OrdinalIgnoreCase) ||
-                code.Equals(officeCode, StringComparison.OrdinalIgnoreCase) ||
-                (code.Length == 6 && code.EndsWith("00") && groupCode.StartsWith(code.Substring(0, 4))))
+            if (code.Equals(groupCode, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
         }
+
+        if (Employee != null && !string.IsNullOrWhiteSpace(Employee.ServiceUnit))
+        {
+            var code = Employee.ServiceUnit.Trim();
+            if (code.Equals(groupCode, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -470,6 +486,18 @@ public class User
                 return true;
             }
         }
+
+        if (Employee != null && !string.IsNullOrWhiteSpace(Employee.ServiceUnit))
+        {
+            var code = Employee.ServiceUnit.Trim();
+            if (code.Equals(officeCode, StringComparison.OrdinalIgnoreCase) ||
+                (code.Length == 6 && code.EndsWith("00") && officeCode.StartsWith(code.Substring(0, 4))) ||
+                (code.Length == 4 && officeCode.StartsWith(code)))
+            {
+                return true;
+            }
+        }
+
         return false;
     }
 }

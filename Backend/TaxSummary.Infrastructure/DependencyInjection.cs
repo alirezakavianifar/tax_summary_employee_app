@@ -98,6 +98,10 @@ public static class DependencyInjection
         services.AddScoped<IMenuSettingsRepository, MenuSettingsRepository>();
         services.AddScoped<IMenuSettingsService, MenuSettingsService>();
 
+        // Register Refund Workflow Settings Services
+        services.AddScoped<IRefundWorkflowSettingsRepository, RefundWorkflowSettingsRepository>();
+        services.AddScoped<IRefundWorkflowSettingsService, RefundWorkflowSettingsService>();
+
         // Register Personnel & User Excel Import Service
         services.AddScoped<IPersonnelImportService, PersonnelImportService>();
 

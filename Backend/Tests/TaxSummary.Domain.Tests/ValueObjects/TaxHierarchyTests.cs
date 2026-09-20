@@ -144,6 +144,29 @@ public class TaxHierarchyTests
         // Cannot approve stage 3 (AdministrationHeadApproved)
         Assert.False(groupHead.CanVerifyStage(RefundCaseStatus.AdministrationHeadApproved, "160211"));
 
+        // 2b. Group Head assigned to Group 161010
+        var groupHead161010 = User.Create("gh161010", "gh161010@tax.gov.ir", "hash", "GroupHead");
+        var office161010 = Office.Create("161010", "گروه ۱ اداره ۱۰ اهواز");
+        groupHead161010.AssignOffice(office161010);
+
+        // Can see (TaxHierarchy access) and confirm stage 2 (GroupHeadApproved) for unit 161012 (belongs to group 161010)
+        Assert.True(groupHead161010.HasAccessToTaxHierarchy("161012"));
+        Assert.True(groupHead161010.CanVerifyStage(RefundCaseStatus.GroupHeadApproved, "161012"));
+
+        // CANNOT see and CANNOT confirm for unit 161022 (belongs to group 161020)
+        Assert.False(groupHead161010.HasAccessToTaxHierarchy("161022"));
+        Assert.False(groupHead161010.CanVerifyStage(RefundCaseStatus.GroupHeadApproved, "161022"));
+
+        // Cannot approve stage 3 (AdministrationHeadApproved)
+        Assert.False(groupHead161010.CanVerifyStage(RefundCaseStatus.AdministrationHeadApproved, "161012"));
+
+        // 2c. Group Head assigned only general 4-digit Office 1610 without specific group code
+        var groupHeadGeneral = User.Create("ghGeneral", "ghg@tax.gov.ir", "hash", "GroupHead");
+        var office1610 = Office.Create("1610", "اداره 1610");
+        groupHeadGeneral.AssignOffice(office1610);
+        // Cannot approve stage 2 for specific group 161010 because specific group assignment is required
+        Assert.False(groupHeadGeneral.CanVerifyStage(RefundCaseStatus.GroupHeadApproved, "161012"));
+
         // 3. Office Head assigned to 160200
         var officeHead = User.Create("ohead", "oh@tax.gov.ir", "hash", "OfficeHead");
         var mainOffice = Office.Create("160200", "اداره ۲");
@@ -155,5 +178,17 @@ public class TaxHierarchyTests
         Assert.True(officeHead.CanVerifyStage(RefundCaseStatus.AdministrationHeadApproved, "160211"));
         // Cannot approve for office 160100
         Assert.False(officeHead.CanVerifyStage(RefundCaseStatus.AdministrationHeadApproved, "160111"));
+
+        // 4. Director General (مدیر کل) has province-wide access without assigned offices
+        var dg = User.Create("dg", "dg@tax.gov.ir", "hash", "DirectorGeneral");
+        Assert.True(dg.HasAccessToTaxHierarchy("160111"));
+        Assert.True(dg.HasAccessToTaxHierarchy("161012"));
+        Assert.True(dg.CanVerifyStage(RefundCaseStatus.DirectorGeneralApproved, "161012"));
+
+        // 5. Treasury (ذیحساب) has province-wide access without assigned offices
+        var treasury = User.Create("treasury", "tr@tax.gov.ir", "hash", "Treasury");
+        Assert.True(treasury.HasAccessToTaxHierarchy("160111"));
+        Assert.True(treasury.HasAccessToTaxHierarchy("161012"));
+        Assert.True(treasury.CanVerifyStage(RefundCaseStatus.TreasuryDisbursed, "161012"));
     }
 }
