@@ -256,8 +256,8 @@ public class PayrollCycleService : IPayrollCycleService
                     initialWelfareRate: welfareRate,
                     baseOvertimeAmount: baseOvertime,
                     baseWelfareAmount: baseWelfare,
-                    calculatedOvertimeAmount: calcOvertime,
-                    calculatedWelfareAmount: calcWelfare,
+                    calculatedOvertimeAmount: 0,
+                    calculatedWelfareAmount: 0,
                     isLaborPosition: isLabor,
                     positionTier: tier,
                     maxOvertimeLimit: maxOt
@@ -314,8 +314,8 @@ public class PayrollCycleService : IPayrollCycleService
                     initialWelfareRate: welfareRate,
                     baseOvertimeAmount: baseOvertime,
                     baseWelfareAmount: baseWelfare,
-                    calculatedOvertimeAmount: null,
-                    calculatedWelfareAmount: calcWelfare,
+                    calculatedOvertimeAmount: 0,
+                    calculatedWelfareAmount: 0,
                     isLaborPosition: isLabor,
                     positionTier: tier,
                     maxOvertimeLimit: maxOt
@@ -929,8 +929,8 @@ public class PayrollCycleService : IPayrollCycleService
         }
 
         var allItems = depts.SelectMany(d => d.Items).Where(i => !i.IsExcluded).ToList();
-        long currentTotalOvertime = allItems.Sum(i => i.CalculatedOvertimeAmount ?? 0);
-        long currentTotalWelfare = allItems.Sum(i => i.CalculatedWelfareAmount ?? 0);
+        long currentTotalOvertime = allItems.Sum(i => i.GetEffectiveOvertimeAmount());
+        long currentTotalWelfare = allItems.Sum(i => i.GetEffectiveWelfareAmount());
 
         double overtimeFactor = 1.0;
         double welfareFactor = 1.0;
@@ -992,8 +992,8 @@ public class PayrollCycleService : IPayrollCycleService
         dept.UpdateCaps(dto.BaseOvertimeCap, dto.BaseWelfareCap);
 
         var activeItems = dept.Items.Where(i => !i.IsExcluded).ToList();
-        long currentDeptOvertime = activeItems.Sum(i => i.CalculatedOvertimeAmount ?? 0);
-        long currentDeptWelfare = activeItems.Sum(i => i.CalculatedWelfareAmount ?? 0);
+        long currentDeptOvertime = activeItems.Sum(i => i.GetEffectiveOvertimeAmount());
+        long currentDeptWelfare = activeItems.Sum(i => i.GetEffectiveWelfareAmount());
 
         double otFactor = 1.0;
         double wfFactor = 1.0;
@@ -1066,8 +1066,8 @@ public class PayrollCycleService : IPayrollCycleService
             SubmittedDepartments = depts.Count(d => d.Status == PayrollDepartmentStatus.Submitted || d.Status == PayrollDepartmentStatus.Approved),
             ApprovedDepartments = depts.Count(d => d.Status == PayrollDepartmentStatus.Approved),
             TotalEmployees = allItems.Count,
-            TotalOvertimeAmount = allItems.Sum(i => i.CalculatedOvertimeAmount ?? 0),
-            TotalWelfareAmount = allItems.Sum(i => i.CalculatedWelfareAmount ?? 0),
+            TotalOvertimeAmount = allItems.Sum(i => i.GetEffectiveOvertimeAmount()),
+            TotalWelfareAmount = allItems.Sum(i => i.GetEffectiveWelfareAmount()),
             TotalBonusAmount = allItems.Sum(i => i.AdjustedBonusAmount ?? i.BaseBonusAmount ?? 0)
         };
     }
@@ -1088,8 +1088,8 @@ public class PayrollCycleService : IPayrollCycleService
             SeniorExpertBonusCap = d.SeniorExpertBonusCap,
             OtherStaffBonusCap = d.OtherStaffBonusCap,
             EmployeeCount = items.Count,
-            TotalOvertimeAmount = items.Sum(i => i.CalculatedOvertimeAmount ?? 0),
-            TotalWelfareAmount = items.Sum(i => i.CalculatedWelfareAmount ?? 0),
+            TotalOvertimeAmount = items.Sum(i => i.GetEffectiveOvertimeAmount()),
+            TotalWelfareAmount = items.Sum(i => i.GetEffectiveWelfareAmount()),
             TotalBonusAmount = items.Sum(i => i.AdjustedBonusAmount ?? i.BaseBonusAmount ?? 0),
             SubmittedByUsername = d.SubmittedBy?.Username,
             SubmittedAt = d.SubmittedAt,
@@ -1164,8 +1164,8 @@ public class PayrollCycleService : IPayrollCycleService
             RejectionReason = d.RejectionReason,
             Notes = d.Notes,
             EmployeeCount = items.Count,
-            TotalOvertimeAmount = items.Sum(i => i.CalculatedOvertimeAmount ?? 0),
-            TotalWelfareAmount = items.Sum(i => i.CalculatedWelfareAmount ?? 0),
+            TotalOvertimeAmount = items.Sum(i => i.GetEffectiveOvertimeAmount()),
+            TotalWelfareAmount = items.Sum(i => i.GetEffectiveWelfareAmount()),
             TotalBonusAmount = items.Sum(i => i.AdjustedBonusAmount ?? i.BaseBonusAmount ?? 0),
             Items = items.Select(i =>
             {

@@ -23,11 +23,14 @@ import {
   Loader2,
   AlertTriangle,
   AlertCircle,
+  AlertOctagon,
   CheckCircle2,
   XCircle,
   Search,
   Check,
   FileSpreadsheet,
+  ArrowUp,
+  Filter,
 } from 'lucide-react'
 
 function formatNumber(v: number | null | undefined): string {
@@ -49,6 +52,7 @@ export default function DepartmentWorkspacePage() {
   const [submitting, setSubmitting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showOnlyErrors, setShowOnlyErrors] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -100,7 +104,29 @@ export default function DepartmentWorkspacePage() {
 
         const updated = { ...item, [field]: val }
 
+        if (field === 'isExcluded') {
+          if (val === true) {
+            updated.isExcluded = true
+            updated.adjustedOvertimeRate = 0
+            updated.adjustedWelfareRate = 0
+            if (updated.adjustedBonusAmount !== undefined) {
+              updated.adjustedBonusAmount = 0
+            }
+            updated.calculatedOvertimeAmount = 0
+            updated.calculatedWelfareAmount = 0
+          } else {
+            updated.isExcluded = false
+            updated.adjustedOvertimeRate = null
+            updated.adjustedWelfareRate = null
+            updated.calculatedOvertimeAmount = 0
+            updated.calculatedWelfareAmount = 0
+          }
+          return updated
+        }
+
         if (updated.isExcluded) {
+          updated.adjustedOvertimeRate = 0
+          updated.adjustedWelfareRate = 0
           updated.calculatedOvertimeAmount = 0
           updated.calculatedWelfareAmount = 0
         } else if (dept?.processType === 'OvertimeWelfareRated') {
@@ -111,21 +137,12 @@ export default function DepartmentWorkspacePage() {
               ? updated.initialOvertimeRate
               : updated.baseOvertimeAmount ?? updated.initialOvertimeRate ?? 0
 
-          const baseHours =
-            updated.baseOvertimeAmount != null && updated.baseOvertimeAmount <= 1000
-              ? updated.baseOvertimeAmount
-              : updated.initialOvertimeRate != null && updated.initialOvertimeRate <= 1000
-              ? updated.initialOvertimeRate
-              : null
-
-          if (hourlyRate && updated.adjustedOvertimeRate != null) {
+          if (hourlyRate && updated.adjustedOvertimeRate != null && updated.adjustedOvertimeRate > 0) {
             updated.calculatedOvertimeAmount = Math.ceil(
               hourlyRate * updated.adjustedOvertimeRate
             )
-          } else if (updated.adjustedOvertimeRate == null) {
-            updated.calculatedOvertimeAmount = (hourlyRate && baseHours != null)
-              ? Math.ceil(hourlyRate * baseHours)
-              : null
+          } else {
+            updated.calculatedOvertimeAmount = 0
           }
 
           const baseWelfareSalary =
@@ -135,21 +152,12 @@ export default function DepartmentWorkspacePage() {
               ? updated.initialWelfareRate
               : updated.baseWelfareAmount ?? updated.initialWelfareRate ?? 0
 
-          const baseWelfarePercent =
-            updated.baseWelfareAmount != null && updated.baseWelfareAmount <= 1000
-              ? updated.baseWelfareAmount
-              : updated.initialWelfareRate != null && updated.initialWelfareRate <= 1000
-              ? updated.initialWelfareRate
-              : null
-
-          if (baseWelfareSalary && updated.adjustedWelfareRate != null) {
+          if (baseWelfareSalary && updated.adjustedWelfareRate != null && updated.adjustedWelfareRate > 0) {
             updated.calculatedWelfareAmount = Math.ceil(
               (baseWelfareSalary * updated.adjustedWelfareRate) / 100
             )
-          } else if (updated.adjustedWelfareRate == null) {
-            updated.calculatedWelfareAmount = (baseWelfareSalary && baseWelfarePercent != null)
-              ? Math.ceil((baseWelfareSalary * baseWelfarePercent) / 100)
-              : null
+          } else {
+            updated.calculatedWelfareAmount = 0
           }
         }
         return updated
@@ -391,17 +399,34 @@ export default function DepartmentWorkspacePage() {
     }
   }
 
+  const isBonus = dept?.processType === 'HalfPercentBonus'
+
+  const itemsWithError = useMemo(() => {
+    return items.filter((item) => {
+      if (item.isExcluded) return false
+      const maxOt = item.maxOvertimeLimit ?? (item.isLaborPosition ? 120 : 175)
+      const isOtInvalid = item.adjustedOvertimeRate != null && (item.adjustedOvertimeRate > maxOt || (item.adjustedOvertimeRate > 0 && item.adjustedOvertimeRate < 30))
+      const isWelfareInvalid = item.adjustedWelfareRate != null && (item.adjustedWelfareRate > 100 || (item.adjustedWelfareRate > 0 && item.adjustedWelfareRate < 30))
+      const isBonusExceeded = isBonus && item.maxBonusLimit != null && ((item.adjustedBonusAmount ?? item.baseBonusAmount ?? 0) > item.maxBonusLimit)
+      return isOtInvalid || isWelfareInvalid || isBonusExceeded
+    })
+  }, [items, isBonus])
+
   const filteredItems = useMemo(() => {
-    if (!searchTerm.trim()) return items
+    let list = items
+    if (showOnlyErrors) {
+      list = itemsWithError
+    }
+    if (!searchTerm.trim()) return list
     const term = searchTerm.trim().toLowerCase()
-    return items.filter(
+    return list.filter(
       (i) =>
         i.personnelNumber.toLowerCase().includes(term) ||
         i.employeeName.toLowerCase().includes(term) ||
         (i.positionTitle && i.positionTitle.toLowerCase().includes(term)) ||
         (i.employmentType && i.employmentType.toLowerCase().includes(term))
     )
-  }, [items, searchTerm])
+  }, [items, showOnlyErrors, itemsWithError, searchTerm])
 
   if (loading) {
     return (
@@ -420,8 +445,6 @@ export default function DepartmentWorkspacePage() {
     color: 'bg-gray-100 text-gray-700 border-gray-200',
     dot: 'bg-gray-400',
   }
-
-  const isBonus = dept.processType === 'HalfPercentBonus'
 
   return (
     <ProtectedRoute>
@@ -492,43 +515,189 @@ export default function DepartmentWorkspacePage() {
 
         {/* Budget & Rule Violations Warning Banner */}
         {(!isReadOnly && (hasBudgetViolation || individualValidationErrors.length > 0)) && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl">
-            <div className="flex items-center gap-2 font-bold text-sm mb-2 text-red-800">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-              هشدار: عدم رعایت سقف‌های مصوب بودجه اداره یا سقف‌های فردی
+          <div id="department-violations-banner" className="mb-8 p-5 sm:p-6 bg-gradient-to-br from-rose-50 via-red-50/70 to-amber-50/50 border-2 border-rose-300 text-rose-950 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-rose-200/80 mb-5">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-md animate-pulse">
+                  <AlertOctagon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-rose-900 flex items-center gap-2">
+                    <span>هشدار مهم: کاربرگ قابل ارسال نیست (عدم رعایت سقف‌های مصوب)</span>
+                  </h2>
+                  <p className="text-xs text-rose-700 mt-0.5 font-medium">
+                    تا زمان اصلاح موارد زیر و رساندن مقادیر به سقف مجاز اداره، دکمه «ارسال نهایی به معاونت اداره» قفل خواهد بود.
+                  </p>
+                </div>
+              </div>
+
+              {itemsWithError.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowOnlyErrors((prev) => !prev)}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                    showOnlyErrors
+                      ? 'bg-rose-700 text-white hover:bg-rose-800'
+                      : 'bg-white text-rose-700 border border-rose-300 hover:bg-rose-100/60'
+                  }`}
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  {showOnlyErrors ? 'نمایش همه پرسنل' : `فقط ردیف‌های دارای خطا (${formatNumber(itemsWithError.length)} نفر)`}
+                </button>
+              )}
             </div>
-            <ul className="list-disc list-inside text-xs space-y-1 text-amber-900">
+
+            {/* Violation Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+              {/* Overtime Violation Card */}
               {isOvertimeOverBudget && (
-                <li>
-                  <strong>تخطی از سقف اضافه کار اداره:</strong>{' '}
-                  {isOvertimeCapInHours ? (
-                    <>مجموع ساعت اضافه کار تخصیص داده شده ({formatNumber(totalOvertimeHoursLive)} ساعت) از سقف مصوب اداره ({formatNumber(dept.baseOvertimeCap)} ساعت) بیشتر است.</>
-                  ) : (
-                    <>مجموع اضافه کار محاسبه شده ({formatNumber(totalOvertimeLive)} ریال) از سقف مصوب اداره ({formatNumber(dept.baseOvertimeCap)} ریال) بیشتر است.</>
-                  )}
-                </li>
+                <div className="bg-white/95 rounded-xl p-4 border border-rose-200 shadow-2xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-gray-800">تخطی از سقف اضافه کار اداره</span>
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200">
+                        {isOvertimeCapInHours ? 'ساعت مازاد' : 'مبلغ مازاد'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-gray-600 mb-3">
+                      <div className="flex justify-between">
+                        <span>سقف مصوب اداره:</span>
+                        <strong className="text-gray-900 font-bold">
+                          {formatNumber(dept.baseOvertimeCap)} {isOvertimeCapInHours ? 'ساعت' : 'ریال'}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>مجموع تخصیص یافته فعلی:</span>
+                        <strong className="text-rose-700 font-bold">
+                          {formatNumber(isOvertimeCapInHours ? totalOvertimeHoursLive : totalOvertimeLive)} {isOvertimeCapInHours ? 'ساعت' : 'ریال'}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-rose-100">
+                    <div className="bg-rose-100/90 text-rose-900 font-black px-3 py-2 rounded-lg text-xs flex items-center justify-between">
+                      <span>میزان مازاد (باید کسر شود):</span>
+                      <span dir="ltr" className="text-sm font-black text-rose-700">
+                        + {formatNumber(isOvertimeCapInHours ? (totalOvertimeHoursLive - dept.baseOvertimeCap!) : (totalOvertimeLive - dept.baseOvertimeCap!))} {isOvertimeCapInHours ? 'ساعت' : 'ریال'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               )}
+
+              {/* Welfare Violation Card */}
               {isWelfareOverBudget && (
-                <li>
-                  <strong>تخطی از سقف رفاهی اداره:</strong>{' '}
-                  {isWelfareCapInPercent ? (
-                    <>مجموع درصد رفاهی تخصیص داده شده ({formatNumber(totalWelfarePercentLive)}٪) از سقف مصوب اداره ({formatNumber(dept.baseWelfareCap)}٪) بیشتر است.</>
-                  ) : (
-                    <>مجموع رفاهی محاسبه شده ({formatNumber(totalWelfareLive)} ریال) از سقف مصوب اداره ({formatNumber(dept.baseWelfareCap)} ریال) بیشتر است.</>
-                  )}
-                </li>
+                <div className="bg-white/95 rounded-xl p-4 border border-rose-200 shadow-2xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-gray-800">تخطی از سقف رفاهی اداره</span>
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200">
+                        {isWelfareCapInPercent ? 'درصد مازاد' : 'مبلغ مازاد'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-gray-600 mb-3">
+                      <div className="flex justify-between">
+                        <span>سقف مصوب اداره:</span>
+                        <strong className="text-gray-900 font-bold">
+                          {formatNumber(dept.baseWelfareCap)}{isWelfareCapInPercent ? '٪' : ' ریال'}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>مجموع تخصیص یافته فعلی:</span>
+                        <strong className="text-rose-700 font-bold">
+                          {formatNumber(isWelfareCapInPercent ? totalWelfarePercentLive : totalWelfareLive)}{isWelfareCapInPercent ? '٪' : ' ریال'}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-rose-100">
+                    <div className="bg-rose-100/90 text-rose-900 font-black px-3 py-2 rounded-lg text-xs flex items-center justify-between">
+                      <span>میزان مازاد (باید کسر شود):</span>
+                      <span dir="ltr" className="text-sm font-black text-rose-700">
+                        + {formatNumber(isWelfareCapInPercent ? (totalWelfarePercentLive - dept.baseWelfareCap!) : (totalWelfareLive - dept.baseWelfareCap!))}{isWelfareCapInPercent ? '٪' : ' ریال'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               )}
+
+              {/* Bonus Violation Card */}
               {isBonusOverBudget && (
-                <li>
-                  <strong>تخطی از سقف پاداش نیم درصد اداره:</strong> مجموع پاداش تخصیص داده شده ({formatNumber(totalBonusLive)} ریال) از سقف مصوب بودجه اداره ({formatNumber(dept.baseBonusCap)} ریال) بیشتر است.
-                </li>
+                <div className="bg-white/95 rounded-xl p-4 border border-purple-200 shadow-2xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-purple-900">تخطی از سقف بودجه پاداش نیم درصد</span>
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
+                        مبلغ مازاد
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-gray-600 mb-3">
+                      <div className="flex justify-between">
+                        <span>سقف بودجه مصوب:</span>
+                        <strong className="text-gray-900 font-bold">{formatNumber(dept.baseBonusCap)} ریال</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>مجموع تخصیص یافته:</span>
+                        <strong className="text-purple-700 font-bold">{formatNumber(totalBonusLive)} ریال</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-purple-100">
+                    <div className="bg-purple-100/90 text-purple-900 font-black px-3 py-2 rounded-lg text-xs flex items-center justify-between">
+                      <span>میزان مازاد:</span>
+                      <span dir="ltr" className="text-sm font-black text-purple-700">
+                        + {formatNumber(totalBonusLive - dept.baseBonusCap!)} ریال
+                      </span>
+                    </div>
+                  </div>
+                </div>
               )}
-              {individualValidationErrors.map((err, idx) => (
-                <li key={idx}>{err}</li>
-              ))}
-            </ul>
-            <p className="text-[11px] text-red-700 mt-2 font-medium">
-              * تا زمان رفع موارد فوق، امکان «ارسال نهایی به معاونت اداره» غیرفعال خواهد بود.
+
+              {/* Individual Employee Errors Card */}
+              {individualValidationErrors.length > 0 && (
+                <div className="bg-white/95 rounded-xl p-4 border border-amber-300 shadow-2xs flex flex-col justify-between col-span-1 md:col-span-2 lg:col-span-1">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-amber-900">خطاهای فردی پرسنل</span>
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                        {formatNumber(individualValidationErrors.length)} خطا
+                      </span>
+                    </div>
+
+                    <div className="max-h-28 overflow-y-auto space-y-1 text-[11px] text-amber-900 pr-1">
+                      {individualValidationErrors.map((err, idx) => (
+                        <div key={idx} className="flex items-start gap-1">
+                          <span className="text-amber-500 font-bold">•</span>
+                          <span>{err}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-amber-100 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowOnlyErrors(true)}
+                      className="w-full text-center text-xs font-bold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 py-1.5 rounded-lg transition-colors"
+                    >
+                      فیلتر جدول جهت اصلاح این ردیف‌ها
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <p className="text-[11px] text-rose-700 font-bold flex items-center gap-1.5">
+              <span>*</span>
+              <span>
+                توجه: برای ثبت و ارسال نهایی، مجموع مقادیر باید کمتر یا مساوی سقف‌های مصوب اداره باشد و هیچ فردی دارای خطای مقدار نامعتبر نباشد.
+              </span>
             </p>
           </div>
         )}
@@ -731,15 +900,48 @@ export default function DepartmentWorkspacePage() {
         {/* Interactive Live Editable Table */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
           <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50/50">
-            <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 text-gray-400 absolute right-3 top-3" />
-              <input
-                type="text"
-                placeholder="جستجو با شماره پرسنلی یا نام..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pr-9 pl-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-gray-400 absolute right-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="جستجو با شماره پرسنلی یا نام..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pr-9 pl-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              {/* Filter Tabs / Quick Toggle */}
+              <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setShowOnlyErrors(false)}
+                  className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                    !showOnlyErrors
+                      ? 'bg-primary-50 text-primary-700 font-bold'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  همه پرسنل ({formatNumber(items.length)})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowOnlyErrors(true)}
+                  className={`px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1.5 ${
+                    showOnlyErrors
+                      ? 'bg-rose-50 text-rose-700 font-bold'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <span>ردیف‌های دارای خطا</span>
+                  {itemsWithError.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-600 text-white">
+                      {formatNumber(itemsWithError.length)}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
 
             <span className="text-xs text-gray-500">
@@ -793,11 +995,12 @@ export default function DepartmentWorkspacePage() {
                   const isWelfareInvalid = isWelfareExceeded || isWelfareUnderMin
 
                   const isBonusExceeded = isBonus && item.maxBonusLimit != null && ((item.adjustedBonusAmount ?? item.baseBonusAmount ?? 0) > item.maxBonusLimit)
+                  const hasRowError = isOtInvalid || isWelfareInvalid || isBonusExceeded
 
                   return (
                     <tr
                       key={item.id}
-                      className={`${item.isExcluded ? 'bg-gray-100 text-gray-400' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-primary-50/30 transition-colors`}
+                      className={`${item.isExcluded ? 'bg-gray-100 text-gray-400' : hasRowError ? 'bg-rose-50/60 border-r-4 border-r-rose-500' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-primary-50/30 transition-colors`}
                     >
                       <td className="px-3 py-2 font-mono font-medium text-gray-900">
                         {item.personnelNumber}
@@ -945,11 +1148,11 @@ export default function DepartmentWorkspacePage() {
                           </td>
 
                           <td className="px-3 py-2 text-left font-semibold text-gray-900">
-                            {formatNumber(item.calculatedOvertimeAmount)}
+                            {formatNumber(item.calculatedOvertimeAmount || 0)}
                           </td>
 
                           <td className="px-3 py-2 text-left font-semibold text-gray-900">
-                            {formatNumber(item.calculatedWelfareAmount)}
+                            {formatNumber(item.calculatedWelfareAmount || 0)}
                           </td>
                         </>
                       )}
@@ -1155,6 +1358,66 @@ export default function DepartmentWorkspacePage() {
             )}
           </div>
         </div>
+
+        {/* Sticky Floating Bottom Bar on Violation */}
+        {!isReadOnly && (hasBudgetViolation || individualValidationErrors.length > 0) && (
+          <div className="fixed bottom-3 inset-x-3 sm:inset-x-8 max-w-7xl mx-auto z-40 bg-white/95 backdrop-blur-md border-2 border-rose-400 rounded-2xl p-3.5 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-3">
+            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
+                <span className="text-xs font-black text-rose-900">وضعیت کاربرگ: نیازمند اصلاح مقادیر مازاد</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {isOvertimeOverBudget && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-rose-100 text-rose-800 border border-rose-300">
+                    اضافه کار: +{formatNumber(isOvertimeCapInHours ? (totalOvertimeHoursLive - dept.baseOvertimeCap!) : (totalOvertimeLive - dept.baseOvertimeCap!))} {isOvertimeCapInHours ? 'ساعت' : 'ریال'}
+                  </span>
+                )}
+                {isWelfareOverBudget && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-rose-100 text-rose-800 border border-rose-300">
+                    رفاهی: +{formatNumber(isWelfareCapInPercent ? (totalWelfarePercentLive - dept.baseWelfareCap!) : (totalWelfareLive - dept.baseWelfareCap!))}{isWelfareCapInPercent ? '٪' : ' ریال'}
+                  </span>
+                )}
+                {isBonusOverBudget && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-purple-100 text-purple-800 border border-purple-300">
+                    پاداش: +{formatNumber(totalBonusLive - dept.baseBonusCap!)} ریال
+                  </span>
+                )}
+                {individualValidationErrors.length > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-amber-100 text-amber-900 border border-amber-300">
+                    {formatNumber(individualValidationErrors.length)} خطای فردی
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('department-violations-banner')
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }}
+                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+                مشاهده جزئیات خطاها
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSubmitFinal}
+                disabled={submitting || !canSubmit}
+                className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title={!canSubmit ? 'به دلیل تخطی از سقف‌های بودجه یا سقف‌های فردی غیرفعال است' : 'ارسال نهایی به معاونت'}
+              >
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                ارسال نهایی به معاونت
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Rejection Modal */}
         {rejectModalOpen && (

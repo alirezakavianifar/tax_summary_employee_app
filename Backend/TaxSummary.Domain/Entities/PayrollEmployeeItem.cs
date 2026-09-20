@@ -87,8 +87,8 @@ public class PayrollEmployeeItem
             BaseWelfareAmount = baseWelfareAmount,
             BaseBonusAmount = baseBonusAmount,
             AdjustedBonusAmount = null,     // empty by default
-            CalculatedOvertimeAmount = calculatedOvertimeAmount,
-            CalculatedWelfareAmount = calculatedWelfareAmount,
+            CalculatedOvertimeAmount = calculatedOvertimeAmount ?? 0,
+            CalculatedWelfareAmount = calculatedWelfareAmount ?? 0,
             IsLaborPosition = isLaborPosition,
             PositionTier = resolvedTier,
             PositionTitle = positionTitle?.Trim(),
@@ -169,51 +169,41 @@ public class PayrollEmployeeItem
 
         if (isExcluded)
         {
+            AdjustedOvertimeRate = 0;
+            AdjustedWelfareRate = 0;
+            if (adjustedBonusAmount.HasValue || AdjustedBonusAmount.HasValue)
+            {
+                AdjustedBonusAmount = 0;
+            }
             CalculatedOvertimeAmount = 0;
             CalculatedWelfareAmount = 0;
         }
         else if (isRatedProcess)
         {
-            var hourlyRate = (BaseOvertimeAmount.HasValue && BaseOvertimeAmount.Value > 1000)
-                ? BaseOvertimeAmount.Value
-                : (InitialOvertimeRate.HasValue && InitialOvertimeRate.Value > 1000 ? InitialOvertimeRate.Value : (BaseOvertimeAmount ?? InitialOvertimeRate ?? 0));
-
-            var baseHours = (BaseOvertimeAmount.HasValue && BaseOvertimeAmount.Value <= 1000)
-                ? BaseOvertimeAmount.Value
-                : (InitialOvertimeRate.HasValue && InitialOvertimeRate.Value <= 1000 ? InitialOvertimeRate.Value : (double?)null);
-
-            if (AdjustedOvertimeRate.HasValue)
+            if (AdjustedOvertimeRate.HasValue && AdjustedOvertimeRate.Value > 0)
             {
+                var hourlyRate = (BaseOvertimeAmount.HasValue && BaseOvertimeAmount.Value > 1000)
+                    ? BaseOvertimeAmount.Value
+                    : (InitialOvertimeRate.HasValue && InitialOvertimeRate.Value > 1000 ? InitialOvertimeRate.Value : (BaseOvertimeAmount ?? InitialOvertimeRate ?? 0));
+
                 CalculatedOvertimeAmount = (long)Math.Ceiling(hourlyRate * AdjustedOvertimeRate.Value);
             }
-            else if (baseHours.HasValue && hourlyRate > 0)
+            else
             {
-                CalculatedOvertimeAmount = (long)Math.Ceiling(hourlyRate * baseHours.Value);
+                CalculatedOvertimeAmount = 0;
+            }
+
+            if (AdjustedWelfareRate.HasValue && AdjustedWelfareRate.Value > 0)
+            {
+                var baseWelfare = (BaseWelfareAmount.HasValue && BaseWelfareAmount.Value > 1000)
+                    ? BaseWelfareAmount.Value
+                    : (InitialWelfareRate.HasValue && InitialWelfareRate.Value > 1000 ? InitialWelfareRate.Value : (BaseWelfareAmount ?? InitialWelfareRate ?? 0));
+
+                CalculatedWelfareAmount = (long)Math.Ceiling(baseWelfare * AdjustedWelfareRate.Value / 100.0);
             }
             else
             {
-                CalculatedOvertimeAmount = null;
-            }
-
-            var baseWelfareSalary = (BaseWelfareAmount.HasValue && BaseWelfareAmount.Value > 1000)
-                ? BaseWelfareAmount.Value
-                : (InitialWelfareRate.HasValue && InitialWelfareRate.Value > 1000 ? InitialWelfareRate.Value : (BaseWelfareAmount ?? InitialWelfareRate ?? 0));
-
-            var baseWelfarePercent = (BaseWelfareAmount.HasValue && BaseWelfareAmount.Value <= 1000)
-                ? BaseWelfareAmount.Value
-                : (InitialWelfareRate.HasValue && InitialWelfareRate.Value <= 1000 ? InitialWelfareRate.Value : (double?)null);
-
-            if (AdjustedWelfareRate.HasValue)
-            {
-                CalculatedWelfareAmount = (long)Math.Ceiling(baseWelfareSalary * AdjustedWelfareRate.Value / 100.0);
-            }
-            else if (baseWelfarePercent.HasValue && baseWelfareSalary > 0)
-            {
-                CalculatedWelfareAmount = (long)Math.Ceiling(baseWelfareSalary * baseWelfarePercent.Value / 100.0);
-            }
-            else
-            {
-                CalculatedWelfareAmount = null;
+                CalculatedWelfareAmount = 0;
             }
         }
 
@@ -258,6 +248,64 @@ public class PayrollEmployeeItem
         if (baseOvertime.HasValue) BaseOvertimeAmount = baseOvertime.Value;
         if (baseWelfare.HasValue) BaseWelfareAmount = baseWelfare.Value;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Gets the effective overtime amount in Rials. If the officer entered an adjusted rate, returns CalculatedOvertimeAmount;
+    /// otherwise returns the base estimated overtime amount according to manager coefficients and base hourly rate.
+    /// </summary>
+    public long GetEffectiveOvertimeAmount()
+    {
+        if (IsExcluded) return 0;
+
+        if (AdjustedOvertimeRate.HasValue)
+        {
+            return CalculatedOvertimeAmount ?? 0;
+        }
+
+        var hourlyRate = (BaseOvertimeAmount.HasValue && BaseOvertimeAmount.Value > 1000)
+            ? BaseOvertimeAmount.Value
+            : (InitialOvertimeRate.HasValue && InitialOvertimeRate.Value > 1000 ? InitialOvertimeRate.Value : (BaseOvertimeAmount ?? InitialOvertimeRate ?? 0));
+
+        var baseHours = (BaseOvertimeAmount.HasValue && BaseOvertimeAmount.Value <= 1000)
+            ? BaseOvertimeAmount.Value
+            : (InitialOvertimeRate.HasValue && InitialOvertimeRate.Value <= 1000 ? InitialOvertimeRate.Value : 0);
+
+        if (hourlyRate > 0 && baseHours > 0)
+        {
+            return (long)Math.Ceiling(hourlyRate * baseHours);
+        }
+
+        return (long)Math.Ceiling(hourlyRate > 1000 ? hourlyRate : 0);
+    }
+
+    /// <summary>
+    /// Gets the effective welfare amount in Rials. If the officer entered an adjusted rate, returns CalculatedWelfareAmount;
+    /// otherwise returns the base estimated welfare amount according to manager coefficients and base welfare salary.
+    /// </summary>
+    public long GetEffectiveWelfareAmount()
+    {
+        if (IsExcluded) return 0;
+
+        if (AdjustedWelfareRate.HasValue)
+        {
+            return CalculatedWelfareAmount ?? 0;
+        }
+
+        var baseWelfareSalary = (BaseWelfareAmount.HasValue && BaseWelfareAmount.Value > 1000)
+            ? BaseWelfareAmount.Value
+            : (InitialWelfareRate.HasValue && InitialWelfareRate.Value > 1000 ? InitialWelfareRate.Value : (BaseWelfareAmount ?? InitialWelfareRate ?? 0));
+
+        var baseWelfarePercent = (BaseWelfareAmount.HasValue && BaseWelfareAmount.Value <= 1000)
+            ? BaseWelfareAmount.Value
+            : (InitialWelfareRate.HasValue && InitialWelfareRate.Value <= 1000 ? InitialWelfareRate.Value : 0);
+
+        if (baseWelfareSalary > 0 && baseWelfarePercent > 0)
+        {
+            return (long)Math.Ceiling(baseWelfareSalary * baseWelfarePercent / 100.0);
+        }
+
+        return (long)Math.Ceiling(baseWelfareSalary > 1000 ? baseWelfareSalary : 0);
     }
 }
 
