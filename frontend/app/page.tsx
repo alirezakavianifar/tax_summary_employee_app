@@ -55,11 +55,11 @@ export default function HomePage() {
               </div>
 
               <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
-                سامانه جامع امور اداری، ارزیابی و محاسبات حقوقی
+                سامانه یکپارچه امور سازمانی و مالیاتی
               </h1>
 
               <p className="text-xs sm:text-sm lg:text-base text-gray-300 leading-relaxed max-w-2xl font-normal">
-                پرتال یکپارچه مدیریت فرآیندهای ارزیابی شایستگی و انتصابات مدیریتی، ارزیابی داوطلبین و محاسبه دقیق دوره‌های اضافه کار و رفاهیات ادارات و واحدهای تابعه اداره کل امور مالیاتی استان خوزستان.
+                پرتال یکپارچه مدیریت فرآیندهای ارزیابی شایستگی و انتصابات مدیریتی، محاسبه مشارکتی حقوق و اضافه‌کار، و سامانه جامع استرداد مالیات اضافه دریافتی اداره کل امور مالیاتی استان خوزستان.
               </p>
 
               {/* Action buttons & Login Status */}

@@ -48,10 +48,20 @@ export default function LoginPage() {
                 <div className="bg-white rounded-lg shadow-xl p-8">
                     {/* Header */}
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                            سامانه گزارش‌دهی کارکنان
+                        <div className="mx-auto w-16 h-16 rounded-2xl p-2 border border-gray-200 shadow-sm flex items-center justify-center bg-white mb-3">
+                            <img
+                                src="/images/Intamedia_Logo.png"
+                                alt="اداره کل امور مالیاتی استان خوزستان"
+                                className="w-full h-full object-contain"
+                            />
+                        </div>
+                        <p className="text-xs font-bold text-primary-700 mb-1">
+                            اداره کل امور مالیاتی استان خوزستان
+                        </p>
+                        <h1 className="text-2xl font-black text-gray-900 mb-2">
+                            سامانه یکپارچه امور سازمانی و مالیاتی
                         </h1>
-                        <p className="text-gray-600">ورود به سیستم</p>
+                        <p className="text-gray-500 text-sm">ورود به سیستم</p>
                     </div>
 
                     {/* Error Message */}

@@ -102,7 +102,7 @@ export default function Navbar() {
                 <span className="text-sm sm:text-base font-black text-gray-900 leading-tight">
                   اداره کل امور مالیاتی استان خوزستان
                 </span>
-                <span className="text-[10px] text-primary-600 font-bold">سامانه جامع خدمات اداری، ارزیابی و حقوقی</span>
+                <span className="text-[10px] text-primary-600 font-bold">سامانه یکپارچه امور سازمانی و مالیاتی</span>
               </div>
             </Link>
 
