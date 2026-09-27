@@ -985,7 +985,7 @@ export default function DepartmentWorkspacePage() {
                         <div>ساعت اضافه کار نهایی</div>
                         <div className="text-[10px] font-normal text-primary-900 mt-0.5">(۰ یا ۳۰ به بالا)</div>
                       </th>
-                      <th className="px-2 py-3 text-center">رفاهی پایه</th>
+                      <th className="px-2 py-3 text-center">رفاهی پایه (ریال)</th>
                       <th className="px-2 py-3 text-center bg-primary-100/60 font-black">
                         <div>درصد رفاهی نهایی (سقف ۱۰۰٪)</div>
                         <div className="text-[10px] font-normal text-primary-900 mt-0.5">(۰ یا ۳۰٪ تا ۱۰۰٪)</div>
@@ -1114,7 +1114,7 @@ export default function DepartmentWorkspacePage() {
                           </td>
 
                           <td className="px-2 py-2 text-center text-gray-500">
-                            {formatNumber(item.initialWelfareRate)}%
+                            {item.initialWelfareRate != null ? formatNumber(item.initialWelfareRate) : '—'}
                           </td>
 
                           <td className="px-2 py-2 text-center bg-primary-50/40">
