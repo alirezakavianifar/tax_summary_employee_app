@@ -362,6 +362,14 @@ public class PayrollCycleService : IPayrollCycleService
                     );
                     deptEntry.Items.Add(boundItem);
                 }
+
+                var effectiveOtPrice = deptEntry.GetEffectiveOvertimePriceCap();
+                var effectiveWfPrice = deptEntry.GetEffectiveWelfarePriceCap();
+                if (effectiveOtPrice.HasValue || effectiveWfPrice.HasValue)
+                {
+                    deptEntry.UpdateCaps(effectiveOtPrice ?? deptEntry.BaseOvertimeCap, effectiveWfPrice ?? deptEntry.BaseWelfareCap);
+                }
+
                 cycle.DepartmentEntries.Add(deptEntry);
             }
         }
@@ -1081,8 +1089,8 @@ public class PayrollCycleService : IPayrollCycleService
             PayrollCycleId = d.PayrollCycleId,
             DepartmentName = d.DepartmentName,
             Status = d.Status,
-            BaseOvertimeCap = d.BaseOvertimeCap,
-            BaseWelfareCap = d.BaseWelfareCap,
+            BaseOvertimeCap = d.GetEffectiveOvertimePriceCap() ?? d.BaseOvertimeCap,
+            BaseWelfareCap = d.GetEffectiveWelfarePriceCap() ?? d.BaseWelfareCap,
             BaseBonusCap = d.BaseBonusCap,
             GroupHeadBonusCap = d.GroupHeadBonusCap,
             SeniorExpertBonusCap = d.SeniorExpertBonusCap,
@@ -1149,8 +1157,8 @@ public class PayrollCycleService : IPayrollCycleService
             CycleDeadline = d.PayrollCycle?.Deadline,
             DepartmentName = d.DepartmentName,
             Status = d.Status,
-            BaseOvertimeCap = d.BaseOvertimeCap,
-            BaseWelfareCap = d.BaseWelfareCap,
+            BaseOvertimeCap = d.GetEffectiveOvertimePriceCap() ?? d.BaseOvertimeCap,
+            BaseWelfareCap = d.GetEffectiveWelfarePriceCap() ?? d.BaseWelfareCap,
             BaseBonusCap = d.BaseBonusCap,
             GroupHeadBonusCap = d.GroupHeadBonusCap,
             SeniorExpertBonusCap = d.SeniorExpertBonusCap,

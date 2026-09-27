@@ -133,9 +133,9 @@ export default function MyDepartmentPage() {
                         <span className="font-semibold text-gray-800">{formatNumber(dept.employeeCount)} نفر</span>
                       </div>
                       <div>
-                        <span className="text-gray-400 block">سرانه مصوب:</span>
+                        <span className="text-gray-400 block">سقف بودجه مصوب:</span>
                         <span className="font-semibold text-gray-800">
-                          {dept.baseOvertimeCap ? formatNumber(dept.baseOvertimeCap) : '—'}
+                          {dept.baseOvertimeCap ? `${formatNumber(dept.baseOvertimeCap)} ریال` : '—'}
                         </span>
                       </div>
                     </div>

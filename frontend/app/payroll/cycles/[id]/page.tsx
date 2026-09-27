@@ -641,7 +641,7 @@ export default function CycleDetailPage() {
                     </>
                   ) : (
                     <>
-                      <th className="px-4 py-3.5">سرانه پایه</th>
+                      <th className="px-4 py-3.5">سقف بودجه مصوب (ریال)</th>
                       <th className="px-4 py-3.5">جمع اضافه کار (ریال)</th>
                       <th className="px-4 py-3.5">جمع رفاهی (ریال)</th>
                     </>

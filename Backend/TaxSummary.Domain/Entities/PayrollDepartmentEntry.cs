@@ -130,6 +130,50 @@ public class PayrollDepartmentEntry
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public double? GetEffectiveOvertimePriceCap()
+    {
+        if (!BaseOvertimeCap.HasValue || BaseOvertimeCap.Value <= 0) return null;
+        if (BaseOvertimeCap.Value > 50000) return BaseOvertimeCap.Value;
+
+        var nonExcluded = Items.Where(i => !i.IsExcluded).ToList();
+        if (nonExcluded.Count == 0) return BaseOvertimeCap.Value;
+
+        return nonExcluded.Sum(i =>
+        {
+            var hourlyRate = (i.BaseOvertimeAmount.HasValue && i.BaseOvertimeAmount.Value > 1000)
+                ? i.BaseOvertimeAmount.Value
+                : (i.InitialOvertimeRate.HasValue && i.InitialOvertimeRate.Value > 1000
+                    ? i.InitialOvertimeRate.Value
+                    : (i.BaseOvertimeAmount ?? i.InitialOvertimeRate ?? 0));
+            var baseHours = (i.BaseOvertimeAmount.HasValue && i.BaseOvertimeAmount.Value <= 1000)
+                ? i.BaseOvertimeAmount.Value
+                : (BaseOvertimeCap.Value / (double)nonExcluded.Count);
+            return hourlyRate * baseHours;
+        });
+    }
+
+    public double? GetEffectiveWelfarePriceCap()
+    {
+        if (!BaseWelfareCap.HasValue || BaseWelfareCap.Value <= 0) return null;
+        if (BaseWelfareCap.Value > 10000) return BaseWelfareCap.Value;
+
+        var nonExcluded = Items.Where(i => !i.IsExcluded).ToList();
+        if (nonExcluded.Count == 0) return BaseWelfareCap.Value;
+
+        return nonExcluded.Sum(i =>
+        {
+            var baseSalary = (i.BaseWelfareAmount.HasValue && i.BaseWelfareAmount.Value > 1000)
+                ? i.BaseWelfareAmount.Value
+                : (i.InitialWelfareRate.HasValue && i.InitialWelfareRate.Value > 1000
+                    ? i.InitialWelfareRate.Value
+                    : (i.BaseWelfareAmount ?? i.InitialWelfareRate ?? 0));
+            var baseRate = (i.BaseWelfareAmount.HasValue && i.BaseWelfareAmount.Value <= 1000)
+                ? i.BaseWelfareAmount.Value
+                : (BaseWelfareCap.Value / (double)nonExcluded.Count);
+            return (baseSalary * baseRate) / 100.0;
+        });
+    }
+
     public void ValidateDepartmentLimits(string processType)
     {
         var nonExcluded = Items.Where(i => !i.IsExcluded).ToList();
@@ -148,48 +192,26 @@ public class PayrollDepartmentEntry
         }
         else
         {
-            // Overtime and Welfare
-            if (BaseOvertimeCap.HasValue && BaseOvertimeCap.Value > 0)
+            // Overtime and Welfare - strictly validated by Price (Rials)
+            var effectiveOtCap = GetEffectiveOvertimePriceCap();
+            if (effectiveOtCap.HasValue && effectiveOtCap.Value > 0)
             {
-                if (BaseOvertimeCap.Value <= 50000)
+                var totalOvertime = nonExcluded.Sum(i => i.CalculatedOvertimeAmount ?? 0);
+                if (totalOvertime > effectiveOtCap.Value)
                 {
-                    var totalHours = nonExcluded.Sum(i => i.AdjustedOvertimeRate ?? 0);
-                    if (totalHours > BaseOvertimeCap.Value)
-                    {
-                        throw new InvalidOperationException(
-                            $"مجموع ساعت اضافه کار تخصیص داده شده ({totalHours:N0} ساعت) از سقف مجاز اداره ({BaseOvertimeCap.Value:N0} ساعت) فراتر رفته است.");
-                    }
-                }
-                else
-                {
-                    var totalOvertime = nonExcluded.Sum(i => i.CalculatedOvertimeAmount ?? 0);
-                    if (totalOvertime > BaseOvertimeCap.Value)
-                    {
-                        throw new InvalidOperationException(
-                            $"مجموع اضافه کار تخصیص داده شده ({totalOvertime:N0} ریال) از سقف مجاز اداره ({BaseOvertimeCap.Value:N0} ریال) فراتر رفته است.");
-                    }
+                    throw new InvalidOperationException(
+                        $"مجموع اضافه کار تخصیص داده شده ({totalOvertime:N0} ریال) از سقف مجاز اداره ({effectiveOtCap.Value:N0} ریال) فراتر رفته است.");
                 }
             }
 
-            if (BaseWelfareCap.HasValue && BaseWelfareCap.Value > 0)
+            var effectiveWfCap = GetEffectiveWelfarePriceCap();
+            if (effectiveWfCap.HasValue && effectiveWfCap.Value > 0)
             {
-                if (BaseWelfareCap.Value <= 10000)
+                var totalWelfare = nonExcluded.Sum(i => i.CalculatedWelfareAmount ?? 0);
+                if (totalWelfare > effectiveWfCap.Value)
                 {
-                    var totalWelfareRate = nonExcluded.Sum(i => i.AdjustedWelfareRate ?? 0);
-                    if (totalWelfareRate > BaseWelfareCap.Value)
-                    {
-                        throw new InvalidOperationException(
-                            $"مجموع درصد رفاهی تخصیص داده شده ({totalWelfareRate:N0}٪) از سقف مجاز اداره ({BaseWelfareCap.Value:N0}٪) فراتر رفته است.");
-                    }
-                }
-                else
-                {
-                    var totalWelfare = nonExcluded.Sum(i => i.CalculatedWelfareAmount ?? 0);
-                    if (totalWelfare > BaseWelfareCap.Value)
-                    {
-                        throw new InvalidOperationException(
-                            $"مجموع رفاهی تخصیص داده شده ({totalWelfare:N0} ریال) از سقف مجاز اداره ({BaseWelfareCap.Value:N0} ریال) فراتر رفته است.");
-                    }
+                    throw new InvalidOperationException(
+                        $"مجموع رفاهی تخصیص داده شده ({totalWelfare:N0} ریال) از سقف مجاز اداره ({effectiveWfCap.Value:N0} ریال) فراتر رفته است.");
                 }
             }
         }

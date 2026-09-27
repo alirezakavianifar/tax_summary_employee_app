@@ -201,6 +201,29 @@ public class PayrollRulesTests
         Assert.Contains("مجموع اضافه کار", ex.Message);
     }
 
+    [Fact]
+    public void ValidateDepartmentLimits_OvertimeHoursExceedingQuota_PassesIfWithinPriceCap()
+    {
+        // Base hours quota: 60h per person. Dept total cap = 120h (60h * 2 people)
+        var dept = PayrollDepartmentEntry.Create(Guid.NewGuid(), "اداره امور مالیاتی", baseOvertimeCap: 120);
+        // item1: 500,000/hr, base: 60h -> 30,000,000 base price
+        var item1 = PayrollEmployeeItem.Create(dept.Id, "101", "کارمند ۱", initialOvertimeRate: 500000, baseOvertimeAmount: 60);
+        // item2: 1,000,000/hr, base: 60h -> 60,000,000 base price. Dept Price Cap = 90,000,000
+        var item2 = PayrollEmployeeItem.Create(dept.Id, "102", "کارمند ۲", initialOvertimeRate: 1000000, baseOvertimeAmount: 60);
+        
+        dept.Items.Add(item1);
+        dept.Items.Add(item2);
+
+        // Adjust hours: Item1 gets 80h (40,000,000), Item2 gets 45h (45,000,000)
+        // Total hours = 125h > 120h cap! BUT Total price = 85,000,000 <= 90,000,000 Price Cap
+        item1.UpdateAdjustments(80, 0, null, false, true);
+        item2.UpdateAdjustments(45, 0, null, false, true);
+
+        // Validation should succeed because validation is based on PRICE, not hours!
+        dept.ValidateDepartmentLimits("OvertimeWelfareRated");
+        Assert.Equal(85000000, dept.Items.Sum(i => i.CalculatedOvertimeAmount));
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(15)]
