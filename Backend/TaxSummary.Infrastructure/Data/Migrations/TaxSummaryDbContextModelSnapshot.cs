@@ -902,6 +902,142 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.ToTable("RefundableReceiptAllocations", (string)null);
                 });
 
+            modelBuilder.Entity("TaxSummary.Domain.Entities.ReportDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("");
+
+                    b.Property<int>("DomainSource")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsSystemReport")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("RequiredRole")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("IX_ReportDefinitions_Category");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ReportDefinitions_Code");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("DomainSource")
+                        .HasDatabaseName("IX_ReportDefinitions_DomainSource");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("IX_ReportDefinitions_IsActive");
+
+                    b.ToTable("ReportDefinitions", (string)null);
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.ReportExecutionLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AppliedFiltersSummary")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ClientIpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExecutedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ExecutionDurationMs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ExportFormat")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReportCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ReportDefinitionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ResultRowCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutedAt")
+                        .HasDatabaseName("IX_ReportExecutionLogs_ExecutedAt");
+
+                    b.HasIndex("ReportCode")
+                        .HasDatabaseName("IX_ReportExecutionLogs_ReportCode");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_ReportExecutionLogs_UserId");
+
+                    b.ToTable("ReportExecutionLogs", (string)null);
+                });
+
             modelBuilder.Entity("TaxSummary.Domain.Entities.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -953,6 +1089,57 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Roles", (string)null);
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.SavedReportPreset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FilterCriteriaJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSharedWithOffice")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<Guid?>("OfficeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PresetName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ReportDefinitionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VisibleColumnsJson")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OfficeId")
+                        .HasDatabaseName("IX_SavedReportPresets_OfficeId");
+
+                    b.HasIndex("ReportDefinitionId");
+
+                    b.HasIndex("UserId", "ReportDefinitionId")
+                        .HasDatabaseName("IX_SavedReportPresets_User_Report");
+
+                    b.ToTable("SavedReportPresets", (string)null);
                 });
 
             modelBuilder.Entity("TaxSummary.Domain.Entities.TaxFinalityStage", b =>
@@ -1645,6 +1832,35 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.Navigation("TaxRefundCase");
 
                     b.Navigation("TaxRefundReceipt");
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.ReportDefinition", b =>
+                {
+                    b.HasOne("TaxSummary.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.SavedReportPreset", b =>
+                {
+                    b.HasOne("TaxSummary.Domain.Entities.ReportDefinition", "ReportDefinition")
+                        .WithMany()
+                        .HasForeignKey("ReportDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaxSummary.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReportDefinition");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TaxSummary.Domain.Entities.TaxRefundApprovalAction", b =>

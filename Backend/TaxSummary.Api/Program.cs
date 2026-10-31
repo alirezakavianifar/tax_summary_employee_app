@@ -26,6 +26,9 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.WriteIndented = true;
     });
 
+// Add In-Memory Caching for Executive Dashboard & Reporting
+builder.Services.AddMemoryCache();
+
 // Add Infrastructure layer (DbContext, Repositories, UnitOfWork)
 builder.Services.AddInfrastructure(builder.Configuration);
 

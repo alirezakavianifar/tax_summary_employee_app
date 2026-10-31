@@ -12,6 +12,10 @@ import {
   Scale,
   Coins,
   FileCheck,
+  BarChart3,
+  TrendingUp,
+  Sliders,
+  BookmarkCheck,
 } from 'lucide-react'
 import { BasePortalModule, PortalAction } from '@/types/portal'
 
@@ -199,6 +203,67 @@ export class TaxRefundPortalModule extends BasePortalModule {
 }
 
 /**
+ * Module 4: Executive Business Intelligence & Unified Reporting Portal
+ */
+export class ExecutiveReportingModule extends BasePortalModule {
+  public readonly id = 'executive-reporting'
+  public readonly title = 'سامانه جامع آمار، گزارش‌گیری و هوش تجاری سازمانی'
+  public readonly navTitle = 'گزارش‌ها و آمار'
+  public readonly subtitle = 'داشبورد مدیریتی، پایش تطبیقی شاخص‌ها و تحلیل هوشمند داده‌ها'
+  public readonly description =
+    'پایش یکپارچه شاخص‌های عملکرد پرسنل، انحراف بودجه حقوق و اضافه کار، و جریان پرونده‌های استرداد مالیاتی با امکان طراحی گزارش‌های پویا و خروجی اکسل چندبرگی.'
+  public readonly badgeText = 'هوش تجاری و نظارت'
+  public readonly icon = BarChart3
+  public readonly gradient = 'from-amber-600 to-orange-700'
+  public readonly accentColor = 'text-amber-600'
+  public readonly borderHoverColor = 'hover:border-amber-400'
+  public readonly iconBgColor = 'bg-amber-50 text-amber-600'
+
+  public readonly actions: PortalAction[] = [
+    {
+      id: 'executive-dashboard',
+      title: 'داشبورد شاخص‌های کلیدی (KPI)',
+      href: '/reporting',
+      description: 'نمای تحلیلی وضعیت کلان سازمان و ادارات تابعه',
+      icon: TrendingUp,
+      variant: 'primary',
+    },
+    {
+      id: 'standard-reports',
+      title: 'کاتالوگ گزارش‌های استاندارد',
+      href: '/reporting/standard',
+      description: 'فهرست ۱۰ گزارش مدیریتی و نظارتی آماده چاپ',
+      icon: FileSpreadsheet,
+      variant: 'secondary',
+    },
+    {
+      id: 'report-builder',
+      title: 'گزارش‌ساز پویا و پیشرفته',
+      href: '/reporting/builder',
+      description: 'انتخاب فیلدها، فیلترهای سفارشی و تجمیع داده‌ها',
+      icon: Sliders,
+      variant: 'outline',
+      minRole: 'Manager',
+    },
+    {
+      id: 'saved-reports',
+      title: 'گزارش‌های ذخیره‌شده و الگوها',
+      href: '/reporting/saved',
+      description: 'مشاهده و اجرای سریع فیلترهای از پیش ذخیره‌شده',
+      icon: BookmarkCheck,
+      variant: 'outline',
+    },
+  ]
+
+  public readonly highlights = [
+    'تجمیع هوشمند داده‌های ارزیابی، حقوق و اضافه کار و استرداد مالیاتی',
+    'داشبورد تحلیلی با شاخص‌های کلیدی عملکرد و هشدارهای انحراف بودجه',
+    'طراحی آسان گزارش‌های اختصاصی با فیلترهای چندبعدی و گروه‌بندی',
+    'خروجی فایل اکسل چندبرگی استاندارد با فرمول و فرم‌های چاپی A4',
+  ]
+}
+
+/**
  * Global Registry of all portal modules.
  * In the future, any new distinct functional module simply extends BasePortalModule
  * and is added to this registry array.
@@ -207,6 +272,7 @@ export const PORTAL_MODULES: BasePortalModule[] = [
   new EmployeeEvaluationModule(),
   new CollaborativePayrollModule(),
   new TaxRefundPortalModule(),
+  new ExecutiveReportingModule(),
 ]
 
 /**

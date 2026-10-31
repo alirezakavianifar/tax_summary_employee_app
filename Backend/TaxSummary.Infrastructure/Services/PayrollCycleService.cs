@@ -1112,6 +1112,8 @@ public class PayrollCycleService : IPayrollCycleService
 
     private static string ExtractEmploymentType(Employee? emp, bool isLaborPosition)
     {
+        if (isLaborPosition) return "مشاغل کارگری";
+
         if (emp != null && !string.IsNullOrWhiteSpace(emp.StatusDescription))
         {
             var desc = emp.StatusDescription;
@@ -1125,7 +1127,6 @@ public class PayrollCycleService : IPayrollCycleService
             }
         }
 
-        if (isLaborPosition) return "مشاغل کارگری";
         return "رسمی";
     }
 
@@ -1215,7 +1216,13 @@ public class PayrollCycleService : IPayrollCycleService
     {
         if (emp == null) return false;
         var pos = $"{emp.CurrentPosition} {emp.AppointmentPosition}".Trim();
-        return pos.Contains("کارگر") || pos.Contains("کارگری") || pos.Contains("خدمات عمومی") || pos.Contains("راننده") || pos.Contains("تاسیسات");
+        if (pos.Contains("کارگر") || pos.Contains("کارگری") || pos.Contains("خدمات عمومی") || pos.Contains("راننده") || pos.Contains("تاسیسات"))
+            return true;
+
+        if (!string.IsNullOrWhiteSpace(emp.StatusDescription) && emp.StatusDescription.Contains("مشاغل کارگری"))
+            return true;
+
+        return false;
     }
 
     private static string ResolvePositionTier(Employee? emp)

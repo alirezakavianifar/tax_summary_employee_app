@@ -105,6 +105,14 @@ public static class DependencyInjection
         // Register Personnel & User Excel Import Service
         services.AddScoped<IPersonnelImportService, PersonnelImportService>();
 
+        // Register Reporting & BI Subsystem Repositories & Services
+        services.AddScoped<IReportingRepository, ReportingRepository>();
+        services.AddScoped<IExecutiveAnalyticsRepository, ExecutiveAnalyticsRepository>();
+        services.AddScoped<TaxSummary.Application.Services.Reporting.IReportExportService, TaxSummary.Infrastructure.Services.Reporting.ReportExportService>();
+        services.AddScoped<TaxSummary.Application.Services.Reporting.IExecutiveReportingService, TaxSummary.Infrastructure.Services.Reporting.ExecutiveReportingService>();
+        services.AddScoped<TaxSummary.Application.Services.Reporting.IReportBuilderEngine, TaxSummary.Infrastructure.Services.Reporting.ReportBuilderEngine>();
+        services.AddScoped<TaxSummary.Application.Services.Reporting.ISavedReportsService, TaxSummary.Infrastructure.Services.Reporting.SavedReportsService>();
+
         return services;
     }
 }

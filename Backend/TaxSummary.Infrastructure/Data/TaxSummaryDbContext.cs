@@ -43,6 +43,11 @@ public class TaxSummaryDbContext : DbContext
     // Audit Logging
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    // Reporting & BI Subsystem DbSets
+    public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
+    public DbSet<SavedReportPreset> SavedReportPresets => Set<SavedReportPreset>();
+    public DbSet<ReportExecutionLog> ReportExecutionLogs => Set<ReportExecutionLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

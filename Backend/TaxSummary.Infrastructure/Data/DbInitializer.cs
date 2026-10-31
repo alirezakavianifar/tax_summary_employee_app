@@ -65,6 +65,9 @@ public static class DbInitializer
 
         // Backfill unique CycleCodes for any existing PayrollCycles
         await BackfillPayrollCycleCodesAsync(context);
+
+        // Seed Reporting & BI standard reports
+        await ReportingDataSeeder.SeedReportingAsync(context);
     }
 
     private static async Task SeedSampleDataAsync(TaxSummaryDbContext context)

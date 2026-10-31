@@ -20,7 +20,7 @@ function isTokenValid(token: string): boolean {
 export function middleware(request: NextRequest) {
     const token = request.cookies.get('accessToken')?.value || ''
     const isValid = isTokenValid(token)
-    const protectedPaths = ['/reports', '/admin', '/payroll', '/refunds']
+    const protectedPaths = ['/reports', '/admin', '/payroll', '/refunds', '/reporting']
     const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
     if (isProtectedPath && !isValid) {
@@ -45,5 +45,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/reports/:path*', '/admin/:path*', '/payroll/:path*', '/refunds/:path*', '/login'],
+    matcher: ['/reports/:path*', '/admin/:path*', '/payroll/:path*', '/refunds/:path*', '/reporting/:path*', '/login'],
 }

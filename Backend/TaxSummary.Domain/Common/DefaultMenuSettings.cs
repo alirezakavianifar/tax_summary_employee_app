@@ -41,8 +41,15 @@ public static class DefaultMenuSettings
             MenuSetting.Create("action_admin_finality_stages", "مدیریت مراحل قطعیت", "/admin/finality-stages", "module_tax_refund", "FileCheck", true, true, 5, "پیکربندی و تعریف مراحل قطعیت پرونده‌های استرداد", null, AdminOnlyRoles),
             MenuSetting.Create("action_admin_refund_workflow", "تنظیمات گردش کار استرداد", "/admin/refund-workflow", "module_tax_refund", "GitFork", true, true, 6, "پیکربندی مراحل تایید، حذف مراحل و تنظیم نقش‌های مجاز", null, AdminOnlyRoles),
 
-            // 5. Admin System Management
-            MenuSetting.Create("module_admin", "مدیریت سیستم", "/admin/users", null, "ShieldCheck", true, true, 5, "پنل راهبری و مدیریت سامانه (مخصوص مدیران)", null, AdminOnlyRoles),
+            // 5. Executive Reporting & Business Intelligence (BI)
+            MenuSetting.Create("module_reporting", "هوش تجاری و گزارش‌های مدیریتی", "/reporting", null, "BarChart3", true, false, 5, "سامانه جامع گزارش‌های مدیریتی، داشبوردهای عملکردی و گزارش‌ساز پویا", null, "Admin,Manager,Auditor,DirectorGeneral"),
+            MenuSetting.Create("action_reporting_view_dashboard", "داشبورد شاخص‌های کلیدی", "/reporting", "module_reporting", "LayoutDashboard", true, false, 1, "پایش برخط شاخص‌های کلیدی عملکرد، روندهای ماهانه و بودجه", null, "Admin,Manager,Auditor,DirectorGeneral"),
+            MenuSetting.Create("action_reporting_standard_reports", "گزارش‌های استاندارد", "/reporting/standard", "module_reporting", "FileText", true, false, 2, "اجرا و استخراج گزارش‌های آماری و تحلیلی مصوب", null, "Admin,Manager,Auditor,DirectorGeneral"),
+            MenuSetting.Create("action_reporting_builder", "گزارش‌ساز پویا", "/reporting/builder", "module_reporting", "Sliders", true, false, 3, "طراحی و استخراج کوئری‌های سفارشی چندبعدی", null, "Admin,Manager,DirectorGeneral"),
+            MenuSetting.Create("action_reporting_export", "خروجی اکسل و مستندات", "/reporting", "module_reporting", "Download", true, false, 4, "صدور داده‌ها در قالب فایل اکسل استاندارد با فرمول", null, "Admin,Manager,Auditor,DirectorGeneral"),
+
+            // 6. Admin System Management
+            MenuSetting.Create("module_admin", "مدیریت سیستم", "/admin/users", null, "ShieldCheck", true, true, 6, "پنل راهبری و مدیریت سامانه (مخصوص مدیران)", null, AdminOnlyRoles),
             MenuSetting.Create("action_admin_users", "مدیریت کاربران", "/admin/users", "module_admin", "Users", true, true, 1, "تعریف کاربر، تغییر کلمه عبور و سطوح دسترسی", null, AdminOnlyRoles),
             MenuSetting.Create("action_admin_menus", "مدیریت منوها و دسترسی‌ها", "/admin/menu-settings", "module_admin", "Menu", true, true, 2, "پیکربندی نمایش و مخفی‌سازی گزینه‌های منو", null, AdminOnlyRoles),
             MenuSetting.Create("action_admin_audit_logs", "لاگ‌ها و رویدادهای امنیتی", "/admin/audit-logs", "module_admin", "History", true, true, 3, "مشاهده و پایش تاریخچه تغییرات و رخدادهای امنیتی سامانه", null, AdminOnlyRoles)

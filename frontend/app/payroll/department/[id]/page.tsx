@@ -1046,7 +1046,7 @@ export default function DepartmentWorkspacePage() {
 
                       <td className="px-3 py-2 text-center whitespace-nowrap">
                         <span className="inline-block px-2.5 py-0.5 text-[11px] font-medium rounded-md bg-blue-50 text-blue-800 border border-blue-200/60">
-                          {item.employmentType || (item.isLaborPosition ? 'مشاغل کارگری' : 'رسمی')}
+                          {item.isLaborPosition ? 'مشاغل کارگری' : (item.employmentType || 'رسمی')}
                         </span>
                       </td>
 

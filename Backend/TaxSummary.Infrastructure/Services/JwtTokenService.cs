@@ -44,7 +44,7 @@ public class JwtTokenService : IJwtTokenService
             fullName = $"{user.Employee.FirstName} {user.Employee.LastName}".Trim();
         }
 
-        var claims = new[]
+        var claimsList = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
@@ -58,13 +58,21 @@ public class JwtTokenService : IJwtTokenService
             new Claim("employeeId", user.EmployeeId?.ToString() ?? string.Empty)
         };
 
+        if (user.UserOffices != null)
+        {
+            foreach (var uo in user.UserOffices)
+            {
+                claimsList.Add(new Claim("office_id", uo.OfficeId.ToString()));
+            }
+        }
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
             issuer: _issuer,
             audience: _audience,
-            claims: claims,
+            claims: claimsList,
             expires: DateTime.UtcNow.AddMinutes(_accessTokenExpirationMinutes),
             signingCredentials: credentials
         );
