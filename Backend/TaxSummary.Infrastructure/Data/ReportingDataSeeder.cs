@@ -159,13 +159,13 @@ public static class ReportingDataSeeder
             AuditorPerformanceMetricDefinition.Create(
                 metricCode: "METRIC_DEFENSIBILITY",
                 title: "ضریب تثبیت و استحکام برگ تشخیص",
-                description: "نسبت مالیات قطعی به مالیات تشخیصی جهت سنجش استواری حقوقی برگ‌های تشخیص صادره حسابرس",
+                description: "نسبت مالیات قطعی به مالیات تشخیصی جهت سنجش استواری حقوقی برگ‌های تشخیص صادره حسابرس (قطعیت ریالی)",
                 category: AuditorMetricCategory.Quality,
                 formulaType: AuditorMetricFormulaType.Ratio,
                 primaryField: "FinalTaxAmount",
                 secondaryField: "AssessedTaxAmount",
                 multiplier: 100m,
-                weightPercentage: 30m,
+                weightPercentage: 20m,
                 higherIsBetter: true,
                 targetValue: 85m,
                 warningThreshold: 70m,
@@ -173,6 +173,24 @@ public static class ReportingDataSeeder
                 unit: "%",
                 displayOrder: 1,
                 tierThresholdsJson: "{\"A\": 85, \"B\": 70, \"C\": 50}"),
+
+            AuditorPerformanceMetricDefinition.Create(
+                metricCode: "METRIC_FINALITY_RATE",
+                title: "درصد پرونده‌های قطعی شده (نرخ مختومه‌سازی نهایی)",
+                description: "نسبت پرونده‌های دارای برگ قطعی (ابلاغ یا صادر شده) به کل پرونده‌های تخصیص‌یافته به حسابرس جهت ارزیابی کارایی حقوقی و جلوگیری از اطاله دادرسی",
+                category: AuditorMetricCategory.Quality,
+                formulaType: AuditorMetricFormulaType.Percentage,
+                primaryField: "AuditStatus",
+                secondaryField: null,
+                multiplier: 1m,
+                weightPercentage: 20m,
+                higherIsBetter: true,
+                targetValue: 75m,
+                warningThreshold: 60m,
+                criticalThreshold: 40m,
+                unit: "%",
+                displayOrder: 2,
+                tierThresholdsJson: "{\"A\": 75, \"B\": 60, \"C\": 40}"),
 
             AuditorPerformanceMetricDefinition.Create(
                 metricCode: "METRIC_TAX_GAP_DISCOVERY",
@@ -183,13 +201,13 @@ public static class ReportingDataSeeder
                 primaryField: "AssessedTaxAmount",
                 secondaryField: "DeclaredTaxAmount",
                 multiplier: 1m,
-                weightPercentage: 25m,
+                weightPercentage: 20m,
                 higherIsBetter: true,
                 targetValue: 20000000000m,
                 warningThreshold: 5000000000m,
                 criticalThreshold: 0m,
                 unit: "ریال",
-                displayOrder: 2,
+                displayOrder: 3,
                 tierThresholdsJson: "{\"A\": 20000000000, \"B\": 5000000000, \"C\": 0}"),
 
             AuditorPerformanceMetricDefinition.Create(
@@ -201,13 +219,13 @@ public static class ReportingDataSeeder
                 primaryField: "DaysAssignmentToNotice",
                 secondaryField: null,
                 multiplier: 1m,
-                weightPercentage: 25m,
+                weightPercentage: 20m,
                 higherIsBetter: false,
                 targetValue: 45m,
                 warningThreshold: 70m,
                 criticalThreshold: 90m,
                 unit: "روز",
-                displayOrder: 3,
+                displayOrder: 4,
                 tierThresholdsJson: "{\"A\": 45, \"B\": 70, \"C\": 90}"),
 
             AuditorPerformanceMetricDefinition.Create(
@@ -225,7 +243,7 @@ public static class ReportingDataSeeder
                 warningThreshold: 50m,
                 criticalThreshold: 30m,
                 unit: "فقره",
-                displayOrder: 4,
+                displayOrder: 5,
                 tierThresholdsJson: "{\"A\": 80, \"B\": 50, \"C\": 30}"),
 
             AuditorPerformanceMetricDefinition.Create(
@@ -243,7 +261,7 @@ public static class ReportingDataSeeder
                 warningThreshold: 15m,
                 criticalThreshold: 5m,
                 unit: "%",
-                displayOrder: 5,
+                displayOrder: 6,
                 tierThresholdsJson: "{\"A\": 30, \"B\": 15, \"C\": 5}")
         };
 

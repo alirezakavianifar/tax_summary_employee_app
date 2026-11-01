@@ -17,21 +17,28 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   HelpCircle,
+  CheckCircle2,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { auditorMetricsApi } from '@/lib/api/auditorMetrics'
 import { Auditor360Profile } from '@/types/auditorMetrics'
+import { AuditorAvatar } from './AuditorAvatar'
 import { toPersianDigits } from '@/lib/jalali'
 
 interface AuditorScorecardDrawerProps {
   auditorName: string | null
   fiscalYear?: number
+  reportCode?: string
   onClose: () => void
+  onViewCases?: (auditorName: string) => void
 }
 
 export function AuditorScorecardDrawer({
   auditorName,
   fiscalYear,
+  reportCode,
   onClose,
+  onViewCases,
 }: AuditorScorecardDrawerProps) {
   const [profile, setProfile] = useState<Auditor360Profile | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
@@ -45,7 +52,7 @@ export function AuditorScorecardDrawer({
     setError(null)
 
     auditorMetricsApi
-      .getAuditorProfile(auditorName, fiscalYear)
+      .getAuditorProfile(auditorName, fiscalYear, reportCode)
       .then((data) => {
         if (isMounted) {
           setProfile(data)
@@ -184,15 +191,32 @@ export function AuditorScorecardDrawer({
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
                   <div className="absolute -left-12 -top-12 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
                   
-                  <div className="flex items-start justify-between relative z-10">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-amber-400 font-semibold">حسابرس مالیاتی:</span>
-                        <h3 className="text-lg font-black text-white">{profile.scorecard.auditorName}</h3>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-300 mt-1">
-                        <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{profile.scorecard.officeName || 'اداره کل امور مالیاتی استان خوزستان'}</span>
+                  <div className="flex items-start justify-between relative z-10 gap-3">
+                    <div className="flex items-center gap-3.5">
+                      <AuditorAvatar
+                        auditorName={profile.scorecard.auditorName}
+                        nationalId={profile.scorecard.auditorNationalId}
+                        photoUrl={profile.scorecard.photoUrl}
+                        size="xl"
+                        rank={profile.scorecard.provincialRank}
+                        tier={profile.scorecard.performanceTier}
+                        showLightbox={true}
+                        className="hover:scale-105 transition-transform"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-amber-400 font-semibold">حسابرس مالیاتی:</span>
+                          <h3 className="text-lg font-black text-white">{profile.scorecard.auditorName}</h3>
+                        </div>
+                        {profile.scorecard.auditorNationalId && (
+                          <div className="text-xs text-slate-400 font-mono mt-0.5">
+                            کد ملی: {toPersianDigits(profile.scorecard.auditorNationalId)}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-xs text-slate-300 mt-1">
+                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{profile.scorecard.officeName || 'اداره کل امور مالیاتی استان خوزستان'}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -234,17 +258,46 @@ export function AuditorScorecardDrawer({
                       </div>
                     </div>
                   </div>
+
+                  {/* Direct Drill-Down to Auditor Cases Button */}
+                  {onViewCases && (
+                    <div className="mt-4 pt-3 border-t border-slate-700/60 relative z-10">
+                      <button
+                        type="button"
+                        onClick={() => onViewCases(profile.scorecard.auditorName)}
+                        className="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent border border-amber-500/40 text-amber-200 hover:text-white hover:bg-amber-500/25 transition-all cursor-pointer group shadow-xs"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+                            <FileSpreadsheet className="w-4 h-4" />
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs font-extrabold text-white">
+                              مشاهده ریز پرونده‌های این حسابرس در جدول داده‌ها
+                            </div>
+                            <div className="text-[10px] text-slate-300">
+                              فیلتر خودکار {toPersianDigits(profile.scorecard.totalAssignedCases.toLocaleString('fa-IR'))} پرونده با امکان جستجو و خروجی اکسل
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs font-bold text-amber-400 group-hover:translate-x-[-3px] transition-transform shrink-0 mr-2">
+                          <span>مشاهده پرونده‌ها</span>
+                          <ChevronLeft className="w-4 h-4" />
+                        </div>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* KPI Metric Highlights Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl">
                     <span className="text-[11px] text-slate-500 block mb-1 flex items-center gap-1">
                       <Briefcase className="w-3 h-3 text-slate-400" />
                       پرونده‌های مختومه
                     </span>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-base font-black text-slate-800 font-mono">
+                      <span className="text-sm font-black text-slate-800 font-mono">
                         {toPersianDigits(profile.scorecard.completedCases.toLocaleString('fa-IR'))}
                       </span>
                       <span className="text-[10px] text-slate-400">
@@ -253,32 +306,42 @@ export function AuditorScorecardDrawer({
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl">
+                  <div className="bg-teal-50/60 border border-teal-200/80 p-3 rounded-xl">
+                    <span className="text-[11px] text-teal-800 font-bold block mb-1 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                      درصد قطعی شده
+                    </span>
+                    <span className="text-base font-black text-teal-700 font-mono">
+                      ٪{toPersianDigits((profile.caseFinalityRate ?? profile.scorecard.finalityRate ?? 0).toFixed(1))}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl">
                     <span className="text-[11px] text-slate-500 block mb-1 flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                      نرخ تمکین و دفاع‌پذیری
+                      دفاع‌پذیری (ریالی)
                     </span>
-                    <span className="text-base font-black text-emerald-700 font-mono">
+                    <span className="text-sm font-black text-emerald-700 font-mono">
                       ٪{toPersianDigits(profile.defensibilityRate.toFixed(1))}
                     </span>
                   </div>
 
-                  <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl">
+                  <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl">
                     <span className="text-[11px] text-slate-500 block mb-1 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3 text-amber-500" />
-                      اختلاف تشخیص و ابراز
+                      اختلاف تشخیص
                     </span>
                     <span className="text-xs font-black text-slate-800 font-mono block truncate" title={profile.netTaxGapAddition.toLocaleString('fa-IR')}>
                       {toPersianDigits((profile.netTaxGapAddition / 1_000_000_000).toFixed(1))} م.م.
                     </span>
                   </div>
 
-                  <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl">
+                  <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl">
                     <span className="text-[11px] text-slate-500 block mb-1 flex items-center gap-1">
                       <Clock className="w-3 h-3 text-sky-500" />
                       متوسط زمان صدور
                     </span>
-                    <span className="text-base font-black text-slate-800 font-mono">
+                    <span className="text-sm font-black text-slate-800 font-mono">
                       {toPersianDigits(profile.averageDaysAssignmentToNotice.toFixed(0))} روز
                     </span>
                   </div>
@@ -431,12 +494,24 @@ export function AuditorScorecardDrawer({
             <span className="text-[11px] text-slate-400">
               سامانه هوشمند ارزیابی عملکرد و نظارت حسابرسی سنیم
             </span>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
-            >
-              بستن
-            </button>
+            <div className="flex items-center gap-2">
+              {onViewCases && profile && (
+                <button
+                  type="button"
+                  onClick={() => onViewCases(profile.scorecard.auditorName)}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>مشاهده ریز پرونده‌ها در جدول</span>
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                بستن
+              </button>
+            </div>
           </div>
 
         </div>

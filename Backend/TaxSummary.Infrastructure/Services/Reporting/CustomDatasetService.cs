@@ -616,6 +616,20 @@ public class CustomDatasetService : ICustomDatasetService
                 }
             }
 
+            // 6. Auditor Name filter (if column exists or mapped)
+            if (!string.IsNullOrWhiteSpace(parameters.AuditorName))
+            {
+                var mapper = SemanticAuditFieldMapper.FromColumns(config.Columns);
+                var auditorCol = mapper.AuditorNameField ?? 
+                    config.Columns.FirstOrDefault(c => (c.OriginalHeader.Contains("حسابرس") || c.PersianLabel.Contains("حسابرس")) && !c.OriginalHeader.Contains("کد") && !c.OriginalHeader.Contains("طول"))?.FieldName;
+
+                if (auditorCol != null)
+                {
+                    whereClauses.Add($"[{auditorCol}] LIKE @AuditorVal");
+                    sqlParams.Add(new SqliteParameter("@AuditorVal", $"%{parameters.AuditorName.Trim()}%"));
+                }
+            }
+
             var whereSql = string.Join(" AND ", whereClauses);
 
             // A. Count Query

@@ -156,12 +156,15 @@ public class ExcelSeedService : IExcelSeedService
                 capability = PerformanceCapability.Create(
                     employeeId: employee.Id,
                     systemRole: "Imported User", // Default role
-                    detectionOfTaxIssues: false, // Will be auto-set by metrics
+                    detectionOfTaxIssues: jobsQty > 0,
                     detectionOfTaxEvasion: false,
-                    companyIdentification: false,
-                    valueAddedRecognition: false,
+                    companyIdentification: compQty > 0,
+                    valueAddedRecognition: vatQty > 0,
                     referredOrExecuted: false,
                     
+                    detectionOfTaxIssuesQuantity: jobsQty,
+                    detectionOfTaxIssuesAmount: jobsAmt,
+
                     valueAddedRecognitionQuantity: vatQty,
                     valueAddedRecognitionAmount: vatAmt,
                     valueAddedRecognitionUndetectedQuantity: vatUndetectedQty,
@@ -186,8 +189,8 @@ public class ExcelSeedService : IExcelSeedService
             else
             {
                 capability.UpdateAllCapabilityMetrics(
-                     detectionOfTaxIssuesQuantity: 0, // Not in Excel yet
-                     detectionOfTaxIssuesAmount: 0,
+                     detectionOfTaxIssuesQuantity: jobsQty,
+                     detectionOfTaxIssuesAmount: jobsAmt,
                      detectionOfTaxEvasionQuantity: 0,
                      detectionOfTaxEvasionAmount: 0,
                      

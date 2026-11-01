@@ -115,6 +115,7 @@ if ($UpdateOnly) {
     $frontendDir = Join-Path $PSScriptRoot "frontend"
     Push-Location $frontendDir
     try {
+        $env:NODE_OPTIONS = "--max-old-space-size=4096"
         npm run build
     } finally {
         Pop-Location
@@ -390,6 +391,7 @@ $frontendDir = Join-Path $PSScriptRoot "frontend"
 Push-Location $frontendDir
 try {
     Remove-Item -Recurse -Force (Join-Path $frontendDir ".next") -ErrorAction SilentlyContinue
+    $env:NODE_OPTIONS = "--max-old-space-size=4096"
     npm run build
 } finally {
     Pop-Location

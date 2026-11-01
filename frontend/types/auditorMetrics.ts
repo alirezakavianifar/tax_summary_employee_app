@@ -60,9 +60,12 @@ export interface MetricValueResult {
 export interface AuditorScorecard {
   auditorName: string
   auditorNationalId?: string
+  photoUrl?: string
   officeName: string
   totalAssignedCases: number
   completedCases: number
+  finalizedCasesCount?: number
+  finalityRate?: number
   totalDeclaredAmount: number
   totalAssessedAmount: number
   totalFinalAmount: number
@@ -89,6 +92,7 @@ export interface Auditor360Profile {
   averageDaysNoticeToFinal: number
   netTaxGapAddition: number
   defensibilityRate: number
+  caseFinalityRate?: number
   officeBreakdowns: AuditorOfficeBreakdown[]
 }
 
@@ -101,3 +105,19 @@ export interface AuditorMetricsSimulationResult {
   topPerformers: AuditorScorecard[]
   bottomPerformers: AuditorScorecard[]
 }
+
+export interface AuditDataSource {
+  sourceId: string
+  code: string
+  title: string
+  description?: string
+  totalRecords: number
+  totalCases: number
+  isSystemDefault: boolean
+  isDefault: boolean
+  hasAuditorData: boolean
+  detectedAuditorColumn: string
+  columnsCount: number
+  lastUpdatedDate?: string
+}
+

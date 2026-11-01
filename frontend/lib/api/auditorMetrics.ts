@@ -5,11 +5,20 @@ import {
   AuditorScorecard,
   Auditor360Profile,
   AuditorMetricsSimulationResult,
+  AuditDataSource,
 } from '@/types/auditorMetrics'
 
 const BASE_URL = '/reporting/auditors'
 
 export const auditorMetricsApi = {
+  /**
+   * دریافت منابع داده ارزیابی حسابرسی (پایگاه داده اصلی و گزارش‌های اکسل بارگذاری‌شده)
+   */
+  async getDataSources(): Promise<AuditDataSource[]> {
+    const res = await apiClient.get<AuditDataSource[]>(`${BASE_URL}/sources`)
+    return res.data
+  },
+
   /**
    * دریافت تمامی شاخص‌های ارزیابی عملکرد حسابرسان
    */
@@ -48,16 +57,17 @@ export const auditorMetricsApi = {
   },
 
   /**
-   * شبیه‌سازی زنده اثر تغییر فرمول یا وزن بر پرونده‌های پایگاه داده
+   * شبیه‌سازی زنده اثر تغییر فرمول یا وزن بر پرونده‌های پایگاه داده یا گزارش اکسل
    */
   async simulateMetric(
     request: SaveAuditorMetricRequest,
-    fiscalYear?: number
+    fiscalYear?: number,
+    reportCode?: string
   ): Promise<AuditorMetricsSimulationResult> {
     const res = await apiClient.post<AuditorMetricsSimulationResult>(
       `${BASE_URL}/metrics/simulate`,
       request,
-      { params: { fiscalYear } }
+      { params: { fiscalYear, reportCode } }
     )
     return res.data
   },
@@ -68,6 +78,7 @@ export const auditorMetricsApi = {
   async evaluateAuditors(params?: {
     fiscalYear?: number
     officeName?: string
+    reportCode?: string
   }): Promise<AuditorScorecard[]> {
     const res = await apiClient.get<AuditorScorecard[]>(`${BASE_URL}/evaluation`, { params })
     return res.data
@@ -78,11 +89,12 @@ export const auditorMetricsApi = {
    */
   async getAuditorProfile(
     auditorName: string,
-    fiscalYear?: number
+    fiscalYear?: number,
+    reportCode?: string
   ): Promise<Auditor360Profile> {
     const res = await apiClient.get<Auditor360Profile>(
       `${BASE_URL}/profile/${encodeURIComponent(auditorName)}`,
-      { params: { fiscalYear } }
+      { params: { fiscalYear, reportCode } }
     )
     return res.data
   },

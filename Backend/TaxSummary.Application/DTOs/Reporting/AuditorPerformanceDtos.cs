@@ -64,9 +64,12 @@ public class AuditorScorecardDto
 {
     public string AuditorName { get; set; } = string.Empty;
     public string? AuditorNationalId { get; set; }
+    public string? PhotoUrl { get; set; }
     public string OfficeName { get; set; } = string.Empty;
     public int TotalAssignedCases { get; set; }
     public int CompletedCases { get; set; }
+    public int FinalizedCasesCount { get; set; }
+    public decimal FinalityRate => TotalAssignedCases > 0 ? Math.Round(((decimal)FinalizedCasesCount / TotalAssignedCases) * 100m, 1) : 0m;
     public decimal TotalDeclaredAmount { get; set; }
     public decimal TotalAssessedAmount { get; set; }
     public decimal TotalFinalAmount { get; set; }
@@ -87,6 +90,7 @@ public class Auditor360ProfileDto
     public double AverageDaysNoticeToFinal { get; set; }
     public decimal NetTaxGapAddition { get; set; }
     public decimal DefensibilityRate { get; set; }
+    public decimal CaseFinalityRate { get; set; }
     public List<AuditorOfficeBreakdownDto> OfficeBreakdowns { get; set; } = new();
 }
 
@@ -108,3 +112,21 @@ public class AuditorMetricsSimulationResultDto
     public List<AuditorScorecardDto> TopPerformers { get; set; } = new();
     public List<AuditorScorecardDto> BottomPerformers { get; set; } = new();
 }
+
+public class AuditDataSourceDto
+{
+    public string SourceId { get; set; } = string.Empty;
+    public string Code { get => SourceId; set => SourceId = value; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int TotalRecords { get; set; }
+    public int TotalCases { get => TotalRecords; set => TotalRecords = value; }
+    public int DistinctAuditorsCount { get; set; }
+    public bool IsSystemDefault { get; set; }
+    public bool IsDefault { get => IsSystemDefault; set => IsSystemDefault = value; }
+    public bool HasAuditorData { get; set; }
+    public string DetectedAuditorColumn { get; set; } = string.Empty;
+    public int ColumnsCount { get; set; }
+    public string? LastUpdatedDate { get; set; }
+}
+

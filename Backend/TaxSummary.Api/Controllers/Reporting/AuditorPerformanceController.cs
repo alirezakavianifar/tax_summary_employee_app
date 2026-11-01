@@ -88,16 +88,12 @@ public class AuditorPerformanceController : ReportingControllerBase
     }
 
     /// <summary>
-    /// شبیه‌سازی و پیش‌نمایش زنده اثر یک فرمول یا وزن جدید بر پرونده‌های سنیم
+    /// دریافت فهرست منابع داده ارزیابی حسابرسی (پایگاه داده اصلی و گزارش‌های اکسل بارگذاری‌شده)
     /// </summary>
-    [HttpPost("metrics/simulate")]
-    [Authorize(Roles = "Admin,DirectorGeneral,Manager")]
-    public async Task<ActionResult<AuditorMetricsSimulationResultDto>> SimulateMetric(
-        [FromBody] SaveAuditorMetricRequestDto request, 
-        [FromQuery] int? fiscalYear = null, 
-        CancellationToken ct = default)
+    [HttpGet("sources")]
+    public async Task<ActionResult<List<AuditDataSourceDto>>> GetAuditSources(CancellationToken ct = default)
     {
-        var result = await _performanceService.SimulateMetricAsync(request, fiscalYear, ct);
+        var result = await _performanceService.GetAuditReportSourcesAsync(ct);
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
@@ -105,15 +101,34 @@ public class AuditorPerformanceController : ReportingControllerBase
     }
 
     /// <summary>
-    /// ارزیابی و رتبه‌بندی کلیه حسابرسان بر اساس شاخص‌های فعال
+    /// شبیه‌سازی و پیش‌نمایش زنده اثر یک فرمول یا وزن جدید بر پرونده‌های سنیم یا گزارش اکسل
+    /// </summary>
+    [HttpPost("metrics/simulate")]
+    [Authorize(Roles = "Admin,DirectorGeneral,Manager")]
+    public async Task<ActionResult<AuditorMetricsSimulationResultDto>> SimulateMetric(
+        [FromBody] SaveAuditorMetricRequestDto request, 
+        [FromQuery] int? fiscalYear = null, 
+        [FromQuery] string? reportCode = null,
+        CancellationToken ct = default)
+    {
+        var result = await _performanceService.SimulateMetricAsync(request, fiscalYear, reportCode, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// ارزیابی و رتبه‌بندی کلیه حسابرسان بر اساس شاخص‌های فعال (پایگاه داده یا گزارش اکسل)
     /// </summary>
     [HttpGet("evaluation")]
     public async Task<ActionResult<List<AuditorScorecardDto>>> EvaluateAuditors(
         [FromQuery] int? fiscalYear = null, 
         [FromQuery] string? officeName = null, 
+        [FromQuery] string? reportCode = null,
         CancellationToken ct = default)
     {
-        var result = await _performanceService.EvaluateAuditorsAsync(fiscalYear, officeName, ct);
+        var result = await _performanceService.EvaluateAuditorsAsync(fiscalYear, officeName, reportCode, ct);
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
@@ -127,9 +142,10 @@ public class AuditorPerformanceController : ReportingControllerBase
     public async Task<ActionResult<Auditor360ProfileDto>> GetAuditorProfile(
         string auditorName, 
         [FromQuery] int? fiscalYear = null, 
+        [FromQuery] string? reportCode = null,
         CancellationToken ct = default)
     {
-        var result = await _performanceService.GetAuditor360ProfileAsync(auditorName, fiscalYear, ct);
+        var result = await _performanceService.GetAuditor360ProfileAsync(auditorName, fiscalYear, reportCode, ct);
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 

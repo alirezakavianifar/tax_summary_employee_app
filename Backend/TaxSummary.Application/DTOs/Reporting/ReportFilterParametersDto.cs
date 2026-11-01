@@ -11,6 +11,7 @@ public class ReportFilterParametersDto
     public string? TaxSourceCode { get; set; }
     public int? FiscalYear { get; set; }
     public string? SearchTerm { get; set; }
+    public string? AuditorName { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 50;
     public string? SortBy { get; set; }

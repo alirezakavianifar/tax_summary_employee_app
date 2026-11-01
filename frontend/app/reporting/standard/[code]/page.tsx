@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { reportingApi } from '@/lib/api/reporting'
 import {
   ReportDefinition,
@@ -20,14 +20,24 @@ import {
   Check,
   SlidersHorizontal,
   Trash2,
+  Award,
+  UserCheck,
+  X,
 } from 'lucide-react'
 import { ReportTweakDrawer } from '@/components/reporting/ReportTweakDrawer'
 import { DeleteReportModal } from '@/components/reporting/DeleteReportModal'
+import { ReportAuditorPerformanceTab } from '@/components/reporting/ReportAuditorPerformanceTab'
+import { AuditorAvatar } from '@/components/reporting/AuditorAvatar'
+import { toPersianDigits } from '@/lib/jalali'
 
 export default function StandardReportDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const code = (params?.code as string) || ''
+
+  const initialView = searchParams.get('view') as 'table' | 'performance' | null
+  const initialAuditor = searchParams.get('auditor')
 
   const [reportDef, setReportDef] = useState<ReportDefinition | null>(null)
   const [executionResult, setExecutionResult] = useState<ReportExecutionResult | null>(null)
@@ -36,10 +46,20 @@ export default function StandardReportDetailPage() {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
   const [isTweakOpen, setIsTweakOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [activeView, setActiveView] = useState<'table' | 'performance'>(initialView || 'table')
+
+  const hasAuditorData = React.useMemo(() => {
+    if (!executionResult?.columns) return false
+    return executionResult.columns.some((c) => {
+      const h = (c.persianLabel || c.fieldName || '').toLowerCase()
+      return h.includes('حسابرس') && !h.includes('طول') && !h.includes('کد')
+    })
+  }, [executionResult?.columns])
 
   const [filters, setFilters] = useState<ReportFilterParameters>({
     pageNumber: 1,
     pageSize: 15,
+    auditorName: initialAuditor || undefined,
   })
 
   const loadMeta = async () => {
@@ -78,7 +98,24 @@ export default function StandardReportDetailPage() {
 
   useEffect(() => {
     execute()
-  }, [code, filters.pageNumber, filters.pageSize, filters.sortBy, filters.sortDescending])
+  }, [code, filters.pageNumber, filters.pageSize, filters.sortBy, filters.sortDescending, filters.auditorName])
+
+  const handleViewAuditorCases = (auditorName: string) => {
+    setActiveView('table')
+    setFilters((prev) => ({
+      ...prev,
+      auditorName,
+      pageNumber: 1,
+    }))
+  }
+
+  const handleClearAuditorFilter = () => {
+    setFilters((prev) => ({
+      ...prev,
+      auditorName: undefined,
+      pageNumber: 1,
+    }))
+  }
 
   const handleApplyFilters = (newFilters: ReportFilterParameters) => {
     setFilters((prev) => ({
@@ -221,32 +258,127 @@ export default function StandardReportDetailPage() {
         </div>
       )}
 
-      {/* Filter Parameters Bar */}
-      <ReportFilterBar
-        filters={filters}
-        onChange={(newFilters) => setFilters(newFilters)}
-        onApply={execute}
-        onReset={() => setFilters({ pageNumber: 1, pageSize: 15 })}
-        onSavePreset={handleSavePreset}
-        isLoading={isLoading}
-      />
+      {/* View Switcher Tabs (when report has auditor data) */}
+      {hasAuditorData && (
+        <div className="flex items-center gap-2 border-b border-slate-200/90 pb-2">
+          <button
+            type="button"
+            onClick={() => setActiveView('table')}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+              activeView === 'table'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>جدول ریز داده‌های پرونده‌ها</span>
+          </button>
 
-      {/* Dynamic Data Table with Sticky Aggregate Footer */}
-      <DynamicDataTable
-        columns={executionResult?.columns || []}
-        rows={executionResult?.rows || []}
-        summaryAggregates={executionResult?.summaryAggregates}
-        totalRowCount={executionResult?.totalRowCount || 0}
-        pageNumber={filters.pageNumber}
-        pageSize={filters.pageSize}
-        totalPages={executionResult?.totalPages || 1}
-        sortBy={filters.sortBy}
-        sortDescending={filters.sortDescending}
-        onSortChange={handleSortChange}
-        onPageChange={(newPage) => setFilters((prev) => ({ ...prev, pageNumber: newPage }))}
-        onPageSizeChange={(newSize) => setFilters((prev) => ({ ...prev, pageSize: newSize, pageNumber: 1 }))}
-        isLoading={isLoading}
-      />
+          <button
+            type="button"
+            onClick={() => setActiveView('performance')}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+              activeView === 'performance'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200'
+            }`}
+          >
+            <Award className="w-4 h-4 text-amber-400" />
+            <span>ارزیابی عملکرد و کارنامه حسابرسان</span>
+            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-200/70 text-amber-950">
+              هوشمند
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Tab 1: Standard Table View */}
+      {activeView === 'table' && (
+        <>
+          {/* Filter Parameters Bar */}
+          <ReportFilterBar
+            filters={filters}
+            onChange={(newFilters) => setFilters(newFilters)}
+            onApply={execute}
+            onReset={() => setFilters({ pageNumber: 1, pageSize: 15 })}
+            onSavePreset={handleSavePreset}
+            isLoading={isLoading}
+          />
+
+          {/* Active Auditor Filter Notification Banner */}
+          {filters.auditorName && (
+            <div className="bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50 border border-amber-300/80 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-3">
+                <AuditorAvatar
+                  auditorName={filters.auditorName}
+                  size="md"
+                  showLightbox={true}
+                  className="shrink-0"
+                />
+                <div>
+                  <div className="text-[11px] font-bold text-amber-800">
+                    فیلتر فعال پرونده‌های حسابرس
+                  </div>
+                  <div className="text-sm font-extrabold text-slate-900">
+                    نمایش پرونده‌های رسیدگی‌شده توسط <span className="text-amber-900 font-black underline decoration-amber-400">«{filters.auditorName}»</span>
+                    {executionResult && (
+                      <span className="text-xs font-normal text-slate-600 mr-2">
+                        ({toPersianDigits(executionResult.totalRowCount.toLocaleString('fa-IR'))} پرونده)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveView('performance')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition-all cursor-pointer shadow-xs"
+                >
+                  <Award className="w-4 h-4 text-amber-200" />
+                  <span>بازگشت به رتبه‌بندی حسابرسان</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleClearAuditorFilter}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-all cursor-pointer shadow-2xs"
+                  title="حذف فیلتر حسابرس و نمایش تمامی پرونده‌های استان"
+                >
+                  <X className="w-4 h-4 text-slate-400" />
+                  <span>نمایش همه پرونده‌ها</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Dynamic Data Table with Sticky Aggregate Footer */}
+          <DynamicDataTable
+            columns={executionResult?.columns || []}
+            rows={executionResult?.rows || []}
+            summaryAggregates={executionResult?.summaryAggregates}
+            totalRowCount={executionResult?.totalRowCount || 0}
+            pageNumber={filters.pageNumber}
+            pageSize={filters.pageSize}
+            totalPages={executionResult?.totalPages || 1}
+            sortBy={filters.sortBy}
+            sortDescending={filters.sortDescending}
+            onSortChange={handleSortChange}
+            onPageChange={(newPage) => setFilters((prev) => ({ ...prev, pageNumber: newPage }))}
+            onPageSizeChange={(newSize) => setFilters((prev) => ({ ...prev, pageSize: newSize, pageNumber: 1 }))}
+            isLoading={isLoading}
+          />
+        </>
+      )}
+
+      {/* Tab 2: Auditor Performance & Scorecards View */}
+      {activeView === 'performance' && (
+        <ReportAuditorPerformanceTab 
+          reportCode={code} 
+          onViewAuditorCases={handleViewAuditorCases}
+        />
+      )}
 
       {/* Tweak Studio Drawer */}
       <ReportTweakDrawer

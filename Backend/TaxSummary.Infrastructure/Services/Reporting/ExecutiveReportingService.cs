@@ -936,6 +936,12 @@ public class ExecutiveReportingService : IExecutiveReportingService
                                   || (s.TaxpayerTrackingCode != null && s.TaxpayerTrackingCode.Contains(term)));
         }
 
+        if (!string.IsNullOrWhiteSpace(p.AuditorName))
+        {
+            var aTerm = p.AuditorName.Trim();
+            query = query.Where(s => s.AuditorName.Contains(aTerm));
+        }
+
         int totalCount = await query.CountAsync(ct);
 
         IQueryable<SanimAuditAssessment> orderedQuery;
@@ -1175,6 +1181,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
         if (!string.IsNullOrWhiteSpace(p.ShamsiDateFrom)) parts.Add($"از تاریخ: {p.ShamsiDateFrom}");
         if (!string.IsNullOrWhiteSpace(p.ShamsiDateTo)) parts.Add($"تا تاریخ: {p.ShamsiDateTo}");
         if (!string.IsNullOrWhiteSpace(p.SearchTerm)) parts.Add($"جستجو: {p.SearchTerm}");
+        if (!string.IsNullOrWhiteSpace(p.AuditorName)) parts.Add($"حسابرس: {p.AuditorName}");
         return parts.Count > 0 ? string.Join(" | ", parts) : "بدون فیلتر";
     }
 

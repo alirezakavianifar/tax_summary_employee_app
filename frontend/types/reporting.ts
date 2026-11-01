@@ -109,6 +109,7 @@ export interface ReportFilterParameters {
   taxSourceCode?: string
   fiscalYear?: number
   searchTerm?: string
+  auditorName?: string
   pageNumber: number
   pageSize: number
   sortBy?: string

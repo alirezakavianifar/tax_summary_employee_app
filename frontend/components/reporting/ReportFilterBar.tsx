@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Filter, Search, RotateCcw, BookmarkPlus, ChevronDown, ChevronUp } from 'lucide-react'
+import { Filter, Search, RotateCcw, BookmarkPlus, ChevronDown, ChevronUp, X, UserCheck } from 'lucide-react'
 import { ReportFilterParameters } from '@/types/reporting'
 
 interface ReportFilterBarProps {
@@ -45,7 +45,7 @@ export function ReportFilterBar({
         <div className="flex items-center gap-2 text-slate-800 font-bold text-xs sm:text-sm">
           <Filter className="w-4 h-4 text-amber-600" />
           <span>فیلترهای پارامتریک گزارش</span>
-          {(filters.searchTerm || filters.shamsiDateFrom || filters.shamsiDateTo || filters.department) && (
+          {(filters.searchTerm || filters.auditorName || filters.shamsiDateFrom || filters.shamsiDateTo || filters.department) && (
             <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full">
               فیلترهای فعال
             </span>
@@ -78,6 +78,26 @@ export function ReportFilterBar({
       {/* Filter inputs */}
       {isExpanded && (
         <form onSubmit={handleSubmit} className="p-5">
+          {/* Active Auditor Tag if present */}
+          {filters.auditorName && (
+            <div className="flex items-center gap-2 mb-4 p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-xs">
+              <UserCheck className="w-4 h-4 text-amber-700 shrink-0" />
+              <span className="font-semibold text-slate-700">فیلتر حسابرس:</span>
+              <span className="font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md">
+                {filters.auditorName}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleChange('auditorName', undefined)}
+                className="mr-auto inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                title="حذف فیلتر حسابرس"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>حذف فیلتر حسابرس</span>
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {/* Search Term */}
             <div>

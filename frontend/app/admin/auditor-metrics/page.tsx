@@ -11,6 +11,7 @@ import {
   AuditorMetricsSimulationResult,
   AuditorMetricCategory,
   AuditorMetricFormulaType,
+  AuditDataSource,
 } from '@/types/auditorMetrics'
 import { AuditorScorecardDrawer } from '@/components/reporting/AuditorScorecardDrawer'
 import { toPersianDigits } from '@/lib/jalali'
@@ -38,6 +39,7 @@ import {
   X,
   HelpCircle,
   Percent,
+  Database,
 } from 'lucide-react'
 
 export default function AuditorMetricsManagementPage() {
@@ -46,6 +48,10 @@ export default function AuditorMetricsManagementPage() {
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'metrics' | 'leaderboard' | 'simulation'>('metrics')
+
+  // Data Sources State (Built-in Sanim DB vs Uploaded Excel Reports)
+  const [dataSources, setDataSources] = useState<AuditDataSource[]>([])
+  const [selectedSourceId, setSelectedSourceId] = useState<string>('SYSTEM')
 
   // Scorecards / Leaderboard State
   const [scorecards, setScorecards] = useState<AuditorScorecard[]>([])
@@ -83,6 +89,16 @@ export default function AuditorMetricsManagementPage() {
   const [simulationResult, setSimulationResult] = useState<AuditorMetricsSimulationResult | null>(null)
   const [simulating, setSimulating] = useState(false)
 
+  // Load data sources (system DB vs uploaded excel reports)
+  const loadDataSources = async () => {
+    try {
+      const sources = await auditorMetricsApi.getDataSources()
+      setDataSources(sources || [])
+    } catch (err) {
+      console.error('Failed to load audit data sources:', err)
+    }
+  }
+
   // Load metrics on mount
   const loadMetrics = async () => {
     try {
@@ -97,11 +113,13 @@ export default function AuditorMetricsManagementPage() {
     }
   }
 
-  // Load leaderboard / scorecards
-  const loadScorecards = async () => {
+  // Load leaderboard / scorecards for selected data source
+  const loadScorecards = async (sourceId: string = selectedSourceId) => {
     try {
       setLoadingScorecards(true)
-      const data = await auditorMetricsApi.evaluateAuditors()
+      const data = await auditorMetricsApi.evaluateAuditors({
+        reportCode: sourceId === 'SYSTEM' ? undefined : sourceId,
+      })
       setScorecards(data || [])
     } catch (err: any) {
       console.error('Failed to load auditor scorecards:', err)
@@ -112,13 +130,14 @@ export default function AuditorMetricsManagementPage() {
 
   useEffect(() => {
     loadMetrics()
+    loadDataSources()
   }, [])
 
   useEffect(() => {
     if (activeTab === 'leaderboard' && scorecards.length === 0) {
-      loadScorecards()
+      loadScorecards(selectedSourceId)
     }
-  }, [activeTab])
+  }, [activeTab, selectedSourceId])
 
   // Computed total weights
   const totalWeight = useMemo(() => {
@@ -271,7 +290,11 @@ export default function AuditorMetricsManagementPage() {
   const handleSimulateInModal = async () => {
     try {
       setSimulating(true)
-      const res = await auditorMetricsApi.simulateMetric(formData)
+      const res = await auditorMetricsApi.simulateMetric(
+        formData,
+        undefined,
+        selectedSourceId === 'SYSTEM' ? undefined : selectedSourceId
+      )
       setSimulationResult(res)
     } catch (err: any) {
       setModalError(err?.response?.data?.error || err.message || 'خطا در اجرای شبیه‌سازی')
@@ -630,7 +653,31 @@ export default function AuditorMetricsManagementPage() {
                   />
                 </div>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+                  {/* Data Source Selector */}
+                  {dataSources.length > 0 && (
+                    <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-200 rounded-xl px-2.5 py-1 text-xs">
+                      <Database className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                      <span className="text-[11px] font-bold text-amber-900 hidden md:inline">منبع داده:</span>
+                      <select
+                        value={selectedSourceId}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          setSelectedSourceId(val)
+                          loadScorecards(val)
+                        }}
+                        className="text-xs bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer py-1"
+                      >
+                        {dataSources.map((ds) => (
+                          <option key={ds.sourceId} value={ds.sourceId}>
+                            {ds.isSystemDefault ? '🏛️ ' : '📊 '}
+                            {ds.title} ({toPersianDigits(ds.totalRecords?.toLocaleString() || ds.totalCases?.toLocaleString() || 0)} پرونده)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <select
                     value={selectedOfficeFilter}
                     onChange={(e) => setSelectedOfficeFilter(e.target.value)}
@@ -645,7 +692,7 @@ export default function AuditorMetricsManagementPage() {
                   </select>
 
                   <button
-                    onClick={loadScorecards}
+                    onClick={() => loadScorecards(selectedSourceId)}
                     disabled={loadingScorecards}
                     className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
                     title="به‌روزرسانی رتبه‌بندی"
@@ -915,9 +962,15 @@ export default function AuditorMetricsManagementPage() {
                       <option value="declaredTax">declaredTax (مالیات ابرازی)</option>
                       <option value="daysAssignmentToNotice">daysAssignmentToNotice (فاصله تخصیص تا برگ تشخیص)</option>
                       <option value="daysNoticeToFinal">daysNoticeToFinal (فاصله تشخیص تا قطعی)</option>
+                      <option value="auditStatus">auditStatus (وضعیت قطعی / مختومه بودن پرونده)</option>
                       <option value="isCompleted">isCompleted (وضعیت پرونده مختومه)</option>
                       <option value="riskLevel">riskLevel (سطح ریسک پرونده)</option>
                     </select>
+                    {formData.formulaType === 5 && (formData.primaryField === 'auditStatus' || formData.primaryField === 'isCompleted') && (
+                      <p className="text-[11px] text-teal-700 mt-1.5 bg-teal-50 p-2 rounded-lg border border-teal-200">
+                        💡 درصد پرونده‌های با وضعیت قطعی (ابلاغ یا صادر شده) را از کل پرونده‌های حسابرس می‌سنجد.
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -1073,6 +1126,7 @@ export default function AuditorMetricsManagementPage() {
         {selectedAuditorForDrawer && (
           <AuditorScorecardDrawer
             auditorName={selectedAuditorForDrawer}
+            reportCode={selectedSourceId === 'SYSTEM' ? undefined : selectedSourceId}
             onClose={() => setSelectedAuditorForDrawer(null)}
           />
         )}

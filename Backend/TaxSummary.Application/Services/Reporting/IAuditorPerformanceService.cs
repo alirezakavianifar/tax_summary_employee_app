@@ -26,17 +26,22 @@ public interface IAuditorPerformanceService
     Task<Result<bool>> DeleteMetricDefinitionAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// ارزیابی و رتبه‌بندی حسابرسان بر اساس شاخص‌های فعال و اوزان تنظیمی مدیر
+    /// ارزیابی و رتبه‌بندی حسابرسان بر اساس شاخص‌های فعال و اوزان تنظیمی مدیر (پشتیبانی از پایگاه داده و فایل‌های اکسل بارگذاری‌شده)
     /// </summary>
-    Task<Result<List<AuditorScorecardDto>>> EvaluateAuditorsAsync(int? fiscalYear, string? officeName, CancellationToken ct = default);
+    Task<Result<List<AuditorScorecardDto>>> EvaluateAuditorsAsync(int? fiscalYear, string? officeName, string? reportCode = null, CancellationToken ct = default);
 
     /// <summary>
     /// دریافت کارنامه جامع و مشخصات ۳۶۰ درجه عملکرد یک حسابرس
     /// </summary>
-    Task<Result<Auditor360ProfileDto>> GetAuditor360ProfileAsync(string auditorName, int? fiscalYear, CancellationToken ct = default);
+    Task<Result<Auditor360ProfileDto>> GetAuditor360ProfileAsync(string auditorName, int? fiscalYear = null, string? reportCode = null, CancellationToken ct = default);
 
     /// <summary>
-    /// شبیه‌سازی و پیش‌نمایش زنده اثر یک فرمول یا وزن جدید بر پرونده‌های پایگاه داده
+    /// شبیه‌سازی و پیش‌نمایش زنده اثر یک فرمول یا وزن جدید بر پرونده‌های پایگاه داده یا گزارش اکسل
     /// </summary>
-    Task<Result<AuditorMetricsSimulationResultDto>> SimulateMetricAsync(SaveAuditorMetricRequestDto request, int? fiscalYear, CancellationToken ct = default);
+    Task<Result<AuditorMetricsSimulationResultDto>> SimulateMetricAsync(SaveAuditorMetricRequestDto request, int? fiscalYear = null, string? reportCode = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// دریافت فهرست منابع داده ارزیابی حسابرسی (پایگاه داده اصلی و گزارش‌های اکسل بارگذاری‌شده)
+    /// </summary>
+    Task<Result<List<AuditDataSourceDto>>> GetAuditReportSourcesAsync(CancellationToken ct = default);
 }

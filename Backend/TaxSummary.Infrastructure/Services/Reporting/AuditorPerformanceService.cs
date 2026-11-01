@@ -1,11 +1,16 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using System.Data;
+using System.Text;
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using TaxSummary.Application.DTOs.Reporting;
 using TaxSummary.Application.Services.Reporting;
 using TaxSummary.Domain.Common;
 using TaxSummary.Domain.Entities.Reporting;
 using TaxSummary.Domain.Enums;
+using TaxSummary.Domain.Interfaces;
 using TaxSummary.Infrastructure.Data;
 
 namespace TaxSummary.Infrastructure.Services.Reporting;
@@ -13,14 +18,51 @@ namespace TaxSummary.Infrastructure.Services.Reporting;
 public class AuditorPerformanceService : IAuditorPerformanceService
 {
     private readonly TaxSummaryDbContext _db;
+    private readonly IReportingRepository _reportingRepository;
     private readonly ILogger<AuditorPerformanceService> _logger;
+    private readonly IHostEnvironment? _environment;
 
     public AuditorPerformanceService(
         TaxSummaryDbContext db, 
-        ILogger<AuditorPerformanceService> logger)
+        IReportingRepository reportingRepository,
+        ILogger<AuditorPerformanceService> logger,
+        IHostEnvironment? environment = null)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
+        _reportingRepository = reportingRepository ?? throw new ArgumentNullException(nameof(reportingRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _environment = environment;
+    }
+
+    private string? ResolveAuditorPhotoUrl(string? nationalId)
+    {
+        if (string.IsNullOrWhiteSpace(nationalId)) return null;
+        var cleanNid = nationalId.Trim();
+
+        if (_environment != null && !string.IsNullOrEmpty(_environment.ContentRootPath))
+        {
+            var jpgPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads", "employee-photos", $"{cleanNid}.jpg");
+            if (File.Exists(jpgPath))
+            {
+                return $"/uploads/employee-photos/{cleanNid}.jpg";
+            }
+            var pngPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads", "employee-photos", $"{cleanNid}.png");
+            if (File.Exists(pngPath))
+            {
+                return $"/uploads/employee-photos/{cleanNid}.png";
+            }
+        }
+        else
+        {
+            var baseDir = AppContext.BaseDirectory;
+            var jpgPath = Path.Combine(baseDir, "wwwroot", "uploads", "employee-photos", $"{cleanNid}.jpg");
+            if (File.Exists(jpgPath))
+            {
+                return $"/uploads/employee-photos/{cleanNid}.jpg";
+            }
+        }
+
+        return null;
     }
 
     public async Task<Result<List<AuditorPerformanceMetricDto>>> GetMetricDefinitionsAsync(
@@ -199,9 +241,182 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         }
     }
 
+    public async Task<Result<List<AuditDataSourceDto>>> GetAuditReportSourcesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var sources = new List<AuditDataSourceDto>();
+
+            // 1. Built-in Sanim Audit Assessments database
+            int dbCount = await _db.SanimAuditAssessments.CountAsync(ct);
+            sources.Add(new AuditDataSourceDto
+            {
+                SourceId = "SYSTEM",
+                Title = "پایگاه داده اصلی سنیم (پرونده‌های رسیدگی استانی)",
+                Description = "داده‌های تجمیعی و رسمی پرونده‌های رسیدگی مالیاتی مودیان استان خوزستان در پایگاه داده اصلی",
+                TotalRecords = dbCount,
+                IsSystemDefault = true,
+                HasAuditorData = true,
+                DetectedAuditorColumn = "AuditorName",
+                ColumnsCount = 20
+            });
+
+            // 2. Custom Uploaded Excel Reports
+            var reports = await _reportingRepository.GetAvailableReportsAsync(null, ReportDomainSource.CustomUploadedDataset, includeInactive: false, ct);
+            var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            foreach (var report in reports)
+            {
+                try
+                {
+                    if (string.IsNullOrWhiteSpace(report.ConfigurationJson)) continue;
+                    var config = JsonSerializer.Deserialize<CustomDatasetConfigJsonDto>(report.ConfigurationJson, jsonOptions);
+                    if (config == null || config.Columns == null || !config.Columns.Any()) continue;
+
+                    var mapper = SemanticAuditFieldMapper.FromColumns(config.Columns);
+                    if (mapper.HasAuditorData)
+                    {
+                        var auditorCol = config.Columns.FirstOrDefault(c => c.FieldName.Equals(mapper.AuditorNameField, StringComparison.OrdinalIgnoreCase));
+                        sources.Add(new AuditDataSourceDto
+                        {
+                            SourceId = report.Code,
+                            Title = report.Title,
+                            Description = string.IsNullOrWhiteSpace(report.Description) ? $"گزارش بارگذاری‌شده از فایل اکسل ({config.OriginalFileName})" : report.Description,
+                            TotalRecords = config.TotalRowCount,
+                            IsSystemDefault = false,
+                            HasAuditorData = true,
+                            DetectedAuditorColumn = auditorCol?.OriginalHeader ?? auditorCol?.PersianLabel ?? "نام حسابرس",
+                            ColumnsCount = config.Columns.Count,
+                            LastUpdatedDate = report.CreatedAt.ToString("yyyy/MM/dd")
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not parse report definition configuration for {ReportCode}", report.Code);
+                }
+            }
+
+            return Result.Success(sources);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting audit report sources");
+            return Result.Failure<List<AuditDataSourceDto>>($"خطا در دریافت منابع داده ارزیابی: {ex.Message}");
+        }
+    }
+
+    private async Task<Result<List<AuditorCaseRecord>>> LoadAuditCasesAsync(
+        string? reportCode,
+        int? fiscalYear,
+        string? officeName,
+        CancellationToken ct)
+    {
+        // 1. If no report code or SYSTEM, query standard database
+        if (string.IsNullOrWhiteSpace(reportCode) || reportCode.Equals("SYSTEM", StringComparison.OrdinalIgnoreCase))
+        {
+            var query = _db.SanimAuditAssessments.AsNoTracking().Where(s => !string.IsNullOrEmpty(s.AuditorName));
+
+            if (fiscalYear.HasValue)
+                query = query.Where(s => s.FiscalYear == fiscalYear.Value);
+
+            if (!string.IsNullOrWhiteSpace(officeName))
+                query = query.Where(s => s.FinalOfficeName.Contains(officeName.Trim()));
+
+            var cases = await query.Select(s => new AuditorCaseRecord
+            {
+                AuditorName = s.AuditorName.Trim(),
+                AuditorNationalId = s.AuditorNationalId,
+                FinalOfficeName = s.FinalOfficeName,
+                AuditStatus = !string.IsNullOrWhiteSpace(s.CurrentStatus) ? s.CurrentStatus : s.AuditStatus,
+                RiskLevel = s.RiskLevel,
+                DeclaredTaxAmount = s.DeclaredTaxAmount,
+                AssessedTaxAmount = s.AssessedTaxAmount,
+                FinalTaxAmount = s.FinalTaxAmount,
+                DaysAssignmentToNotice = s.DaysAssignmentToNotice,
+                DaysNoticeToFinal = s.DaysNoticeToFinal,
+                DaysAssignmentToFinal = s.DaysAssignmentToFinal,
+                FiscalYear = s.FiscalYear
+            }).ToListAsync(ct);
+
+            return Result.Success(cases);
+        }
+
+        // 2. Query custom uploaded dataset
+        var report = await _reportingRepository.GetReportDefinitionByCodeAsync(reportCode, ct);
+        if (report == null)
+            return Result.Failure<List<AuditorCaseRecord>>($"گزارش با کد '{reportCode}' یافت نشد.");
+
+        var config = JsonSerializer.Deserialize<CustomDatasetConfigJsonDto>(
+            report.ConfigurationJson, 
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (config == null || string.IsNullOrWhiteSpace(config.DatasetTableName))
+            return Result.Failure<List<AuditorCaseRecord>>("پیکربندی این مجموعه داده نامعتبر است.");
+
+        var mapper = SemanticAuditFieldMapper.FromColumns(config.Columns);
+        if (!mapper.HasAuditorData)
+            return Result.Failure<List<AuditorCaseRecord>>("در این گزارش ستون مربوط به نام حسابرس شناسایی نشد.");
+
+        var connection = (SqliteConnection)_db.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open) await connection.OpenAsync(ct);
+
+        var sql = new StringBuilder();
+        sql.Append($"SELECT * FROM [{config.DatasetTableName}] WHERE [{mapper.AuditorNameField}] IS NOT NULL AND TRIM([{mapper.AuditorNameField}]) != ''");
+
+        var sqlParams = new List<SqliteParameter>();
+
+        if (!string.IsNullOrWhiteSpace(officeName) && mapper.OfficeNameField != null)
+        {
+            sql.Append($" AND [{mapper.OfficeNameField}] LIKE @OfficeName");
+            sqlParams.Add(new SqliteParameter("@OfficeName", $"%{officeName.Trim()}%"));
+        }
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = sql.ToString();
+        foreach (var p in sqlParams) cmd.Parameters.Add(new SqliteParameter(p.ParameterName, p.Value));
+
+        var results = new List<AuditorCaseRecord>();
+        using var reader = await cmd.ExecuteReaderAsync(ct);
+
+        while (await reader.ReadAsync(ct))
+        {
+            var rawAuditor = reader[mapper.AuditorNameField]?.ToString()?.Trim();
+            if (string.IsNullOrWhiteSpace(rawAuditor)) continue;
+
+            var rec = new AuditorCaseRecord
+            {
+                AuditorName = rawAuditor,
+                AuditorNationalId = mapper.AuditorNationalIdField != null ? reader[mapper.AuditorNationalIdField]?.ToString()?.Trim() : null,
+                FinalOfficeName = mapper.OfficeNameField != null ? reader[mapper.OfficeNameField]?.ToString()?.Trim() : null,
+                AuditStatus = mapper.AuditStatusField != null ? reader[mapper.AuditStatusField]?.ToString()?.Trim() : null,
+                RiskLevel = mapper.RiskLevelField != null ? reader[mapper.RiskLevelField]?.ToString()?.Trim() : null,
+                DeclaredTaxAmount = mapper.DeclaredTaxField != null ? ParseDecimal(reader[mapper.DeclaredTaxField]) : 0m,
+                AssessedTaxAmount = mapper.AssessedTaxField != null ? ParseDecimal(reader[mapper.AssessedTaxField]) : 0m,
+                FinalTaxAmount = mapper.FinalTaxField != null ? ParseDecimal(reader[mapper.FinalTaxField]) : 0m
+            };
+
+            // Parse Dates
+            DateTime? assignDt = mapper.AssignmentDateField != null ? TryParsePersianDate(reader[mapper.AssignmentDateField]) : null;
+            DateTime? noticeDt = mapper.NoticeDateField != null ? TryParsePersianDate(reader[mapper.NoticeDateField]) : null;
+
+            if (assignDt.HasValue && noticeDt.HasValue)
+            {
+                var diff = (noticeDt.Value - assignDt.Value).TotalDays;
+                if (diff >= 0 && diff <= 1500)
+                    rec.DaysAssignmentToNotice = diff;
+            }
+
+            results.Add(rec);
+        }
+
+        return Result.Success(results);
+    }
+
     public async Task<Result<List<AuditorScorecardDto>>> EvaluateAuditorsAsync(
         int? fiscalYear, 
         string? officeName, 
+        string? reportCode = null,
         CancellationToken ct = default)
     {
         try
@@ -212,29 +427,11 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 .OrderBy(m => m.DisplayOrder)
                 .ToListAsync(ct);
 
-            var query = _db.SanimAuditAssessments.AsNoTracking().Where(s => !string.IsNullOrEmpty(s.AuditorName));
+            var casesResult = await LoadAuditCasesAsync(reportCode, fiscalYear, officeName, ct);
+            if (casesResult.IsFailure)
+                return Result.Failure<List<AuditorScorecardDto>>(casesResult.Error);
 
-            if (fiscalYear.HasValue)
-                query = query.Where(s => s.FiscalYear == fiscalYear.Value);
-
-            if (!string.IsNullOrWhiteSpace(officeName))
-                query = query.Where(s => s.FinalOfficeName.Contains(officeName.Trim()));
-
-            var rawCases = await query.Select(s => new
-            {
-                s.AuditorName,
-                s.AuditorNationalId,
-                s.FinalOfficeName,
-                s.AuditStatus,
-                s.RiskLevel,
-                s.DeclaredTaxAmount,
-                s.AssessedTaxAmount,
-                s.FinalTaxAmount,
-                s.DaysAssignmentToNotice,
-                s.DaysNoticeToFinal,
-                s.DaysAssignmentToFinal
-            }).ToListAsync(ct);
-
+            var rawCases = casesResult.Value;
             if (!rawCases.Any())
                 return Result.Success(new List<AuditorScorecardDto>());
 
@@ -246,7 +443,17 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 var auditorName = group.Key;
                 var sample = group.First();
                 int totalCases = group.Count();
-                int completedCases = group.Count(x => x.AuditStatus != null && x.AuditStatus.Contains("رسیدگی شده"));
+
+                int completedCases = group.Count(x =>
+                    !string.IsNullOrEmpty(x.AuditStatus) &&
+                    (x.AuditStatus.Contains("رسیدگی شده") || x.AuditStatus.Contains("تشخیص") || x.AuditStatus.Contains("قطعی") || x.AuditStatus.Contains("اعتراض") || x.AuditStatus.Contains("رای")) &&
+                    !x.AuditStatus.Contains("تخصیص داده شد"));
+
+                if (completedCases == 0 && totalCases > 0)
+                    completedCases = totalCases;
+
+                int finalizedCases = group.Count(x =>
+                    !string.IsNullOrEmpty(x.AuditStatus) && x.AuditStatus.Contains("قطعی"));
 
                 decimal totalDeclared = group.Sum(x => x.DeclaredTaxAmount);
                 decimal totalAssessed = group.Sum(x => x.AssessedTaxAmount);
@@ -285,9 +492,11 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 {
                     AuditorName = auditorName,
                     AuditorNationalId = sample.AuditorNationalId,
+                    PhotoUrl = ResolveAuditorPhotoUrl(sample.AuditorNationalId),
                     OfficeName = sample.FinalOfficeName,
                     TotalAssignedCases = totalCases,
                     CompletedCases = completedCases,
+                    FinalizedCasesCount = finalizedCases,
                     TotalDeclaredAmount = totalDeclared,
                     TotalAssessedAmount = totalAssessed,
                     TotalFinalAmount = totalFinal,
@@ -312,14 +521,15 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error evaluating auditors");
+            _logger.LogError(ex, "Error evaluating auditors for reportCode: {ReportCode}", reportCode);
             return Result.Failure<List<AuditorScorecardDto>>($"خطا در ارزیابی حسابرسان: {ex.Message}");
         }
     }
 
     public async Task<Result<Auditor360ProfileDto>> GetAuditor360ProfileAsync(
         string auditorName, 
-        int? fiscalYear, 
+        int? fiscalYear = null, 
+        string? reportCode = null,
         CancellationToken ct = default)
     {
         try
@@ -327,7 +537,7 @@ public class AuditorPerformanceService : IAuditorPerformanceService
             if (string.IsNullOrWhiteSpace(auditorName))
                 return Result.Failure<Auditor360ProfileDto>("نام حسابرس الزامی است");
 
-            var evaluateResult = await EvaluateAuditorsAsync(fiscalYear, null, ct);
+            var evaluateResult = await EvaluateAuditorsAsync(fiscalYear, null, reportCode, ct);
             if (evaluateResult.IsFailure)
                 return Result.Failure<Auditor360ProfileDto>(evaluateResult.Error);
 
@@ -335,15 +545,13 @@ public class AuditorPerformanceService : IAuditorPerformanceService
             if (scorecard == null)
                 return Result.Failure<Auditor360ProfileDto>($"حسابرس با نام '{auditorName}' یافت نشد");
 
-            var query = _db.SanimAuditAssessments.AsNoTracking()
-                .Where(s => s.AuditorName.Trim() == auditorName.Trim());
+            var casesResult = await LoadAuditCasesAsync(reportCode, fiscalYear, null, ct);
+            if (casesResult.IsFailure)
+                return Result.Failure<Auditor360ProfileDto>(casesResult.Error);
 
-            if (fiscalYear.HasValue)
-                query = query.Where(s => s.FiscalYear == fiscalYear.Value);
+            var cases = casesResult.Value.Where(s => s.AuditorName.Trim() == auditorName.Trim()).ToList();
 
-            var cases = await query.ToListAsync(ct);
-
-            int highRisk = cases.Count(c => c.RiskLevel != null && c.RiskLevel.Contains("پرریسک"));
+            int highRisk = cases.Count(c => c.RiskLevel != null && (c.RiskLevel.Contains("پرریسک") || c.RiskLevel.Contains("ریسک بالا") || c.RiskLevel.Contains("بالا")));
             int medRisk = cases.Count(c => c.RiskLevel != null && c.RiskLevel.Contains("متوسط"));
             int lowRisk = cases.Count(c => c.RiskLevel != null && (c.RiskLevel.Contains("کم") || c.RiskLevel.Contains("پایین")));
 
@@ -358,7 +566,12 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 ? Math.Round((scorecard.TotalFinalAmount / scorecard.TotalAssessedAmount) * 100m, 1) 
                 : 0m;
 
-            var officeBreakdowns = cases.GroupBy(c => c.FinalOfficeName)
+            int finalizedCases = cases.Count(c => !string.IsNullOrEmpty(c.AuditStatus) && c.AuditStatus.Contains("قطعی"));
+            decimal caseFinalityRate = cases.Count > 0 
+                ? Math.Round(((decimal)finalizedCases / cases.Count) * 100m, 1) 
+                : 0m;
+
+            var officeBreakdowns = cases.GroupBy(c => c.FinalOfficeName ?? "نامشخص")
                 .Select(g => new AuditorOfficeBreakdownDto
                 {
                     OfficeName = g.Key,
@@ -377,6 +590,7 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 AverageDaysNoticeToFinal = avgFinalDays,
                 NetTaxGapAddition = netGap,
                 DefensibilityRate = defensibilityRate,
+                CaseFinalityRate = caseFinalityRate,
                 OfficeBreakdowns = officeBreakdowns
             };
 
@@ -391,7 +605,8 @@ public class AuditorPerformanceService : IAuditorPerformanceService
 
     public async Task<Result<AuditorMetricsSimulationResultDto>> SimulateMetricAsync(
         SaveAuditorMetricRequestDto request, 
-        int? fiscalYear, 
+        int? fiscalYear = null, 
+        string? reportCode = null,
         CancellationToken ct = default)
     {
         try
@@ -415,25 +630,11 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 request.TierThresholdsJson ?? "{}"
             );
 
-            var query = _db.SanimAuditAssessments.AsNoTracking().Where(s => !string.IsNullOrEmpty(s.AuditorName));
-            if (fiscalYear.HasValue)
-                query = query.Where(s => s.FiscalYear == fiscalYear.Value);
+            var casesResult = await LoadAuditCasesAsync(reportCode, fiscalYear, null, ct);
+            if (casesResult.IsFailure)
+                return Result.Failure<AuditorMetricsSimulationResultDto>(casesResult.Error);
 
-            var rawCases = await query.Select(s => new
-            {
-                s.AuditorName,
-                s.AuditorNationalId,
-                s.FinalOfficeName,
-                s.AuditStatus,
-                s.RiskLevel,
-                s.DeclaredTaxAmount,
-                s.AssessedTaxAmount,
-                s.FinalTaxAmount,
-                s.DaysAssignmentToNotice,
-                s.DaysNoticeToFinal,
-                s.DaysAssignmentToFinal
-            }).ToListAsync(ct);
-
+            var rawCases = casesResult.Value;
             if (!rawCases.Any())
                 return Result.Failure<AuditorMetricsSimulationResultDto>("هیچ پرونده‌ای برای شبیه‌سازی یافت نشد");
 
@@ -486,15 +687,20 @@ public class AuditorPerformanceService : IAuditorPerformanceService
     }
 
     // Helper calculation methods
-    private static decimal CalculateMetricValue(AuditorPerformanceMetricDefinition metric, IEnumerable<dynamic> group)
+    private static decimal CalculateMetricValue(AuditorPerformanceMetricDefinition metric, IEnumerable<AuditorCaseRecord> group)
     {
         switch (metric.FormulaType)
         {
             case AuditorMetricFormulaType.Ratio:
                 decimal num = SumField(metric.PrimaryField, group);
                 decimal den = SumField(metric.SecondaryField ?? string.Empty, group);
-                if (den == 0m) den = 1m;
-                return (num / den) * metric.Multiplier;
+                if (den <= 0m) return 0m;
+                decimal ratio = (num / den) * metric.Multiplier;
+                if (metric.Unit == "%" || metric.Unit == "درصد" || metric.MetricCode.Contains("DEFENSIBILITY", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Math.Clamp(ratio, 0m, 100m);
+                }
+                return ratio;
 
             case AuditorMetricFormulaType.Difference:
                 decimal p = SumField(metric.PrimaryField, group);
@@ -506,11 +712,11 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 foreach (var item in group)
                 {
                     if (metric.PrimaryField.Equals("DaysAssignmentToNotice", StringComparison.OrdinalIgnoreCase) && item.DaysAssignmentToNotice != null)
-                        daysList.Add((double)item.DaysAssignmentToNotice);
+                        daysList.Add(item.DaysAssignmentToNotice.Value);
                     else if (metric.PrimaryField.Equals("DaysNoticeToFinal", StringComparison.OrdinalIgnoreCase) && item.DaysNoticeToFinal != null)
-                        daysList.Add((double)item.DaysNoticeToFinal);
+                        daysList.Add(item.DaysNoticeToFinal.Value);
                     else if (metric.PrimaryField.Equals("DaysAssignmentToFinal", StringComparison.OrdinalIgnoreCase) && item.DaysAssignmentToFinal != null)
-                        daysList.Add((double)item.DaysAssignmentToFinal);
+                        daysList.Add(item.DaysAssignmentToFinal.Value);
                 }
                 return daysList.Any() ? (decimal)daysList.Average() * metric.Multiplier : 0m;
 
@@ -520,8 +726,12 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 {
                     if (metric.PrimaryField.Equals("AuditStatus", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (item.AuditStatus != null && item.AuditStatus.ToString().Contains("رسیدگی شده"))
-                            count++;
+                        if (item.AuditStatus != null)
+                        {
+                            var statusStr = item.AuditStatus;
+                            if ((statusStr.Contains("رسیدگی شده") || statusStr.Contains("تشخیص") || statusStr.Contains("قطعی") || statusStr.Contains("اعتراض") || statusStr.Contains("رای")) && !statusStr.Contains("تخصیص داده شد"))
+                                count++;
+                        }
                     }
                     else
                     {
@@ -538,7 +748,16 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 {
                     if (metric.PrimaryField.Equals("RiskLevel", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (item.RiskLevel != null && item.RiskLevel.ToString().Contains("پرریسک"))
+                        if (item.RiskLevel != null && (item.RiskLevel.Contains("پرریسک") || item.RiskLevel.Contains("ریسک بالا") || item.RiskLevel.Contains("بالا")))
+                            matches++;
+                    }
+                    else if (metric.PrimaryField.Equals("AuditStatus", StringComparison.OrdinalIgnoreCase) ||
+                             metric.PrimaryField.Equals("FinalizedStatus", StringComparison.OrdinalIgnoreCase) ||
+                             metric.PrimaryField.Equals("isCompleted", StringComparison.OrdinalIgnoreCase) ||
+                             metric.PrimaryField.Equals("FinalTax", StringComparison.OrdinalIgnoreCase) ||
+                             metric.PrimaryField.Equals("Status", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!string.IsNullOrEmpty(item.AuditStatus) && item.AuditStatus.Contains("قطعی"))
                             matches++;
                     }
                 }
@@ -549,7 +768,7 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         }
     }
 
-    private static decimal SumField(string fieldName, IEnumerable<dynamic> group)
+    private static decimal SumField(string fieldName, IEnumerable<AuditorCaseRecord> group)
     {
         if (string.IsNullOrWhiteSpace(fieldName)) return 0m;
 
@@ -557,13 +776,77 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         foreach (var item in group)
         {
             if (fieldName.Equals("FinalTaxAmount", StringComparison.OrdinalIgnoreCase))
-                sum += (decimal)item.FinalTaxAmount;
+                sum += item.FinalTaxAmount;
             else if (fieldName.Equals("AssessedTaxAmount", StringComparison.OrdinalIgnoreCase))
-                sum += (decimal)item.AssessedTaxAmount;
+                sum += item.AssessedTaxAmount;
             else if (fieldName.Equals("DeclaredTaxAmount", StringComparison.OrdinalIgnoreCase))
-                sum += (decimal)item.DeclaredTaxAmount;
+                sum += item.DeclaredTaxAmount;
         }
         return sum;
+    }
+
+    private static decimal ParseDecimal(object? val)
+    {
+        if (val == null || val == DBNull.Value) return 0m;
+        if (val is decimal d) return d;
+        if (val is double db) return (decimal)db;
+        if (val is long l) return l;
+        if (val is int i) return i;
+        var s = val.ToString()?.Trim();
+        if (string.IsNullOrWhiteSpace(s)) return 0m;
+        s = s.Replace(",", "");
+        return decimal.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed) ? parsed : 0m;
+    }
+
+    private static DateTime? TryParsePersianDate(object? rawVal)
+    {
+        if (rawVal == null || rawVal == DBNull.Value) return null;
+        var s = rawVal.ToString()?.Trim();
+        if (string.IsNullOrWhiteSpace(s)) return null;
+
+        s = s.Replace("/", "-");
+        var parts = s.Split('-');
+        if (parts.Length == 3 &&
+            int.TryParse(parts[0], out int y) &&
+            int.TryParse(parts[1], out int m) &&
+            int.TryParse(parts[2], out int d))
+        {
+            if (y is >= 1300 and <= 1500 && m is >= 1 and <= 12 && d is >= 1 and <= 31)
+            {
+                try
+                {
+                    var pc = new System.Globalization.PersianCalendar();
+                    int maxDays = pc.GetDaysInMonth(y, m);
+                    d = Math.Min(d, maxDays);
+                    return pc.ToDateTime(y, m, d, 0, 0, 0, 0);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            else if (y is >= 1970 and <= 2100)
+            {
+                if (DateTime.TryParse(s, out var dt)) return dt;
+            }
+        }
+        return null;
+    }
+
+    public class AuditorCaseRecord
+    {
+        public string AuditorName { get; set; } = string.Empty;
+        public string? AuditorNationalId { get; set; }
+        public string? FinalOfficeName { get; set; }
+        public string? AuditStatus { get; set; }
+        public string? RiskLevel { get; set; }
+        public decimal DeclaredTaxAmount { get; set; }
+        public decimal AssessedTaxAmount { get; set; }
+        public decimal FinalTaxAmount { get; set; }
+        public double? DaysAssignmentToNotice { get; set; }
+        public double? DaysNoticeToFinal { get; set; }
+        public double? DaysAssignmentToFinal { get; set; }
+        public int? FiscalYear { get; set; }
     }
 
     private static decimal CalculateNormalizedScore(AuditorPerformanceMetricDefinition metric, decimal rawValue)

@@ -68,6 +68,9 @@ public static class DbInitializer
 
         // Seed Reporting & BI standard reports
         await ReportingDataSeeder.SeedReportingAsync(context);
+
+        // Synchronize employee photos from uploads folder if available
+        await SyncEmployeePhotosFromDiskAsync(context);
     }
 
     private static async Task SeedSampleDataAsync(TaxSummaryDbContext context)
@@ -858,5 +861,58 @@ public static class DbInitializer
         }
 
         await context.SaveChangesAsync();
+    }
+
+    private static async Task SyncEmployeePhotosFromDiskAsync(TaxSummaryDbContext context)
+    {
+        try
+        {
+            var baseDir = AppContext.BaseDirectory;
+            var photosDir = Path.Combine(baseDir, "wwwroot", "uploads", "employee-photos");
+            if (!Directory.Exists(photosDir))
+            {
+                var devPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "employee-photos");
+                if (Directory.Exists(devPath))
+                {
+                    photosDir = devPath;
+                }
+            }
+
+            if (!Directory.Exists(photosDir)) return;
+
+            var existingFiles = Directory.GetFiles(photosDir, "*.*")
+                .Select(Path.GetFileName)
+                .Where(f => !string.IsNullOrEmpty(f))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var employeesWithoutPhoto = await context.Employees
+                .Where(e => e.NationalId != null && (e.PhotoUrl == null || e.PhotoUrl == ""))
+                .ToListAsync();
+
+            bool changed = false;
+            foreach (var emp in employeesWithoutPhoto)
+            {
+                var nid = emp.NationalId!.Trim();
+                if (existingFiles.Contains($"{nid}.jpg"))
+                {
+                    emp.UpdatePhoto($"/uploads/employee-photos/{nid}.jpg");
+                    changed = true;
+                }
+                else if (existingFiles.Contains($"{nid}.png"))
+                {
+                    emp.UpdatePhoto($"/uploads/employee-photos/{nid}.png");
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                await context.SaveChangesAsync();
+            }
+        }
+        catch
+        {
+            // Non-critical, do not block startup
+        }
     }
 }
