@@ -11,16 +11,22 @@ import {
   Table,
   Filter,
   Eye,
+  EyeOff,
   SlidersHorizontal,
   Layers,
   ArrowRight,
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
+  Search,
+  ListOrdered,
   Sparkles,
 } from 'lucide-react'
 import { customDatasetApi } from '@/lib/api/customDataset'
 import {
   ExcelInspectionResult,
   CustomDatasetColumn,
+  CustomDatasetDataType,
   CreateCustomDatasetRequest,
 } from '@/types/customDataset'
 import { ReportDefinition } from '@/types/reporting'
@@ -40,6 +46,8 @@ export function ExcelReportUploadModal({
   onOpenTweakStudio,
 }: ExcelReportUploadModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step2SubTab, setStep2SubTab] = useState<'general' | 'columns'>('general')
+  const [columnSearchQuery, setColumnSearchQuery] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [isInspecting, setIsInspecting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -59,6 +67,60 @@ export function ExcelReportUploadModal({
   const [createdReport, setCreatedReport] = useState<ReportDefinition | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleMoveColumn = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= columns.length) return
+
+    const updated = [...columns]
+    const temp = updated[index]
+    updated[index] = updated[targetIndex]
+    updated[targetIndex] = temp
+
+    // Reassign displayOrder
+    updated.forEach((col, idx) => {
+      col.displayOrder = idx + 1
+    })
+
+    setColumns(updated)
+  }
+
+  const handleToggleColumnVisibility = (fieldName: string) => {
+    setColumns((prev) =>
+      prev.map((c) => (c.fieldName === fieldName ? { ...c, isVisible: !c.isVisible } : c))
+    )
+  }
+
+  const handleColumnLabelChange = (fieldName: string, newLabel: string) => {
+    setColumns((prev) =>
+      prev.map((c) => (c.fieldName === fieldName ? { ...c, persianLabel: newLabel } : c))
+    )
+  }
+
+  const handleColumnTypeChange = (fieldName: string, newType: CustomDatasetDataType) => {
+    setColumns((prev) =>
+      prev.map((c) => {
+        if (c.fieldName !== fieldName) return c
+        const isCurr = newType === 'currency'
+        return {
+          ...c,
+          dataType: newType,
+          hasAggregateSum: isCurr,
+          aggregate: isCurr ? 'Sum' : null,
+          alignment:
+            isCurr
+              ? 'left'
+              : newType === 'id' || newType === 'year' || newType === 'date'
+              ? 'center'
+              : 'right',
+        }
+      })
+    )
+  }
+
+  const handleSelectAllVisibility = (visible: boolean) => {
+    setColumns((prev) => prev.map((c) => ({ ...c, isVisible: visible })))
+  }
 
   if (!isOpen) return null
 
@@ -365,132 +427,333 @@ export function ExcelReportUploadModal({
                 )}
               </div>
 
-              {/* Title and Code Form */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
-                    عنوان گزارش در سامانه <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={reportTitle}
-                    onChange={(e) => setReportTitle(e.target.value)}
-                    placeholder="مانند: گزارش رسیدگی پرونده‌های مالیاتی سال ۱۴۰۵"
-                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
-                    کد سیستمی گزارش (انگلیسی) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={reportCode}
-                    onChange={(e) => setReportCode(e.target.value.toUpperCase())}
-                    placeholder="مانند: REP_CUSTOM_AUDIT_1405"
-                    dir="ltr"
-                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2 font-mono text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="mb-1.5 block text-xs font-bold text-slate-700">شرح کاربردی گزارش (اختیاری)</label>
-                  <input
-                    type="text"
-                    value={reportDescription}
-                    onChange={(e) => setReportDescription(e.target.value)}
-                    placeholder="توضیح مختصر درباره محتوا و مخاطبان گزارش..."
-                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
+              {/* Sub-Tabs: General Settings vs Column Reordering */}
+              <div className="flex items-center gap-2 border-b border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setStep2SubTab('general')}
+                  className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+                    step2SubTab === 'general'
+                      ? 'border-emerald-600 text-emerald-700'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span>مشخصات و فیلترهای گزارش</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep2SubTab('columns')}
+                  className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+                    step2SubTab === 'columns'
+                      ? 'border-emerald-600 text-emerald-700'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <ListOrdered className="h-4 w-4" />
+                  <span>ترتیب و تنظیم ستون‌ها (جابجایی با ↑ و ↓)</span>
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] text-emerald-800">
+                    {toPersianDigits(columns.filter((c) => c.isVisible).length)} از {toPersianDigits(columns.length)}
+                  </span>
+                </button>
               </div>
 
-              {/* Quick Filters Picker */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-emerald-600" />
-                    <h4 className="text-xs font-bold text-slate-700">
-                      ستون‌های فیلتر سریع در بالای گزارش (Quick Filters)
-                    </h4>
+              {/* SubTab 1: General Settings, Quick Filters, and Preview */}
+              {step2SubTab === 'general' && (
+                <div className="space-y-6 animate-in fade-in duration-150">
+                  {/* Title and Code Form */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                        عنوان گزارش در سامانه <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={reportTitle}
+                        onChange={(e) => setReportTitle(e.target.value)}
+                        placeholder="مانند: گزارش رسیدگی پرونده‌های مالیاتی سال ۱۴۰۵"
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                        کد سیستمی گزارش (انگلیسی) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={reportCode}
+                        onChange={(e) => setReportCode(e.target.value.toUpperCase())}
+                        placeholder="مانند: REP_CUSTOM_AUDIT_1405"
+                        dir="ltr"
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2 font-mono text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700">شرح کاربردی گزارش (اختیاری)</label>
+                      <input
+                        type="text"
+                        value={reportDescription}
+                        onChange={(e) => setReportDescription(e.target.value)}
+                        placeholder="توضیح مختصر درباره محتوا و مخاطبان گزارش..."
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
                   </div>
-                  <span className="text-[11px] text-slate-500">
-                    ستون‌هایی که می‌خواهید به عنوان فیلتر جستجو نمایش داده شوند را تیک بزنید
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {columns.slice(0, 20).map((col) => {
-                    const isSelected = quickFilterColumns.includes(col.fieldName)
-                    return (
+
+                  {/* Quick Filters Picker */}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-emerald-600" />
+                        <h4 className="text-xs font-bold text-slate-700">
+                          ستون‌های فیلتر سریع در بالای گزارش (Quick Filters)
+                        </h4>
+                      </div>
+                      <span className="text-[11px] text-slate-500">
+                        ستون‌هایی که می‌خواهید به عنوان فیلتر جستجو نمایش داده شوند را تیک بزنید
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {columns.slice(0, 20).map((col) => {
+                        const isSelected = quickFilterColumns.includes(col.fieldName)
+                        return (
+                          <button
+                            key={col.fieldName}
+                            type="button"
+                            onClick={() => handleToggleQuickFilter(col.fieldName)}
+                            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition-colors ${
+                              isSelected
+                                ? 'bg-emerald-600 font-semibold text-white shadow-xs'
+                                : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                            }`}
+                          >
+                            <span>{col.persianLabel}</span>
+                            {isSelected && <CheckCircle2 className="h-3 w-3" />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Sample Data Table Preview */}
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Table className="h-4 w-4 text-slate-600" />
+                        <h4 className="text-xs font-bold text-slate-700">
+                          پیش‌نمایش ۱۰ رکورد اول و قالب‌بندی ستون‌ها
+                        </h4>
+                      </div>
                       <button
-                        key={col.fieldName}
                         type="button"
-                        onClick={() => handleToggleQuickFilter(col.fieldName)}
-                        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition-colors ${
-                          isSelected
-                            ? 'bg-emerald-600 font-semibold text-white shadow-xs'
-                            : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                        }`}
+                        onClick={() => setStep2SubTab('columns')}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
                       >
-                        <span>{col.persianLabel}</span>
-                        {isSelected && <CheckCircle2 className="h-3 w-3" />}
+                        <ListOrdered className="h-3.5 w-3.5" />
+                        <span>تغییر ترتیب و چینش ستون‌ها ({toPersianDigits(columns.length)} ستون)</span>
                       </button>
-                    )
-                  })}
-                </div>
-              </div>
+                    </div>
 
-              {/* Sample Data Table Preview */}
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Table className="h-4 w-4 text-slate-600" />
-                    <h4 className="text-xs font-bold text-slate-700">
-                      پیش‌نمایش ۱۰ رکورد اول و قالب‌بندی ستون‌ها
-                    </h4>
-                  </div>
-                  <span className="text-[11px] text-slate-400">
-                    نوع ستون‌ها، مبالغ و شناسه‌ها به صورت خودکار تشخیص داده شده‌اند
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                  <table className="w-full text-right text-xs">
-                    <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                      <tr>
-                        <th className="px-3 py-2.5 font-bold">#</th>
-                        {columns.slice(0, 10).map((col) => (
-                          <th key={col.fieldName} className="px-3 py-2.5 font-bold whitespace-nowrap">
-                            <div>{col.persianLabel}</div>
-                            <div className="mt-0.5">{getTypeBadge(col.dataType)}</div>
-                          </th>
-                        ))}
-                        {columns.length > 10 && (
-                          <th className="px-3 py-2.5 text-center text-slate-400">
-                            +{toPersianDigits(columns.length - 10)} ستون دیگر...
-                          </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {inspection.sampleRows.slice(0, 5).map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/50">
-                          <td className="px-3 py-2 text-slate-400">{toPersianDigits(idx + 1)}</td>
-                          {columns.slice(0, 10).map((col) => (
-                            <td key={col.fieldName} className="px-3 py-2 whitespace-nowrap font-mono text-[11px]">
-                              {row[col.fieldName] !== null && row[col.fieldName] !== undefined
-                                ? String(row[col.fieldName])
-                                : '-'}
-                            </td>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                      <table className="w-full text-right text-xs">
+                        <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                          <tr>
+                            <th className="px-3 py-2.5 font-bold">#</th>
+                            {columns.slice(0, 10).map((col) => (
+                              <th key={col.fieldName} className="px-3 py-2.5 font-bold whitespace-nowrap">
+                                <div>{col.persianLabel}</div>
+                                <div className="mt-0.5">{getTypeBadge(col.dataType)}</div>
+                              </th>
+                            ))}
+                            {columns.length > 10 && (
+                              <th className="px-3 py-2.5 text-center text-slate-400">
+                                +{toPersianDigits(columns.length - 10)} ستون دیگر...
+                              </th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-slate-700">
+                          {inspection.sampleRows.slice(0, 5).map((row, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50">
+                              <td className="px-3 py-2 text-slate-400">{toPersianDigits(idx + 1)}</td>
+                              {columns.slice(0, 10).map((col) => (
+                                <td key={col.fieldName} className="px-3 py-2 whitespace-nowrap font-mono text-[11px]">
+                                  {row[col.fieldName] !== null && row[col.fieldName] !== undefined
+                                    ? String(row[col.fieldName])
+                                    : '-'}
+                                </td>
+                              ))}
+                              {columns.length > 10 && (
+                                <td className="px-3 py-2 text-center text-slate-400">...</td>
+                              )}
+                            </tr>
                           ))}
-                          {columns.length > 10 && (
-                            <td className="px-3 py-2 text-center text-slate-400">...</td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* SubTab 2: Column Reordering & Visibility Management */}
+              {step2SubTab === 'columns' && (
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  {/* Toolbar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="relative flex-1 min-w-[240px]">
+                      <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={columnSearchQuery}
+                        onChange={(e) => setColumnSearchQuery(e.target.value)}
+                        placeholder="جستجوی ستون بر اساس نام فارسی یا عنوان اکسل..."
+                        className="w-full rounded-xl border border-slate-300 py-2 pr-9 pl-4 text-xs text-slate-700 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAllVisibility(true)}
+                        className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-emerald-600" />
+                        <span>نمایش همه</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAllVisibility(false)}
+                        className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                      >
+                        <EyeOff className="h-3.5 w-3.5 text-slate-400" />
+                        <span>عدم نمایش همه</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Reordering Table */}
+                  <div className="max-h-[380px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xs">
+                    <table className="w-full text-right text-xs">
+                      <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 text-slate-600 backdrop-blur-xs">
+                        <tr>
+                          <th className="w-12 px-3 py-2.5 text-center">ترتیب</th>
+                          <th className="w-14 px-3 py-2.5 text-center">نمایش</th>
+                          <th className="px-3 py-2.5">عنوان ستون در گزارش</th>
+                          <th className="px-3 py-2.5">عنوان اصلی در اکسل</th>
+                          <th className="w-36 px-3 py-2.5">نوع قالب‌بندی</th>
+                          <th className="w-24 px-3 py-2.5 text-center">جابجایی</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {columns
+                          .filter((c) => {
+                            if (!columnSearchQuery.trim()) return true
+                            const q = columnSearchQuery.toLowerCase()
+                            return (
+                              c.persianLabel.toLowerCase().includes(q) ||
+                              c.originalHeader.toLowerCase().includes(q)
+                            )
+                          })
+                          .map((col) => {
+                            const actualIdx = columns.findIndex((c) => c.fieldName === col.fieldName)
+                            return (
+                              <tr
+                                key={col.fieldName}
+                                className={`hover:bg-slate-50/80 transition-colors ${
+                                  !col.isVisible ? 'bg-slate-50/50 opacity-60' : ''
+                                }`}
+                              >
+                                {/* Order Index */}
+                                <td className="px-3 py-2 text-center font-mono text-[11px] text-slate-400">
+                                  {toPersianDigits(actualIdx + 1)}
+                                </td>
+
+                                {/* Visibility Checkbox */}
+                                <td className="px-3 py-2 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={col.isVisible}
+                                    onChange={() => handleToggleColumnVisibility(col.fieldName)}
+                                    className="h-4 w-4 rounded-md border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                  />
+                                </td>
+
+                                {/* Persian Label Editable */}
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="text"
+                                    value={col.persianLabel}
+                                    onChange={(e) => handleColumnLabelChange(col.fieldName, e.target.value)}
+                                    className="w-full rounded-lg border border-transparent px-2 py-1 text-xs font-semibold text-slate-800 hover:border-slate-300 focus:border-emerald-500 focus:bg-white focus:outline-hidden"
+                                  />
+                                </td>
+
+                                {/* Original Header */}
+                                <td
+                                  className="px-3 py-2 text-slate-500 text-[11px] truncate max-w-[140px]"
+                                  title={col.originalHeader}
+                                >
+                                  {col.originalHeader}
+                                </td>
+
+                                {/* Data Type Selector */}
+                                <td className="px-3 py-2">
+                                  <select
+                                    value={col.dataType}
+                                    onChange={(e) =>
+                                      handleColumnTypeChange(
+                                        col.fieldName,
+                                        e.target.value as CustomDatasetDataType
+                                      )
+                                    }
+                                    className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 shadow-2xs focus:border-emerald-500 focus:outline-hidden"
+                                  >
+                                    <option value="currency">مبلغ ریالی</option>
+                                    <option value="year">سال (بدون کاما)</option>
+                                    <option value="id">شناسه / کد</option>
+                                    <option value="number">عددی</option>
+                                    <option value="badge">برچسب وضعیت</option>
+                                    <option value="date">تاریخ شمسی</option>
+                                    <option value="string">متن</option>
+                                  </select>
+                                </td>
+
+                                {/* Move Column Up/Down */}
+                                <td className="px-3 py-2 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      type="button"
+                                      disabled={actualIdx === 0}
+                                      onClick={() => handleMoveColumn(actualIdx, 'up')}
+                                      className="rounded p-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-20 cursor-pointer"
+                                      title="انتقال به بالا (Move Up)"
+                                    >
+                                      <ArrowUp className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={actualIdx === columns.length - 1}
+                                      onClick={() => handleMoveColumn(actualIdx, 'down')}
+                                      className="rounded p-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-20 cursor-pointer"
+                                      title="انتقال به پایین (Move Down)"
+                                    >
+                                      <ArrowDown className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400">
+                    با کلیک روی دکمه‌های <span className="font-bold text-slate-600">↑</span> و{' '}
+                    <span className="font-bold text-slate-600">↓</span> در هر ردیف، ترتیب نمایش ستون‌ها را در گزارش و پیش‌نمایش جابجا کنید.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

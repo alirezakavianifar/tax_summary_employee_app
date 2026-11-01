@@ -127,7 +127,7 @@ public class CustomDatasetService : ICustomDatasetService
                     DataType = dataType,
                     IsVisible = true,
                     IsSortable = true,
-                    HasAggregateSum = isCurrency || (dataType == "number" && !isIdOrYear),
+                    HasAggregateSum = isCurrency,
                     Aggregate = isCurrency ? "Sum" : null,
                     Alignment = isCurrency ? "left" : (isIdOrYear || dataType == "date" ? "center" : "right"),
                     DisplayOrder = colIndex,
@@ -633,25 +633,32 @@ public class CustomDatasetService : ICustomDatasetService
             var aggCols = config.Columns.Where(c => c.HasAggregateSum || c.Aggregate == "Sum" || c.Aggregate == "Average").ToList();
             if (aggCols.Count > 0)
             {
-                var aggSelects = aggCols.Select(c =>
+                try
                 {
-                    var func = c.Aggregate == "Average" ? "AVG" : "SUM";
-                    return $"{func}(CAST([{c.FieldName}] AS NUMERIC)) AS [{c.FieldName}_agg]";
-                });
-
-                using var aggCmd = connection.CreateCommand();
-                aggCmd.CommandText = $"SELECT {string.Join(", ", aggSelects)} FROM [{config.DatasetTableName}] WHERE {whereSql};";
-                foreach (var p in sqlParams) aggCmd.Parameters.Add(new SqliteParameter(p.ParameterName, p.Value));
-
-                using var aggReader = await aggCmd.ExecuteReaderAsync(ct);
-                if (await aggReader.ReadAsync(ct))
-                {
-                    for (int i = 0; i < aggCols.Count; i++)
+                    var aggSelects = aggCols.Select(c =>
                     {
-                        var col = aggCols[i];
-                        var val = aggReader.IsDBNull(i) ? 0 : aggReader.GetValue(i);
-                        summaryAggregates[col.FieldName] = val;
+                        var func = c.Aggregate == "Average" ? "AVG" : "TOTAL";
+                        return $"{func}(CAST([{c.FieldName}] AS REAL)) AS [{c.FieldName}_agg]";
+                    });
+
+                    using var aggCmd = connection.CreateCommand();
+                    aggCmd.CommandText = $"SELECT {string.Join(", ", aggSelects)} FROM [{config.DatasetTableName}] WHERE {whereSql};";
+                    foreach (var p in sqlParams) aggCmd.Parameters.Add(new SqliteParameter(p.ParameterName, p.Value));
+
+                    using var aggReader = await aggCmd.ExecuteReaderAsync(ct);
+                    if (await aggReader.ReadAsync(ct))
+                    {
+                        for (int i = 0; i < aggCols.Count; i++)
+                        {
+                            var col = aggCols[i];
+                            var val = aggReader.IsDBNull(i) ? 0 : aggReader.GetValue(i);
+                            summaryAggregates[col.FieldName] = val;
+                        }
                     }
+                }
+                catch (Exception aggEx)
+                {
+                    _logger.LogWarning(aggEx, "Could not compute aggregates for custom report '{ReportCode}'", reportCode);
                 }
             }
 
@@ -941,58 +948,115 @@ public class CustomDatasetService : ICustomDatasetService
 
     private static string InferDataType(string header, List<string> sampleValues)
     {
-        var lowerHeader = header.ToLowerInvariant();
+        var lowerHeader = header.Trim().ToLowerInvariant();
 
         // 1. Year
         if (lowerHeader.Contains("سال") || lowerHeader.Contains("fiscal") || lowerHeader.Contains("year"))
             return "year";
 
-        // 2. ID / Tracking / Declaration / National Code / TIN
-        if (lowerHeader.Contains("شناسه") ||
-            lowerHeader.Contains("تین") ||
-            lowerHeader.Contains("کد رهگیری") ||
-            lowerHeader.Contains("کد اقتصادی") ||
-            lowerHeader.Contains("شماره") ||
-            lowerHeader.Contains("کد پستی") ||
-            lowerHeader.Contains("کد ملی") ||
-            lowerHeader.Contains("شماره حساب") ||
-            lowerHeader.Contains("شبا") ||
-            lowerHeader.Contains("tracking") ||
-            lowerHeader.Contains("tin") ||
-            lowerHeader.Contains("nationalid"))
+        // 2. Date
+        if (lowerHeader.Contains("تاریخ") || lowerHeader.Contains("date") || lowerHeader.Contains("صدور") || lowerHeader.Contains("سررسید") || lowerHeader.Contains("مهلت"))
+            return "date";
+
+        // 3. Explicit Person Name / Full Name (takes precedence over embedded ID keywords)
+        if ((lowerHeader.Contains("نام و نام خانوادگی") || lowerHeader.Contains("نام خانوادگی") || lowerHeader.StartsWith("نام ") || lowerHeader.Contains(" نام ")) &&
+            !lowerHeader.Contains("ثبت نام") && !lowerHeader.Contains("سامانه"))
         {
-            return "id";
+            return "string";
         }
 
-        // 3. Currency / Monetary
-        if (lowerHeader.Contains("مالیات") ||
-            lowerHeader.Contains("مبلغ") ||
+        // 4. Explicit Currency Amounts (مبلغ always takes precedence over پرونده/مالیات)
+        if (lowerHeader.Contains("مبلغ") ||
             lowerHeader.Contains("درآمد") ||
+            lowerHeader.Contains("درامد") ||
+            lowerHeader.Contains("مأخذ") ||
+            lowerHeader.Contains("ماخذ") ||
             lowerHeader.Contains("ریال") ||
             lowerHeader.Contains("حقوق") ||
             lowerHeader.Contains("هزینه") ||
             lowerHeader.Contains("جریمه") ||
             lowerHeader.Contains("عوارض") ||
+            lowerHeader.Contains("بدهی") ||
+            lowerHeader.Contains("تعدیل") ||
             lowerHeader.Contains("amount") ||
-            lowerHeader.Contains("tax") ||
             lowerHeader.Contains("salary"))
         {
             return "currency";
         }
 
-        // 4. Date
-        if (lowerHeader.Contains("تاریخ") || lowerHeader.Contains("date") || lowerHeader.Contains("صدور"))
-            return "date";
-
-        // 5. Badge / Category
-        if (lowerHeader.Contains("وضعیت") || lowerHeader.Contains("نوع") || lowerHeader.Contains("منبع") || lowerHeader.Contains("status"))
+        // 5. Validation flag / status (اعتبارسنجی)
+        if (lowerHeader.Contains("اعتبارسنجی") || lowerHeader.Contains("اعتبار سنجی"))
+        {
             return "badge";
+        }
 
-        // Value-based heuristic across samples
+        // 6. ID / Tracking / Declaration / National Code / Docket / Key / Code
+        if (lowerHeader.StartsWith("کد") ||
+            lowerHeader.Contains(" کد ") ||
+            lowerHeader.Contains("کد ") ||
+            lowerHeader.Contains("_کد") ||
+            lowerHeader.Contains("کد_") ||
+            lowerHeader.Contains("شناسه") ||
+            lowerHeader.Contains("کدملی") ||
+            lowerHeader.Contains("کد ملی") ||
+            lowerHeader.Contains("کلاسه") ||
+            lowerHeader.Contains("پرونده") ||
+            lowerHeader.Contains("کلید") ||
+            lowerHeader.Contains("شماره") ||
+            lowerHeader.Contains("ردیف") ||
+            lowerHeader.Contains("سریال") ||
+            lowerHeader.Contains("بارکد") ||
+            lowerHeader.Contains("تین") ||
+            lowerHeader.Contains("شبا") ||
+            lowerHeader.Contains("پستی") ||
+            lowerHeader.Contains("tracking") ||
+            lowerHeader.Contains("nationalid") ||
+            lowerHeader.Contains("tin") ||
+            lowerHeader.Contains("dossier") ||
+            lowerHeader.Contains("key") ||
+            lowerHeader.EndsWith(" id") ||
+            lowerHeader.EndsWith("_id") ||
+            lowerHeader == "id")
+        {
+            return "id";
+        }
+
+        // 7. Name / Title / Department / Description (explicit text fields)
+        if (lowerHeader.Contains("عنوان") ||
+            lowerHeader.Contains("شرح") ||
+            lowerHeader.Contains("توضیح") ||
+            lowerHeader.Contains("متن") ||
+            lowerHeader.Contains("آدرس") ||
+            lowerHeader.Contains("واحد") ||
+            lowerHeader.Contains("اداره") ||
+            lowerHeader.Contains("ثبت نام"))
+        {
+            return "string";
+        }
+
+        // 8. Badge / Category / Status
+        if (lowerHeader.Contains("وضعیت") ||
+            lowerHeader.Contains("نوع") ||
+            lowerHeader.Contains("منبع") ||
+            lowerHeader.Contains("مرحله") ||
+            lowerHeader.Contains("status") ||
+            lowerHeader.Contains("state"))
+        {
+            return "badge";
+        }
+
+        // 9. General Tax mentions (without کد/عنوان/نوع)
+        if (lowerHeader.Contains("مالیات") || lowerHeader.Contains("tax"))
+        {
+            return "currency";
+        }
+
+        // 10. Value-based heuristic across samples
         if (sampleValues.Count > 0)
         {
             bool allNumeric = true;
-            bool hasLargeNumber = false;
+            bool hasLargeCurrencyLike = false;
+            bool isNationalIdOrDossier = false;
             bool allYearRange = true;
 
             foreach (var val in sampleValues)
@@ -1000,7 +1064,15 @@ public class CustomDatasetService : ICustomDatasetService
                 var clean = Regex.Replace(val, @"[,،٬\s]", "");
                 if (decimal.TryParse(clean, out var dec))
                 {
-                    if (dec > 100000) hasLargeNumber = true;
+                    if (clean.Length >= 10 && !clean.Contains('.'))
+                    {
+                        isNationalIdOrDossier = true;
+                    }
+                    else if (dec > 100000)
+                    {
+                        hasLargeCurrencyLike = true;
+                    }
+
                     if (dec < 1300 || dec > 1450) allYearRange = false;
                 }
                 else
@@ -1014,7 +1086,8 @@ public class CustomDatasetService : ICustomDatasetService
             if (allNumeric)
             {
                 if (allYearRange) return "year";
-                if (hasLargeNumber) return "currency";
+                if (isNationalIdOrDossier) return "id";
+                if (hasLargeCurrencyLike) return "currency";
                 return "number";
             }
         }
