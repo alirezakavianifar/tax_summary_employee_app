@@ -8,5 +8,7 @@ public class ReportColumnMetadataDto
     public bool IsVisible { get; set; } = true;
     public bool IsSortable { get; set; } = true;
     public bool HasAggregateSum { get; set; }
+    public string? Aggregate { get; set; } // "Sum", "Average", "Count", null
     public string Alignment { get; set; } = "right";
+    public int DisplayOrder { get; set; }
 }

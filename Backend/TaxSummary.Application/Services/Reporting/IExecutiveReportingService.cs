@@ -37,10 +37,28 @@ public interface IExecutiveReportingService
         CancellationToken ct = default);
 
     /// <summary>
-    /// فهرست گزارش‌های فعال و در دسترس کاربر بر اساس نقش سیستمی و منبع قلمرو
+    /// فهرست گزارش‌های فعال و در دسترس کاربر بر اساس نقش سیستمی و منبع قلمرو (با امکان نمایش بایگانی برای مدیر)
     /// </summary>
     Task<Result<List<ReportDefinitionDto>>> GetCatalogAsync(
         string? userRole, 
         ReportDomainSource? source = null, 
+        bool includeInactive = false,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// تغییر وضعیت فعال یا بایگانی گزارش توسط مدیر سامانه
+    /// </summary>
+    Task<Result<bool>> ToggleReportStatusAsync(
+        string reportCode, 
+        bool? explicitStatus = null, 
+        string? userRole = null, 
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// حذف کامل گزارش و جداول پایگاه داده مرتبط
+    /// </summary>
+    Task<Result<bool>> DeleteReportAsync(
+        string reportCode, 
+        string? userRole = null, 
         CancellationToken ct = default);
 }

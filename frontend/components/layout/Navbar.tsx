@@ -29,6 +29,7 @@ import {
   Shield,
   Coins,
   FileCheck,
+  Award,
 } from 'lucide-react'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 
@@ -351,6 +352,26 @@ export default function Navbar() {
                             </div>
                           </Link>
                         )}
+
+                        <Link
+                          href="/admin/auditor-metrics"
+                          onClick={() => setOpenDropdown(null)}
+                          className={`flex items-start gap-3 p-2.5 rounded-xl text-right transition-colors ${
+                            pathname === '/admin/auditor-metrics'
+                              ? 'bg-purple-50 text-purple-800 font-bold'
+                              : 'hover:bg-gray-50 text-gray-700'
+                          }`}
+                        >
+                          <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0 mt-0.5">
+                            <Award className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold block">شاخص‌های عملکرد حسابرسان</span>
+                            <span className="text-[11px] text-gray-400 font-normal">
+                              پیکربندی فرمول‌ها، اوزان و شبیه‌سازی زنده
+                            </span>
+                          </div>
+                        </Link>
                       </div>
                     </div>
                   )}
@@ -576,6 +597,15 @@ export default function Navbar() {
                           <span>لاگ‌ها و رویدادهای امنیتی</span>
                         </Link>
                       )}
+
+                      <Link
+                        href="/admin/auditor-metrics"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-2.5 p-2 rounded-lg text-xs text-gray-700 hover:bg-gray-50"
+                      >
+                        <Award className="w-4 h-4 text-purple-500" />
+                        <span>شاخص‌های عملکرد حسابرسان</span>
+                      </Link>
                     </div>
                   )}
                 </div>

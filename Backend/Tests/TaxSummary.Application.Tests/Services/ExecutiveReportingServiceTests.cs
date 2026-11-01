@@ -23,6 +23,7 @@ public class ExecutiveReportingServiceTests
     private readonly Mock<IExecutiveAnalyticsRepository> _analyticsRepoMock;
     private readonly Mock<IReportingRepository> _reportingRepoMock;
     private readonly Mock<IReportExportService> _exportServiceMock;
+    private readonly Mock<ICustomDatasetService> _customDatasetServiceMock;
     private readonly TaxSummaryDbContext _dbContext;
 
     public ExecutiveReportingServiceTests()
@@ -34,6 +35,7 @@ public class ExecutiveReportingServiceTests
         _analyticsRepoMock = new Mock<IExecutiveAnalyticsRepository>();
         _reportingRepoMock = new Mock<IReportingRepository>();
         _exportServiceMock = new Mock<IReportExportService>();
+        _customDatasetServiceMock = new Mock<ICustomDatasetService>();
 
         var options = new DbContextOptionsBuilder<TaxSummaryDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -78,7 +80,8 @@ public class ExecutiveReportingServiceTests
             _reportingRepoMock.Object,
             _exportServiceMock.Object,
             _cache,
-            _mapper);
+            _mapper,
+            _customDatasetServiceMock.Object);
 
         var filter = new DashboardFilterDto { FiscalYear = 1404 };
 
@@ -112,7 +115,8 @@ public class ExecutiveReportingServiceTests
             _reportingRepoMock.Object,
             _exportServiceMock.Object,
             _cache,
-            _mapper);
+            _mapper,
+            _customDatasetServiceMock.Object);
 
         var allowedOfficeId = Guid.NewGuid();
         var forbiddenOfficeId = Guid.NewGuid();
@@ -201,7 +205,7 @@ public class ExecutiveReportingServiceTests
         };
 
         _reportingRepoMock
-            .Setup(r => r.GetAvailableReportsAsync("Manager", null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetAvailableReportsAsync("Manager", null, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(reports);
 
         var service = new ExecutiveReportingService(
@@ -210,7 +214,8 @@ public class ExecutiveReportingServiceTests
             _reportingRepoMock.Object,
             _exportServiceMock.Object,
             _cache,
-            _mapper);
+            _mapper,
+            _customDatasetServiceMock.Object);
 
         // Act
         var result = await service.GetCatalogAsync("Manager");

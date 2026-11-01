@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { reportingApi } from '@/lib/api/reporting'
 import {
   ReportDefinition,
@@ -12,9 +12,20 @@ import {
 import { ReportFilterBar } from '@/components/reporting/ReportFilterBar'
 import { DynamicDataTable } from '@/components/reporting/DynamicDataTable'
 import { ExportActionMenu } from '@/components/reporting/ExportActionMenu'
-import { ArrowRight, FileSpreadsheet, RefreshCw, AlertCircle, Check } from 'lucide-react'
+import {
+  ArrowRight,
+  FileSpreadsheet,
+  RefreshCw,
+  AlertCircle,
+  Check,
+  SlidersHorizontal,
+  Trash2,
+} from 'lucide-react'
+import { ReportTweakDrawer } from '@/components/reporting/ReportTweakDrawer'
+import { DeleteReportModal } from '@/components/reporting/DeleteReportModal'
 
 export default function StandardReportDetailPage() {
+  const router = useRouter()
   const params = useParams()
   const code = (params?.code as string) || ''
 
@@ -23,25 +34,28 @@ export default function StandardReportDetailPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
+  const [isTweakOpen, setIsTweakOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   const [filters, setFilters] = useState<ReportFilterParameters>({
     pageNumber: 1,
     pageSize: 15,
   })
 
+  const loadMeta = async () => {
+    try {
+      const catalog = await reportingApi.getCatalog(undefined, true)
+      const def = catalog.find((c) => c.code.toLowerCase() === code.toLowerCase())
+      if (def) {
+        setReportDef(def)
+      }
+    } catch (err) {
+      console.error('Failed to load definition:', err)
+    }
+  }
+
   // Load report metadata
   useEffect(() => {
-    async function loadMeta() {
-      try {
-        const catalog = await reportingApi.getCatalog()
-        const def = catalog.find((c) => c.code.toLowerCase() === code.toLowerCase())
-        if (def) {
-          setReportDef(def)
-        }
-      } catch (err) {
-        console.error('Failed to load definition:', err)
-      }
-    }
     if (code) {
       loadMeta()
     }
@@ -56,8 +70,7 @@ export default function StandardReportDetailPage() {
       const res = await reportingApi.executeStandardReport(code, filters)
       setExecutionResult(res)
     } catch (err: any) {
-      console.error('Report execution failed:', err)
-      setError(err?.response?.data?.error || 'خطا در اجرای گزارش')
+      setError(err?.response?.data?.error || err?.message || 'خطا در بارگذاری گزارش')
     } finally {
       setIsLoading(false)
     }
@@ -67,18 +80,35 @@ export default function StandardReportDetailPage() {
     execute()
   }, [code, filters.pageNumber, filters.pageSize, filters.sortBy, filters.sortDescending])
 
-  const handleSortChange = (field: string) => {
-    const isSameField = filters.sortBy?.toLowerCase() === field.toLowerCase()
+  const handleApplyFilters = (newFilters: ReportFilterParameters) => {
     setFilters((prev) => ({
       ...prev,
-      sortBy: field,
-      sortDescending: isSameField ? !prev.sortDescending : false,
+      ...newFilters,
+      pageNumber: 1,
     }))
   }
 
+  const handleSortChange = (field: string) => {
+    setFilters((prev) => {
+      const isSame = prev.sortBy === field
+      return {
+        ...prev,
+        sortBy: field,
+        sortDescending: isSame ? !prev.sortDescending : false,
+      }
+    })
+  }
+
   const handleExportExcel = async () => {
-    if (!code) return
-    await reportingApi.exportStandardReportExcel(code, filters, `${code}_Export.xlsx`)
+    try {
+      await reportingApi.exportStandardReportExcel(
+        code,
+        filters,
+        `${reportDef?.title || code}_خروجی.xlsx`
+      )
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'خطا در صدور فایل اکسل')
+    }
   }
 
   const handleSavePreset = async () => {
@@ -99,6 +129,8 @@ export default function StandardReportDetailPage() {
       alert(err?.response?.data?.error || 'خطا در ذخیره الگو')
     }
   }
+
+  const isCustom = reportDef?.domainSource === 6 || code.toUpperCase().startsWith('REP_CUSTOM_')
 
   return (
     <div className="space-y-5">
@@ -138,15 +170,41 @@ export default function StandardReportDetailPage() {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={execute}
-          disabled={isLoading}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-all cursor-pointer"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-amber-600' : ''}`} />
-          <span>تازه‌سازی</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Custom Report Actions: Tweak & Delete */}
+          {isCustom && (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 transition-all cursor-pointer shadow-2xs"
+                title="حذف دائمی این گزارش و داده‌های جدول آن"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>حذف گزارش</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsTweakOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white border border-purple-200 transition-all cursor-pointer shadow-2xs"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>سفارشی‌سازی ستون‌ها و فیلترها (Tweak)</span>
+              </button>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={execute}
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-all cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-amber-600' : ''}`} />
+            <span>تازه‌سازی</span>
+          </button>
+        </div>
       </div>
 
       {saveSuccess && (
@@ -163,7 +221,7 @@ export default function StandardReportDetailPage() {
         </div>
       )}
 
-      {/* Filter Bar */}
+      {/* Filter Parameters Bar */}
       <ReportFilterBar
         filters={filters}
         onChange={(newFilters) => setFilters(newFilters)}
@@ -173,14 +231,14 @@ export default function StandardReportDetailPage() {
         isLoading={isLoading}
       />
 
-      {/* Dynamic Data Table */}
+      {/* Dynamic Data Table with Sticky Aggregate Footer */}
       <DynamicDataTable
-        columns={executionResult?.columns || reportDef?.columns || []}
+        columns={executionResult?.columns || []}
         rows={executionResult?.rows || []}
         summaryAggregates={executionResult?.summaryAggregates}
         totalRowCount={executionResult?.totalRowCount || 0}
-        pageNumber={executionResult?.pageNumber || filters.pageNumber}
-        pageSize={executionResult?.pageSize || filters.pageSize}
+        pageNumber={filters.pageNumber}
+        pageSize={filters.pageSize}
         totalPages={executionResult?.totalPages || 1}
         sortBy={filters.sortBy}
         sortDescending={filters.sortDescending}
@@ -188,6 +246,27 @@ export default function StandardReportDetailPage() {
         onPageChange={(newPage) => setFilters((prev) => ({ ...prev, pageNumber: newPage }))}
         onPageSizeChange={(newSize) => setFilters((prev) => ({ ...prev, pageSize: newSize, pageNumber: 1 }))}
         isLoading={isLoading}
+      />
+
+      {/* Tweak Studio Drawer */}
+      <ReportTweakDrawer
+        isOpen={isTweakOpen}
+        reportCode={code}
+        onClose={() => setIsTweakOpen(false)}
+        onSaved={() => {
+          execute()
+          loadMeta()
+        }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteReportModal
+        isOpen={isDeleteModalOpen}
+        report={reportDef}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onDeleted={() => {
+          router.push('/reporting/standard')
+        }}
       />
     </div>
   )

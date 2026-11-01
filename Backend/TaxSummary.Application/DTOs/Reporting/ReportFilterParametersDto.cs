@@ -9,6 +9,7 @@ public class ReportFilterParametersDto
     public Guid? PayrollCycleId { get; set; }
     public string? CaseStatus { get; set; }
     public string? TaxSourceCode { get; set; }
+    public int? FiscalYear { get; set; }
     public string? SearchTerm { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 50;

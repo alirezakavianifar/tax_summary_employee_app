@@ -13,7 +13,7 @@ import {
 } from '@/lib/api/payrollCycles'
 import { PROCESS_TYPE_LABELS } from '@/lib/api/payroll'
 import ShamsiDatePicker from '@/components/ShamsiDatePicker'
-import { PERSIAN_MONTH_NAMES, getTodayJalali } from '@/lib/jalali'
+import { PERSIAN_MONTH_NAMES, getTodayJalali, toPersianDigits } from '@/lib/jalali'
 import {
   Plus,
   Calendar,
@@ -783,7 +783,7 @@ export default function PayrollCyclesPage() {
                     <div className="text-xs text-gray-500 space-y-1 mb-4">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        <span>دوره مالی: {formatNumber(cycle.fiscalMonth)} / {formatNumber(cycle.fiscalYear)}</span>
+                        <span>دوره مالی: {formatNumber(cycle.fiscalMonth)} / {toPersianDigits(cycle.fiscalYear)}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-gray-400" />

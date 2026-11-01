@@ -30,6 +30,8 @@ const MODULE_KEY_MAP: Record<string, string> = {
   'employee-evaluation': 'module_evaluation',
   'collaborative-payroll': 'module_payroll',
   'tax-refund': 'module_tax_refund',
+  'executive-reporting': 'module_reporting',
+  'reporting': 'module_reporting',
   'admin': 'module_admin',
   'nav_home': 'nav_home',
 }
@@ -49,6 +51,15 @@ const ACTION_ROUTE_MAP: Record<string, string> = {
   '/refunds': 'action_refund_list',
   '/refunds/new': 'action_refund_new',
   '/refunds/calculator': 'action_refund_calculator',
+  '/reporting': 'action_reporting_view_dashboard',
+  '/reporting/standard': 'action_reporting_standard_reports',
+  '/reporting/builder': 'action_reporting_builder',
+  '/reporting/saved': 'action_reporting_saved',
+  'action_reporting_view_dashboard': 'action_reporting_view_dashboard',
+  'action_reporting_standard_reports': 'action_reporting_standard_reports',
+  'action_reporting_builder': 'action_reporting_builder',
+  'action_reporting_saved': 'action_reporting_saved',
+  'action_reporting_export': 'action_reporting_export',
   '/admin/users': 'action_admin_users',
   '/admin/roles': 'action_admin_roles',
   '/admin/menu-settings': 'action_admin_menus',
@@ -56,6 +67,9 @@ const ACTION_ROUTE_MAP: Record<string, string> = {
   'action_admin_tax_sources': 'action_admin_tax_sources',
   '/admin/finality-stages': 'action_admin_finality_stages',
   'action_admin_finality_stages': 'action_admin_finality_stages',
+  '/admin/auditor-metrics': 'action_reporting_auditor_metrics',
+  'action_reporting_auditor_metrics': 'action_reporting_auditor_metrics',
+  'action_admin_auditor_metrics': 'action_admin_auditor_metrics',
 }
 
 const MenuSettingsContext = createContext<MenuSettingsContextType | undefined>(undefined)

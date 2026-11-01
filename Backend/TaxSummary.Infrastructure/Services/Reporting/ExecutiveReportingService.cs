@@ -8,6 +8,7 @@ using TaxSummary.Application.DTOs.Reporting;
 using TaxSummary.Application.Services.Reporting;
 using TaxSummary.Domain.Common;
 using TaxSummary.Domain.Entities;
+using TaxSummary.Domain.Entities.Reporting;
 using TaxSummary.Domain.Enums;
 using TaxSummary.Domain.Interfaces;
 using TaxSummary.Infrastructure.Data;
@@ -26,6 +27,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
     private readonly IReportExportService _exportService;
     private readonly IMemoryCache _cache;
     private readonly IMapper _mapper;
+    private readonly ICustomDatasetService _customDatasetService;
 
     public ExecutiveReportingService(
         TaxSummaryDbContext db,
@@ -33,7 +35,8 @@ public class ExecutiveReportingService : IExecutiveReportingService
         IReportingRepository reportingRepository,
         IReportExportService exportService,
         IMemoryCache cache,
-        IMapper mapper)
+        IMapper mapper,
+        ICustomDatasetService customDatasetService)
     {
         _db = db;
         _analyticsRepository = analyticsRepository;
@@ -41,6 +44,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
         _exportService = exportService;
         _cache = cache;
         _mapper = mapper;
+        _customDatasetService = customDatasetService;
     }
 
     public async Task<Result<ExecutiveDashboardDto>> GetExecutiveDashboardOverviewAsync(
@@ -180,12 +184,33 @@ public class ExecutiveReportingService : IExecutiveReportingService
             // Parse Column Configuration from JSON
             var columns = ParseColumnsFromConfigurationJson(report.ConfigurationJson);
 
-            // Dispatch to standard report query implementation
-            var (rows, summaryAggregates, totalCount) = await ExecuteStandardQueryAsync(
-                report.Code, 
-                parameters, 
-                effectiveOfficeIds, 
-                ct);
+            // Dispatch to custom dataset or standard report query implementation
+            List<Dictionary<string, object?>> rows;
+            Dictionary<string, object?> summaryAggregates;
+            int totalCount;
+
+            if (report.DomainSource == ReportDomainSource.CustomUploadedDataset || report.Code.StartsWith("REP_CUSTOM_", StringComparison.OrdinalIgnoreCase))
+            {
+                var customRes = await _customDatasetService.QueryCustomDatasetAsync(report.Code, parameters, ct);
+                if (!customRes.IsSuccess)
+                {
+                    return Result.Failure<ReportExecutionResultDto>(customRes.Error ?? "خطا در استخراج داده‌های گزارش اختصاصی");
+                }
+                rows = customRes.Value.Rows;
+                summaryAggregates = customRes.Value.Summary;
+                totalCount = customRes.Value.TotalCount;
+            }
+            else
+            {
+                var queryRes = await ExecuteStandardQueryAsync(
+                    report.Code, 
+                    parameters, 
+                    effectiveOfficeIds, 
+                    ct);
+                rows = queryRes.Rows;
+                summaryAggregates = queryRes.Summary;
+                totalCount = queryRes.TotalCount;
+            }
 
             sw.Stop();
 
@@ -293,11 +318,12 @@ public class ExecutiveReportingService : IExecutiveReportingService
     public async Task<Result<List<ReportDefinitionDto>>> GetCatalogAsync(
         string? userRole, 
         ReportDomainSource? source = null, 
+        bool includeInactive = false,
         CancellationToken ct = default)
     {
         try
         {
-            var reports = await _reportingRepository.GetAvailableReportsAsync(userRole, source, ct);
+            var reports = await _reportingRepository.GetAvailableReportsAsync(userRole, source, includeInactive, ct);
             var dtos = _mapper.Map<List<ReportDefinitionDto>>(reports);
 
             foreach (var dto in dtos)
@@ -314,6 +340,83 @@ public class ExecutiveReportingService : IExecutiveReportingService
         catch (Exception ex)
         {
             return Result.Failure<List<ReportDefinitionDto>>($"خطا در دریافت فهرست گزارش‌ها: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<bool>> ToggleReportStatusAsync(
+        string reportCode, 
+        bool? explicitStatus = null, 
+        string? userRole = null, 
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(reportCode))
+                return Result.Failure<bool>("کد گزارش مشخص نشده است.");
+
+            var isAdmin = string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase);
+            if (!isAdmin)
+                return Result.Failure<bool>("تنها مدیر ارشد سامانه (Admin) مجاز به فعال یا غیرفعال‌سازی گزارش‌ها می‌باشد.");
+
+            var cleanCode = reportCode.Trim().ToUpperInvariant();
+            var report = await _reportingRepository.GetReportDefinitionByCodeAsync(cleanCode, ct);
+            if (report == null)
+                return Result.Failure<bool>($"گزارش با کد '{cleanCode}' یافت نشد.");
+
+            var newStatus = explicitStatus ?? !report.IsActive;
+            report.SetActive(newStatus, byAdmin: true);
+            await _reportingRepository.UpdateReportDefinitionAsync(report, ct);
+
+            return Result.Success(report.IsActive);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<bool>($"خطا در به‌روزرسانی وضعیت گزارش: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<bool>> DeleteReportAsync(
+        string reportCode, 
+        string? userRole = null, 
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(reportCode))
+                return Result.Failure<bool>("کد گزارش مشخص نشده است.");
+
+            var isAdmin = string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase);
+            if (!isAdmin)
+                return Result.Failure<bool>("تنها مدیر ارشد سامانه (Admin) مجاز به حذف گزارش‌ها می‌باشد.");
+
+            var cleanCode = reportCode.Trim().ToUpperInvariant();
+            var report = await _reportingRepository.GetReportDefinitionByCodeAsync(cleanCode, ct);
+            if (report == null)
+                return Result.Failure<bool>($"گزارش با کد '{cleanCode}' یافت نشد.");
+
+            // 1. If custom dataset report, delegate to CustomDatasetService (drops SQLite physical table & removes row)
+            if (report.DomainSource == ReportDomainSource.CustomUploadedDataset || cleanCode.StartsWith("REP_CUSTOM_"))
+            {
+                var customDeleteResult = await _customDatasetService.DeleteCustomDatasetAsync(cleanCode, ct);
+                if (customDeleteResult.IsFailure)
+                    return Result.Failure<bool>(customDeleteResult.Error);
+
+                return Result.Success(true);
+            }
+
+            // 2. If system report, guard against hard deletion, advise deactivation
+            if (report.IsSystemReport)
+            {
+                return Result.Failure<bool>("گزارش‌های مصوب پایه سیستمی قابل حذف فیزیکی نیستند؛ در صورت تمایل می‌توانید آن‌ها را بایگانی/غیرفعال نمایید.");
+            }
+
+            // 3. Custom builder report (non-system, non-dataset)
+            await _reportingRepository.DeleteReportDefinitionAsync(report.Id, ct);
+            return Result.Success(true);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<bool>($"خطا در حذف گزارش: {ex.Message}");
         }
     }
 
@@ -335,6 +438,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
             "REP_EMPLOYEE_ATTENDANCE_LEAVE" => await QueryEmployeeAttendanceLeaveAsync(parameters, effectiveOfficeIds, ct),
             "REP_EXECUTIVE_CROSS_DEPT_KPI" => await QueryExecutiveCrossDeptKpiAsync(parameters, effectiveOfficeIds, ct),
             "REP_AUDIT_SECURITY_LOGS" => await QueryAuditSecurityLogsAsync(parameters, effectiveOfficeIds, ct),
+            "REP_SANIM_AUDIT_ASSESSMENT" => await QuerySanimAuditAssessmentAsync(parameters, effectiveOfficeIds, ct),
             _ => (new List<Dictionary<string, object?>>(), new Dictionary<string, object?>(), 0)
         };
     }
@@ -539,7 +643,8 @@ public class ExecutiveReportingService : IExecutiveReportingService
         if (officeIds != null && officeIds.Count > 0)
             query = query.Where(r => r.OfficeId.HasValue && officeIds.Contains(r.OfficeId.Value));
 
-        var grouped = await query
+        var cases = await query.ToListAsync(ct);
+        var grouped = cases
             .GroupBy(r => r.TaxSource)
             .Select(g => new
             {
@@ -548,7 +653,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
                 ApprovedAmount = g.Sum(r => r.Breakdown.PrincipalTaxRefund + r.Breakdown.StampDutyRefund + r.Breakdown.OtherRefund + r.Breakdown.PenaltiesRefund + r.Breakdown.DelayDamages),
                 DelayInterest = g.Sum(r => r.Breakdown.DelayDamages)
             })
-            .ToListAsync(ct);
+            .ToList();
 
         var rows = grouped.Select(g => new Dictionary<string, object?>
         {
@@ -596,7 +701,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
 
         var summary = new Dictionary<string, object?>
         {
-            ["delayInterestAmount"] = await query.SumAsync(r => r.Breakdown.DelayDamages, ct)
+            ["delayInterestAmount"] = (decimal)await query.SumAsync(r => (double)r.Breakdown.DelayDamages, ct)
         };
 
         return (rows, summary, totalCount);
@@ -669,7 +774,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
 
         var summary = new Dictionary<string, object?>
         {
-            ["detectionOfTaxEvasionAmount"] = await _db.PerformanceCapabilities.AsNoTracking().SumAsync(p => p.DetectionOfTaxEvasion_Amount, ct)
+            ["detectionOfTaxEvasionAmount"] = (decimal)await _db.PerformanceCapabilities.AsNoTracking().SumAsync(p => (double)p.DetectionOfTaxEvasion_Amount, ct)
         };
 
         return (rows, summary, totalCount);
@@ -785,6 +890,116 @@ public class ExecutiveReportingService : IExecutiveReportingService
         return (rows, new Dictionary<string, object?>(), totalCount);
     }
 
+    private async Task<(List<Dictionary<string, object?>>, Dictionary<string, object?>, int)> QuerySanimAuditAssessmentAsync(
+        ReportFilterParametersDto p, List<Guid>? officeIds, CancellationToken ct)
+    {
+        var query = _db.SanimAuditAssessments.AsNoTracking().AsQueryable();
+
+        if (officeIds != null && officeIds.Count > 0)
+        {
+            var allowedOfficeNames = await _db.Offices.AsNoTracking()
+                .Where(o => officeIds.Contains(o.Id))
+                .Select(o => o.Name)
+                .ToListAsync(ct);
+
+            query = query.Where(s => (s.OfficeId.HasValue && officeIds.Contains(s.OfficeId.Value)) 
+                                  || allowedOfficeNames.Any(n => s.FinalOfficeName.Contains(n)));
+        }
+
+        if (p.FiscalYear.HasValue)
+        {
+            query = query.Where(s => s.FiscalYear == p.FiscalYear.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(p.Department))
+        {
+            query = query.Where(s => s.FinalOfficeName.Contains(p.Department));
+        }
+
+        if (!string.IsNullOrWhiteSpace(p.TaxSourceCode))
+        {
+            query = query.Where(s => s.TaxSource.Contains(p.TaxSourceCode));
+        }
+
+        if (!string.IsNullOrWhiteSpace(p.CaseStatus))
+        {
+            query = query.Where(s => s.AuditStatus.Contains(p.CaseStatus));
+        }
+
+        if (!string.IsNullOrWhiteSpace(p.SearchTerm))
+        {
+            var term = p.SearchTerm.Trim();
+            query = query.Where(s => s.TaxpayerName.Contains(term)
+                                  || s.TaxpayerTin.Contains(term)
+                                  || s.AuditorName.Contains(term)
+                                  || (s.DeclarationId != null && s.DeclarationId.Contains(term))
+                                  || (s.TaxpayerTrackingCode != null && s.TaxpayerTrackingCode.Contains(term)));
+        }
+
+        int totalCount = await query.CountAsync(ct);
+
+        IQueryable<SanimAuditAssessment> orderedQuery;
+        if (!string.IsNullOrWhiteSpace(p.SortBy))
+        {
+            orderedQuery = p.SortBy.ToLowerInvariant() switch
+            {
+                "id" => p.SortDescending ? query.OrderByDescending(s => s.Id) : query.OrderBy(s => s.Id),
+                "taxpayertin" => p.SortDescending ? query.OrderByDescending(s => s.TaxpayerTin) : query.OrderBy(s => s.TaxpayerTin),
+                "taxpayername" => p.SortDescending ? query.OrderByDescending(s => s.TaxpayerName) : query.OrderBy(s => s.TaxpayerName),
+                "finalofficename" => p.SortDescending ? query.OrderByDescending(s => s.FinalOfficeName) : query.OrderBy(s => s.FinalOfficeName),
+                "fiscalyear" => p.SortDescending ? query.OrderByDescending(s => s.FiscalYear) : query.OrderBy(s => s.FiscalYear),
+                "taxsource" => p.SortDescending ? query.OrderByDescending(s => s.TaxSource) : query.OrderBy(s => s.TaxSource),
+                "auditorname" => p.SortDescending ? query.OrderByDescending(s => s.AuditorName) : query.OrderBy(s => s.AuditorName),
+                "auditstatus" => p.SortDescending ? query.OrderByDescending(s => s.AuditStatus) : query.OrderBy(s => s.AuditStatus),
+                "declaredtaxamount" => p.SortDescending ? query.OrderByDescending(s => s.DeclaredTaxAmount) : query.OrderBy(s => s.DeclaredTaxAmount),
+                "assessedtaxamount" => p.SortDescending ? query.OrderByDescending(s => s.AssessedTaxAmount) : query.OrderBy(s => s.AssessedTaxAmount),
+                "finaltaxamount" => p.SortDescending ? query.OrderByDescending(s => s.FinalTaxAmount) : query.OrderBy(s => s.FinalTaxAmount),
+                "daysnoticetofinal" => p.SortDescending ? query.OrderByDescending(s => s.DaysNoticeToFinal) : query.OrderBy(s => s.DaysNoticeToFinal),
+                _ => p.SortDescending ? query.OrderByDescending(s => s.Id) : query.OrderBy(s => s.Id)
+            };
+        }
+        else
+        {
+            orderedQuery = query.OrderBy(s => s.Id);
+        }
+
+        int pageNumber = Math.Max(1, p.PageNumber);
+        int pageSize = Math.Clamp(p.PageSize, 1, 5000);
+
+        var items = await orderedQuery
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var rows = items.Select(s => new Dictionary<string, object?>
+        {
+            ["id"] = s.Id,
+            ["taxpayerTin"] = s.TaxpayerTin,
+            ["taxpayerName"] = s.TaxpayerName,
+            ["finalOfficeName"] = s.FinalOfficeName,
+            ["fiscalYear"] = s.FiscalYear,
+            ["taxSource"] = s.TaxSource,
+            ["taxPeriod"] = s.TaxPeriod,
+            ["auditorName"] = s.AuditorName,
+            ["auditStatus"] = s.AuditStatus,
+            ["declaredTaxAmount"] = s.DeclaredTaxAmount,
+            ["assessedTaxAmount"] = s.AssessedTaxAmount,
+            ["finalTaxAmount"] = s.FinalTaxAmount,
+            ["assessmentNoticeDateJalali"] = s.AssessmentNoticeDateJalali ?? "-",
+            ["finalNoticeDateJalali"] = s.FinalNoticeDateJalali ?? "-",
+            ["daysNoticeToFinal"] = s.DaysNoticeToFinal
+        }).ToList();
+
+        var summary = new Dictionary<string, object?>
+        {
+            ["declaredTaxAmount"] = (decimal)await query.SumAsync(s => (double)s.DeclaredTaxAmount, ct),
+            ["assessedTaxAmount"] = (decimal)await query.SumAsync(s => (double)s.AssessedTaxAmount, ct),
+            ["finalTaxAmount"] = (decimal)await query.SumAsync(s => (double)s.FinalTaxAmount, ct)
+        };
+
+        return (rows, summary, totalCount);
+    }
+
     #endregion
 
     #region Helper Methods
@@ -835,7 +1050,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
             if (officeIds != null && officeIds.Count > 0)
                 refundQuery = refundQuery.Where(r => r.OfficeId.HasValue && officeIds.Contains(r.OfficeId.Value));
 
-            var refundAmount = await refundQuery.SumAsync(r => (decimal)r.Breakdown.PrincipalTaxRefund + (decimal)r.Breakdown.DelayDamages, ct);
+            var refundAmount = (decimal)await refundQuery.SumAsync(r => (double)(r.Breakdown.PrincipalTaxRefund + r.Breakdown.DelayDamages), ct);
 
             trends.Add(new MonthlyTrendPointDto
             {
@@ -886,22 +1101,63 @@ public class ExecutiveReportingService : IExecutiveReportingService
         try
         {
             using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.TryGetProperty("columns", out var columnsElem))
+            JsonElement columnsElem;
+            if (doc.RootElement.TryGetProperty("columns", out columnsElem) ||
+                doc.RootElement.TryGetProperty("Columns", out columnsElem))
             {
                 var list = new List<ReportColumnMetadataDto>();
                 foreach (var item in columnsElem.EnumerateArray())
                 {
+                    string fieldName = "";
+                    if (item.TryGetProperty("fieldName", out var fn) || item.TryGetProperty("FieldName", out fn))
+                        fieldName = fn.GetString() ?? "";
+
+                    string persianLabel = "";
+                    if (item.TryGetProperty("persianLabel", out var pl) || item.TryGetProperty("PersianLabel", out pl))
+                        persianLabel = pl.GetString() ?? "";
+
+                    string dataType = "string";
+                    if (item.TryGetProperty("dataType", out var dt) || item.TryGetProperty("DataType", out dt))
+                        dataType = dt.GetString() ?? "string";
+
+                    bool hasAggregateSum = false;
+                    if (item.TryGetProperty("hasAggregateSum", out var hasSum) || item.TryGetProperty("HasAggregateSum", out hasSum))
+                        hasAggregateSum = hasSum.GetBoolean();
+
+                    string? aggregate = null;
+                    if (item.TryGetProperty("aggregate", out var agg) || item.TryGetProperty("Aggregate", out agg))
+                        aggregate = agg.GetString();
+
+                    string alignment = "right";
+                    if (item.TryGetProperty("alignment", out var align) || item.TryGetProperty("Alignment", out align))
+                        alignment = align.GetString() ?? "right";
+
+                    bool isSortable = true;
+                    if (item.TryGetProperty("isSortable", out var sort) || item.TryGetProperty("IsSortable", out sort))
+                        isSortable = sort.GetBoolean();
+
+                    bool isVisible = true;
+                    if (item.TryGetProperty("isVisible", out var vis) || item.TryGetProperty("IsVisible", out vis))
+                        isVisible = vis.GetBoolean();
+
+                    int displayOrder = 0;
+                    if (item.TryGetProperty("displayOrder", out var order) || item.TryGetProperty("DisplayOrder", out order))
+                        displayOrder = order.GetInt32();
+
                     list.Add(new ReportColumnMetadataDto
                     {
-                        FieldName = item.GetProperty("fieldName").GetString() ?? "",
-                        PersianLabel = item.GetProperty("persianLabel").GetString() ?? "",
-                        DataType = item.TryGetProperty("dataType", out var dt) ? dt.GetString() ?? "string" : "string",
-                        HasAggregateSum = item.TryGetProperty("hasAggregateSum", out var hasSum) && hasSum.GetBoolean(),
-                        IsSortable = true,
-                        IsVisible = true
+                        FieldName = fieldName,
+                        PersianLabel = persianLabel,
+                        DataType = dataType,
+                        HasAggregateSum = hasAggregateSum,
+                        Aggregate = aggregate,
+                        Alignment = alignment,
+                        IsSortable = isSortable,
+                        IsVisible = isVisible,
+                        DisplayOrder = displayOrder
                     });
                 }
-                return list;
+                return list.OrderBy(c => c.DisplayOrder).ToList();
             }
         }
         catch

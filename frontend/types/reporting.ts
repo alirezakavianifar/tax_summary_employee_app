@@ -1,4 +1,4 @@
-export type ReportDomainSource = 1 | 2 | 3 | 4 // 1: HR, 2: Payroll, 3: Refunds, 4: CrossSystem
+export type ReportDomainSource = 1 | 2 | 3 | 4 | 5 | 6 // 1: HR, 2: Payroll, 3: Refunds, 4: CrossSystem, 5: TaxAudit, 6: CustomExcel
 export type ReportCategory = 1 | 2 | 3 | 4     // 1: KPI, 2: Operational, 3: Financial, 4: Audit
 export type ReportType = 1 | 2 | 3             // 1: Tabular, 2: Pivot, 3: SummaryKpi
 
@@ -7,6 +7,8 @@ export const DOMAIN_SOURCE_NAMES_FA: Record<number, string> = {
   2: 'حقوق، اضافه کار و رفاهی',
   3: 'استرداد مالیات مواد ۲۴۲ و ۲۴۳',
   4: 'تلفیقی و فرابخشی',
+  5: 'رسیدگی و حسابرسی مالیاتی سنیم',
+  6: 'داده‌های بارگذاری شده از اکسل',
 }
 
 export const CATEGORY_NAMES_FA: Record<number, string> = {
@@ -82,6 +84,7 @@ export interface ReportDefinition {
   category: ReportCategory
   type: ReportType
   isSystemReport: boolean
+  isActive: boolean
   requiredRole?: string | null
   columns: ReportColumnMetadata[]
 }
@@ -89,7 +92,7 @@ export interface ReportDefinition {
 export interface ReportColumnMetadata {
   fieldName: string
   persianLabel: string
-  dataType: 'string' | 'number' | 'currency' | 'date' | 'badge'
+  dataType: 'string' | 'number' | 'currency' | 'date' | 'badge' | 'year' | 'id' | 'code'
   isVisible: boolean
   isSortable: boolean
   hasAggregateSum: boolean
@@ -104,6 +107,7 @@ export interface ReportFilterParameters {
   payrollCycleId?: string
   caseStatus?: string
   taxSourceCode?: string
+  fiscalYear?: number
   searchTerm?: string
   pageNumber: number
   pageSize: number

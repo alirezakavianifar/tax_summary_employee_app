@@ -5,6 +5,7 @@ using TaxSummary.Application.DTOs.Reporting;
 using TaxSummary.Application.Services.Reporting;
 using TaxSummary.Domain.Common;
 using TaxSummary.Domain.Entities;
+using TaxSummary.Domain.Entities.Reporting;
 using TaxSummary.Domain.Enums;
 using TaxSummary.Infrastructure.Data;
 
@@ -36,6 +37,7 @@ public class ReportBuilderEngine : IReportBuilderEngine
                 ReportDomainSource.PayrollAndWelfare => await ExecutePayrollQueryAsync(request, userAssignedOfficeIds, ct),
                 ReportDomainSource.TaxRefunds => await ExecuteRefundQueryAsync(request, userAssignedOfficeIds, ct),
                 ReportDomainSource.HumanResources => await ExecuteEmployeeQueryAsync(request, userAssignedOfficeIds, ct),
+                ReportDomainSource.TaxAudit => await ExecuteTaxAuditQueryAsync(request, userAssignedOfficeIds, ct),
                 _ => await ExecutePayrollQueryAsync(request, userAssignedOfficeIds, ct)
             };
         }
@@ -146,12 +148,17 @@ public class ReportBuilderEngine : IReportBuilderEngine
                     new() { FieldName = "TaxpayerName", PersianLabel = "نام مودی", DataType = "string" },
                     new() { FieldName = "EconomicCode", PersianLabel = "کد اقتصادی", DataType = "string" },
                     new() { FieldName = "TaxSourceTitle", PersianLabel = "منبع مالیاتی", DataType = "string" },
-                    new() { FieldName = "TaxYear", PersianLabel = "سال مالیاتی", DataType = "number" },
+                    new() { FieldName = "TaxYear", PersianLabel = "سال مالیاتی", DataType = "year" },
                     new() { FieldName = "StatusTitle", PersianLabel = "وضعیت پرونده", DataType = "badge" },
                     new() { FieldName = "PrincipalTaxRefund", PersianLabel = "اصل استرداد (ریال)", DataType = "currency", HasAggregateSum = true },
                     new() { FieldName = "DelayDamages", PersianLabel = "خسارت تاخیر (ریال)", DataType = "currency", HasAggregateSum = true },
                     new() { FieldName = "GrandTotalRefundable", PersianLabel = "مجموع پرداختی (ریال)", DataType = "currency", HasAggregateSum = true }
                 };
+                break;
+
+            case ReportDomainSource.CustomUploadedDataset:
+                metadata.DomainSourceTitle = "مجموعه‌داده‌های بارگذاری شده از اکسل";
+                metadata.AvailableFields = new List<ReportColumnMetadataDto>();
                 break;
 
             case ReportDomainSource.HumanResources:
@@ -167,6 +174,31 @@ public class ReportBuilderEngine : IReportBuilderEngine
                     new() { FieldName = "SickLeaveDays", PersianLabel = "مرخصی استعلاجی", DataType = "number", HasAggregateSum = true },
                     new() { FieldName = "AbsenceHours", PersianLabel = "ساعات غیبت و تاخیر", DataType = "number", HasAggregateSum = true },
                     new() { FieldName = "TaxEvasionDetectionAmount", PersianLabel = "کشف فرار مالیاتی (ریال)", DataType = "currency", HasAggregateSum = true }
+                };
+                break;
+
+            case ReportDomainSource.TaxAudit:
+                metadata.DomainSourceTitle = "رسیدگی و حسابرسی مالیاتی سنیم";
+                metadata.AvailableFields = new List<ReportColumnMetadataDto>
+                {
+                    new() { FieldName = "Id", PersianLabel = "شناسه رکورد", DataType = "id" },
+                    new() { FieldName = "TaxpayerTin", PersianLabel = "تین سنیم / شناسه ملی", DataType = "string" },
+                    new() { FieldName = "TaxpayerName", PersianLabel = "نام مودی", DataType = "string" },
+                    new() { FieldName = "FinalOfficeName", PersianLabel = "اداره مالیاتی", DataType = "string" },
+                    new() { FieldName = "FiscalYear", PersianLabel = "سال عملکرد", DataType = "year" },
+                    new() { FieldName = "TaxSource", PersianLabel = "منبع مالیاتی", DataType = "string" },
+                    new() { FieldName = "TaxPeriod", PersianLabel = "دوره مالیاتی", DataType = "number" },
+                    new() { FieldName = "RiskLevel", PersianLabel = "سطح ریسک", DataType = "badge" },
+                    new() { FieldName = "AuditorName", PersianLabel = "نام حسابرس / ممیز", DataType = "string" },
+                    new() { FieldName = "AuditStatus", PersianLabel = "وضعیت رسیدگی", DataType = "badge" },
+                    new() { FieldName = "DeclaredTaxAmount", PersianLabel = "مالیات ابرازی (ریال)", DataType = "currency", HasAggregateSum = true },
+                    new() { FieldName = "AssessedTaxAmount", PersianLabel = "مالیات تشخیصی (ریال)", DataType = "currency", HasAggregateSum = true },
+                    new() { FieldName = "FinalTaxAmount", PersianLabel = "مالیات قطعی (ریال)", DataType = "currency", HasAggregateSum = true },
+                    new() { FieldName = "AssessmentNoticeDateJalali", PersianLabel = "تاریخ ابلاغ برگ تشخیص", DataType = "string" },
+                    new() { FieldName = "FinalNoticeDateJalali", PersianLabel = "تاریخ ابلاغ برگ قطعی", DataType = "string" },
+                    new() { FieldName = "DaysAssignmentToNotice", PersianLabel = "فاصله تخصیص تا تشخیص (روز)", DataType = "number" },
+                    new() { FieldName = "DaysNoticeToFinal", PersianLabel = "فاصله تشخیص تا قطعی (روز)", DataType = "number" },
+                    new() { FieldName = "DaysAssignmentToFinal", PersianLabel = "کل فرآیند تا قطعی (روز)", DataType = "number" }
                 };
                 break;
         }
@@ -311,7 +343,7 @@ public class ReportBuilderEngine : IReportBuilderEngine
             { "TaxpayerName", "string" },
             { "EconomicCode", "string" },
             { "TaxSourceTitle", "string" },
-            { "TaxYear", "number" },
+            { "TaxYear", "year" },
             { "StatusTitle", "string" },
             { "PrincipalTaxRefund", "currency" },
             { "DelayDamages", "currency" },
@@ -512,6 +544,140 @@ public class ReportBuilderEngine : IReportBuilderEngine
         });
     }
 
+    private async Task<Result<DynamicReportResultDto>> ExecuteTaxAuditQueryAsync(
+        DynamicReportQueryRequestDto request, 
+        List<Guid>? userAssignedOfficeIds, 
+        CancellationToken ct)
+    {
+        var fieldTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Id", "id" },
+            { "TaxpayerTin", "string" },
+            { "TaxpayerName", "string" },
+            { "FinalOfficeName", "string" },
+            { "FiscalYear", "year" },
+            { "TaxSource", "string" },
+            { "TaxPeriod", "number" },
+            { "RiskLevel", "string" },
+            { "AuditorName", "string" },
+            { "AuditStatus", "string" },
+            { "DeclaredTaxAmount", "currency" },
+            { "AssessedTaxAmount", "currency" },
+            { "FinalTaxAmount", "currency" },
+            { "AssessmentNoticeDateJalali", "string" },
+            { "FinalNoticeDateJalali", "string" },
+            { "DaysAssignmentToNotice", "number" },
+            { "DaysNoticeToFinal", "number" },
+            { "DaysAssignmentToFinal", "number" }
+        };
+
+        var query = _db.SanimAuditAssessments.AsNoTracking().AsQueryable();
+
+        if (userAssignedOfficeIds != null && userAssignedOfficeIds.Count > 0)
+        {
+            var allowedOfficeNames = await _db.Offices.AsNoTracking()
+                .Where(o => userAssignedOfficeIds.Contains(o.Id))
+                .Select(o => o.Name)
+                .ToListAsync(ct);
+
+            query = query.Where(s => (s.OfficeId.HasValue && userAssignedOfficeIds.Contains(s.OfficeId.Value)) 
+                                  || allowedOfficeNames.Any(n => s.FinalOfficeName.Contains(n)));
+        }
+
+        var projected = query.Select(s => new TaxAuditQueryableRecord
+        {
+            Id = s.Id,
+            TaxpayerTin = s.TaxpayerTin,
+            TaxpayerName = s.TaxpayerName,
+            FinalOfficeName = s.FinalOfficeName,
+            FiscalYear = s.FiscalYear,
+            TaxSource = s.TaxSource,
+            TaxPeriod = s.TaxPeriod,
+            RiskLevel = s.RiskLevel ?? "-",
+            AuditorName = s.AuditorName,
+            AuditStatus = s.AuditStatus,
+            DeclaredTaxAmount = s.DeclaredTaxAmount,
+            AssessedTaxAmount = s.AssessedTaxAmount,
+            FinalTaxAmount = s.FinalTaxAmount,
+            AssessmentNoticeDateJalali = s.AssessmentNoticeDateJalali ?? "-",
+            FinalNoticeDateJalali = s.FinalNoticeDateJalali ?? "-",
+            DaysAssignmentToNotice = s.DaysAssignmentToNotice,
+            DaysNoticeToFinal = s.DaysNoticeToFinal,
+            DaysAssignmentToFinal = s.DaysAssignmentToFinal,
+            OfficeId = s.OfficeId
+        });
+
+        var filterPredicate = DynamicExpressionBuilder.BuildFilterPredicate<TaxAuditQueryableRecord>(request.Filters, fieldTypeMap);
+        projected = projected.Where(filterPredicate);
+
+        int totalCount = await projected.CountAsync(ct);
+
+        if (!string.IsNullOrWhiteSpace(request.SortField) && fieldTypeMap.ContainsKey(request.SortField))
+        {
+            projected = ApplySorting(projected, request.SortField, request.SortDescending);
+        }
+        else
+        {
+            projected = projected.OrderBy(p => p.Id);
+        }
+
+        var globalAggregates = new Dictionary<string, object?>
+        {
+            ["totalDeclaredTax"] = (decimal)await projected.SumAsync(p => (double)p.DeclaredTaxAmount, ct),
+            ["totalAssessedTax"] = (decimal)await projected.SumAsync(p => (double)p.AssessedTaxAmount, ct),
+            ["totalFinalTax"] = (decimal)await projected.SumAsync(p => (double)p.FinalTaxAmount, ct)
+        };
+
+        int pageNumber = Math.Max(1, request.PageNumber);
+        int pageSize = Math.Clamp(request.PageSize, 1, 5000);
+        var pageItems = await projected
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var schemaMetadata = (await GetQueryableSchemaMetadataAsync(ReportDomainSource.TaxAudit, ct)).Value!;
+        var selectedColumns = GetSelectedColumns(schemaMetadata.AvailableFields, request.SelectedFields);
+
+        var rows = pageItems.Select(item =>
+        {
+            var dict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var col in selectedColumns)
+            {
+                dict[col.FieldName] = col.FieldName switch
+                {
+                    "Id" => item.Id,
+                    "TaxpayerTin" => item.TaxpayerTin,
+                    "TaxpayerName" => item.TaxpayerName,
+                    "FinalOfficeName" => item.FinalOfficeName,
+                    "FiscalYear" => item.FiscalYear,
+                    "TaxSource" => item.TaxSource,
+                    "TaxPeriod" => item.TaxPeriod,
+                    "RiskLevel" => item.RiskLevel,
+                    "AuditorName" => item.AuditorName,
+                    "AuditStatus" => item.AuditStatus,
+                    "DeclaredTaxAmount" => item.DeclaredTaxAmount,
+                    "AssessedTaxAmount" => item.AssessedTaxAmount,
+                    "FinalTaxAmount" => item.FinalTaxAmount,
+                    "AssessmentNoticeDateJalali" => item.AssessmentNoticeDateJalali,
+                    "FinalNoticeDateJalali" => item.FinalNoticeDateJalali,
+                    "DaysAssignmentToNotice" => item.DaysAssignmentToNotice,
+                    "DaysNoticeToFinal" => item.DaysNoticeToFinal,
+                    "DaysAssignmentToFinal" => item.DaysAssignmentToFinal,
+                    _ => null
+                };
+            }
+            return dict;
+        }).ToList();
+
+        return Result.Success<DynamicReportResultDto>(new DynamicReportResultDto
+        {
+            Columns = selectedColumns,
+            Rows = rows,
+            GlobalAggregates = globalAggregates,
+            TotalRows = totalCount
+        });
+    }
+
     private static IQueryable<T> ApplySorting<T>(IQueryable<T> query, string sortField, bool sortDescending)
     {
         var param = Expression.Parameter(typeof(T), "p");
@@ -610,4 +776,27 @@ public class EmployeeEvaluationQueryableRecord
     public int SickLeaveDays { get; set; }
     public int AbsenceHours { get; set; }
     public decimal TaxEvasionDetectionAmount { get; set; }
+}
+
+public class TaxAuditQueryableRecord
+{
+    public long Id { get; set; }
+    public string TaxpayerTin { get; set; } = string.Empty;
+    public string TaxpayerName { get; set; } = string.Empty;
+    public string FinalOfficeName { get; set; } = string.Empty;
+    public int FiscalYear { get; set; }
+    public string TaxSource { get; set; } = string.Empty;
+    public int? TaxPeriod { get; set; }
+    public string RiskLevel { get; set; } = string.Empty;
+    public string AuditorName { get; set; } = string.Empty;
+    public string AuditStatus { get; set; } = string.Empty;
+    public decimal DeclaredTaxAmount { get; set; }
+    public decimal AssessedTaxAmount { get; set; }
+    public decimal FinalTaxAmount { get; set; }
+    public string AssessmentNoticeDateJalali { get; set; } = string.Empty;
+    public string FinalNoticeDateJalali { get; set; } = string.Empty;
+    public int? DaysAssignmentToNotice { get; set; }
+    public int? DaysNoticeToFinal { get; set; }
+    public int? DaysAssignmentToFinal { get; set; }
+    public Guid? OfficeId { get; set; }
 }

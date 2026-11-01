@@ -34,7 +34,7 @@ public class ReportingDataSeederTests : IDisposable
 
         // Assert
         var reports = await _context.ReportDefinitions.ToListAsync();
-        reports.Should().HaveCount(10);
+        reports.Should().HaveCount(11);
 
         reports.Should().OnlyContain(r => r.IsSystemReport);
         reports.Should().OnlyContain(r => r.IsActive);
@@ -50,7 +50,8 @@ public class ReportingDataSeederTests : IDisposable
             "REP_EMPLOYEE_PERF_SUMMARY",
             "REP_EMPLOYEE_ATTENDANCE_LEAVE",
             "REP_EXECUTIVE_CROSS_DEPT_KPI",
-            "REP_AUDIT_SECURITY_LOGS"
+            "REP_AUDIT_SECURITY_LOGS",
+            "REP_SANIM_AUDIT_ASSESSMENT"
         };
 
         reports.Select(r => r.Code).Should().BeEquivalentTo(expectedCodes);
@@ -63,9 +64,9 @@ public class ReportingDataSeederTests : IDisposable
         await ReportingDataSeeder.SeedReportingAsync(_context);
         await ReportingDataSeeder.SeedReportingAsync(_context);
 
-        // Assert - Still exactly 10 reports
+        // Assert - Still exactly 11 reports
         var count = await _context.ReportDefinitions.CountAsync();
-        count.Should().Be(10);
+        count.Should().Be(11);
     }
 
     [Fact]

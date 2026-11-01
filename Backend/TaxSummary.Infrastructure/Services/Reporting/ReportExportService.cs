@@ -207,12 +207,47 @@ public class ReportExportService : IReportExportService
 
         switch (dataType.ToLowerInvariant())
         {
-            case "currency" or "number":
-                if (decimal.TryParse(val.ToString(), out var dec))
+            case "year" or "id" or "code":
+                if (long.TryParse(val.ToString(), out var idVal))
                 {
-                    cell.Value = dec;
+                    cell.Value = idVal;
+                    cell.Style.Numberformat.Format = "0";
+                }
+                else
+                {
+                    cell.Value = val.ToString();
+                }
+                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                break;
+
+            case "currency":
+                if (decimal.TryParse(val.ToString(), out var decCurr))
+                {
+                    cell.Value = decCurr;
                     cell.Style.Numberformat.Format = "#,##0";
                     cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                }
+                else 
+                {
+                    cell.Value = val.ToString();
+                }
+                break;
+
+            case "number":
+                if (decimal.TryParse(val.ToString(), out var dec))
+                {
+                    if (dec >= 1300 && dec <= 1500 && Math.Floor(dec) == dec)
+                    {
+                        cell.Value = (int)dec;
+                        cell.Style.Numberformat.Format = "0000";
+                        cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    }
+                    else
+                    {
+                        cell.Value = dec;
+                        cell.Style.Numberformat.Format = "#,##0";
+                        cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                    }
                 }
                 else 
                 {

@@ -40,7 +40,7 @@ public class ExecutiveAnalyticsRepository : IExecutiveAnalyticsRepository
             evasionQuery = evasionQuery.Where(p => p.Employee != null && p.Employee.OfficeId.HasValue && officeIds.Contains(p.Employee.OfficeId.Value));
         }
 
-        var totalEvasionAmount = await evasionQuery.SumAsync(p => p.DetectionOfTaxEvasion_Amount, ct);
+        var totalEvasionAmount = (decimal)await evasionQuery.SumAsync(p => (double)p.DetectionOfTaxEvasion_Amount, ct);
 
         // 2. Payroll Domain Metrics
         var latestCycle = await _db.PayrollCycles.AsNoTracking()
@@ -95,15 +95,15 @@ public class ExecutiveAnalyticsRepository : IExecutiveAnalyticsRepository
         var activeRefundCases = await refundQuery
             .CountAsync(r => r.Status != RefundCaseStatus.TreasuryDisbursed && r.Status != RefundCaseStatus.Rejected, ct);
 
-        var claimedAmount = await refundQuery.SumAsync(
-            r => r.Breakdown.PrincipalTaxRefund + r.Breakdown.StampDutyRefund + r.Breakdown.OtherRefund + r.Breakdown.PenaltiesRefund, 
+        var claimedAmount = (decimal)await refundQuery.SumAsync(
+            r => (double)(r.Breakdown.PrincipalTaxRefund + r.Breakdown.StampDutyRefund + r.Breakdown.OtherRefund + r.Breakdown.PenaltiesRefund), 
             ct);
 
-        var approvedAmount = await refundQuery.SumAsync(
-            r => r.Breakdown.PrincipalTaxRefund + r.Breakdown.StampDutyRefund + r.Breakdown.OtherRefund + r.Breakdown.PenaltiesRefund + r.Breakdown.DelayDamages, 
+        var approvedAmount = (decimal)await refundQuery.SumAsync(
+            r => (double)(r.Breakdown.PrincipalTaxRefund + r.Breakdown.StampDutyRefund + r.Breakdown.OtherRefund + r.Breakdown.PenaltiesRefund + r.Breakdown.DelayDamages), 
             ct);
 
-        var delayInterest = await refundQuery.SumAsync(r => r.Breakdown.DelayDamages, ct);
+        var delayInterest = (decimal)await refundQuery.SumAsync(r => (double)r.Breakdown.DelayDamages, ct);
 
         // Average processing days for cases finalized
         var finalizedCasesQuery = refundQuery.Where(r => r.FinalizedAt.HasValue && r.SubmittedAt.HasValue);
@@ -206,7 +206,8 @@ public class ExecutiveAnalyticsRepository : IExecutiveAnalyticsRepository
             query = query.Where(r => r.OfficeId.HasValue && officeIds.Contains(r.OfficeId.Value));
         }
 
-        var grouped = await query
+        var refundList = await query.ToListAsync(ct);
+        var grouped = refundList
             .GroupBy(r => r.TaxSource)
             .Select(g => new
             {
@@ -215,7 +216,7 @@ public class ExecutiveAnalyticsRepository : IExecutiveAnalyticsRepository
                 ApprovedAmount = g.Sum(r => r.Breakdown.PrincipalTaxRefund + r.Breakdown.StampDutyRefund + r.Breakdown.OtherRefund + r.Breakdown.PenaltiesRefund + r.Breakdown.DelayDamages),
                 DelayInterest = g.Sum(r => r.Breakdown.DelayDamages)
             })
-            .ToListAsync(ct);
+            .ToList();
 
         var distributions = grouped.Select(g => new TaxSourceDistribution(
             g.Source.ToString(),

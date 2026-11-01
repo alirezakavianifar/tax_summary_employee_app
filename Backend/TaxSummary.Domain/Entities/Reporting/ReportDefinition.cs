@@ -122,10 +122,10 @@ public class ReportDefinition
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void SetActive(bool isActive)
+    public void SetActive(bool isActive, bool byAdmin = false)
     {
-        // Guard: Prevent deactivating mission-critical system reports
-        if (!isActive && IsSystemReport)
+        // Guard: Prevent non-admin deactivating mission-critical system reports
+        if (!isActive && IsSystemReport && !byAdmin)
             throw new InvalidOperationException("امکان غیرفعال‌سازی گزارش‌های پایه سیستمی وجود ندارد.");
 
         IsActive = isActive;

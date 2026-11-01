@@ -112,6 +112,8 @@ public static class DependencyInjection
         services.AddScoped<TaxSummary.Application.Services.Reporting.IExecutiveReportingService, TaxSummary.Infrastructure.Services.Reporting.ExecutiveReportingService>();
         services.AddScoped<TaxSummary.Application.Services.Reporting.IReportBuilderEngine, TaxSummary.Infrastructure.Services.Reporting.ReportBuilderEngine>();
         services.AddScoped<TaxSummary.Application.Services.Reporting.ISavedReportsService, TaxSummary.Infrastructure.Services.Reporting.SavedReportsService>();
+        services.AddScoped<TaxSummary.Application.Services.Reporting.IAuditorPerformanceService, TaxSummary.Infrastructure.Services.Reporting.AuditorPerformanceService>();
+        services.AddScoped<TaxSummary.Application.Services.Reporting.ICustomDatasetService, TaxSummary.Infrastructure.Services.Reporting.CustomDatasetService>();
 
         return services;
     }

@@ -193,7 +193,7 @@ export default function ReportBuilderPage() {
           مرحله ۱: انتخاب پایگاه داده و حوزه موضوعی گزارش
         </span>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             {
               id: 2,
@@ -209,6 +209,11 @@ export default function ReportBuilderPage() {
               id: 1,
               title: 'منابع انسانی و ارزیابی',
               desc: 'پرسنل، توانمندی‌ها، کشف فرار مالیاتی و مرخصی',
+            },
+            {
+              id: 5,
+              title: 'رسیدگی و حسابرسی سنیم (اکسل)',
+              desc: '۱۶ هزار پرونده ارزش افزوده، ممیزان و مواعد تشخیص/قطعی',
             },
           ].map((src) => (
             <button

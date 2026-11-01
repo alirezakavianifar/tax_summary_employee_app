@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Sliders,
   BookmarkCheck,
+  Award,
 } from 'lucide-react'
 import { BasePortalModule, PortalAction } from '@/types/portal'
 
@@ -252,6 +253,15 @@ export class ExecutiveReportingModule extends BasePortalModule {
       description: 'مشاهده و اجرای سریع فیلترهای از پیش ذخیره‌شده',
       icon: BookmarkCheck,
       variant: 'outline',
+    },
+    {
+      id: 'auditor-metrics',
+      title: 'شاخص‌ها و کارنامه عملکرد حسابرسان',
+      href: '/admin/auditor-metrics',
+      description: 'تعریف و تنظیم شاخص‌های عملکرد حسابرسان، اوزان و شبیه‌سازی زنده',
+      icon: Award,
+      variant: 'outline',
+      minRole: 'Manager',
     },
   ]
 

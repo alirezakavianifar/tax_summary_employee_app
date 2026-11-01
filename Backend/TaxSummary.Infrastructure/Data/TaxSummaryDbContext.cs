@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaxSummary.Domain.Entities;
+using TaxSummary.Domain.Entities.Reporting;
 
 namespace TaxSummary.Infrastructure.Data;
 
@@ -47,6 +48,8 @@ public class TaxSummaryDbContext : DbContext
     public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
     public DbSet<SavedReportPreset> SavedReportPresets => Set<SavedReportPreset>();
     public DbSet<ReportExecutionLog> ReportExecutionLogs => Set<ReportExecutionLog>();
+    public DbSet<SanimAuditAssessment> SanimAuditAssessments => Set<SanimAuditAssessment>();
+    public DbSet<AuditorPerformanceMetricDefinition> AuditorPerformanceMetricDefinitions => Set<AuditorPerformanceMetricDefinition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

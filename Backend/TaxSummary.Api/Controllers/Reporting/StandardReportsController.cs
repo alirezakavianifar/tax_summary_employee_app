@@ -35,22 +35,62 @@ public class StandardReportsController : ReportingControllerBase
     }
 
     /// <summary>
-    /// فهرست گزارش‌های فعال و در دسترس کاربر جاری بر اساس نقش
+    /// فهرست گزارش‌های فعال و در دسترس کاربر جاری بر اساس نقش (همراه با امکان نمایش بایگانی برای مدیران)
     /// </summary>
     [HttpGet("catalog")]
     [ProducesResponseType(typeof(List<ReportDefinitionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<List<ReportDefinitionDto>>> GetCatalog(
         [FromQuery] ReportDomainSource? source,
-        CancellationToken ct)
+        [FromQuery] bool includeInactive = false,
+        CancellationToken ct = default)
     {
         var role = GetCurrentUserRole();
-        var result = await _reportingService.GetCatalogAsync(role, source, ct);
+        var result = await _reportingService.GetCatalogAsync(role, source, includeInactive, ct);
 
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
         return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// تغییر وضعیت فعال یا بایگانی گزارش توسط مدیر سامانه
+    /// </summary>
+    [HttpPatch("{code}/toggle-status")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ToggleReportStatus(
+        [FromRoute] string code,
+        [FromQuery] bool? isActive,
+        CancellationToken ct)
+    {
+        var role = GetCurrentUserRole();
+        var result = await _reportingService.ToggleReportStatusAsync(code, isActive, role, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(new { message = "وضعیت فعال/بایگانی گزارش با موفقیت تغییر یافت.", isActive = result.Value });
+    }
+
+    /// <summary>
+    /// حذف کامل گزارش و جداول پایگاه داده مرتبط (مخصوص گزارش‌های سفارشی اکسل و گزارش‌های ساخته شده)
+    /// </summary>
+    [HttpDelete("{code}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteReport(
+        [FromRoute] string code,
+        CancellationToken ct)
+    {
+        var role = GetCurrentUserRole();
+        var result = await _reportingService.DeleteReportAsync(code, role, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(new { message = $"گزارش '{code}' و داده‌های مربوطه با موفقیت حذف گردید." });
     }
 
     /// <summary>

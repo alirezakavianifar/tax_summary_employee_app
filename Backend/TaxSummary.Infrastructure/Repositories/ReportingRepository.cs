@@ -37,16 +37,23 @@ public class ReportingRepository : IReportingRepository
     public async Task<List<ReportDefinition>> GetAvailableReportsAsync(
         string? userRole, 
         ReportDomainSource? source = null, 
+        bool includeInactive = false,
         CancellationToken ct = default)
     {
         var query = _db.ReportDefinitions
-            .AsNoTracking()
-            .Where(r => r.IsActive);
+            .AsNoTracking();
+
+        var isAdmin = string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase);
+
+        if (!includeInactive || !isAdmin)
+        {
+            query = query.Where(r => r.IsActive);
+        }
 
         if (source.HasValue)
             query = query.Where(r => r.DomainSource == source.Value);
 
-        if (!string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase))
+        if (!isAdmin)
         {
             query = query.Where(r => r.RequiredRole == null || r.RequiredRole == "" || r.RequiredRole == userRole);
         }

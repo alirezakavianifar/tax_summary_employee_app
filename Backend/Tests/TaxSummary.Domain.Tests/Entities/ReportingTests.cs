@@ -158,6 +158,22 @@ public class ReportingTests
     }
 
     [Fact]
+    public void ReportDefinition_SetActive_ByAdmin_SucceedsForSystemReport()
+    {
+        var report = ReportDefinition.Create(
+            "REP_SYS_ADMIN", "گزارش پایه", "شرح",
+            ReportDomainSource.PayrollAndWelfare, ReportCategory.Financial,
+            ReportType.Tabular, "{}", isSystemReport: true);
+
+        report.SetActive(false, byAdmin: true);
+        Assert.False(report.IsActive);
+        Assert.NotNull(report.UpdatedAt);
+
+        report.SetActive(true, byAdmin: true);
+        Assert.True(report.IsActive);
+    }
+
+    [Fact]
     public void ReportDefinition_SetActive_SucceedsForNonSystemReport()
     {
         var report = ReportDefinition.Create(

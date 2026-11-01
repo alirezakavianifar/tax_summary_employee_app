@@ -1,8 +1,10 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { ReportColumnMetadata } from '@/types/reporting'
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, ChevronLeft } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, ChevronLeft, Award } from 'lucide-react'
+import { toPersianDigits } from '@/lib/jalali'
+import { AuditorScorecardDrawer } from './AuditorScorecardDrawer'
 
 interface DynamicDataTableProps {
   columns: ReportColumnMetadata[]
@@ -37,7 +39,58 @@ export function DynamicDataTable({
   isLoading = false,
   emptyMessage = 'هیچ رکوردی منطبق با فیلترهای مشخص‌شده یافت نشد',
 }: DynamicDataTableProps) {
+  const [selectedAuditor, setSelectedAuditor] = useState<string | null>(null)
   const visibleColumns = columns.filter((c) => c.isVisible !== false)
+
+  const isNonGroupedDigitsField = (col: ReportColumnMetadata, val?: any) => {
+    const dt = col.dataType?.toLowerCase()
+    if (dt === 'year' || dt === 'id' || dt === 'code') return true
+    const fn = col.fieldName?.toLowerCase() || ''
+    const lbl = col.persianLabel || ''
+    if (
+      fn === 'id' ||
+      fn.endsWith('id') ||
+      fn.includes('code') ||
+      fn.includes('tin') ||
+      fn.includes('year') ||
+      fn.includes('fiscal') ||
+      fn.includes('period') ||
+      fn.includes('tracking') ||
+      fn.includes('personnel') ||
+      lbl.includes('شناسه') ||
+      lbl.includes('سال') ||
+      lbl.includes('کد') ||
+      lbl.includes('تین') ||
+      lbl.includes('دوره')
+    ) {
+      return true
+    }
+    if (typeof val === 'number' && Number.isInteger(val) && ((val >= 1300 && val <= 1450) || (val >= 1900 && val <= 2050))) {
+      return true
+    }
+    if (typeof val === 'string' && /^(13\d{2}|14\d{2}|19\d{2}|20\d{2})$/.test(val.trim())) {
+      return true
+    }
+    return false
+  }
+
+  const formatPlainDigits = (val: any) => {
+    const cleanStr = String(val).replace(/[,،٬\s]/g, '')
+    return toPersianDigits(cleanStr)
+  }
+
+  const isAuditorField = (col: ReportColumnMetadata) => {
+    const fn = col.fieldName?.toLowerCase() || ''
+    const lbl = col.persianLabel || ''
+    return (
+      fn === 'auditorname' ||
+      fn === 'seniorauditorname' ||
+      fn.includes('auditor') ||
+      lbl.includes('نام حسابرس') ||
+      lbl.includes('حسابرس مسئول') ||
+      lbl.includes('حسابرس مسوول')
+    )
+  }
 
   const formatCellValue = (val: any, col: ReportColumnMetadata) => {
     if (val === null || val === undefined || val === '') {
@@ -45,6 +98,15 @@ export function DynamicDataTable({
     }
 
     switch (col.dataType?.toLowerCase()) {
+      case 'year':
+      case 'id':
+      case 'code':
+        return (
+          <span className="font-mono font-semibold text-slate-700" dir="ltr">
+            {formatPlainDigits(val)}
+          </span>
+        )
+
       case 'currency':
         return (
           <span className="font-mono font-bold text-slate-800" dir="ltr">
@@ -53,6 +115,13 @@ export function DynamicDataTable({
         )
 
       case 'number':
+        if (isNonGroupedDigitsField(col, val)) {
+          return (
+            <span className="font-mono font-semibold text-slate-700" dir="ltr">
+              {formatPlainDigits(val)}
+            </span>
+          )
+        }
         return (
           <span className="font-mono font-semibold text-slate-700" dir="ltr">
             {typeof val === 'number' ? val.toLocaleString('fa-IR') : Number(val).toLocaleString('fa-IR')}
@@ -70,6 +139,26 @@ export function DynamicDataTable({
         return <span className="font-mono text-slate-600 text-[11px]">{String(val)}</span>
 
       default:
+        if (isNonGroupedDigitsField(col, val)) {
+          return (
+            <span className="font-mono font-semibold text-slate-700" dir="ltr">
+              {formatPlainDigits(val)}
+            </span>
+          )
+        }
+        if (isAuditorField(col) && typeof val === 'string' && val.trim().length > 1) {
+          return (
+            <button
+              type="button"
+              onClick={() => setSelectedAuditor(val.trim())}
+              className="inline-flex items-center gap-1.5 text-amber-700 hover:text-amber-900 font-bold hover:underline cursor-pointer group py-0.5 px-1.5 rounded-lg hover:bg-amber-100/60 transition-colors"
+              title="مشاهده کارنامه ۳۶۰ درجه و شاخص‌های عملکرد حسابرس"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-500 group-hover:scale-110 transition-transform" />
+              <span>{String(val)}</span>
+            </button>
+          )
+        }
         return <span className="text-slate-700">{String(val)}</span>
     }
   }
@@ -262,6 +351,14 @@ export function DynamicDataTable({
           )}
         </div>
       </div>
+
+      {/* Auditor 360 Scorecard Drawer */}
+      {selectedAuditor && (
+        <AuditorScorecardDrawer
+          auditorName={selectedAuditor}
+          onClose={() => setSelectedAuditor(null)}
+        />
+      )}
     </div>
   )
 }

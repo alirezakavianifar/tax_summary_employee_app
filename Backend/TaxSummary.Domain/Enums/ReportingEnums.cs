@@ -8,7 +8,9 @@ public enum ReportDomainSource
     HumanResources = 1,     // پرسنل، ارزیابی شایستگی، سوابق اداری، کشف فرار مالیاتی
     PayrollAndWelfare = 2,  // حقوق و اضافه کار، سرانه رفاهی، سقف ۱۲۰ ساعت کارگری، بودجه ادارات
     TaxRefunds = 3,         // پرونده‌های استرداد مواد ۲۴۲ و ۲۴۳ ق.م.م، قبوض پرداختی، خسارت تاخیر
-    CrossSystem = 4         // تلفیقی و فرابخشی (مقایسه بهره‌وری، اضافه کار و عملکرد شعب)
+    CrossSystem = 4,        // تلفیقی و فرابخشی (مقایسه بهره‌وری، اضافه کار و عملکرد شعب)
+    TaxAudit = 5,           // رسیدگی و حسابرسی مالیاتی سنیم (اظهارنامه‌ها، برگ تشخیص، قطعی، فواصل رسیدگی)
+    CustomUploadedDataset = 6 // مجموعه‌داده‌های بارگذاری شده از اکسل و گزارش‌های اختصاصی پویا
 }
 
 /// <summary>
@@ -53,3 +55,28 @@ public enum ExportFormat
     Pdf = 2,    // پی‌دی‌اف رسمی قطع A4 با نشان اداری و کادر امضا
     Csv = 3     // فایل متن جداشده با ویرگول مناسب تحلیل آماری
 }
+
+/// <summary>
+/// دسته‌بندی شاخص‌های ارزیابی عملکرد حسابرسان
+/// </summary>
+public enum AuditorMetricCategory
+{
+    Quality = 1,      // کیفیت و استحکام تشخیص
+    Financial = 2,    // مالی و کشف ماخذ
+    Speed = 3,        // سرعت و مواعد قانونی
+    Productivity = 4  // بهره‌وری و ظرفیت رسیدگی
+}
+
+/// <summary>
+/// نحوه محاسبه و فرمول شاخص ارزیابی حسابرس
+/// </summary>
+public enum AuditorMetricFormulaType
+{
+    Ratio = 1,        // نسبت PrimaryField / SecondaryField
+    Difference = 2,   // اختلاف PrimaryField - SecondaryField
+    Average = 3,      // میانگین ستون
+    Count = 4,        // تعداد رکوردهای منطبق
+    Percentage = 5,   // درصد وقوع شرط نسبت به کل پرونده‌ها
+    Custom = 6        // فرمول ترکیبی
+}
+

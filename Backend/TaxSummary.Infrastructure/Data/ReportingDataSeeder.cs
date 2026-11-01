@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaxSummary.Domain.Entities;
+using TaxSummary.Domain.Entities.Reporting;
 using TaxSummary.Domain.Enums;
 
 namespace TaxSummary.Infrastructure.Data;
@@ -131,6 +132,122 @@ public static class ReportingDataSeeder
             isSystemReport: true,
             requiredRole: "Admin"));
 
+        // 11. REP_SANIM_AUDIT_ASSESSMENT
+        await UpsertReportAsync(context, ReportDefinition.Create(
+            code: "REP_SANIM_AUDIT_ASSESSMENT",
+            title: "گزارش جامع پرونده‌های رسیدگی و تشخیص مالیاتی سنیم",
+            description: "تحلیل و پیگیری ۱۶ هزار پرونده رسیدگی ارزش افزوده، مواعد تشخیص و قطعی، مالیات ابرازی/تشخیصی/قطعی و تاخیرات به تفکیک ادارات",
+            source: ReportDomainSource.TaxAudit,
+            category: ReportCategory.ComplianceAndAudit,
+            type: ReportType.Tabular,
+            configurationJson: "{\"columns\":[{\"fieldName\":\"id\",\"persianLabel\":\"شناسه\",\"dataType\":\"id\"},{\"fieldName\":\"taxpayerTin\",\"persianLabel\":\"تین سنیم / شناسه ملی\",\"dataType\":\"string\"},{\"fieldName\":\"taxpayerName\",\"persianLabel\":\"نام مودی\",\"dataType\":\"string\"},{\"fieldName\":\"finalOfficeName\",\"persianLabel\":\"اداره مالیاتی\",\"dataType\":\"string\"},{\"fieldName\":\"fiscalYear\",\"persianLabel\":\"سال عملکرد\",\"dataType\":\"year\"},{\"fieldName\":\"taxSource\",\"persianLabel\":\"منبع مالیاتی\",\"dataType\":\"string\"},{\"fieldName\":\"taxPeriod\",\"persianLabel\":\"دوره\",\"dataType\":\"number\"},{\"fieldName\":\"auditorName\",\"persianLabel\":\"حسابرس / ممیز\",\"dataType\":\"string\"},{\"fieldName\":\"auditStatus\",\"persianLabel\":\"وضعیت رسیدگی\",\"dataType\":\"badge\"},{\"fieldName\":\"declaredTaxAmount\",\"persianLabel\":\"مالیات ابرازی (ریال)\",\"dataType\":\"currency\",\"hasAggregateSum\":true},{\"fieldName\":\"assessedTaxAmount\",\"persianLabel\":\"مالیات تشخیصی (ریال)\",\"dataType\":\"currency\",\"hasAggregateSum\":true},{\"fieldName\":\"finalTaxAmount\",\"persianLabel\":\"مالیات قطعی (ریال)\",\"dataType\":\"currency\",\"hasAggregateSum\":true},{\"fieldName\":\"assessmentNoticeDateJalali\",\"persianLabel\":\"تاریخ ابلاغ برگ تشخیص\",\"dataType\":\"date\"},{\"fieldName\":\"finalNoticeDateJalali\",\"persianLabel\":\"تاریخ ابلاغ برگ قطعی\",\"dataType\":\"date\"},{\"fieldName\":\"daysNoticeToFinal\",\"persianLabel\":\"فاصله تشخیص تا قطعی (روز)\",\"dataType\":\"number\"}]}",
+            isSystemReport: true,
+            requiredRole: "Manager"));
+
+        await context.SaveChangesAsync();
+
+        await SeedDefaultAuditorMetricsAsync(context);
+    }
+
+    private static async Task SeedDefaultAuditorMetricsAsync(TaxSummaryDbContext context)
+    {
+        if (await context.AuditorPerformanceMetricDefinitions.AnyAsync())
+            return;
+
+        var metrics = new List<AuditorPerformanceMetricDefinition>
+        {
+            AuditorPerformanceMetricDefinition.Create(
+                metricCode: "METRIC_DEFENSIBILITY",
+                title: "ضریب تثبیت و استحکام برگ تشخیص",
+                description: "نسبت مالیات قطعی به مالیات تشخیصی جهت سنجش استواری حقوقی برگ‌های تشخیص صادره حسابرس",
+                category: AuditorMetricCategory.Quality,
+                formulaType: AuditorMetricFormulaType.Ratio,
+                primaryField: "FinalTaxAmount",
+                secondaryField: "AssessedTaxAmount",
+                multiplier: 100m,
+                weightPercentage: 30m,
+                higherIsBetter: true,
+                targetValue: 85m,
+                warningThreshold: 70m,
+                criticalThreshold: 50m,
+                unit: "%",
+                displayOrder: 1,
+                tierThresholdsJson: "{\"A\": 85, \"B\": 70, \"C\": 50}"),
+
+            AuditorPerformanceMetricDefinition.Create(
+                metricCode: "METRIC_TAX_GAP_DISCOVERY",
+                title: "مابه‌التفاوت ابراز تا تشخیص (کشف ماخذ)",
+                description: "میزان مالیات اضافه تشخیصی نسبت به ابراز مودی ناشی از ممیزی دقیق و کشف فرار مالیاتی",
+                category: AuditorMetricCategory.Financial,
+                formulaType: AuditorMetricFormulaType.Difference,
+                primaryField: "AssessedTaxAmount",
+                secondaryField: "DeclaredTaxAmount",
+                multiplier: 1m,
+                weightPercentage: 25m,
+                higherIsBetter: true,
+                targetValue: 20000000000m,
+                warningThreshold: 5000000000m,
+                criticalThreshold: 0m,
+                unit: "ریال",
+                displayOrder: 2,
+                tierThresholdsJson: "{\"A\": 20000000000, \"B\": 5000000000, \"C\": 0}"),
+
+            AuditorPerformanceMetricDefinition.Create(
+                metricCode: "METRIC_SPEED_NOTICE",
+                title: "سرعت صدور برگ تشخیص (تخصیص تا ابلاغ)",
+                description: "میانگین روزهای سپری‌شده از زمان ارجاع پرونده تا صدور و ابلاغ برگ تشخیص مالیات",
+                category: AuditorMetricCategory.Speed,
+                formulaType: AuditorMetricFormulaType.Average,
+                primaryField: "DaysAssignmentToNotice",
+                secondaryField: null,
+                multiplier: 1m,
+                weightPercentage: 25m,
+                higherIsBetter: false,
+                targetValue: 45m,
+                warningThreshold: 70m,
+                criticalThreshold: 90m,
+                unit: "روز",
+                displayOrder: 3,
+                tierThresholdsJson: "{\"A\": 45, \"B\": 70, \"C\": 90}"),
+
+            AuditorPerformanceMetricDefinition.Create(
+                metricCode: "METRIC_THROUGHPUT",
+                title: "حجم پرونده‌های رسیدگی‌شده (مختومه)",
+                description: "تعداد کل پرونده‌های رسیدگی‌شده توسط حسابرس در دوره مالیاتی",
+                category: AuditorMetricCategory.Productivity,
+                formulaType: AuditorMetricFormulaType.Count,
+                primaryField: "AuditStatus",
+                secondaryField: null,
+                multiplier: 1m,
+                weightPercentage: 10m,
+                higherIsBetter: true,
+                targetValue: 80m,
+                warningThreshold: 50m,
+                criticalThreshold: 30m,
+                unit: "فقره",
+                displayOrder: 4,
+                tierThresholdsJson: "{\"A\": 80, \"B\": 50, \"C\": 30}"),
+
+            AuditorPerformanceMetricDefinition.Create(
+                metricCode: "METRIC_RISK_COMPLEXITY",
+                title: "سهم رسیدگی به پرونده‌های پرریسک",
+                description: "درصد پرونده‌های پرریسک حسابرسی‌شده از کل پرونده‌های تخصیصی حسابرس",
+                category: AuditorMetricCategory.Quality,
+                formulaType: AuditorMetricFormulaType.Percentage,
+                primaryField: "RiskLevel",
+                secondaryField: null,
+                multiplier: 1m,
+                weightPercentage: 10m,
+                higherIsBetter: true,
+                targetValue: 30m,
+                warningThreshold: 15m,
+                criticalThreshold: 5m,
+                unit: "%",
+                displayOrder: 5,
+                tierThresholdsJson: "{\"A\": 30, \"B\": 15, \"C\": 5}")
+        };
+
+        await context.AuditorPerformanceMetricDefinitions.AddRangeAsync(metrics);
         await context.SaveChangesAsync();
     }
 

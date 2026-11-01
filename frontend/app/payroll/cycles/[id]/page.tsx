@@ -14,6 +14,7 @@ import {
   type PayrollDepartmentEntrySummaryDto,
 } from '@/lib/api/payrollCycles'
 import { PROCESS_TYPE_LABELS } from '@/lib/api/payroll'
+import { toPersianDigits } from '@/lib/jalali'
 import SendToOfficesModal from '@/components/payroll/SendToOfficesModal'
 import {
   Calendar,
@@ -433,7 +434,7 @@ export default function CycleDetailPage() {
               </div>
               <h1 className="text-2xl font-bold text-gray-900">{cycle.title}</h1>
               <p className="text-sm text-gray-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span>دوره مالی: {formatNumber(cycle.fiscalMonth)} / {formatNumber(cycle.fiscalYear)}</span>
+                <span>دوره مالی: {formatNumber(cycle.fiscalMonth)} / {toPersianDigits(cycle.fiscalYear)}</span>
                 <span>|</span>
                 <span>ایجادکننده: {cycle.createdByUsername}</span>
                 <span>|</span>

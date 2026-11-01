@@ -38,8 +38,25 @@ export const reportingApi = {
   },
 
   // 2. Standard Reports
-  async getCatalog(source?: number): Promise<ReportDefinition[]> {
-    const res = await apiClient.get<ReportDefinition[]>(`${BASE_URL}/standard/catalog`, { params: { source } })
+  async getCatalog(source?: number, includeInactive?: boolean): Promise<ReportDefinition[]> {
+    const res = await apiClient.get<ReportDefinition[]>(`${BASE_URL}/standard/catalog`, { 
+      params: { 
+        source, 
+        includeInactive: includeInactive || undefined 
+      } 
+    })
+    return res.data
+  },
+
+  async toggleReportStatus(code: string, isActive?: boolean): Promise<{ message: string; isActive: boolean }> {
+    const res = await apiClient.patch<{ message: string; isActive: boolean }>(`${BASE_URL}/standard/${code}/toggle-status`, null, {
+      params: { isActive },
+    })
+    return res.data
+  },
+
+  async deleteReport(code: string): Promise<{ message: string }> {
+    const res = await apiClient.delete<{ message: string }>(`${BASE_URL}/standard/${code}`)
     return res.data
   },
 
