@@ -106,4 +106,41 @@ public class AuditorPerformanceServiceTests
 
         Assert.Equal(0m, scorecard.FinalityRate);
     }
+
+    [Fact]
+    public void SemanticAuditFieldMapper_WithRep2DecreeColumns_MapsAllDecreeFieldsCorrectly()
+    {
+        // Arrange with REP_2 decree columns (قرار_2.xlsx)
+        var columns = new List<CustomDatasetColumnDto>
+        {
+            new() { FieldName = "c_52", OriginalHeader = "عنوان مرحله اعتراض" },
+            new() { FieldName = "c_72", OriginalHeader = "عنوان مرحله درخواست" },
+            new() { FieldName = "c_362", OriginalHeader = "درامد(مأخذ) مشمول مالیات" },
+            new() { FieldName = "c_532", OriginalHeader = "مجموع مبلغ اصل مالیات" },
+            new() { FieldName = "c_542", OriginalHeader = "مجموع مبلغ عوارض" },
+            new() { FieldName = "c_772", OriginalHeader = "کدملی سرپرست مجری قرار" },
+            new() { FieldName = "c_782", OriginalHeader = "نام سرپرست مجری قرار" },
+            new() { FieldName = "c_812", OriginalHeader = "نام اداره امور سنیم" },
+            new() { FieldName = "c_852", OriginalHeader = "تاریخ تخصیص قرار" },
+            new() { FieldName = "c_862", OriginalHeader = "تاریخ ثبت گزارش قرار" },
+            new() { FieldName = "c_872", OriginalHeader = "تاریخ تایید گزارش قرار" },
+        };
+
+        // Act
+        var mapper = SemanticAuditFieldMapper.FromColumns(columns);
+
+        // Assert
+        Assert.True(mapper.HasAuditorData);
+        Assert.True(mapper.IsDecreeReport);
+        Assert.Equal("c_782", mapper.AuditorNameField);
+        Assert.Equal("c_772", mapper.AuditorNationalIdField);
+        Assert.Equal("c_812", mapper.OfficeNameField);
+        Assert.Equal("c_362", mapper.DeclaredTaxField);
+        Assert.Equal("c_532", mapper.AssessedTaxField);
+        Assert.Equal("c_852", mapper.AssignmentDateField);
+        Assert.Equal("c_862", mapper.NoticeDateField);
+        Assert.Equal("c_52", mapper.RiskLevelField);
+        Assert.Equal("c_72", mapper.AuditStatusField);
+    }
 }
+

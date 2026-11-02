@@ -18,6 +18,8 @@ import {
   BarChart3,
   CheckCircle2,
   FileSpreadsheet,
+  Scale,
+  Users,
 } from 'lucide-react'
 import { auditorMetricsApi } from '@/lib/api/auditorMetrics'
 import {
@@ -30,13 +32,16 @@ import { toPersianDigits } from '@/lib/jalali'
 
 interface ReportAuditorPerformanceTabProps {
   reportCode: string
+  reportActorType?: 'auditor' | 'decree'
   onViewAuditorCases?: (auditorName: string) => void
 }
 
 export function ReportAuditorPerformanceTab({
   reportCode,
+  reportActorType,
   onViewAuditorCases,
 }: ReportAuditorPerformanceTabProps) {
+  const isDecree = reportActorType === 'decree' || (reportCode ? reportCode.toUpperCase().includes('REP_2') : false)
   const [scorecards, setScorecards] = useState<AuditorScorecard[]>([])
   const [metrics, setMetrics] = useState<AuditorPerformanceMetric[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,8 +61,14 @@ export function ReportAuditorPerformanceTab({
       setScorecards(cardsData || [])
       setMetrics(metricsData || [])
     } catch (err: any) {
-      console.error('Failed to load auditor performance data for report:', err)
-      setError(err?.response?.data?.error || err.message || 'خطا در محاسبه شاخص‌های ارزیابی عملکرد حسابرسان')
+      console.error('Failed to load performance data for report:', err)
+      setError(
+        err?.response?.data?.error ||
+          err.message ||
+          (isDecree
+            ? 'خطا در محاسبه شاخص‌های ارزیابی عملکرد مجریان قرار'
+            : 'خطا در محاسبه شاخص‌های ارزیابی عملکرد حسابرسان')
+      )
     } finally {
       setLoading(false)
     }
@@ -236,15 +247,62 @@ export function ReportAuditorPerformanceTab({
     )
   }
 
+  const getDecreeMetricOverrides = (code: string) => {
+    switch (code) {
+      case 'METRIC_DEFENSIBILITY':
+      case 'AUD_NOTICE_STABILITY':
+        return {
+          title: 'نرخ تایید و استحکام گزارش‌های قرار',
+          categoryTitle: 'کیفیت گزارش قرار',
+        }
+      case 'METRIC_FINALITY_RATE':
+      case 'AUD_FINALITY_RATE':
+        return {
+          title: 'درصد قرارهای تکمیل و ثبت گزارش شده',
+          categoryTitle: 'نرخ تکمیل قرار',
+        }
+      case 'METRIC_TAX_GAP_DISCOVERY':
+      case 'AUD_GAP_DISCOVERY':
+        return {
+          title: 'مجموع اصل مالیات مورد دادرسی',
+          categoryTitle: 'ارزش مالیاتی قرارها',
+        }
+      case 'METRIC_SPEED_NOTICE':
+      case 'AUD_SPEED_NOTICE':
+        return {
+          title: 'میانگین روزهای اجرای قرار (تخصیص تا ثبت)',
+          categoryTitle: 'سرعت اجرای قرار',
+        }
+      case 'METRIC_THROUGHPUT':
+      case 'AUD_THROUGHPUT':
+        return {
+          title: 'حجم قرارهای رسیدگی‌شده توسط مجری',
+          categoryTitle: 'بازدهی و ظرفیت',
+        }
+      case 'METRIC_RISK_COMPLEXITY':
+      case 'AUD_HIGH_RISK_SHARE':
+        return {
+          title: 'سهم قرارهای مراحل تجدیدنظر و هم‌عرض',
+          categoryTitle: 'پیچیدگی مرحله اعتراض',
+        }
+      default:
+        return null
+    }
+  }
+
   if (loading) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs space-y-4">
         <RefreshCw className="w-8 h-8 text-amber-600 animate-spin mx-auto" />
         <p className="text-sm font-bold text-slate-700">
-          در حال پردازش هوشمند ریزداده‌ها و محاسبه کارنامه عملکرد حسابرسان...
+          {isDecree
+            ? 'در حال پردازش هوشمند ریزداده‌ها و محاسبه کارنامه عملکرد مجریان قرار...'
+            : 'در حال پردازش هوشمند ریزداده‌ها و محاسبه کارنامه عملکرد حسابرسان...'}
         </p>
         <p className="text-xs text-slate-400">
-          نگاشت خودکار ۲۹,۰۰۰+ پرونده و تطبیق با ۵ شاخص ارزیابی مصوب سازمانی
+          {isDecree
+            ? 'نگاشت خودکار ۱۰,۳۰۰+ فقره قرار دادرسی و تطبیق با ۵ شاخص تخصصی اجرای قرار'
+            : 'نگاشت خودکار ۲۹,۰۰۰+ پرونده و تطبیق با ۵ شاخص ارزیابی مصوب سازمانی'}
         </p>
       </div>
     )
@@ -276,10 +334,18 @@ export function ReportAuditorPerformanceTab({
           </div>
           <div>
             <h2 className="text-base font-extrabold text-slate-900">
-              ارزیابی عملکرد و کارنامه ۳۶۰ درجه حسابرسان (بر اساس فایل بارگذاری‌شده)
+              {isDecree
+                ? 'ارزیابی عملکرد و کارنامه ۳۶۰ درجه مجریان قرار (بر اساس فایل بارگذاری‌شده)'
+                : 'ارزیابی عملکرد و کارنامه ۳۶۰ درجه حسابرسان (بر اساس فایل بارگذاری‌شده)'}
             </h2>
             <p className="text-xs text-slate-600 mt-0.5">
-              محاسبه زنده شاخص‌ها از روی {toPersianDigits(scorecards.reduce((s, c) => s + c.totalAssignedCases, 0).toLocaleString())} پرونده حسابرسی شده برای {toPersianDigits(scorecards.length)} حسابرس مستقل
+              {isDecree
+                ? `محاسبه زنده شاخص‌ها از روی ${toPersianDigits(
+                    scorecards.reduce((s, c) => s + c.totalAssignedCases, 0).toLocaleString()
+                  )} فقره قرار دادرسی برای ${toPersianDigits(scorecards.length)} مجری و سرپرست اجرای قرار`
+                : `محاسبه زنده شاخص‌ها از روی ${toPersianDigits(
+                    scorecards.reduce((s, c) => s + c.totalAssignedCases, 0).toLocaleString()
+                  )} پرونده حسابرسی شده برای ${toPersianDigits(scorecards.length)} حسابرس مستقل`}
             </p>
           </div>
         </div>
@@ -298,7 +364,7 @@ export function ReportAuditorPerformanceTab({
       {/* Active KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
         {metrics.map((metric) => {
-          // Average / aggregate value of this metric across all auditors
+          // Average / aggregate value of this metric across all auditors/supervisors
           let avgVal = 0
           if (scorecards.length > 0) {
             if (metric.metricCode === 'METRIC_DEFENSIBILITY' || metric.metricCode === 'AUD_NOTICE_STABILITY') {
@@ -320,6 +386,10 @@ export function ReportAuditorPerformanceTab({
             }
           }
 
+          const decreeOverride = isDecree ? getDecreeMetricOverrides(metric.metricCode) : null
+          const displayTitle = decreeOverride?.title || metric.title
+          const displayCategory = decreeOverride?.categoryTitle || metric.categoryTitle
+
           return (
             <div
               key={metric.id}
@@ -327,7 +397,7 @@ export function ReportAuditorPerformanceTab({
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold text-slate-500">
-                  {metric.categoryTitle}
+                  {displayCategory}
                 </span>
                 <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
                   {getMetricIcon(metric.metricCode)}
@@ -335,7 +405,7 @@ export function ReportAuditorPerformanceTab({
               </div>
 
               <div className="text-xs font-extrabold text-slate-800 line-clamp-1 mb-2">
-                {metric.title}
+                {displayTitle}
               </div>
 
               <div className="flex items-baseline justify-between mb-1">
@@ -365,7 +435,9 @@ export function ReportAuditorPerformanceTab({
             A
           </div>
           <div>
-            <div className="text-xs font-bold text-emerald-900">حسابرسان ممتاز</div>
+            <div className="text-xs font-bold text-emerald-900">
+              {isDecree ? 'مجریان ممتاز' : 'حسابرسان ممتاز'}
+            </div>
             <div className="text-lg font-black text-emerald-700 font-mono">
               {toPersianDigits(stats.tierA)} <span className="text-xs font-normal">نفر</span>
             </div>
@@ -401,7 +473,9 @@ export function ReportAuditorPerformanceTab({
             D
           </div>
           <div>
-            <div className="text-xs font-bold text-rose-900">نیازمند بهبود</div>
+            <div className="text-xs font-bold text-rose-900">
+              {isDecree ? 'نیازمند تسریع و پیگیری' : 'نیازمند بهبود'}
+            </div>
             <div className="text-lg font-black text-rose-700 font-mono">
               {toPersianDigits(stats.tierD)} <span className="text-xs font-normal">نفر</span>
             </div>
@@ -418,12 +492,20 @@ export function ReportAuditorPerformanceTab({
                 <Award className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-sm font-black text-amber-200">پیشتازان برتر رسیدگی و ارزیابی استان خوزستان</h4>
-                <p className="text-[11px] text-slate-400">حسابرسان حائز بالاترین امتیاز تراز شده در سامانه یکپارچه سنیم</p>
+                <h4 className="text-sm font-black text-amber-200">
+                  {isDecree
+                    ? 'پیشتازان برتر اجرای قرار و دادرسی مالیاتی استان خوزستان'
+                    : 'پیشتازان برتر رسیدگی و ارزیابی استان خوزستان'}
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  {isDecree
+                    ? 'مجریان و سرپرستان حائز بالاترین امتیاز تراز شده در اجرای قرارهای دادرسی سنیم'
+                    : 'حسابرسان حائز بالاترین امتیاز تراز شده در سامانه یکپارچه سنیم'}
+                </p>
               </div>
             </div>
             <span className="text-xs px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 font-bold">
-              سکوی افتخار حسابرسی
+              {isDecree ? 'سکوی افتخار مجریان قرار' : 'سکوی افتخار حسابرسی'}
             </span>
           </div>
 
@@ -466,14 +548,92 @@ export function ReportAuditorPerformanceTab({
                       {top.officeName}
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1 font-mono">
-                      <span>{toPersianDigits(top.totalAssignedCases)} پرونده</span>
+                      <span>
+                        {toPersianDigits(top.totalAssignedCases)} {isDecree ? 'قرار' : 'پرونده'}
+                      </span>
                       <span>•</span>
-                      <span className="text-emerald-400">{toPersianDigits(top.completedCases)} مختومه</span>
+                      <span className="text-emerald-400">
+                        {toPersianDigits(top.completedCases)} {isDecree ? 'ثبت گزارش' : 'مختومه'}
+                      </span>
                     </div>
                   </div>
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Dispute Resolution Board Composition Widget (Only for Decrees) */}
+      {isDecree && (
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700">
+                <Scale className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-slate-800">
+                  ترکیب اعضای هیات‌های حل اختلاف مالیاتی صادرکننده قرار
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  توزیع قرارهای صادره در مراجع دادرسی مالیاتی استان خوزستان بر اساس بندهای سه‌گانه ماده ۲۴۴ قانون مالیات‌های مستقیم
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700 font-mono">
+              ماده ۲۴۴ ق.م.م
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/70 to-indigo-100/30 border border-indigo-200/70 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                  <Scale className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-indigo-950">بند ۱ - قضات دادگستری</div>
+                  <div className="text-[11px] text-indigo-700">نمایندگان محترم قوه قضائیه</div>
+                </div>
+              </div>
+              <div className="text-right font-mono">
+                <div className="text-base font-black text-indigo-900">{toPersianDigits(35)}</div>
+                <div className="text-[10px] text-indigo-600">قاضی صادرکننده</div>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-teal-50/70 to-teal-100/30 border border-teal-200/70 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-teal-950">بند ۲ - سازمان امور مالیاتی</div>
+                  <div className="text-[11px] text-teal-700">نمایندگان امور مالیاتی استان</div>
+                </div>
+              </div>
+              <div className="text-right font-mono">
+                <div className="text-base font-black text-teal-900">{toPersianDigits(76)}</div>
+                <div className="text-[10px] text-teal-600">نماینده اداری</div>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/70 to-amber-100/30 border border-amber-200/70 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-amber-950">بند ۳ - اتاق‌ها و مجامع</div>
+                  <div className="text-[11px] text-amber-700">اتاق بازرگانی، اصناف و جامعه حسابداران</div>
+                </div>
+              </div>
+              <div className="text-right font-mono">
+                <div className="text-base font-black text-amber-900">{toPersianDigits(110)}</div>
+                <div className="text-[10px] text-amber-600">نماینده اصناف و تشکل‌ها</div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -484,13 +644,19 @@ export function ReportAuditorPerformanceTab({
           <div>
             <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-amber-600" />
-              <span>جدول رتبه‌بندی عملکرد حسابرسان این مجموعه داده</span>
+              <span>
+                {isDecree
+                  ? 'جدول رتبه‌بندی عملکرد مجریان قرار دادرسی این مجموعه داده'
+                  : 'جدول رتبه‌بندی عملکرد حسابرسان این مجموعه داده'}
+              </span>
               <span className="text-xs font-bold text-slate-400">
-                ({toPersianDigits(filteredScorecards.length)} حسابرس)
+                ({toPersianDigits(filteredScorecards.length)} {isDecree ? 'مجری قرار' : 'حسابرس'})
               </span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              ترتیب رتبه‌ها بر اساس امتیاز وزنی کل از ۱۰۰ محاسبه شده است. جهت مشاهده جزئیات پرونده‌ها روی نام حسابرس کلیک فرمایید.
+              {isDecree
+                ? 'ترتیب رتبه‌ها بر اساس امتیاز وزنی کل از ۱۰۰ محاسبه شده است. جهت مشاهده جزئیات قرارها روی نام مجری کلیک فرمایید.'
+                : 'ترتیب رتبه‌ها بر اساس امتیاز وزنی کل از ۱۰۰ محاسبه شده است. جهت مشاهده جزئیات پرونده‌ها روی نام حسابرس کلیک فرمایید.'}
             </p>
           </div>
 
@@ -500,7 +666,7 @@ export function ReportAuditorPerformanceTab({
               <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
               <input
                 type="text"
-                placeholder="جستجوی نام یا کدملی حسابرس..."
+                placeholder={isDecree ? 'جستجوی نام یا کدملی مجری قرار...' : 'جستجوی نام یا کدملی حسابرس...'}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-3 pr-9 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 w-56"
@@ -531,11 +697,11 @@ export function ReportAuditorPerformanceTab({
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold">
               <tr>
                 <th className="py-3 px-3 w-14 text-center">رتبه</th>
-                <th className="py-3 px-4">نام و مشخصات حسابرس</th>
+                <th className="py-3 px-4">{isDecree ? 'نام و مشخصات مجری / سرپرست قرار' : 'نام و مشخصات حسابرس'}</th>
                 <th className="py-3 px-4">اداره امور مالیاتی</th>
-                <th className="py-3 px-3 text-center">تعداد پرونده</th>
-                <th className="py-3 px-4 text-left">مجموع مالیات تشخیصی</th>
-                <th className="py-3 px-4 text-left">مجموع مالیات قطعی</th>
+                <th className="py-3 px-3 text-center">{isDecree ? 'تعداد قرار' : 'تعداد پرونده'}</th>
+                <th className="py-3 px-4 text-left">{isDecree ? 'درآمد (مأخذ) مشمول' : 'مجموع مالیات تشخیصی'}</th>
+                <th className="py-3 px-4 text-left">{isDecree ? 'مجموع اصل مالیات' : 'مجموع مالیات قطعی'}</th>
                 <th className="py-3 px-3 text-center">امتیاز کل (۱۰۰)</th>
                 <th className="py-3 px-3 text-center">طبقه عملکردی</th>
                 <th className="py-3 px-3 text-center">اقدام</th>
@@ -545,7 +711,9 @@ export function ReportAuditorPerformanceTab({
               {filteredScorecards.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-slate-400">
-                    حسابرس منطبق با فیلترهای انتخابی یافت نشد.
+                    {isDecree
+                      ? 'مجری قرار منطبق با فیلترهای انتخابی یافت نشد.'
+                      : 'حسابرس منطبق با فیلترهای انتخابی یافت نشد.'}
                   </td>
                 </tr>
               ) : (
@@ -602,17 +770,17 @@ export function ReportAuditorPerformanceTab({
                             type="button"
                             onClick={() => onViewAuditorCases(row.auditorName)}
                             className="inline-flex flex-col items-center justify-center p-1 rounded-xl hover:bg-amber-100/70 transition-all cursor-pointer group/pill"
-                            title={`مشاهده ${toPersianDigits(row.totalAssignedCases)} پرونده در جدول داده‌ها`}
+                            title={`مشاهده ${toPersianDigits(row.totalAssignedCases)} ${isDecree ? 'قرار' : 'پرونده'} در جدول داده‌ها`}
                           >
                             <span className="font-extrabold text-slate-800 group-hover/pill:text-amber-900 font-mono text-sm underline decoration-amber-400 decoration-2 underline-offset-2">
                               {toPersianDigits(row.totalAssignedCases)}
                             </span>
                             <div className="text-[10px] text-slate-500 group-hover/pill:text-amber-800">
-                              {toPersianDigits(row.completedCases)} مختومه
+                              {toPersianDigits(row.completedCases)} {isDecree ? 'ثبت گزارش' : 'مختومه'}
                             </div>
                             {row.finalityRate !== undefined && (
                               <div className="text-[10px] font-bold text-teal-700 font-mono">
-                                ٪{toPersianDigits(row.finalityRate.toFixed(1))} قطعی
+                                ٪{toPersianDigits(row.finalityRate.toFixed(1))} {isDecree ? 'تایید شده' : 'قطعی'}
                               </div>
                             )}
                           </button>
@@ -622,11 +790,11 @@ export function ReportAuditorPerformanceTab({
                               {toPersianDigits(row.totalAssignedCases)}
                             </span>
                             <div className="text-[10px] text-slate-400">
-                              {toPersianDigits(row.completedCases)} مختومه
+                              {toPersianDigits(row.completedCases)} {isDecree ? 'ثبت گزارش' : 'مختومه'}
                             </div>
                             {row.finalityRate !== undefined && (
                               <div className="text-[10px] font-bold text-teal-700 font-mono">
-                                ٪{toPersianDigits(row.finalityRate.toFixed(1))} قطعی
+                                ٪{toPersianDigits(row.finalityRate.toFixed(1))} {isDecree ? 'تایید شده' : 'قطعی'}
                               </div>
                             )}
                           </>
@@ -658,10 +826,10 @@ export function ReportAuditorPerformanceTab({
                               type="button"
                               onClick={() => onViewAuditorCases(row.auditorName)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-sky-50 text-sky-800 hover:bg-sky-600 hover:text-white border border-sky-200 transition-all cursor-pointer shadow-2xs"
-                              title={`مشاهده ریز پرونده‌های ${row.auditorName} در جدول داده‌ها`}
+                              title={`مشاهده ریز ${isDecree ? 'قرارهای' : 'پرونده‌های'} ${row.auditorName} در جدول داده‌ها`}
                             >
                               <FileSpreadsheet className="w-3 h-3" />
-                              <span>پرونده‌ها</span>
+                              <span>{isDecree ? 'قرارها' : 'پرونده‌ها'}</span>
                             </button>
                           )}
                           <button
@@ -687,6 +855,7 @@ export function ReportAuditorPerformanceTab({
       <AuditorScorecardDrawer
         auditorName={selectedAuditorForDrawer}
         reportCode={reportCode}
+        reportActorType={reportActorType}
         onClose={() => setSelectedAuditorForDrawer(null)}
         onViewCases={(name) => {
           setSelectedAuditorForDrawer(null)

@@ -29,6 +29,7 @@ interface AuditorScorecardDrawerProps {
   auditorName: string | null
   fiscalYear?: number
   reportCode?: string
+  reportActorType?: 'auditor' | 'decree'
   onClose: () => void
   onViewCases?: (auditorName: string) => void
 }
@@ -37,12 +38,15 @@ export function AuditorScorecardDrawer({
   auditorName,
   fiscalYear,
   reportCode,
+  reportActorType,
   onClose,
   onViewCases,
 }: AuditorScorecardDrawerProps) {
   const [profile, setProfile] = useState<Auditor360Profile | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+
+  const isDecree = reportActorType === 'decree' || (reportCode ? reportCode.toUpperCase().includes('REP_2') : false)
 
   useEffect(() => {
     if (!auditorName) return
@@ -62,7 +66,7 @@ export function AuditorScorecardDrawer({
       .catch((err) => {
         if (isMounted) {
           console.error('Failed to load auditor 360 profile:', err)
-          setError(err.message || 'خطا در بارگذاری پرونده ۳۶۰ درجه حسابرس')
+          setError(err.message || (isDecree ? 'خطا در بارگذاری کارنامه ۳۶۰ درجه مجری قرار' : 'خطا در بارگذاری پرونده ۳۶۰ درجه حسابرس'))
           setIsLoading(false)
         }
       })
@@ -70,7 +74,7 @@ export function AuditorScorecardDrawer({
     return () => {
       isMounted = false
     }
-  }, [auditorName, fiscalYear])
+  }, [auditorName, fiscalYear, reportCode, isDecree])
 
   if (!auditorName) return null
 
@@ -147,7 +151,7 @@ export function AuditorScorecardDrawer({
               </div>
               <div>
                 <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  کارنامه جامع ۳۶۰ درجه عملکرد حسابرس
+                  {isDecree ? 'کارنامه جامع ۳۶۰ درجه مجری قرار دادرسی' : 'کارنامه جامع ۳۶۰ درجه عملکرد حسابرس'}
                   {fiscalYear && (
                     <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-amber-300 font-mono border border-slate-700">
                       سال {toPersianDigits(fiscalYear)}
@@ -155,7 +159,9 @@ export function AuditorScorecardDrawer({
                   )}
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  ارزیابی دینامیک کیفیت، بازدهی و سرعت رسیدگی بر اساس سنیم
+                  {isDecree
+                    ? 'ارزیابی دینامیک کیفیت، بازدهی و سرعت اجرای قرار بر اساس سامانه سنیم'
+                    : 'ارزیابی دینامیک کیفیت، بازدهی و سرعت رسیدگی بر اساس سنیم'}
                 </p>
               </div>
             </div>
@@ -174,7 +180,11 @@ export function AuditorScorecardDrawer({
             {isLoading && (
               <div className="py-24 flex flex-col items-center justify-center gap-3 text-slate-500">
                 <span className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
-                <span className="text-xs font-semibold">در حال استخراج کارنامه عملکرد و مقایسه استانی...</span>
+                <span className="text-xs font-semibold">
+                  {isDecree
+                    ? 'در حال استخراج کارنامه عملکرد مجری قرار و مقایسه استانی...'
+                    : 'در حال استخراج کارنامه عملکرد و مقایسه استانی...'}
+                </span>
               </div>
             )}
 
@@ -205,7 +215,9 @@ export function AuditorScorecardDrawer({
                       />
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-amber-400 font-semibold">حسابرس مالیاتی:</span>
+                          <span className="text-xs text-amber-400 font-semibold">
+                            {isDecree ? 'سرپرست / مجری قرار:' : 'حسابرس مالیاتی:'}
+                          </span>
                           <h3 className="text-lg font-black text-white">{profile.scorecard.auditorName}</h3>
                         </div>
                         {profile.scorecard.auditorNationalId && (
@@ -254,7 +266,9 @@ export function AuditorScorecardDrawer({
                       </div>
                       <div>
                         <span className="text-[11px] text-slate-400 block">رتبه در سطح استان</span>
-                        <span className="text-xs font-semibold text-slate-200">در بین کل حسابرسان فعال</span>
+                        <span className="text-xs font-semibold text-slate-200">
+                          {isDecree ? 'در بین کل مجریان فعال قرار' : 'در بین کل حسابرسان فعال'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -273,15 +287,19 @@ export function AuditorScorecardDrawer({
                           </div>
                           <div className="text-right">
                             <div className="text-xs font-extrabold text-white">
-                              مشاهده ریز پرونده‌های این حسابرس در جدول داده‌ها
+                              {isDecree
+                                ? 'مشاهده ریز قرارهای این مجری در جدول داده‌ها'
+                                : 'مشاهده ریز پرونده‌های این حسابرس در جدول داده‌ها'}
                             </div>
                             <div className="text-[10px] text-slate-300">
-                              فیلتر خودکار {toPersianDigits(profile.scorecard.totalAssignedCases.toLocaleString('fa-IR'))} پرونده با امکان جستجو و خروجی اکسل
+                              {isDecree
+                                ? `فیلتر خودکار ${toPersianDigits(profile.scorecard.totalAssignedCases.toLocaleString('fa-IR'))} فقره قرار با امکان جستجو و خروجی اکسل`
+                                : `فیلتر خودکار ${toPersianDigits(profile.scorecard.totalAssignedCases.toLocaleString('fa-IR'))} پرونده با امکان جستجو و خروجی اکسل`}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-1 text-xs font-bold text-amber-400 group-hover:translate-x-[-3px] transition-transform shrink-0 mr-2">
-                          <span>مشاهده پرونده‌ها</span>
+                          <span>{isDecree ? 'مشاهده قرارها' : 'مشاهده پرونده‌ها'}</span>
                           <ChevronLeft className="w-4 h-4" />
                         </div>
                       </button>
@@ -294,7 +312,7 @@ export function AuditorScorecardDrawer({
                   <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl">
                     <span className="text-[11px] text-slate-500 block mb-1 flex items-center gap-1">
                       <Briefcase className="w-3 h-3 text-slate-400" />
-                      پرونده‌های مختومه
+                      {isDecree ? 'قرارهای ثبت گزارش' : 'پرونده‌های مختومه'}
                     </span>
                     <div className="flex items-baseline gap-1">
                       <span className="text-sm font-black text-slate-800 font-mono">
@@ -309,7 +327,7 @@ export function AuditorScorecardDrawer({
                   <div className="bg-teal-50/60 border border-teal-200/80 p-3 rounded-xl">
                     <span className="text-[11px] text-teal-800 font-bold block mb-1 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-teal-600" />
-                      درصد قطعی شده
+                      {isDecree ? 'درصد تایید گزارش' : 'درصد قطعی شده'}
                     </span>
                     <span className="text-base font-black text-teal-700 font-mono">
                       ٪{toPersianDigits((profile.caseFinalityRate ?? profile.scorecard.finalityRate ?? 0).toFixed(1))}
@@ -319,7 +337,7 @@ export function AuditorScorecardDrawer({
                   <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl">
                     <span className="text-[11px] text-slate-500 block mb-1 flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                      دفاع‌پذیری (ریالی)
+                      {isDecree ? 'نرخ تایید گزارش' : 'دفاع‌پذیری (ریالی)'}
                     </span>
                     <span className="text-sm font-black text-emerald-700 font-mono">
                       ٪{toPersianDigits(profile.defensibilityRate.toFixed(1))}
@@ -329,7 +347,7 @@ export function AuditorScorecardDrawer({
                   <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl">
                     <span className="text-[11px] text-slate-500 block mb-1 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3 text-amber-500" />
-                      اختلاف تشخیص
+                      {isDecree ? 'مجموع اصل مالیات' : 'اختلاف تشخیص'}
                     </span>
                     <span className="text-xs font-black text-slate-800 font-mono block truncate" title={profile.netTaxGapAddition.toLocaleString('fa-IR')}>
                       {toPersianDigits((profile.netTaxGapAddition / 1_000_000_000).toFixed(1))} م.م.
@@ -339,7 +357,7 @@ export function AuditorScorecardDrawer({
                   <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl">
                     <span className="text-[11px] text-slate-500 block mb-1 flex items-center gap-1">
                       <Clock className="w-3 h-3 text-sky-500" />
-                      متوسط زمان صدور
+                      {isDecree ? 'میانگین اجرای قرار' : 'متوسط زمان صدور'}
                     </span>
                     <span className="text-sm font-black text-slate-800 font-mono">
                       {toPersianDigits(profile.averageDaysAssignmentToNotice.toFixed(0))} روز
@@ -347,41 +365,47 @@ export function AuditorScorecardDrawer({
                   </div>
                 </div>
 
-                {/* Risk Distribution Breakdown */}
+                {/* Risk Distribution / Stages Breakdown */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
                   <h4 className="text-xs font-bold text-slate-800 mb-3 flex items-center gap-2">
                     <Layers className="w-4 h-4 text-amber-600" />
-                    توزیع ریسک پرونده‌های واگذار شده به حسابرس
+                    {isDecree ? 'توزیع مراحل دادرسی و پیچیدگی قرارهای ارجاعی' : 'توزیع ریسک پرونده‌های واگذار شده به حسابرس'}
                   </h4>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="p-3 rounded-xl bg-rose-50/60 border border-rose-200/70 text-rose-800">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold">ریسک بالا</span>
+                        <span className="font-semibold">{isDecree ? 'مرحله تجدیدنظر و هم‌عرض' : 'ریسک بالا'}</span>
                         <span className="font-mono font-bold text-sm">
                           {toPersianDigits(profile.highRiskCasesCount.toLocaleString('fa-IR'))}
                         </span>
                       </div>
-                      <span className="text-[10px] text-rose-600 mt-0.5 block">نیازمند حسابرسی موشکافانه</span>
+                      <span className="text-[10px] text-rose-600 mt-0.5 block">
+                        {isDecree ? 'رسیدگی در مراحل عالی دادرسی' : 'نیازمند حسابرسی موشکافانه'}
+                      </span>
                     </div>
 
                     <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 text-amber-800">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold">ریسک متوسط</span>
+                        <span className="font-semibold">{isDecree ? 'مرحله بدوی' : 'ریسک متوسط'}</span>
                         <span className="font-mono font-bold text-sm">
                           {toPersianDigits(profile.mediumRiskCasesCount.toLocaleString('fa-IR'))}
                         </span>
                       </div>
-                      <span className="text-[10px] text-amber-600 mt-0.5 block">رسیدگی ادواری استاندارد</span>
+                      <span className="text-[10px] text-amber-600 mt-0.5 block">
+                        {isDecree ? 'رسیدگی اولیه در هیات‌های بدوی' : 'رسیدگی ادواری استاندارد'}
+                      </span>
                     </div>
 
                     <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/70 text-emerald-800">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold">ریسک پایین</span>
+                        <span className="font-semibold">{isDecree ? 'گزارش‌های تایید شده' : 'ریسک پایین'}</span>
                         <span className="font-mono font-bold text-sm">
                           {toPersianDigits(profile.lowRiskCasesCount.toLocaleString('fa-IR'))}
                         </span>
                       </div>
-                      <span className="text-[10px] text-emerald-600 mt-0.5 block">رسیدگی سریع / تمکین بالا</span>
+                      <span className="text-[10px] text-emerald-600 mt-0.5 block">
+                        {isDecree ? 'تکمیل فرآیند و تایید نهایی قرار' : 'رسیدگی سریع / تمکین بالا'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -502,7 +526,7 @@ export function AuditorScorecardDrawer({
                   className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>مشاهده ریز پرونده‌ها در جدول</span>
+                  <span>{isDecree ? 'مشاهده ریز قرارها در جدول' : 'مشاهده ریز پرونده‌ها در جدول'}</span>
                 </button>
               )}
               <button

@@ -621,7 +621,7 @@ public class CustomDatasetService : ICustomDatasetService
             {
                 var mapper = SemanticAuditFieldMapper.FromColumns(config.Columns);
                 var auditorCol = mapper.AuditorNameField ?? 
-                    config.Columns.FirstOrDefault(c => (c.OriginalHeader.Contains("حسابرس") || c.PersianLabel.Contains("حسابرس")) && !c.OriginalHeader.Contains("کد") && !c.OriginalHeader.Contains("طول"))?.FieldName;
+                    config.Columns.FirstOrDefault(c => (c.OriginalHeader.Contains("حسابرس") || c.PersianLabel.Contains("حسابرس") || c.OriginalHeader.Contains("مجری قرار") || c.PersianLabel.Contains("مجری قرار") || c.OriginalHeader.Contains("سرپرست مجری")) && !c.OriginalHeader.Contains("کد") && !c.OriginalHeader.Contains("طول"))?.FieldName;
 
                 if (auditorCol != null)
                 {

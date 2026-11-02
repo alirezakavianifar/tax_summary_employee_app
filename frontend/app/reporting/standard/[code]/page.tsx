@@ -48,13 +48,24 @@ export default function StandardReportDetailPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [activeView, setActiveView] = useState<'table' | 'performance'>(initialView || 'table')
 
-  const hasAuditorData = React.useMemo(() => {
-    if (!executionResult?.columns) return false
-    return executionResult.columns.some((c) => {
+  const reportActorType = React.useMemo(() => {
+    if (!executionResult?.columns) return null
+    const hasDecree = executionResult.columns.some((c) => {
+      const h = (c.persianLabel || c.fieldName || '').toLowerCase()
+      return (h.includes('مجری قرار') || h.includes('سرپرست مجری') || h.includes('کارشناس اجرای قرار') || h.includes('اجرای قرار')) && !h.includes('طول') && !h.includes('کد')
+    })
+    if (hasDecree) return 'decree' as const
+
+    const hasAuditor = executionResult.columns.some((c) => {
       const h = (c.persianLabel || c.fieldName || '').toLowerCase()
       return h.includes('حسابرس') && !h.includes('طول') && !h.includes('کد')
     })
+    if (hasAuditor) return 'auditor' as const
+
+    return null
   }, [executionResult?.columns])
+
+  const hasAuditorData = reportActorType !== null
 
   const [filters, setFilters] = useState<ReportFilterParameters>({
     pageNumber: 1,
@@ -258,7 +269,7 @@ export default function StandardReportDetailPage() {
         </div>
       )}
 
-      {/* View Switcher Tabs (when report has auditor data) */}
+      {/* View Switcher Tabs (when report has auditor or decree data) */}
       {hasAuditorData && (
         <div className="flex items-center gap-2 border-b border-slate-200/90 pb-2">
           <button
@@ -271,7 +282,7 @@ export default function StandardReportDetailPage() {
             }`}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>جدول ریز داده‌های پرونده‌ها</span>
+            <span>{reportActorType === 'decree' ? 'جدول ریز داده‌های قرارها' : 'جدول ریز داده‌های پرونده‌ها'}</span>
           </button>
 
           <button
@@ -284,7 +295,11 @@ export default function StandardReportDetailPage() {
             }`}
           >
             <Award className="w-4 h-4 text-amber-400" />
-            <span>ارزیابی عملکرد و کارنامه حسابرسان</span>
+            <span>
+              {reportActorType === 'decree'
+                ? 'ارزیابی عملکرد و کارنامه مجریان قرار'
+                : 'ارزیابی عملکرد و کارنامه حسابرسان'}
+            </span>
             <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-200/70 text-amber-950">
               هوشمند
             </span>
@@ -305,7 +320,7 @@ export default function StandardReportDetailPage() {
             isLoading={isLoading}
           />
 
-          {/* Active Auditor Filter Notification Banner */}
+          {/* Active Supervisor / Auditor Filter Notification Banner */}
           {filters.auditorName && (
             <div className="bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50 border border-amber-300/80 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-2">
               <div className="flex items-center gap-3">
@@ -317,13 +332,14 @@ export default function StandardReportDetailPage() {
                 />
                 <div>
                   <div className="text-[11px] font-bold text-amber-800">
-                    فیلتر فعال پرونده‌های حسابرس
+                    {reportActorType === 'decree' ? 'فیلتر فعال قرارهای مجری' : 'فیلتر فعال پرونده‌های حسابرس'}
                   </div>
                   <div className="text-sm font-extrabold text-slate-900">
-                    نمایش پرونده‌های رسیدگی‌شده توسط <span className="text-amber-900 font-black underline decoration-amber-400">«{filters.auditorName}»</span>
+                    {reportActorType === 'decree' ? 'نمایش قرارهای ارجاعی به ' : 'نمایش پرونده‌های رسیدگی‌شده توسط '}
+                    <span className="text-amber-900 font-black underline decoration-amber-400">«{filters.auditorName}»</span>
                     {executionResult && (
                       <span className="text-xs font-normal text-slate-600 mr-2">
-                        ({toPersianDigits(executionResult.totalRowCount.toLocaleString('fa-IR'))} پرونده)
+                        ({toPersianDigits(executionResult.totalRowCount.toLocaleString('fa-IR'))} {reportActorType === 'decree' ? 'فقره قرار' : 'پرونده'})
                       </span>
                     )}
                   </div>
@@ -337,17 +353,17 @@ export default function StandardReportDetailPage() {
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition-all cursor-pointer shadow-xs"
                 >
                   <Award className="w-4 h-4 text-amber-200" />
-                  <span>بازگشت به رتبه‌بندی حسابرسان</span>
+                  <span>{reportActorType === 'decree' ? 'بازگشت به رتبه‌بندی مجریان قرار' : 'بازگشت به رتبه‌بندی حسابرسان'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleClearAuditorFilter}
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition-all cursor-pointer shadow-2xs"
-                  title="حذف فیلتر حسابرس و نمایش تمامی پرونده‌های استان"
+                  title={reportActorType === 'decree' ? 'حذف فیلتر مجری و نمایش تمامی قرارهای استان' : 'حذف فیلتر حسابرس و نمایش تمامی پرونده‌های استان'}
                 >
                   <X className="w-4 h-4 text-slate-400" />
-                  <span>نمایش همه پرونده‌ها</span>
+                  <span>{reportActorType === 'decree' ? 'نمایش همه قرارها' : 'نمایش همه پرونده‌ها'}</span>
                 </button>
               </div>
             </div>
@@ -372,10 +388,11 @@ export default function StandardReportDetailPage() {
         </>
       )}
 
-      {/* Tab 2: Auditor Performance & Scorecards View */}
+      {/* Tab 2: Auditor / Decree Performance & Scorecards View */}
       {activeView === 'performance' && (
         <ReportAuditorPerformanceTab 
           reportCode={code} 
+          reportActorType={reportActorType || undefined}
           onViewAuditorCases={handleViewAuditorCases}
         />
       )}

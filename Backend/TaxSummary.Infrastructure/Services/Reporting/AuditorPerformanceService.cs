@@ -445,15 +445,18 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 int totalCases = group.Count();
 
                 int completedCases = group.Count(x =>
-                    !string.IsNullOrEmpty(x.AuditStatus) &&
-                    (x.AuditStatus.Contains("رسیدگی شده") || x.AuditStatus.Contains("تشخیص") || x.AuditStatus.Contains("قطعی") || x.AuditStatus.Contains("اعتراض") || x.AuditStatus.Contains("رای")) &&
-                    !x.AuditStatus.Contains("تخصیص داده شد"));
+                    x.DaysAssignmentToNotice.HasValue ||
+                    (!string.IsNullOrEmpty(x.AuditStatus) &&
+                     (x.AuditStatus.Contains("رسیدگی شده") || x.AuditStatus.Contains("تشخیص") || x.AuditStatus.Contains("قطعی") || x.AuditStatus.Contains("اعتراض") || x.AuditStatus.Contains("رای") || x.AuditStatus.Contains("در انتظار تایید") || x.AuditStatus.Contains("تایید گزارش")) &&
+                     !x.AuditStatus.Contains("تخصیص داده شد") &&
+                     !x.AuditStatus.Contains("در انتظار ثبت گزارش") &&
+                     !x.AuditStatus.Contains("در انتظار تخصیص")));
 
-                if (completedCases == 0 && totalCases > 0)
+                if (completedCases == 0 && totalCases > 0 && group.All(x => string.IsNullOrWhiteSpace(x.AuditStatus)))
                     completedCases = totalCases;
 
                 int finalizedCases = group.Count(x =>
-                    !string.IsNullOrEmpty(x.AuditStatus) && x.AuditStatus.Contains("قطعی"));
+                    !string.IsNullOrEmpty(x.AuditStatus) && (x.AuditStatus.Contains("قطعی") || x.AuditStatus.Contains("تایید")));
 
                 decimal totalDeclared = group.Sum(x => x.DeclaredTaxAmount);
                 decimal totalAssessed = group.Sum(x => x.AssessedTaxAmount);
@@ -695,6 +698,16 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 decimal num = SumField(metric.PrimaryField, group);
                 decimal den = SumField(metric.SecondaryField ?? string.Empty, group);
                 if (den <= 0m) return 0m;
+                if (num <= 0m && metric.PrimaryField.Equals("FinalTaxAmount", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Fallback to completed/assigned case ratio when final tax is not individually recorded
+                    int completedCount = group.Count(x => x.DaysAssignmentToNotice.HasValue || (!string.IsNullOrEmpty(x.AuditStatus) && (x.AuditStatus.Contains("تایید") || x.AuditStatus.Contains("در انتظار تایید"))));
+                    int totalCount = group.Count();
+                    if (totalCount > 0 && completedCount > 0)
+                    {
+                        return Math.Clamp(((decimal)completedCount / totalCount) * 100m, 0m, 100m);
+                    }
+                }
                 decimal ratio = (num / den) * metric.Multiplier;
                 if (metric.Unit == "%" || metric.Unit == "درصد" || metric.MetricCode.Contains("DEFENSIBILITY", StringComparison.OrdinalIgnoreCase))
                 {
@@ -726,11 +739,14 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 {
                     if (metric.PrimaryField.Equals("AuditStatus", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (item.AuditStatus != null)
+                        if (item.DaysAssignmentToNotice.HasValue ||
+                            (item.AuditStatus != null &&
+                             (item.AuditStatus.Contains("رسیدگی شده") || item.AuditStatus.Contains("تشخیص") || item.AuditStatus.Contains("قطعی") || item.AuditStatus.Contains("اعتراض") || item.AuditStatus.Contains("رای") || item.AuditStatus.Contains("در انتظار تایید") || item.AuditStatus.Contains("تایید گزارش")) &&
+                             !item.AuditStatus.Contains("تخصیص داده شد") &&
+                             !item.AuditStatus.Contains("در انتظار ثبت گزارش") &&
+                             !item.AuditStatus.Contains("در انتظار تخصیص")))
                         {
-                            var statusStr = item.AuditStatus;
-                            if ((statusStr.Contains("رسیدگی شده") || statusStr.Contains("تشخیص") || statusStr.Contains("قطعی") || statusStr.Contains("اعتراض") || statusStr.Contains("رای")) && !statusStr.Contains("تخصیص داده شد"))
-                                count++;
+                            count++;
                         }
                     }
                     else
@@ -748,7 +764,9 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 {
                     if (metric.PrimaryField.Equals("RiskLevel", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (item.RiskLevel != null && (item.RiskLevel.Contains("پرریسک") || item.RiskLevel.Contains("ریسک بالا") || item.RiskLevel.Contains("بالا")))
+                        if (item.RiskLevel != null && 
+                            (item.RiskLevel.Contains("پرریسک") || item.RiskLevel.Contains("ریسک بالا") || item.RiskLevel.Contains("بالا") ||
+                             item.RiskLevel.Contains("تجدید نظر") || item.RiskLevel.Contains("تجدیدنظر") || item.RiskLevel.Contains("هم عرض") || item.RiskLevel.Contains("هم‌عرض")))
                             matches++;
                     }
                     else if (metric.PrimaryField.Equals("AuditStatus", StringComparison.OrdinalIgnoreCase) ||
@@ -757,7 +775,8 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                              metric.PrimaryField.Equals("FinalTax", StringComparison.OrdinalIgnoreCase) ||
                              metric.PrimaryField.Equals("Status", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (!string.IsNullOrEmpty(item.AuditStatus) && item.AuditStatus.Contains("قطعی"))
+                        if (item.DaysAssignmentToNotice.HasValue ||
+                            (!string.IsNullOrEmpty(item.AuditStatus) && (item.AuditStatus.Contains("قطعی") || item.AuditStatus.Contains("تایید"))))
                             matches++;
                     }
                 }
