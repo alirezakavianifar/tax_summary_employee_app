@@ -231,7 +231,9 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
               (c.collections1405_Amount != null && c.collections1405_Amount > 0) ||
               (c.totalObjections_Quantity != null && c.totalObjections_Quantity > 0) ||
               (c.issuedRulings_Quantity != null && c.issuedRulings_Quantity > 0) ||
-              (c.finalizedObjections_Quantity != null && c.finalizedObjections_Quantity > 0)
+              (c.finalizedObjections_Quantity != null && c.finalizedObjections_Quantity > 0) ||
+              (c.systemicAudit1399_TotalQuantity != null && c.systemicAudit1399_TotalQuantity > 0) ||
+              (c.systemicAudit1403_TotalQuantity != null && c.systemicAudit1403_TotalQuantity > 0)
           );
           if (!execCap) return null;
 
@@ -279,7 +281,7 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
               </div>
 
               {/* Dispute Resolution & Board Rulings Section */}
-              <div>
+              <div className="mb-6">
                 <h3 className="text-md font-bold text-gray-700 mb-3 flex items-center gap-2">
                   <span>⚖️</span>
                   رسیدگی به اعتراضات و دادرسی مالیاتی
@@ -325,6 +327,130 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
                   </div>
                 </div>
               </div>
+
+              {/* Systemic Audit & Dispute Resolution Performance Comparison (1399 vs 1403) */}
+              {((execCap.systemicAudit1399_TotalQuantity != null && execCap.systemicAudit1399_TotalQuantity > 0) ||
+                (execCap.systemicAudit1403_TotalQuantity != null && execCap.systemicAudit1403_TotalQuantity > 0)) && (
+                <div className="border-t border-gray-100 pt-5">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-md font-bold text-gray-700 flex items-center gap-2">
+                      <span>🔄</span>
+                      عملکرد رسیدگی سیستمی و وضعیت اعتراضات (مقایسه سنوات ۱۳۹۹ و ۱۴۰۳)
+                    </h3>
+                    <span className="text-xs bg-purple-50 text-purple-700 font-semibold px-2.5 py-1 rounded-full border border-purple-200">
+                      سامانه سنیم / رسیدگی سیستمی
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Year 1399 Card */}
+                    <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-4 shadow-sm">
+                      <div className="flex justify-between items-center mb-3 border-b border-slate-200 pb-2">
+                        <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block"></span>
+                          رسیدگی سیستمی عملکرد سال ۱۳۹۹
+                        </span>
+                        <span className="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium">عملکرد ۱۳۹۹</span>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-200">
+                          <span className="text-xs font-bold text-slate-600">کل رسیدگی سیستمی:</span>
+                          <span className="text-base font-black text-slate-900 font-mono">
+                            {execCap.systemicAudit1399_TotalQuantity?.toLocaleString('fa-IR') || '۰'}
+                            <span className="text-xs font-normal text-slate-500 mr-1">فقره</span>
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-amber-200">
+                          <div>
+                            <span className="text-xs font-bold text-amber-900 block">دارای اعتراض:</span>
+                            <span className="text-[11px] text-amber-700">نسبت به کل رسیدگی سیستمی</span>
+                          </div>
+                          <div className="text-left">
+                            <span className="text-base font-black text-amber-800 font-mono">
+                              {execCap.systemicAudit1399_ObjectionQuantity?.toLocaleString('fa-IR') || '۰'}
+                              <span className="text-xs font-normal text-amber-600 mr-1">فقره</span>
+                            </span>
+                            <span className="inline-block mr-2 px-1.5 py-0.5 bg-amber-100 text-amber-800 text-xs font-bold rounded">
+                              {((execCap.systemicAudit1399_ObjectionPercentage || 0) * 100).toFixed(1)}٪
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-emerald-200">
+                          <div>
+                            <span className="text-xs font-bold text-emerald-900 block">قطعیت اعتراضات:</span>
+                            <span className="text-[11px] text-emerald-700">قطعی شده دارای اعتراض</span>
+                          </div>
+                          <div className="text-left">
+                            <span className="text-base font-black text-emerald-800 font-mono">
+                              {execCap.systemicAudit1399_FinalizedObjectionQuantity?.toLocaleString('fa-IR') || '۰'}
+                              <span className="text-xs font-normal text-emerald-600 mr-1">پرونده</span>
+                            </span>
+                            <span className="inline-block mr-2 px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded">
+                              {((execCap.systemicAudit1399_FinalizedObjectionPercentage || 0) * 100).toFixed(1)}٪
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Year 1403 Card */}
+                    <div className="bg-indigo-50/60 border border-indigo-200 rounded-xl p-4 shadow-sm">
+                      <div className="flex justify-between items-center mb-3 border-b border-indigo-200 pb-2">
+                        <span className="font-bold text-indigo-900 text-sm flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block"></span>
+                          رسیدگی سیستمی عملکرد سال ۱۴۰۳
+                        </span>
+                        <span className="text-xs bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded font-medium">عملکرد ۱۴۰۳</span>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-indigo-200">
+                          <span className="text-xs font-bold text-indigo-900">کل رسیدگی سیستمی:</span>
+                          <span className="text-base font-black text-indigo-900 font-mono">
+                            {execCap.systemicAudit1403_TotalQuantity?.toLocaleString('fa-IR') || '۰'}
+                            <span className="text-xs font-normal text-indigo-600 mr-1">فقره</span>
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-rose-200">
+                          <div>
+                            <span className="text-xs font-bold text-rose-900 block">دارای اعتراض:</span>
+                            <span className="text-[11px] text-rose-700">نسبت به کل رسیدگی سیستمی</span>
+                          </div>
+                          <div className="text-left">
+                            <span className="text-base font-black text-rose-800 font-mono">
+                              {execCap.systemicAudit1403_ObjectionQuantity?.toLocaleString('fa-IR') || '۰'}
+                              <span className="text-xs font-normal text-rose-600 mr-1">فقره</span>
+                            </span>
+                            <span className="inline-block mr-2 px-1.5 py-0.5 bg-rose-100 text-rose-800 text-xs font-bold rounded">
+                              {((execCap.systemicAudit1403_ObjectionPercentage || 0) * 100).toFixed(1)}٪
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-teal-200">
+                          <div>
+                            <span className="text-xs font-bold text-teal-900 block">قطعیت اعتراضات:</span>
+                            <span className="text-[11px] text-teal-700">قطعی شده دارای اعتراض</span>
+                          </div>
+                          <div className="text-left">
+                            <span className="text-base font-black text-teal-800 font-mono">
+                              {execCap.systemicAudit1403_FinalizedObjectionQuantity?.toLocaleString('fa-IR') || '۰'}
+                              <span className="text-xs font-normal text-teal-600 mr-1">پرونده</span>
+                            </span>
+                            <span className="inline-block mr-2 px-1.5 py-0.5 bg-teal-100 text-teal-800 text-xs font-bold rounded">
+                              {((execCap.systemicAudit1403_FinalizedObjectionPercentage || 0) * 100).toFixed(1)}٪
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}

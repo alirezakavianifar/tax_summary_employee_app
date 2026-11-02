@@ -435,7 +435,17 @@ public class EmployeeReportsController : ControllerBase
                     IssuedRulings_Quantity = c.IssuedRulings_Quantity,
                     IssuedRulings_Percentage = c.IssuedRulings_Percentage,
                     FinalizedObjections_Quantity = c.FinalizedObjections_Quantity,
-                    FinalizedRulings_Percentage = c.FinalizedRulings_Percentage
+                    FinalizedRulings_Percentage = c.FinalizedRulings_Percentage,
+                    SystemicAudit1399_TotalQuantity = c.SystemicAudit1399_TotalQuantity,
+                    SystemicAudit1399_ObjectionQuantity = c.SystemicAudit1399_ObjectionQuantity,
+                    SystemicAudit1399_ObjectionPercentage = c.SystemicAudit1399_ObjectionPercentage,
+                    SystemicAudit1399_FinalizedObjectionQuantity = c.SystemicAudit1399_FinalizedObjectionQuantity,
+                    SystemicAudit1399_FinalizedObjectionPercentage = c.SystemicAudit1399_FinalizedObjectionPercentage,
+                    SystemicAudit1403_TotalQuantity = c.SystemicAudit1403_TotalQuantity,
+                    SystemicAudit1403_ObjectionQuantity = c.SystemicAudit1403_ObjectionQuantity,
+                    SystemicAudit1403_ObjectionPercentage = c.SystemicAudit1403_ObjectionPercentage,
+                    SystemicAudit1403_FinalizedObjectionQuantity = c.SystemicAudit1403_FinalizedObjectionQuantity,
+                    SystemicAudit1403_FinalizedObjectionPercentage = c.SystemicAudit1403_FinalizedObjectionPercentage
                 }).ToList()
             };
 

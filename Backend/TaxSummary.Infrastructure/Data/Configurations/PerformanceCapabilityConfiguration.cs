@@ -127,6 +127,51 @@ public class PerformanceCapabilityConfiguration : IEntityTypeConfiguration<Perfo
             .HasColumnType("DECIMAL(8,4)")
             .HasDefaultValue(0);
 
+        // Systemic Audit Performance Metrics (1399 & 1403)
+        builder.Property(p => p.SystemicAudit1399_TotalQuantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.SystemicAudit1399_ObjectionQuantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.SystemicAudit1399_ObjectionPercentage)
+            .IsRequired()
+            .HasColumnType("DECIMAL(8,4)")
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.SystemicAudit1399_FinalizedObjectionQuantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.SystemicAudit1399_FinalizedObjectionPercentage)
+            .IsRequired()
+            .HasColumnType("DECIMAL(8,4)")
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.SystemicAudit1403_TotalQuantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.SystemicAudit1403_ObjectionQuantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.SystemicAudit1403_ObjectionPercentage)
+            .IsRequired()
+            .HasColumnType("DECIMAL(8,4)")
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.SystemicAudit1403_FinalizedObjectionQuantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.SystemicAudit1403_FinalizedObjectionPercentage)
+            .IsRequired()
+            .HasColumnType("DECIMAL(8,4)")
+            .HasDefaultValue(0);
+
         builder.Property(p => p.CreatedAt)
             .IsRequired()
             .HasColumnType("DATETIME2");

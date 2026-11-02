@@ -41,6 +41,19 @@ public class PerformanceCapabilityDto
     public int FinalizedObjections_Quantity { get; set; }
     public decimal FinalizedRulings_Percentage { get; set; }
     
+    // Systemic Audit Performance Metrics (1399 & 1403)
+    public int SystemicAudit1399_TotalQuantity { get; set; }
+    public int SystemicAudit1399_ObjectionQuantity { get; set; }
+    public decimal SystemicAudit1399_ObjectionPercentage { get; set; }
+    public int SystemicAudit1399_FinalizedObjectionQuantity { get; set; }
+    public decimal SystemicAudit1399_FinalizedObjectionPercentage { get; set; }
+
+    public int SystemicAudit1403_TotalQuantity { get; set; }
+    public int SystemicAudit1403_ObjectionQuantity { get; set; }
+    public decimal SystemicAudit1403_ObjectionPercentage { get; set; }
+    public int SystemicAudit1403_FinalizedObjectionQuantity { get; set; }
+    public decimal SystemicAudit1403_FinalizedObjectionPercentage { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

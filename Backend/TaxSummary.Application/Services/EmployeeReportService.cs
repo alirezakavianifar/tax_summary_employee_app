@@ -133,7 +133,17 @@ public class EmployeeReportService : IEmployeeReportService
                     issuedRulingsQuantity: capabilityDto.IssuedRulings_Quantity,
                     issuedRulingsPercentage: capabilityDto.IssuedRulings_Percentage,
                     finalizedObjectionsQuantity: capabilityDto.FinalizedObjections_Quantity,
-                    finalizedRulingsPercentage: capabilityDto.FinalizedRulings_Percentage
+                    finalizedRulingsPercentage: capabilityDto.FinalizedRulings_Percentage,
+                    systemicAudit1399TotalQuantity: capabilityDto.SystemicAudit1399_TotalQuantity,
+                    systemicAudit1399ObjectionQuantity: capabilityDto.SystemicAudit1399_ObjectionQuantity,
+                    systemicAudit1399ObjectionPercentage: capabilityDto.SystemicAudit1399_ObjectionPercentage,
+                    systemicAudit1399FinalizedObjectionQuantity: capabilityDto.SystemicAudit1399_FinalizedObjectionQuantity,
+                    systemicAudit1399FinalizedObjectionPercentage: capabilityDto.SystemicAudit1399_FinalizedObjectionPercentage,
+                    systemicAudit1403TotalQuantity: capabilityDto.SystemicAudit1403_TotalQuantity,
+                    systemicAudit1403ObjectionQuantity: capabilityDto.SystemicAudit1403_ObjectionQuantity,
+                    systemicAudit1403ObjectionPercentage: capabilityDto.SystemicAudit1403_ObjectionPercentage,
+                    systemicAudit1403FinalizedObjectionQuantity: capabilityDto.SystemicAudit1403_FinalizedObjectionQuantity,
+                    systemicAudit1403FinalizedObjectionPercentage: capabilityDto.SystemicAudit1403_FinalizedObjectionPercentage
                 );
 
                 employee.AddPerformanceCapability(capability);
@@ -246,7 +256,17 @@ public class EmployeeReportService : IEmployeeReportService
                     issuedRulingsQuantity: capabilityDto.IssuedRulings_Quantity,
                     issuedRulingsPercentage: capabilityDto.IssuedRulings_Percentage,
                     finalizedObjectionsQuantity: capabilityDto.FinalizedObjections_Quantity,
-                    finalizedRulingsPercentage: capabilityDto.FinalizedRulings_Percentage
+                    finalizedRulingsPercentage: capabilityDto.FinalizedRulings_Percentage,
+                    systemicAudit1399TotalQuantity: capabilityDto.SystemicAudit1399_TotalQuantity,
+                    systemicAudit1399ObjectionQuantity: capabilityDto.SystemicAudit1399_ObjectionQuantity,
+                    systemicAudit1399ObjectionPercentage: capabilityDto.SystemicAudit1399_ObjectionPercentage,
+                    systemicAudit1399FinalizedObjectionQuantity: capabilityDto.SystemicAudit1399_FinalizedObjectionQuantity,
+                    systemicAudit1399FinalizedObjectionPercentage: capabilityDto.SystemicAudit1399_FinalizedObjectionPercentage,
+                    systemicAudit1403TotalQuantity: capabilityDto.SystemicAudit1403_TotalQuantity,
+                    systemicAudit1403ObjectionQuantity: capabilityDto.SystemicAudit1403_ObjectionQuantity,
+                    systemicAudit1403ObjectionPercentage: capabilityDto.SystemicAudit1403_ObjectionPercentage,
+                    systemicAudit1403FinalizedObjectionQuantity: capabilityDto.SystemicAudit1403_FinalizedObjectionQuantity,
+                    systemicAudit1403FinalizedObjectionPercentage: capabilityDto.SystemicAudit1403_FinalizedObjectionPercentage
                 );
 
                 // Update all capability metrics
@@ -283,6 +303,19 @@ public class EmployeeReportService : IEmployeeReportService
                     capabilityDto.IssuedRulings_Percentage,
                     capabilityDto.FinalizedObjections_Quantity,
                     capabilityDto.FinalizedRulings_Percentage
+                );
+
+                capability.UpdateSystemicAuditMetrics(
+                    capabilityDto.SystemicAudit1399_TotalQuantity,
+                    capabilityDto.SystemicAudit1399_ObjectionQuantity,
+                    capabilityDto.SystemicAudit1399_ObjectionPercentage,
+                    capabilityDto.SystemicAudit1399_FinalizedObjectionQuantity,
+                    capabilityDto.SystemicAudit1399_FinalizedObjectionPercentage,
+                    capabilityDto.SystemicAudit1403_TotalQuantity,
+                    capabilityDto.SystemicAudit1403_ObjectionQuantity,
+                    capabilityDto.SystemicAudit1403_ObjectionPercentage,
+                    capabilityDto.SystemicAudit1403_FinalizedObjectionQuantity,
+                    capabilityDto.SystemicAudit1403_FinalizedObjectionPercentage
                 );
 
                 employee.AddPerformanceCapability(capability);

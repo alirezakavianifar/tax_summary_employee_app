@@ -206,7 +206,9 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
                 (c.collections1405_Amount != null && c.collections1405_Amount > 0) ||
                 (c.totalObjections_Quantity != null && c.totalObjections_Quantity > 0) ||
                 (c.issuedRulings_Quantity != null && c.issuedRulings_Quantity > 0) ||
-                (c.finalizedObjections_Quantity != null && c.finalizedObjections_Quantity > 0)
+                (c.finalizedObjections_Quantity != null && c.finalizedObjections_Quantity > 0) ||
+                (c.systemicAudit1399_TotalQuantity != null && c.systemicAudit1399_TotalQuantity > 0) ||
+                (c.systemicAudit1403_TotalQuantity != null && c.systemicAudit1403_TotalQuantity > 0)
             );
             if (!execCap) return null;
 
@@ -261,6 +263,69 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
                     </div>
                   </div>
                 </div>
+
+                {/* Systemic Audit Performance Comparison (1399 vs 1403) */}
+                {((execCap.systemicAudit1399_TotalQuantity != null && execCap.systemicAudit1399_TotalQuantity > 0) ||
+                  (execCap.systemicAudit1403_TotalQuantity != null && execCap.systemicAudit1403_TotalQuantity > 0)) && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <h3 className="font-bold text-sm mb-2">رسیدگی سیستمی و وضعیت اعتراضات (مقایسه سنوات ۱۳۹۹ و ۱۴۰۳):</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* 1399 Box */}
+                      <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50">
+                        <div className="font-bold text-xs text-gray-800 border-b pb-1 mb-2">
+                          عملکرد رسیدگی سیستمی سال ۱۳۹۹:
+                        </div>
+                        <div className="space-y-1.5 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">کل رسیدگی سیستمی:</span>
+                            <span className="font-bold">{execCap.systemicAudit1399_TotalQuantity?.toLocaleString('fa-IR') || '۰'} فقره</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">دارای اعتراض:</span>
+                            <span className="font-bold">
+                              {execCap.systemicAudit1399_ObjectionQuantity?.toLocaleString('fa-IR') || '۰'} فقره
+                              <span className="text-[10px] text-gray-500 mr-1">({((execCap.systemicAudit1399_ObjectionPercentage || 0) * 100).toFixed(1)}٪)</span>
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">قطعیت اعتراضات:</span>
+                            <span className="font-bold">
+                              {execCap.systemicAudit1399_FinalizedObjectionQuantity?.toLocaleString('fa-IR') || '۰'} پرونده
+                              <span className="text-[10px] text-gray-500 mr-1">({((execCap.systemicAudit1399_FinalizedObjectionPercentage || 0) * 100).toFixed(1)}٪)</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 1403 Box */}
+                      <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50">
+                        <div className="font-bold text-xs text-gray-800 border-b pb-1 mb-2">
+                          عملکرد رسیدگی سیستمی سال ۱۴۰۳:
+                        </div>
+                        <div className="space-y-1.5 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">کل رسیدگی سیستمی:</span>
+                            <span className="font-bold">{execCap.systemicAudit1403_TotalQuantity?.toLocaleString('fa-IR') || '۰'} فقره</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">دارای اعتراض:</span>
+                            <span className="font-bold">
+                              {execCap.systemicAudit1403_ObjectionQuantity?.toLocaleString('fa-IR') || '۰'} فقره
+                              <span className="text-[10px] text-gray-500 mr-1">({((execCap.systemicAudit1403_ObjectionPercentage || 0) * 100).toFixed(1)}٪)</span>
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">قطعیت اعتراضات:</span>
+                            <span className="font-bold">
+                              {execCap.systemicAudit1403_FinalizedObjectionQuantity?.toLocaleString('fa-IR') || '۰'} پرونده
+                              <span className="text-[10px] text-gray-500 mr-1">({((execCap.systemicAudit1403_FinalizedObjectionPercentage || 0) * 100).toFixed(1)}٪)</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}

@@ -106,6 +106,19 @@ public class ExcelSeedService : IExcelSeedService
             int finalizedObj = ParseInt(GetValue(props, "اعتراض قطعی شده"));
             decimal finalizedPct = ParseDecimal(GetValue(props, "درصد قطعی صادره"));
 
+            // Parse Systemic Audit Metrics (1399 & 1403)
+            int sysAudit1399Total = ParseInt(GetValue(props, "کل رسیدگی سیستمی 1399", "کل رسیدگی سیستمی ۱۳۹۹"));
+            int sysAudit1399Obj = ParseInt(GetValue(props, "دارای اعتراض 1399", "دارای اعتراض ۱۳۹۹"));
+            decimal sysAudit1399ObjPct = ParseDecimal(GetValue(props, "درصد اعتراض 1399", "درصد اعتراض ۱۳۹۹"));
+            int sysAudit1399FinObj = ParseInt(GetValue(props, "قطعی شده دارای اعتراض 1399", "قطعی شده دارای اعتراض ۱۳۹۹"));
+            decimal sysAudit1399FinPct = ParseDecimal(GetValue(props, "درصد قطعی اعتراضات 1399", "درصد قطعی اعتراضات ۱۳۹۹"));
+
+            int sysAudit1403Total = ParseInt(GetValue(props, "کل رسیدگی سیستمی 1403", "کل رسیدگی سیستمی ۱۴۰۳"));
+            int sysAudit1403Obj = ParseInt(GetValue(props, "دارای اعتراض 1403", "دارای اعتراض ۱۴۰۳"));
+            decimal sysAudit1403ObjPct = ParseDecimal(GetValue(props, "درصد اعتراض 1403", "درصد اعتراض ۱۴۰۳"));
+            int sysAudit1403FinObj = ParseInt(GetValue(props, "قطعی شده دارای اعتراض 1403", "قطعی شده دارای اعتراض ۱۴۰۳"));
+            decimal sysAudit1403FinPct = ParseDecimal(GetValue(props, "درصد قطعی اعتراضات 1403", "درصد قطعی اعتراضات ۱۴۰۳"));
+
             // Check if employee exists
             var employee = await _employeeRepository.GetByPersonnelNumberAsync(personnelNumber, cancellationToken);
 
@@ -204,7 +217,17 @@ public class ExcelSeedService : IExcelSeedService
                     issuedRulingsQuantity: issuedRulings,
                     issuedRulingsPercentage: rulingsPct,
                     finalizedObjectionsQuantity: finalizedObj,
-                    finalizedRulingsPercentage: finalizedPct
+                    finalizedRulingsPercentage: finalizedPct,
+                    systemicAudit1399TotalQuantity: sysAudit1399Total,
+                    systemicAudit1399ObjectionQuantity: sysAudit1399Obj,
+                    systemicAudit1399ObjectionPercentage: sysAudit1399ObjPct,
+                    systemicAudit1399FinalizedObjectionQuantity: sysAudit1399FinObj,
+                    systemicAudit1399FinalizedObjectionPercentage: sysAudit1399FinPct,
+                    systemicAudit1403TotalQuantity: sysAudit1403Total,
+                    systemicAudit1403ObjectionQuantity: sysAudit1403Obj,
+                    systemicAudit1403ObjectionPercentage: sysAudit1403ObjPct,
+                    systemicAudit1403FinalizedObjectionQuantity: sysAudit1403FinObj,
+                    systemicAudit1403FinalizedObjectionPercentage: sysAudit1403FinPct
                 );
                 employee.AddPerformanceCapability(capability);
             }
@@ -244,6 +267,19 @@ public class ExcelSeedService : IExcelSeedService
                     rulingsPct,
                     finalizedObj,
                     finalizedPct
+                );
+
+                capability.UpdateSystemicAuditMetrics(
+                    sysAudit1399Total,
+                    sysAudit1399Obj,
+                    sysAudit1399ObjPct,
+                    sysAudit1399FinObj,
+                    sysAudit1399FinPct,
+                    sysAudit1403Total,
+                    sysAudit1403Obj,
+                    sysAudit1403ObjPct,
+                    sysAudit1403FinObj,
+                    sysAudit1403FinPct
                 );
             }
 

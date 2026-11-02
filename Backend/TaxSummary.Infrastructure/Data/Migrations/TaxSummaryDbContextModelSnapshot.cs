@@ -766,6 +766,56 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("NVARCHAR(200)");
 
+                    b.Property<decimal>("SystemicAudit1399_FinalizedObjectionPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("DECIMAL(8,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("SystemicAudit1399_FinalizedObjectionQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<decimal>("SystemicAudit1399_ObjectionPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("DECIMAL(8,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("SystemicAudit1399_ObjectionQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("SystemicAudit1399_TotalQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<decimal>("SystemicAudit1403_FinalizedObjectionPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("DECIMAL(8,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("SystemicAudit1403_FinalizedObjectionQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<decimal>("SystemicAudit1403_ObjectionPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("DECIMAL(8,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("SystemicAudit1403_ObjectionQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("SystemicAudit1403_TotalQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("TotalObjections_Quantity")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")

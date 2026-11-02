@@ -999,7 +999,17 @@ public static class DbInitializer
                     ["IssuedRulings_Quantity"] = "INTEGER NOT NULL DEFAULT 0",
                     ["IssuedRulings_Percentage"] = "REAL NOT NULL DEFAULT 0",
                     ["FinalizedObjections_Quantity"] = "INTEGER NOT NULL DEFAULT 0",
-                    ["FinalizedRulings_Percentage"] = "REAL NOT NULL DEFAULT 0"
+                    ["FinalizedRulings_Percentage"] = "REAL NOT NULL DEFAULT 0",
+                    ["SystemicAudit1399_TotalQuantity"] = "INTEGER NOT NULL DEFAULT 0",
+                    ["SystemicAudit1399_ObjectionQuantity"] = "INTEGER NOT NULL DEFAULT 0",
+                    ["SystemicAudit1399_ObjectionPercentage"] = "REAL NOT NULL DEFAULT 0",
+                    ["SystemicAudit1399_FinalizedObjectionQuantity"] = "INTEGER NOT NULL DEFAULT 0",
+                    ["SystemicAudit1399_FinalizedObjectionPercentage"] = "REAL NOT NULL DEFAULT 0",
+                    ["SystemicAudit1403_TotalQuantity"] = "INTEGER NOT NULL DEFAULT 0",
+                    ["SystemicAudit1403_ObjectionQuantity"] = "INTEGER NOT NULL DEFAULT 0",
+                    ["SystemicAudit1403_ObjectionPercentage"] = "REAL NOT NULL DEFAULT 0",
+                    ["SystemicAudit1403_FinalizedObjectionQuantity"] = "INTEGER NOT NULL DEFAULT 0",
+                    ["SystemicAudit1403_FinalizedObjectionPercentage"] = "REAL NOT NULL DEFAULT 0"
                 };
 
                 foreach (var (colName, colDef) in perfColumnsToAdd)
@@ -1077,10 +1087,12 @@ public static class DbInitializer
                 );";
             await command.ExecuteNonQueryAsync();
 
-            // 6. Record this migration as applied in __EFMigrationsHistory so MigrateAsync won't attempt duplicate column adds
+            // 6. Record these migrations as applied in __EFMigrationsHistory so MigrateAsync won't attempt duplicate column adds
             command.CommandText = @"
                 INSERT OR IGNORE INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
-                VALUES ('20261102050338_AddExecutiveServiceDatesAndPerformanceMetrics', '8.0.0');";
+                VALUES ('20261102050338_AddExecutiveServiceDatesAndPerformanceMetrics', '8.0.0');
+                INSERT OR IGNORE INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+                VALUES ('20261102064430_AddSystemicAuditPerformanceMetrics', '8.0.0');";
             await command.ExecuteNonQueryAsync();
         }
         catch (Exception ex)

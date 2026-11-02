@@ -265,6 +265,23 @@ public class Employee
                     var finPctStr = (execCap.FinalizedRulings_Percentage * 100).ToString("N1", new System.Globalization.CultureInfo("fa-IR"));
                     execParts.Add($"رسیدگی به {execCap.TotalObjections_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} فقره اعتراض با صدور {execCap.IssuedRulings_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} رأی ({rulingPctStr} درصد) و قطعیت {execCap.FinalizedObjections_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} رأی ({finPctStr} درصد)");
                 }
+                if (execCap.SystemicAudit1399_TotalQuantity > 0 || execCap.SystemicAudit1403_TotalQuantity > 0)
+                {
+                    var sysParts = new List<string>();
+                    if (execCap.SystemicAudit1399_TotalQuantity > 0)
+                    {
+                        var objPct99 = (execCap.SystemicAudit1399_ObjectionPercentage * 100).ToString("N1", new System.Globalization.CultureInfo("fa-IR"));
+                        var finPct99 = (execCap.SystemicAudit1399_FinalizedObjectionPercentage * 100).ToString("N1", new System.Globalization.CultureInfo("fa-IR"));
+                        sysParts.Add($"در رسیدگی سیستمی سال ۱۳۹۹: {execCap.SystemicAudit1399_TotalQuantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} پرونده با {execCap.SystemicAudit1399_ObjectionQuantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد اعتراض ({objPct99} درصد) و قطعیت {execCap.SystemicAudit1399_FinalizedObjectionQuantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} پرونده ({finPct99} درصد)");
+                    }
+                    if (execCap.SystemicAudit1403_TotalQuantity > 0)
+                    {
+                        var objPct03 = (execCap.SystemicAudit1403_ObjectionPercentage * 100).ToString("N1", new System.Globalization.CultureInfo("fa-IR"));
+                        var finPct03 = (execCap.SystemicAudit1403_FinalizedObjectionPercentage * 100).ToString("N1", new System.Globalization.CultureInfo("fa-IR"));
+                        sysParts.Add($"در رسیدگی سیستمی سال ۱۴۰۳: {execCap.SystemicAudit1403_TotalQuantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} پرونده با {execCap.SystemicAudit1403_ObjectionQuantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد اعتراض ({objPct03} درصد) و قطعیت {execCap.SystemicAudit1403_FinalizedObjectionQuantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} پرونده ({finPct03} درصد)");
+                    }
+                    execParts.Add(string.Join(" و ", sysParts));
+                }
                 sb.Append(string.Join("؛ همچنین ", execParts) + " ثبت گردیده است. ");
             }
 

@@ -52,6 +52,19 @@ public class PerformanceCapability
     public decimal IssuedRulings_Percentage { get; private set; }
     public int FinalizedObjections_Quantity { get; private set; }
     public decimal FinalizedRulings_Percentage { get; private set; }
+
+    // Systemic Audit Performance Metrics (1399 & 1403)
+    public int SystemicAudit1399_TotalQuantity { get; private set; }
+    public int SystemicAudit1399_ObjectionQuantity { get; private set; }
+    public decimal SystemicAudit1399_ObjectionPercentage { get; private set; }
+    public int SystemicAudit1399_FinalizedObjectionQuantity { get; private set; }
+    public decimal SystemicAudit1399_FinalizedObjectionPercentage { get; private set; }
+
+    public int SystemicAudit1403_TotalQuantity { get; private set; }
+    public int SystemicAudit1403_ObjectionQuantity { get; private set; }
+    public decimal SystemicAudit1403_ObjectionPercentage { get; private set; }
+    public int SystemicAudit1403_FinalizedObjectionQuantity { get; private set; }
+    public decimal SystemicAudit1403_FinalizedObjectionPercentage { get; private set; }
     
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
@@ -98,7 +111,17 @@ public class PerformanceCapability
         int issuedRulingsQuantity = 0,
         decimal issuedRulingsPercentage = 0,
         int finalizedObjectionsQuantity = 0,
-        decimal finalizedRulingsPercentage = 0)
+        decimal finalizedRulingsPercentage = 0,
+        int systemicAudit1399TotalQuantity = 0,
+        int systemicAudit1399ObjectionQuantity = 0,
+        decimal systemicAudit1399ObjectionPercentage = 0,
+        int systemicAudit1399FinalizedObjectionQuantity = 0,
+        decimal systemicAudit1399FinalizedObjectionPercentage = 0,
+        int systemicAudit1403TotalQuantity = 0,
+        int systemicAudit1403ObjectionQuantity = 0,
+        decimal systemicAudit1403ObjectionPercentage = 0,
+        int systemicAudit1403FinalizedObjectionQuantity = 0,
+        decimal systemicAudit1403FinalizedObjectionPercentage = 0)
     {
         if (string.IsNullOrWhiteSpace(systemRole))
             throw new ArgumentException("System role cannot be empty", nameof(systemRole));
@@ -155,6 +178,18 @@ public class PerformanceCapability
             FinalizedObjections_Quantity = finalizedObjectionsQuantity >= 0 ? finalizedObjectionsQuantity : 0,
             FinalizedRulings_Percentage = finalizedRulingsPercentage >= 0 ? finalizedRulingsPercentage : 0,
 
+            SystemicAudit1399_TotalQuantity = systemicAudit1399TotalQuantity >= 0 ? systemicAudit1399TotalQuantity : 0,
+            SystemicAudit1399_ObjectionQuantity = systemicAudit1399ObjectionQuantity >= 0 ? systemicAudit1399ObjectionQuantity : 0,
+            SystemicAudit1399_ObjectionPercentage = systemicAudit1399ObjectionPercentage >= 0 ? systemicAudit1399ObjectionPercentage : 0,
+            SystemicAudit1399_FinalizedObjectionQuantity = systemicAudit1399FinalizedObjectionQuantity >= 0 ? systemicAudit1399FinalizedObjectionQuantity : 0,
+            SystemicAudit1399_FinalizedObjectionPercentage = systemicAudit1399FinalizedObjectionPercentage >= 0 ? systemicAudit1399FinalizedObjectionPercentage : 0,
+
+            SystemicAudit1403_TotalQuantity = systemicAudit1403TotalQuantity >= 0 ? systemicAudit1403TotalQuantity : 0,
+            SystemicAudit1403_ObjectionQuantity = systemicAudit1403ObjectionQuantity >= 0 ? systemicAudit1403ObjectionQuantity : 0,
+            SystemicAudit1403_ObjectionPercentage = systemicAudit1403ObjectionPercentage >= 0 ? systemicAudit1403ObjectionPercentage : 0,
+            SystemicAudit1403_FinalizedObjectionQuantity = systemicAudit1403FinalizedObjectionQuantity >= 0 ? systemicAudit1403FinalizedObjectionQuantity : 0,
+            SystemicAudit1403_FinalizedObjectionPercentage = systemicAudit1403FinalizedObjectionPercentage >= 0 ? systemicAudit1403FinalizedObjectionPercentage : 0,
+
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -194,13 +229,49 @@ public class PerformanceCapability
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void UpdateSystemicAuditMetrics(
+        int systemicAudit1399TotalQuantity,
+        int systemicAudit1399ObjectionQuantity,
+        decimal systemicAudit1399ObjectionPercentage,
+        int systemicAudit1399FinalizedObjectionQuantity,
+        decimal systemicAudit1399FinalizedObjectionPercentage,
+        int systemicAudit1403TotalQuantity,
+        int systemicAudit1403ObjectionQuantity,
+        decimal systemicAudit1403ObjectionPercentage,
+        int systemicAudit1403FinalizedObjectionQuantity,
+        decimal systemicAudit1403FinalizedObjectionPercentage)
+    {
+        SystemicAudit1399_TotalQuantity = systemicAudit1399TotalQuantity >= 0 ? systemicAudit1399TotalQuantity : 0;
+        SystemicAudit1399_ObjectionQuantity = systemicAudit1399ObjectionQuantity >= 0 ? systemicAudit1399ObjectionQuantity : 0;
+        SystemicAudit1399_ObjectionPercentage = systemicAudit1399ObjectionPercentage >= 0 ? systemicAudit1399ObjectionPercentage : 0;
+        SystemicAudit1399_FinalizedObjectionQuantity = systemicAudit1399FinalizedObjectionQuantity >= 0 ? systemicAudit1399FinalizedObjectionQuantity : 0;
+        SystemicAudit1399_FinalizedObjectionPercentage = systemicAudit1399FinalizedObjectionPercentage >= 0 ? systemicAudit1399FinalizedObjectionPercentage : 0;
+
+        SystemicAudit1403_TotalQuantity = systemicAudit1403TotalQuantity >= 0 ? systemicAudit1403TotalQuantity : 0;
+        SystemicAudit1403_ObjectionQuantity = systemicAudit1403ObjectionQuantity >= 0 ? systemicAudit1403ObjectionQuantity : 0;
+        SystemicAudit1403_ObjectionPercentage = systemicAudit1403ObjectionPercentage >= 0 ? systemicAudit1403ObjectionPercentage : 0;
+        SystemicAudit1403_FinalizedObjectionQuantity = systemicAudit1403FinalizedObjectionQuantity >= 0 ? systemicAudit1403FinalizedObjectionQuantity : 0;
+        SystemicAudit1403_FinalizedObjectionPercentage = systemicAudit1403FinalizedObjectionPercentage >= 0 ? systemicAudit1403FinalizedObjectionPercentage : 0;
+
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public bool HasSystemicAuditMetrics()
+    {
+        return SystemicAudit1399_TotalQuantity > 0 ||
+               SystemicAudit1403_TotalQuantity > 0 ||
+               SystemicAudit1399_ObjectionQuantity > 0 ||
+               SystemicAudit1403_ObjectionQuantity > 0;
+    }
+
     public bool HasExecutiveMetrics()
     {
         return Collections1404_Amount > 0 ||
                Collections1405_Amount > 0 ||
                TotalObjections_Quantity > 0 ||
                IssuedRulings_Quantity > 0 ||
-               FinalizedObjections_Quantity > 0;
+               FinalizedObjections_Quantity > 0 ||
+               HasSystemicAuditMetrics();
     }
 
     /// <summary>

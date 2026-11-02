@@ -60,6 +60,17 @@ export interface PerformanceCapabilityDto {
   issuedRulings_Percentage?: number
   finalizedObjections_Quantity?: number
   finalizedRulings_Percentage?: number
+  // Systemic Audit Performance Metrics (1399 & 1403)
+  systemicAudit1399_TotalQuantity?: number
+  systemicAudit1399_ObjectionQuantity?: number
+  systemicAudit1399_ObjectionPercentage?: number
+  systemicAudit1399_FinalizedObjectionQuantity?: number
+  systemicAudit1399_FinalizedObjectionPercentage?: number
+  systemicAudit1403_TotalQuantity?: number
+  systemicAudit1403_ObjectionQuantity?: number
+  systemicAudit1403_ObjectionPercentage?: number
+  systemicAudit1403_FinalizedObjectionQuantity?: number
+  systemicAudit1403_FinalizedObjectionPercentage?: number
   createdAt: string
   updatedAt?: string
 }
@@ -121,6 +132,17 @@ export interface CreatePerformanceCapabilityDto {
   issuedRulings_Percentage?: number
   finalizedObjections_Quantity?: number
   finalizedRulings_Percentage?: number
+  // Systemic Audit Performance Metrics (1399 & 1403)
+  systemicAudit1399_TotalQuantity?: number
+  systemicAudit1399_ObjectionQuantity?: number
+  systemicAudit1399_ObjectionPercentage?: number
+  systemicAudit1399_FinalizedObjectionQuantity?: number
+  systemicAudit1399_FinalizedObjectionPercentage?: number
+  systemicAudit1403_TotalQuantity?: number
+  systemicAudit1403_ObjectionQuantity?: number
+  systemicAudit1403_ObjectionPercentage?: number
+  systemicAudit1403_FinalizedObjectionQuantity?: number
+  systemicAudit1403_FinalizedObjectionPercentage?: number
 }
 
 export interface UpdateEmployeeReportDto {
