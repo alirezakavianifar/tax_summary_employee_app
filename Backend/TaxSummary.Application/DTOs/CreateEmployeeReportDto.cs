@@ -16,6 +16,9 @@ public class CreateEmployeeReportDto
     public string CurrentPosition { get; set; } = string.Empty;
     public string AppointmentPosition { get; set; } = string.Empty;
     public int PreviousExperienceYears { get; set; }
+    public string? EmploymentDate { get; set; }
+    public string? AppointmentDate { get; set; }
+    public int ServiceMonths { get; set; }
     public string? PhotoUrl { get; set; }
     public string? StatusDescription { get; set; }
 
@@ -76,4 +79,13 @@ public class CreatePerformanceCapabilityDto
     
     public int ReferredOrExecuted_Quantity { get; set; }
     public decimal ReferredOrExecuted_Amount { get; set; }
+
+    // Executive Metrics (Heads of Tax Affairs / رؤسای امور)
+    public decimal Collections1404_Amount { get; set; }
+    public decimal Collections1405_Amount { get; set; }
+    public int TotalObjections_Quantity { get; set; }
+    public int IssuedRulings_Quantity { get; set; }
+    public decimal IssuedRulings_Percentage { get; set; }
+    public int FinalizedObjections_Quantity { get; set; }
+    public decimal FinalizedRulings_Percentage { get; set; }
 }

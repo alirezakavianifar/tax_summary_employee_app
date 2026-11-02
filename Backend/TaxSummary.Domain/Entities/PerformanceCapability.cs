@@ -43,6 +43,15 @@ public class PerformanceCapability
     
     // Additional Undetected for Company
     public int CompanyIdentification_UndetectedQuantity { get; private set; } // Added
+
+    // Executive Metrics (Heads of Tax Affairs / رؤسای امور)
+    public decimal Collections1404_Amount { get; private set; }
+    public decimal Collections1405_Amount { get; private set; }
+    public int TotalObjections_Quantity { get; private set; }
+    public int IssuedRulings_Quantity { get; private set; }
+    public decimal IssuedRulings_Percentage { get; private set; }
+    public int FinalizedObjections_Quantity { get; private set; }
+    public decimal FinalizedRulings_Percentage { get; private set; }
     
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
@@ -82,7 +91,14 @@ public class PerformanceCapability
         int otherUndetectedQuantity = 0,
         int companyIdentificationUndetectedQuantity = 0,
         int referredOrExecutedQuantity = 0,
-        decimal referredOrExecutedAmount = 0)
+        decimal referredOrExecutedAmount = 0,
+        decimal collections1404Amount = 0,
+        decimal collections1405Amount = 0,
+        int totalObjectionsQuantity = 0,
+        int issuedRulingsQuantity = 0,
+        decimal issuedRulingsPercentage = 0,
+        int finalizedObjectionsQuantity = 0,
+        decimal finalizedRulingsPercentage = 0)
     {
         if (string.IsNullOrWhiteSpace(systemRole))
             throw new ArgumentException("System role cannot be empty", nameof(systemRole));
@@ -130,6 +146,15 @@ public class PerformanceCapability
 
             ReferredOrExecuted_Quantity = referredOrExecutedQuantity,
             ReferredOrExecuted_Amount = referredOrExecutedAmount,
+
+            Collections1404_Amount = collections1404Amount >= 0 ? collections1404Amount : 0,
+            Collections1405_Amount = collections1405Amount >= 0 ? collections1405Amount : 0,
+            TotalObjections_Quantity = totalObjectionsQuantity >= 0 ? totalObjectionsQuantity : 0,
+            IssuedRulings_Quantity = issuedRulingsQuantity >= 0 ? issuedRulingsQuantity : 0,
+            IssuedRulings_Percentage = issuedRulingsPercentage >= 0 ? issuedRulingsPercentage : 0,
+            FinalizedObjections_Quantity = finalizedObjectionsQuantity >= 0 ? finalizedObjectionsQuantity : 0,
+            FinalizedRulings_Percentage = finalizedRulingsPercentage >= 0 ? finalizedRulingsPercentage : 0,
+
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -148,6 +173,34 @@ public class PerformanceCapability
         ValueAddedRecognition = valueAddedRecognition;
         ReferredOrExecuted = referredOrExecuted;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateExecutiveMetrics(
+        decimal collections1404Amount,
+        decimal collections1405Amount,
+        int totalObjectionsQuantity,
+        int issuedRulingsQuantity,
+        decimal issuedRulingsPercentage,
+        int finalizedObjectionsQuantity,
+        decimal finalizedRulingsPercentage)
+    {
+        Collections1404_Amount = collections1404Amount >= 0 ? collections1404Amount : 0;
+        Collections1405_Amount = collections1405Amount >= 0 ? collections1405Amount : 0;
+        TotalObjections_Quantity = totalObjectionsQuantity >= 0 ? totalObjectionsQuantity : 0;
+        IssuedRulings_Quantity = issuedRulingsQuantity >= 0 ? issuedRulingsQuantity : 0;
+        IssuedRulings_Percentage = issuedRulingsPercentage >= 0 ? issuedRulingsPercentage : 0;
+        FinalizedObjections_Quantity = finalizedObjectionsQuantity >= 0 ? finalizedObjectionsQuantity : 0;
+        FinalizedRulings_Percentage = finalizedRulingsPercentage >= 0 ? finalizedRulingsPercentage : 0;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public bool HasExecutiveMetrics()
+    {
+        return Collections1404_Amount > 0 ||
+               Collections1405_Amount > 0 ||
+               TotalObjections_Quantity > 0 ||
+               IssuedRulings_Quantity > 0 ||
+               FinalizedObjections_Quantity > 0;
     }
 
     /// <summary>

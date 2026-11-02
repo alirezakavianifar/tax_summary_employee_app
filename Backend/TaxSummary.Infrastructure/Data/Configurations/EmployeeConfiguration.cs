@@ -59,6 +59,20 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.Property(e => e.PreviousExperienceYears)
             .IsRequired();
 
+        builder.Property(e => e.EmploymentDate)
+            .HasMaxLength(50)
+            .IsRequired(false)
+            .HasColumnType("NVARCHAR(50)");
+
+        builder.Property(e => e.AppointmentDate)
+            .HasMaxLength(50)
+            .IsRequired(false)
+            .HasColumnType("NVARCHAR(50)");
+
+        builder.Property(e => e.ServiceMonths)
+            .IsRequired()
+            .HasDefaultValue(0);
+
         builder.Property(e => e.PhotoUrl)
             .HasMaxLength(500)
             .IsRequired(false);

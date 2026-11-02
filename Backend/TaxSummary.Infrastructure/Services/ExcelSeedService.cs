@@ -92,6 +92,19 @@ public class ExcelSeedService : IExcelSeedService
             decimal otherAmt = ParseDecimal(GetValue(props, "مالیات تشخیص شده سایر"));
             int otherUndetectedQty = ParseInt(GetValue(props, "تعداد تشخیص نشده سایر"));
 
+            // Parse Executive and Appointment Dates
+            var employmentDate = GetValue(props, "تاریخ استخدام", "تاريخ استخدام");
+            var appointmentDate = GetValue(props, "تاریخ انتصاب", "تاريخ انتصاب");
+            int serviceMonths = ParseInt(GetValue(props, "سنوات ماه"));
+
+            // Parse Executive Performance & Tax Dispute Metrics
+            decimal col1404 = ParseDecimal(GetValue(props, "وصولی سال 1404", "وصولی سال ۱۴۰۴"));
+            decimal col1405 = ParseDecimal(GetValue(props, "وصولی فروردین لغایت مهرماه 1405", "وصولی فروردین لغایت مهرماه ۱۴۰۵", "وصولی 1405"));
+            int totalObjections = ParseInt(GetValue(props, "کل اعتراضات"));
+            int issuedRulings = ParseInt(GetValue(props, "رای صادره", "رأي صادره"));
+            decimal rulingsPct = ParseDecimal(GetValue(props, "درصد رای صادره", "درصد رأي صادره"));
+            int finalizedObj = ParseInt(GetValue(props, "اعتراض قطعی شده"));
+            decimal finalizedPct = ParseDecimal(GetValue(props, "درصد قطعی صادره"));
 
             // Check if employee exists
             var employee = await _employeeRepository.GetByPersonnelNumberAsync(personnelNumber, cancellationToken);
@@ -111,6 +124,7 @@ public class ExcelSeedService : IExcelSeedService
                     nationalIdValue
                 );
 
+                employee.UpdateServiceDates(employmentDate, appointmentDate, serviceMonths);
                 await _employeeRepository.AddAsync(employee, cancellationToken);
             }
             else
@@ -119,6 +133,7 @@ public class ExcelSeedService : IExcelSeedService
                 employee.UpdatePersonalInfo(firstName, lastName, education, nationalIdValue);
                 employee.UpdateServiceUnit(serviceUnit);
                 employee.UpdatePosition(currentPosition, appointmentPosition, previousExperienceYears);
+                employee.UpdateServiceDates(employmentDate, appointmentDate, serviceMonths);
             }
 
             // Handle Administrative Status
@@ -182,7 +197,14 @@ public class ExcelSeedService : IExcelSeedService
                     companyIdentificationAmount: compAmt,
 
                     referredOrExecutedQuantity: 0, // Not in Excel
-                    referredOrExecutedAmount: 0 // Not in Excel
+                    referredOrExecutedAmount: 0, // Not in Excel
+                    collections1404Amount: col1404,
+                    collections1405Amount: col1405,
+                    totalObjectionsQuantity: totalObjections,
+                    issuedRulingsQuantity: issuedRulings,
+                    issuedRulingsPercentage: rulingsPct,
+                    finalizedObjectionsQuantity: finalizedObj,
+                    finalizedRulingsPercentage: finalizedPct
                 );
                 employee.AddPerformanceCapability(capability);
             }
@@ -213,6 +235,21 @@ public class ExcelSeedService : IExcelSeedService
                      referredOrExecutedQuantity: capability.ReferredOrExecuted_Quantity, // Keep existing
                      referredOrExecutedAmount: capability.ReferredOrExecuted_Amount // Keep existing
                 );
+
+                capability.UpdateExecutiveMetrics(
+                    col1404,
+                    col1405,
+                    totalObjections,
+                    issuedRulings,
+                    rulingsPct,
+                    finalizedObj,
+                    finalizedPct
+                );
+            }
+
+            if (string.IsNullOrWhiteSpace(employee.StatusDescription))
+            {
+                employee.UpdateStatusDescription(employee.GenerateStatusDescription());
             }
 
             count++;

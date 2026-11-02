@@ -8,6 +8,9 @@ export interface EmployeeDto {
   currentPosition: string
   appointmentPosition: string
   previousExperienceYears: number
+  employmentDate?: string
+  appointmentDate?: string
+  serviceMonths?: number
   nationalId?: string
   photoUrl?: string
   statusDescription?: string
@@ -49,6 +52,14 @@ export interface PerformanceCapabilityDto {
   valueAddedRecognition_Amount: number
   referredOrExecuted_Quantity: number
   referredOrExecuted_Amount: number
+  // Executive Metrics (Heads of Tax Affairs / رؤسای امور)
+  collections1404_Amount?: number
+  collections1405_Amount?: number
+  totalObjections_Quantity?: number
+  issuedRulings_Quantity?: number
+  issuedRulings_Percentage?: number
+  finalizedObjections_Quantity?: number
+  finalizedRulings_Percentage?: number
   createdAt: string
   updatedAt?: string
 }
@@ -68,6 +79,9 @@ export interface CreateEmployeeReportDto {
   currentPosition: string
   appointmentPosition: string
   previousExperienceYears: number
+  employmentDate?: string
+  appointmentDate?: string
+  serviceMonths?: number
   nationalId?: string
   photoUrl?: string
   statusDescription?: string
@@ -99,6 +113,14 @@ export interface CreatePerformanceCapabilityDto {
   valueAddedRecognition_Amount: number
   referredOrExecuted_Quantity: number
   referredOrExecuted_Amount: number
+  // Executive Metrics (Heads of Tax Affairs / رؤسای امور)
+  collections1404_Amount?: number
+  collections1405_Amount?: number
+  totalObjections_Quantity?: number
+  issuedRulings_Quantity?: number
+  issuedRulings_Percentage?: number
+  finalizedObjections_Quantity?: number
+  finalizedRulings_Percentage?: number
 }
 
 export interface UpdateEmployeeReportDto {
@@ -109,6 +131,9 @@ export interface UpdateEmployeeReportDto {
   currentPosition: string
   appointmentPosition: string
   previousExperienceYears: number
+  employmentDate?: string
+  appointmentDate?: string
+  serviceMonths?: number
   nationalId?: string
   photoUrl?: string
   statusDescription?: string

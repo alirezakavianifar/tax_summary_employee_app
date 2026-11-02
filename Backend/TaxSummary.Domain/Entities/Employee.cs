@@ -15,6 +15,9 @@ public class Employee
     public string CurrentPosition { get; private set; }
     public string AppointmentPosition { get; private set; }
     public int PreviousExperienceYears { get; private set; }
+    public string? EmploymentDate { get; private set; }
+    public string? AppointmentDate { get; private set; }
+    public int ServiceMonths { get; private set; }
     public string? PhotoUrl { get; private set; }
     public string? StatusDescription { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -121,6 +124,14 @@ public class Employee
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void UpdateServiceDates(string? employmentDate, string? appointmentDate, int serviceMonths)
+    {
+        EmploymentDate = employmentDate?.Trim();
+        AppointmentDate = appointmentDate?.Trim();
+        ServiceMonths = serviceMonths >= 0 ? serviceMonths : 0;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void SetOffice(Guid? officeId)
     {
         OfficeId = officeId;
@@ -180,13 +191,26 @@ public class Employee
         sb.Append($"{FirstName} {LastName} ");
         sb.Append($"با تحصیلات {Education} ");
         
-        if (PreviousExperienceYears > 0)
+        if (PreviousExperienceYears > 0 || ServiceMonths > 0)
         {
-            sb.Append($"و {PreviousExperienceYears} سال سابقه خدمت، ");
+            var expParts = new List<string>();
+            if (PreviousExperienceYears > 0) expParts.Add($"{PreviousExperienceYears} سال");
+            if (ServiceMonths > 0) expParts.Add($"{ServiceMonths} ماه");
+            sb.Append($"و {string.Join(" و ", expParts)} سابقه خدمت، ");
         }
 
         sb.Append($"در حال حاضر در واحد {ServiceUnit} ");
         sb.Append($"در سمت {CurrentPosition} مشغول به فعالیت می‌باشند. ");
+
+        if (!string.IsNullOrWhiteSpace(AppointmentDate))
+        {
+            sb.Append($"تاریخ انتصاب در سمت فعلی: {AppointmentDate}. ");
+        }
+
+        if (!string.IsNullOrWhiteSpace(EmploymentDate))
+        {
+            sb.Append($"تاریخ استخدام: {EmploymentDate}. ");
+        }
 
         if (!string.IsNullOrWhiteSpace(AppointmentPosition))
         {
@@ -220,67 +244,95 @@ public class Employee
         // 3. Performance Capabilities
         if (PerformanceCapabilities != null && PerformanceCapabilities.Any())
         {
-            sb.Append("\n\n");
-            sb.Append("در حوزه توانمندی‌های عملکردی: ");
-
-            foreach (var cap in PerformanceCapabilities)
+            // Executive Collections & Dispute Resolution Metrics (for Heads of Tax Affairs)
+            var execCap = PerformanceCapabilities.FirstOrDefault(c => c.HasExecutiveMetrics());
+            if (execCap != null)
             {
-                
-                var details = new List<string>();
-
-                if (cap.DetectionOfTaxIssues)
+                sb.Append("\n\n");
+                sb.Append("عملکرد وصول مالیاتی و رسیدگی به اعتراضات دادرسی: ");
+                var execParts = new List<string>();
+                if (execCap.Collections1404_Amount > 0)
                 {
-                    var msg = "تشخیص مشاغل/مالیات";
-                    var parts = new List<string>();
-                    if (cap.DetectionOfTaxIssues_Quantity > 0) parts.Add($"{cap.DetectionOfTaxIssues_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد");
-                    if (cap.DetectionOfTaxIssues_Amount > 0) parts.Add($"به مبلغ {cap.DetectionOfTaxIssues_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
-                    if (parts.Any()) msg += $" ({string.Join(" و ", parts)})";
-                    details.Add(msg);
+                    execParts.Add($"وصولی سال ۱۴۰۴ به مبلغ {execCap.Collections1404_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
                 }
-
-                if (cap.DetectionOfTaxEvasion)
+                if (execCap.Collections1405_Amount > 0)
                 {
-                    var msg = "تشخیص فرار مالیاتی";
-                    var parts = new List<string>();
-                    if (cap.DetectionOfTaxEvasion_Quantity > 0) parts.Add($"{cap.DetectionOfTaxEvasion_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد");
-                    if (cap.DetectionOfTaxEvasion_Amount > 0) parts.Add($"به مبلغ {cap.DetectionOfTaxEvasion_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
-                    if (parts.Any()) msg += $" ({string.Join(" و ", parts)})";
-                    details.Add(msg);
+                    execParts.Add($"وصولی هفت‌ماهه سال ۱۴۰۵ به مبلغ {execCap.Collections1405_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
                 }
-
-                if (cap.CompanyIdentification)
+                if (execCap.TotalObjections_Quantity > 0 || execCap.IssuedRulings_Quantity > 0)
                 {
-                    var msg = "تشخیص شرکت/مالیات";
-                    var parts = new List<string>();
-                    if (cap.CompanyIdentification_Quantity > 0) parts.Add($"{cap.CompanyIdentification_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد");
-                    if (cap.CompanyIdentification_Amount > 0) parts.Add($"به مبلغ {cap.CompanyIdentification_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
-                    if (parts.Any()) msg += $" ({string.Join(" و ", parts)})";
-                    details.Add(msg);
+                    var rulingPctStr = (execCap.IssuedRulings_Percentage * 100).ToString("N1", new System.Globalization.CultureInfo("fa-IR"));
+                    var finPctStr = (execCap.FinalizedRulings_Percentage * 100).ToString("N1", new System.Globalization.CultureInfo("fa-IR"));
+                    execParts.Add($"رسیدگی به {execCap.TotalObjections_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} فقره اعتراض با صدور {execCap.IssuedRulings_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} رأی ({rulingPctStr} درصد) و قطعیت {execCap.FinalizedObjections_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} رأی ({finPctStr} درصد)");
                 }
+                sb.Append(string.Join("؛ همچنین ", execParts) + " ثبت گردیده است. ");
+            }
 
-                if (cap.ValueAddedRecognition)
-                {
-                    var msg = "تشخیص ارزش افزوده/مالیات";
-                    var parts = new List<string>();
-                    if (cap.ValueAddedRecognition_Quantity > 0) parts.Add($"{cap.ValueAddedRecognition_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد");
-                    if (cap.ValueAddedRecognition_Amount > 0) parts.Add($"به مبلغ {cap.ValueAddedRecognition_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
-                    if (parts.Any()) msg += $" ({string.Join(" و ", parts)})";
-                    details.Add(msg);
-                }
+            // Standard Capabilities
+            var standardCaps = PerformanceCapabilities.Where(c => c.HasAnyMetrics()).ToList();
+            if (standardCaps.Any())
+            {
+                sb.Append("\n\n");
+                sb.Append("در حوزه توانمندی‌های عملکردی مالیاتی: ");
 
-                if (cap.ReferredOrExecuted)
+                foreach (var cap in standardCaps)
                 {
-                    var msg = "ارجاع یا اجرا شده";
-                    var parts = new List<string>();
-                    if (cap.ReferredOrExecuted_Quantity > 0) parts.Add($"{cap.ReferredOrExecuted_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد");
-                    if (cap.ReferredOrExecuted_Amount > 0) parts.Add($"به مبلغ {cap.ReferredOrExecuted_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
-                    if (parts.Any()) msg += $" ({string.Join(" و ", parts)})";
-                    details.Add(msg);
-                }
+                    var details = new List<string>();
 
-                if (details.Any())
-                {
-                    sb.Append("دارای عملکرد در زمینه " + string.Join("، ", details) + " می‌باشند. ");
+                    if (cap.DetectionOfTaxIssues)
+                    {
+                        var msg = "تشخیص مشاغل/مالیات";
+                        var parts = new List<string>();
+                        if (cap.DetectionOfTaxIssues_Quantity > 0) parts.Add($"{cap.DetectionOfTaxIssues_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد");
+                        if (cap.DetectionOfTaxIssues_Amount > 0) parts.Add($"به مبلغ {cap.DetectionOfTaxIssues_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
+                        if (parts.Any()) msg += $" ({string.Join(" و ", parts)})";
+                        details.Add(msg);
+                    }
+
+                    if (cap.DetectionOfTaxEvasion)
+                    {
+                        var msg = "تشخیص فرار مالیاتی";
+                        var parts = new List<string>();
+                        if (cap.DetectionOfTaxEvasion_Quantity > 0) parts.Add($"{cap.DetectionOfTaxEvasion_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد");
+                        if (cap.DetectionOfTaxEvasion_Amount > 0) parts.Add($"به مبلغ {cap.DetectionOfTaxEvasion_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
+                        if (parts.Any()) msg += $" ({string.Join(" و ", parts)})";
+                        details.Add(msg);
+                    }
+
+                    if (cap.CompanyIdentification)
+                    {
+                        var msg = "تشخیص شرکت/مالیات";
+                        var parts = new List<string>();
+                        if (cap.CompanyIdentification_Quantity > 0) parts.Add($"{cap.CompanyIdentification_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد");
+                        if (cap.CompanyIdentification_Amount > 0) parts.Add($"به مبلغ {cap.CompanyIdentification_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
+                        if (parts.Any()) msg += $" ({string.Join(" و ", parts)})";
+                        details.Add(msg);
+                    }
+
+                    if (cap.ValueAddedRecognition)
+                    {
+                        var msg = "تشخیص ارزش افزوده/مالیات";
+                        var parts = new List<string>();
+                        if (cap.ValueAddedRecognition_Quantity > 0) parts.Add($"{cap.ValueAddedRecognition_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد");
+                        if (cap.ValueAddedRecognition_Amount > 0) parts.Add($"به مبلغ {cap.ValueAddedRecognition_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
+                        if (parts.Any()) msg += $" ({string.Join(" و ", parts)})";
+                        details.Add(msg);
+                    }
+
+                    if (cap.ReferredOrExecuted)
+                    {
+                        var msg = "ارجاع یا اجرا شده";
+                        var parts = new List<string>();
+                        if (cap.ReferredOrExecuted_Quantity > 0) parts.Add($"{cap.ReferredOrExecuted_Quantity.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} مورد");
+                        if (cap.ReferredOrExecuted_Amount > 0) parts.Add($"به مبلغ {cap.ReferredOrExecuted_Amount.ToString("N0", new System.Globalization.CultureInfo("fa-IR"))} ریال");
+                        if (parts.Any()) msg += $" ({string.Join(" و ", parts)})";
+                        details.Add(msg);
+                    }
+
+                    if (details.Any())
+                    {
+                        sb.Append("دارای عملکرد در زمینه " + string.Join("، ", details) + " می‌باشند. ");
+                    }
                 }
             }
         }

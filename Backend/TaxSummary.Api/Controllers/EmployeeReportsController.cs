@@ -403,6 +403,9 @@ public class EmployeeReportsController : ControllerBase
                 CurrentPosition = employeeResult.Value.Employee.CurrentPosition,
                 AppointmentPosition = employeeResult.Value.Employee.AppointmentPosition,
                 PreviousExperienceYears = employeeResult.Value.Employee.PreviousExperienceYears,
+                EmploymentDate = employeeResult.Value.Employee.EmploymentDate,
+                AppointmentDate = employeeResult.Value.Employee.AppointmentDate,
+                ServiceMonths = employeeResult.Value.Employee.ServiceMonths,
                 PhotoUrl = photoUrl,
                 MissionDays = employeeResult.Value.AdminStatus?.MissionDays ?? 0,
                 OvertimeHours = employeeResult.Value.AdminStatus?.OvertimeHours ?? 0,
@@ -425,7 +428,14 @@ public class EmployeeReportsController : ControllerBase
                     ValueAddedRecognition_Quantity = c.ValueAddedRecognition_Quantity,
                     ValueAddedRecognition_Amount = c.ValueAddedRecognition_Amount,
                     ReferredOrExecuted_Quantity = c.ReferredOrExecuted_Quantity,
-                    ReferredOrExecuted_Amount = c.ReferredOrExecuted_Amount
+                    ReferredOrExecuted_Amount = c.ReferredOrExecuted_Amount,
+                    Collections1404_Amount = c.Collections1404_Amount,
+                    Collections1405_Amount = c.Collections1405_Amount,
+                    TotalObjections_Quantity = c.TotalObjections_Quantity,
+                    IssuedRulings_Quantity = c.IssuedRulings_Quantity,
+                    IssuedRulings_Percentage = c.IssuedRulings_Percentage,
+                    FinalizedObjections_Quantity = c.FinalizedObjections_Quantity,
+                    FinalizedRulings_Percentage = c.FinalizedRulings_Percentage
                 }).ToList()
             };
 

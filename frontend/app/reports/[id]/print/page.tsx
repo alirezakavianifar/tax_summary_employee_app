@@ -168,14 +168,102 @@ export default function PrintReportPage({ params }: { params: { id: string } }) 
               </div>
               <div className="form-field">
                 <span className="label">پست مورد انتصاب:</span>
-                <span className="value">{report.employee.appointmentPosition}</span>
+                <span className="value">{report.employee.appointmentPosition || '-'}</span>
               </div>
               <div className="form-field">
                 <span className="label">سابقه خدمت:</span>
-                <span className="value">{report.employee.previousExperienceYears} سال</span>
+                <span className="value">
+                  {report.employee.previousExperienceYears > 0 || (report.employee.serviceMonths && report.employee.serviceMonths > 0) ? (
+                    <>
+                      {report.employee.previousExperienceYears > 0 && `${report.employee.previousExperienceYears} سال `}
+                      {report.employee.serviceMonths && report.employee.serviceMonths > 0 ? `و ${report.employee.serviceMonths} ماه` : ''}
+                    </>
+                  ) : (
+                    '-'
+                  )}
+                </span>
               </div>
+              {report.employee.employmentDate && (
+                <div className="form-field">
+                  <span className="label">تاریخ استخدام:</span>
+                  <span className="value">{report.employee.employmentDate}</span>
+                </div>
+              )}
+              {report.employee.appointmentDate && (
+                <div className="form-field">
+                  <span className="label">تاریخ انتصاب در سمت:</span>
+                  <span className="value">{report.employee.appointmentDate}</span>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Executive Performance & Dispute Resolution (Heads of Tax Affairs) */}
+          {(() => {
+            const execCap = report.capabilities?.find(
+              (c) =>
+                (c.collections1404_Amount != null && c.collections1404_Amount > 0) ||
+                (c.collections1405_Amount != null && c.collections1405_Amount > 0) ||
+                (c.totalObjections_Quantity != null && c.totalObjections_Quantity > 0) ||
+                (c.issuedRulings_Quantity != null && c.issuedRulings_Quantity > 0) ||
+                (c.finalizedObjections_Quantity != null && c.finalizedObjections_Quantity > 0)
+            );
+            if (!execCap) return null;
+
+            return (
+              <div className="section-box mb-6">
+                <h2 className="section-title">عملکرد وصول و دادرسی مالیاتی (ویژه رؤسای امور و ادارات)</h2>
+                
+                <div className="mb-4">
+                  <h3 className="font-bold text-sm mb-2">وصولی مالیاتی:</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="stat-box">
+                      <span className="stat-label">وصولی کل سال ۱۴۰۴:</span>
+                      <span className="stat-value font-mono">
+                        {execCap.collections1404_Amount ? execCap.collections1404_Amount.toLocaleString('fa-IR') : '۰'} ریال
+                      </span>
+                    </div>
+                    <div className="stat-box">
+                      <span className="stat-label">وصولی ۷ ماهه سال ۱۴۰۵:</span>
+                      <span className="stat-value font-mono">
+                        {execCap.collections1405_Amount ? execCap.collections1405_Amount.toLocaleString('fa-IR') : '۰'} ریال
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-sm mb-2">رسیدگی به اعتراضات و دادرسی مالیاتی:</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="stat-box">
+                      <span className="stat-label">کل اعتراضات:</span>
+                      <span className="stat-value">
+                        {execCap.totalObjections_Quantity?.toLocaleString('fa-IR') || '۰'} فقره
+                      </span>
+                    </div>
+                    <div className="stat-box">
+                      <span className="stat-label">آراء صادره:</span>
+                      <span className="stat-value">
+                        {execCap.issuedRulings_Quantity?.toLocaleString('fa-IR') || '۰'} رأی
+                        <span className="text-xs font-normal text-gray-600 block">
+                          ({((execCap.issuedRulings_Percentage || 0) * 100).toFixed(1)}٪ صدور رأی)
+                        </span>
+                      </span>
+                    </div>
+                    <div className="stat-box">
+                      <span className="stat-label">اعتراضات قطعی شده:</span>
+                      <span className="stat-value">
+                        {execCap.finalizedObjections_Quantity?.toLocaleString('fa-IR') || '۰'} پرونده
+                        <span className="text-xs font-normal text-gray-600 block">
+                          ({((execCap.finalizedRulings_Percentage || 0) * 100).toFixed(1)}٪ قطعیت)
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Administrative Status */}
           {report.adminStatus && (

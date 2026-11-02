@@ -184,8 +184,17 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
               <p className="text-gray-900">{report.employee.nationalId || '-'}</p>
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">سابقه خدمت (سال):</label>
-              <p className="text-gray-900">{report.employee.previousExperienceYears}</p>
+              <label className="block text-sm font-bold text-gray-700 mb-1">سابقه خدمت:</label>
+              <p className="text-gray-900">
+                {report.employee.previousExperienceYears > 0 || (report.employee.serviceMonths && report.employee.serviceMonths > 0) ? (
+                  <>
+                    {report.employee.previousExperienceYears > 0 && `${report.employee.previousExperienceYears} سال `}
+                    {report.employee.serviceMonths && report.employee.serviceMonths > 0 ? `و ${report.employee.serviceMonths} ماه` : ''}
+                  </>
+                ) : (
+                  '-'
+                )}
+              </p>
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">واحد محل خدمت:</label>
@@ -195,12 +204,130 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
               <label className="block text-sm font-bold text-gray-700 mb-1">پست فعلی:</label>
               <p className="text-gray-900">{report.employee.currentPosition}</p>
             </div>
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">پست مورد انتصاب:</label>
-              <p className="text-gray-900">{report.employee.appointmentPosition}</p>
+              <p className="text-gray-900">{report.employee.appointmentPosition || '-'}</p>
             </div>
+            {report.employee.employmentDate && (
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">تاریخ استخدام:</label>
+                <p className="text-gray-900">{report.employee.employmentDate}</p>
+              </div>
+            )}
+            {report.employee.appointmentDate && (
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">تاریخ انتصاب در سمت:</label>
+                <p className="text-gray-900">{report.employee.appointmentDate}</p>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Executive Collections & Dispute Resolution Card */}
+        {(() => {
+          const execCap = report.capabilities?.find(
+            (c) =>
+              (c.collections1404_Amount != null && c.collections1404_Amount > 0) ||
+              (c.collections1405_Amount != null && c.collections1405_Amount > 0) ||
+              (c.totalObjections_Quantity != null && c.totalObjections_Quantity > 0) ||
+              (c.issuedRulings_Quantity != null && c.issuedRulings_Quantity > 0) ||
+              (c.finalizedObjections_Quantity != null && c.finalizedObjections_Quantity > 0)
+          );
+          if (!execCap) return null;
+
+          return (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-r-4 border-indigo-600">
+              <div className="flex justify-between items-center mb-5 border-b pb-3">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <span>📊</span>
+                  عملکرد وصول و دادرسی مالیاتی (ویژه رؤسای امور و ادارات)
+                </h2>
+                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-200">
+                  شاخص‌های مدیریتی و حل اختلاف
+                </span>
+              </div>
+
+              {/* Tax Collections Section */}
+              <div className="mb-6">
+                <h3 className="text-md font-bold text-gray-700 mb-3 flex items-center gap-2">
+                  <span>💰</span>
+                  وصولی مالیاتی
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 p-4 rounded-xl shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-sm font-bold text-emerald-800">وصولی کل سال ۱۴۰۴</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold">عملکرد سالانه</span>
+                    </div>
+                    <p className="text-2xl font-black text-emerald-700 tracking-tight font-mono">
+                      {execCap.collections1404_Amount ? execCap.collections1404_Amount.toLocaleString('fa-IR') : '۰'}
+                      <span className="text-xs font-normal text-emerald-600 mr-2">ریال</span>
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 p-4 rounded-xl shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-sm font-bold text-blue-800">وصولی فروردین لغایت مهرماه ۱۴۰۵</span>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold">۷ ماهه سال جاری</span>
+                    </div>
+                    <p className="text-2xl font-black text-blue-700 tracking-tight font-mono">
+                      {execCap.collections1405_Amount ? execCap.collections1405_Amount.toLocaleString('fa-IR') : '۰'}
+                      <span className="text-xs font-normal text-blue-600 mr-2">ریال</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dispute Resolution & Board Rulings Section */}
+              <div>
+                <h3 className="text-md font-bold text-gray-700 mb-3 flex items-center gap-2">
+                  <span>⚖️</span>
+                  رسیدگی به اعتراضات و دادرسی مالیاتی
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Total Objections */}
+                  <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
+                    <span className="block text-sm font-bold text-gray-600 mb-1">کل پرونده‌های اعتراضی</span>
+                    <p className="text-3xl font-black text-gray-800">
+                      {execCap.totalObjections_Quantity?.toLocaleString('fa-IR') || '۰'}
+                      <span className="text-xs font-normal text-gray-500 mr-1.5">فقره</span>
+                    </p>
+                  </div>
+
+                  {/* Issued Rulings */}
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-bold text-amber-800">آراء صادره</span>
+                      <span className="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                        {((execCap.issuedRulings_Percentage || 0) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <p className="text-3xl font-black text-amber-700">
+                      {execCap.issuedRulings_Quantity?.toLocaleString('fa-IR') || '۰'}
+                      <span className="text-xs font-normal text-amber-600 mr-1.5">رأی</span>
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">نسبت به کل اعتراضات</p>
+                  </div>
+
+                  {/* Finalized Objections */}
+                  <div className="bg-teal-50 border border-teal-200 p-4 rounded-xl">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-bold text-teal-800">اعتراضات قطعی شده</span>
+                      <span className="text-xs bg-teal-200 text-teal-900 px-2 py-0.5 rounded-full font-bold">
+                        {((execCap.finalizedRulings_Percentage || 0) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <p className="text-3xl font-black text-teal-700">
+                      {execCap.finalizedObjections_Quantity?.toLocaleString('fa-IR') || '۰'}
+                      <span className="text-xs font-normal text-teal-600 mr-1.5">پرونده</span>
+                    </p>
+                    <p className="text-xs text-teal-600 mt-1">نسبت قطعیت آراء صادره</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Administrative Status */}
         {report.adminStatus && (

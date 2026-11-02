@@ -88,6 +88,8 @@ public class EmployeeReportService : IEmployeeReportService
                 nationalId: dto.NationalId
             );
 
+            employee.UpdateServiceDates(dto.EmploymentDate, dto.AppointmentDate, dto.ServiceMonths);
+
             // Create administrative status
             var adminStatus = AdministrativeStatus.Create(
                 employeeId: employee.Id,
@@ -124,7 +126,14 @@ public class EmployeeReportService : IEmployeeReportService
                     otherUndetectedQuantity: 0,
                     companyIdentificationUndetectedQuantity: 0,
                     referredOrExecutedQuantity: 0,
-                    referredOrExecutedAmount: 0
+                    referredOrExecutedAmount: 0,
+                    collections1404Amount: capabilityDto.Collections1404_Amount,
+                    collections1405Amount: capabilityDto.Collections1405_Amount,
+                    totalObjectionsQuantity: capabilityDto.TotalObjections_Quantity,
+                    issuedRulingsQuantity: capabilityDto.IssuedRulings_Quantity,
+                    issuedRulingsPercentage: capabilityDto.IssuedRulings_Percentage,
+                    finalizedObjectionsQuantity: capabilityDto.FinalizedObjections_Quantity,
+                    finalizedRulingsPercentage: capabilityDto.FinalizedRulings_Percentage
                 );
 
                 employee.AddPerformanceCapability(capability);
@@ -161,6 +170,7 @@ public class EmployeeReportService : IEmployeeReportService
             employee.UpdatePersonalInfo(dto.FirstName, dto.LastName, dto.Education, dto.NationalId);
             employee.UpdatePosition(dto.CurrentPosition, dto.AppointmentPosition, dto.PreviousExperienceYears);
             employee.UpdateServiceUnit(dto.ServiceUnit);
+            employee.UpdateServiceDates(dto.EmploymentDate, dto.AppointmentDate, dto.ServiceMonths);
             
             // Update photo URL if provided
             if (dto.PhotoUrl != null)
@@ -229,7 +239,14 @@ public class EmployeeReportService : IEmployeeReportService
                     otherUndetectedQuantity: 0,
                     companyIdentificationUndetectedQuantity: 0,
                     referredOrExecutedQuantity: 0,
-                    referredOrExecutedAmount: 0
+                    referredOrExecutedAmount: 0,
+                    collections1404Amount: capabilityDto.Collections1404_Amount,
+                    collections1405Amount: capabilityDto.Collections1405_Amount,
+                    totalObjectionsQuantity: capabilityDto.TotalObjections_Quantity,
+                    issuedRulingsQuantity: capabilityDto.IssuedRulings_Quantity,
+                    issuedRulingsPercentage: capabilityDto.IssuedRulings_Percentage,
+                    finalizedObjectionsQuantity: capabilityDto.FinalizedObjections_Quantity,
+                    finalizedRulingsPercentage: capabilityDto.FinalizedRulings_Percentage
                 );
 
                 // Update all capability metrics
@@ -256,6 +273,16 @@ public class EmployeeReportService : IEmployeeReportService
                     
                     referredOrExecutedQuantity: capabilityDto.ReferredOrExecuted_Quantity,
                     referredOrExecutedAmount: capabilityDto.ReferredOrExecuted_Amount
+                );
+
+                capability.UpdateExecutiveMetrics(
+                    capabilityDto.Collections1404_Amount,
+                    capabilityDto.Collections1405_Amount,
+                    capabilityDto.TotalObjections_Quantity,
+                    capabilityDto.IssuedRulings_Quantity,
+                    capabilityDto.IssuedRulings_Percentage,
+                    capabilityDto.FinalizedObjections_Quantity,
+                    capabilityDto.FinalizedRulings_Percentage
                 );
 
                 employee.AddPerformanceCapability(capability);

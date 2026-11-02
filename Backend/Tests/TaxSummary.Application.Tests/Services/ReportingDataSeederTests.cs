@@ -87,17 +87,68 @@ public class ReportingDataSeederTests : IDisposable
     }
 
     [Fact]
-    public async Task SeedPhysicalDatabase()
+    public async Task InitializeAsync_AutomaticallyMigratesMissingExecutiveColumnsOnExistingDatabase()
     {
-        var dbPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../TaxSummary.Api/taxsummary.db"));
-        if (File.Exists(dbPath))
+        var tempDbPath = Path.Combine(Path.GetTempPath(), $"tax_mig_{Guid.NewGuid():N}.db");
+        try
         {
+            var sourceDb = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../TaxSummary.Api/taxsummary.db"));
+            if (!File.Exists(sourceDb)) return;
+
+            File.Copy(sourceDb, tempDbPath, true);
+
+            // Drop executive columns and migration record to simulate the un-migrated remote server database
+            using (var conn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={tempDbPath}"))
+            {
+                await conn.OpenAsync();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    ALTER TABLE Employees DROP COLUMN AppointmentDate;
+                    ALTER TABLE Employees DROP COLUMN EmploymentDate;
+                    ALTER TABLE Employees DROP COLUMN ServiceMonths;
+                    ALTER TABLE PerformanceCapabilities DROP COLUMN Collections1404_Amount;
+                    ALTER TABLE PerformanceCapabilities DROP COLUMN Collections1405_Amount;
+                    ALTER TABLE PerformanceCapabilities DROP COLUMN TotalObjections_Quantity;
+                    ALTER TABLE PerformanceCapabilities DROP COLUMN IssuedRulings_Quantity;
+                    ALTER TABLE PerformanceCapabilities DROP COLUMN IssuedRulings_Percentage;
+                    ALTER TABLE PerformanceCapabilities DROP COLUMN FinalizedObjections_Quantity;
+                    ALTER TABLE PerformanceCapabilities DROP COLUMN FinalizedRulings_Percentage;
+                    DELETE FROM __EFMigrationsHistory WHERE MigrationId = '20261102050338_AddExecutiveServiceDatesAndPerformanceMetrics';";
+                await cmd.ExecuteNonQueryAsync();
+            }
+
             var options = new DbContextOptionsBuilder<TaxSummaryDbContext>()
-                .UseSqlite($"Data Source={dbPath}")
+                .UseSqlite($"Data Source={tempDbPath}")
                 .Options;
 
-            using var context = new TaxSummaryDbContext(options);
-            await ReportingDataSeeder.SeedReportingAsync(context);
+            using (var context = new TaxSummaryDbContext(options))
+            {
+                // Calling InitializeAsync should NOT crash and should auto-add the missing columns
+                await DbInitializer.InitializeAsync(context);
+            }
+
+            // Verify columns now exist
+            using (var conn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={tempDbPath}"))
+            {
+                await conn.OpenAsync();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = "PRAGMA table_info(Employees);";
+                var cols = new List<string>();
+                using (var r = await cmd.ExecuteReaderAsync())
+                {
+                    while (await r.ReadAsync()) cols.Add(r.GetString(1));
+                }
+                cols.Should().Contain("AppointmentDate");
+                cols.Should().Contain("EmploymentDate");
+                cols.Should().Contain("ServiceMonths");
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempDbPath))
+            {
+                try { File.Delete(tempDbPath); } catch { }
+            }
         }
     }
 

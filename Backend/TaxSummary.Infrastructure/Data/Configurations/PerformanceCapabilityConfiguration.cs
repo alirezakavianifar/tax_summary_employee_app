@@ -94,6 +94,39 @@ public class PerformanceCapabilityConfiguration : IEntityTypeConfiguration<Perfo
             .HasColumnType("DECIMAL(18,2)")
             .HasDefaultValue(0);
 
+        // Executive Metrics (Heads of Tax Affairs / رؤسای امور)
+        builder.Property(p => p.Collections1404_Amount)
+            .IsRequired()
+            .HasColumnType("DECIMAL(24,2)")
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.Collections1405_Amount)
+            .IsRequired()
+            .HasColumnType("DECIMAL(24,2)")
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.TotalObjections_Quantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.IssuedRulings_Quantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.IssuedRulings_Percentage)
+            .IsRequired()
+            .HasColumnType("DECIMAL(8,4)")
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.FinalizedObjections_Quantity)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(p => p.FinalizedRulings_Percentage)
+            .IsRequired()
+            .HasColumnType("DECIMAL(8,4)")
+            .HasDefaultValue(0);
+
         builder.Property(p => p.CreatedAt)
             .IsRequired()
             .HasColumnType("DATETIME2");

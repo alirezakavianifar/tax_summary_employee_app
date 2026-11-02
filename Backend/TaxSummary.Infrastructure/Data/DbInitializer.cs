@@ -25,13 +25,17 @@ public static class DbInitializer
         }
         else
         {
+            // 1. Ensure required schema columns and tables exist (safeguard for existing production SQLite databases)
+            await EnsureSchemaUpToDateAsync(context);
+
             try
             {
                 await context.Database.MigrateAsync();
             }
-            catch
+            catch (Exception ex)
             {
                 // Continue if already partially migrated or columns already present in SQLite
+                Console.WriteLine($"[DbInitializer] MigrateAsync notice: {ex.Message}");
             }
         }
 
@@ -915,4 +919,174 @@ public static class DbInitializer
             // Non-critical, do not block startup
         }
     }
+
+    /// <summary>
+    /// Checks and automatically applies missing columns and tables to existing SQLite production databases.
+    /// This prevents startup crashes when updating existing databases that already have data.
+    /// </summary>
+    private static async Task EnsureSchemaUpToDateAsync(TaxSummaryDbContext context)
+    {
+        if (context.Database.IsInMemory()) return;
+
+        try
+        {
+            var connection = context.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            using var command = connection.CreateCommand();
+
+            // 1. Ensure __EFMigrationsHistory exists
+            command.CommandText = @"
+                CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
+                    ""MigrationId"" TEXT NOT NULL CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY,
+                    ""ProductVersion"" TEXT NOT NULL
+                );";
+            await command.ExecuteNonQueryAsync();
+
+            // 2. Ensure Employees columns exist
+            command.CommandText = "PRAGMA table_info(Employees);";
+            var employeeColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    employeeColumns.Add(reader.GetString(1));
+                }
+            }
+
+            if (employeeColumns.Count > 0)
+            {
+                if (!employeeColumns.Contains("EmploymentDate"))
+                {
+                    command.CommandText = "ALTER TABLE Employees ADD COLUMN EmploymentDate TEXT NULL;";
+                    await command.ExecuteNonQueryAsync();
+                }
+
+                if (!employeeColumns.Contains("AppointmentDate"))
+                {
+                    command.CommandText = "ALTER TABLE Employees ADD COLUMN AppointmentDate TEXT NULL;";
+                    await command.ExecuteNonQueryAsync();
+                }
+
+                if (!employeeColumns.Contains("ServiceMonths"))
+                {
+                    command.CommandText = "ALTER TABLE Employees ADD COLUMN ServiceMonths INTEGER NOT NULL DEFAULT 0;";
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
+
+            // 3. Ensure PerformanceCapabilities columns exist
+            command.CommandText = "PRAGMA table_info(PerformanceCapabilities);";
+            var perfColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    perfColumns.Add(reader.GetString(1));
+                }
+            }
+
+            if (perfColumns.Count > 0)
+            {
+                var perfColumnsToAdd = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Collections1404_Amount"] = "REAL NOT NULL DEFAULT 0",
+                    ["Collections1405_Amount"] = "REAL NOT NULL DEFAULT 0",
+                    ["TotalObjections_Quantity"] = "INTEGER NOT NULL DEFAULT 0",
+                    ["IssuedRulings_Quantity"] = "INTEGER NOT NULL DEFAULT 0",
+                    ["IssuedRulings_Percentage"] = "REAL NOT NULL DEFAULT 0",
+                    ["FinalizedObjections_Quantity"] = "INTEGER NOT NULL DEFAULT 0",
+                    ["FinalizedRulings_Percentage"] = "REAL NOT NULL DEFAULT 0"
+                };
+
+                foreach (var (colName, colDef) in perfColumnsToAdd)
+                {
+                    if (!perfColumns.Contains(colName))
+                    {
+                        command.CommandText = $"ALTER TABLE PerformanceCapabilities ADD COLUMN {colName} {colDef};";
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+            }
+
+            // 4. Ensure AuditorPerformanceMetricDefinitions table exists
+            command.CommandText = @"
+                CREATE TABLE IF NOT EXISTS ""AuditorPerformanceMetricDefinitions"" (
+                    ""Id"" TEXT NOT NULL CONSTRAINT ""PK_AuditorPerformanceMetricDefinitions"" PRIMARY KEY,
+                    ""MetricCode"" TEXT NOT NULL,
+                    ""Title"" TEXT NOT NULL,
+                    ""Description"" TEXT NOT NULL,
+                    ""Category"" INTEGER NOT NULL,
+                    ""FormulaType"" INTEGER NOT NULL,
+                    ""PrimaryField"" TEXT NOT NULL,
+                    ""SecondaryField"" TEXT NULL,
+                    ""Multiplier"" decimal(18,4) NOT NULL,
+                    ""WeightPercentage"" decimal(18,2) NOT NULL,
+                    ""HigherIsBetter"" INTEGER NOT NULL,
+                    ""TargetValue"" decimal(18,4) NOT NULL,
+                    ""WarningThreshold"" decimal(18,4) NOT NULL,
+                    ""CriticalThreshold"" decimal(18,4) NOT NULL,
+                    ""Unit"" TEXT NOT NULL,
+                    ""DisplayOrder"" INTEGER NOT NULL,
+                    ""IsActive"" INTEGER NOT NULL,
+                    ""TierThresholdsJson"" TEXT NOT NULL,
+                    ""CreatedAt"" TEXT NOT NULL,
+                    ""UpdatedAt"" TEXT NULL
+                );";
+            await command.ExecuteNonQueryAsync();
+
+            // 5. Ensure SanimAuditAssessments table exists
+            command.CommandText = @"
+                CREATE TABLE IF NOT EXISTS ""SanimAuditAssessments"" (
+                    ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_SanimAuditAssessments"" PRIMARY KEY,
+                    ""UpdateDateJalali"" TEXT NOT NULL,
+                    ""AuditStatus"" TEXT NOT NULL,
+                    ""FinalOfficeName"" TEXT NOT NULL,
+                    ""InitialOfficeName"" TEXT NOT NULL,
+                    ""DeclarationId"" TEXT NULL,
+                    ""TaxpayerTrackingCode"" TEXT NULL,
+                    ""TaxpayerName"" TEXT NOT NULL,
+                    ""TaxpayerTin"" TEXT NOT NULL,
+                    ""FiscalYear"" INTEGER NOT NULL,
+                    ""TaxSource"" TEXT NOT NULL,
+                    ""TaxPeriod"" INTEGER NULL,
+                    ""RiskLevel"" TEXT NULL,
+                    ""AuditTrackingId"" TEXT NULL,
+                    ""AuditorName"" TEXT NOT NULL,
+                    ""AuditorNationalId"" TEXT NULL,
+                    ""AssessmentNoticeDateJalali"" TEXT NULL,
+                    ""FinalNoticeDateJalali"" TEXT NULL,
+                    ""AssessedTaxAmount"" decimal(18,2) NOT NULL,
+                    ""DeclaredTaxAmount"" decimal(18,2) NOT NULL,
+                    ""FinalTaxAmount"" decimal(18,2) NOT NULL,
+                    ""Stage"" TEXT NULL,
+                    ""YearlyType"" TEXT NULL,
+                    ""CaseType"" TEXT NULL,
+                    ""WarehouseUploadDateJalali"" TEXT NULL,
+                    ""AuditorAssignmentDateJalali"" TEXT NULL,
+                    ""DaysAssignmentToNotice"" INTEGER NULL,
+                    ""DaysAssignmentToFinal"" INTEGER NULL,
+                    ""DaysNoticeToFinal"" INTEGER NULL,
+                    ""CurrentStatus"" TEXT NULL,
+                    ""NextStatus"" TEXT NULL,
+                    ""FinalizationSource"" TEXT NULL,
+                    ""OfficeId"" TEXT NULL
+                );";
+            await command.ExecuteNonQueryAsync();
+
+            // 6. Record this migration as applied in __EFMigrationsHistory so MigrateAsync won't attempt duplicate column adds
+            command.CommandText = @"
+                INSERT OR IGNORE INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+                VALUES ('20261102050338_AddExecutiveServiceDatesAndPerformanceMetrics', '8.0.0');";
+            await command.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DbInitializer] Warning during EnsureSchemaUpToDateAsync: {ex.Message}");
+        }
+    }
 }
+

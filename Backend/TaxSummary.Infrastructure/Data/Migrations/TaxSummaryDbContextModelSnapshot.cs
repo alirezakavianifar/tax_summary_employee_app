@@ -142,6 +142,10 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AppointmentDate")
+                        .HasMaxLength(50)
+                        .HasColumnType("NVARCHAR(50)");
+
                     b.Property<string>("AppointmentPosition")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -159,6 +163,10 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("NVARCHAR(200)");
+
+                    b.Property<string>("EmploymentDate")
+                        .HasMaxLength(50)
+                        .HasColumnType("NVARCHAR(50)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -188,6 +196,11 @@ namespace TaxSummary.Infrastructure.Data.Migrations
 
                     b.Property<int>("PreviousExperienceYears")
                         .HasColumnType("INTEGER");
+
+                    b.Property<int>("ServiceMonths")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("ServiceUnit")
                         .IsRequired()
@@ -631,6 +644,16 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal>("Collections1404_Amount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("DECIMAL(24,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("Collections1405_Amount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("DECIMAL(24,2)")
+                        .HasDefaultValue(0m);
+
                     b.Property<bool>("CompanyIdentification")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -685,6 +708,26 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("FinalizedObjections_Quantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<decimal>("FinalizedRulings_Percentage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("DECIMAL(8,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("IssuedRulings_Percentage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("DECIMAL(8,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("IssuedRulings_Quantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
                     b.Property<decimal>("Jobs_Amount")
                         .HasColumnType("TEXT");
 
@@ -722,6 +765,11 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("NVARCHAR(200)");
+
+                    b.Property<int>("TotalObjections_Quantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("DATETIME2");
@@ -1036,6 +1084,243 @@ namespace TaxSummary.Infrastructure.Data.Migrations
                         .HasDatabaseName("IX_ReportExecutionLogs_UserId");
 
                     b.ToTable("ReportExecutionLogs", (string)null);
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.Reporting.AuditorPerformanceMetricDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CriticalThreshold")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FormulaType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("HigherIsBetter")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MetricCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Multiplier")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("PrimaryField")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SecondaryField")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TargetValue")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("TierThresholdsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("WarningThreshold")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("WeightPercentage")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisplayOrder");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("MetricCode")
+                        .IsUnique();
+
+                    b.ToTable("AuditorPerformanceMetricDefinitions", (string)null);
+                });
+
+            modelBuilder.Entity("TaxSummary.Domain.Entities.Reporting.SanimAuditAssessment", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("AssessedTaxAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("AssessmentNoticeDateJalali")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuditStatus")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuditTrackingId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuditorAssignmentDateJalali")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuditorName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuditorNationalId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CaseType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CurrentStatus")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DaysAssignmentToFinal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DaysAssignmentToNotice")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DaysNoticeToFinal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DeclarationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("DeclaredTaxAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("FinalNoticeDateJalali")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FinalOfficeName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("FinalTaxAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("FinalizationSource")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("FiscalYear")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("InitialOfficeName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NextStatus")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("OfficeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RiskLevel")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Stage")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("TaxPeriod")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TaxSource")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TaxpayerName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TaxpayerTin")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TaxpayerTrackingCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdateDateJalali")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WarehouseUploadDateJalali")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("YearlyType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuditStatus");
+
+                    b.HasIndex("AuditorName");
+
+                    b.HasIndex("FinalOfficeName");
+
+                    b.HasIndex("FiscalYear");
+
+                    b.HasIndex("OfficeId");
+
+                    b.HasIndex("TaxSource");
+
+                    b.HasIndex("TaxpayerTin");
+
+                    b.ToTable("SanimAuditAssessments", (string)null);
                 });
 
             modelBuilder.Entity("TaxSummary.Domain.Entities.Role", b =>
