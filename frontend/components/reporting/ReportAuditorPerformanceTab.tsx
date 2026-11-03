@@ -12,6 +12,12 @@ import {
   RefreshCw,
   Sparkles,
   ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   Building2,
   AlertCircle,
   HelpCircle,
@@ -49,6 +55,18 @@ export function ReportAuditorPerformanceTab({
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOffice, setSelectedOffice] = useState('all')
   const [selectedAuditorForDrawer, setSelectedAuditorForDrawer] = useState<string | null>(null)
+
+  // Pagination & Sorting State
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [pageSize, setPageSize] = useState<number>(15) // 0 indicates 'All'
+  const [sortColumn, setSortColumn] = useState<string>('rank')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [jumpPageInput, setJumpPageInput] = useState<string>('')
+
+  // Reset to first page when filtering or page size changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedOffice, pageSize])
 
   const loadData = async () => {
     try {
@@ -103,6 +121,106 @@ export function ReportAuditorPerformanceTab({
       return matchSearch && matchOffice
     })
   }, [scorecards, searchTerm, selectedOffice])
+
+  // Sorted scorecards
+  const sortedScorecards = useMemo(() => {
+    return [...filteredScorecards].sort((a, b) => {
+      let valA: any = a.provincialRank
+      let valB: any = b.provincialRank
+
+      if (sortColumn === 'name') {
+        valA = a.auditorName || ''
+        valB = b.auditorName || ''
+        return sortDirection === 'asc'
+          ? valA.localeCompare(valB, 'fa')
+          : valB.localeCompare(valA, 'fa')
+      } else if (sortColumn === 'cases') {
+        valA = a.totalAssignedCases || 0
+        valB = b.totalAssignedCases || 0
+      } else if (sortColumn === 'assessed') {
+        valA = a.totalAssessedAmount || 0
+        valB = b.totalAssessedAmount || 0
+      } else if (sortColumn === 'final') {
+        valA = a.totalFinalAmount || 0
+        valB = b.totalFinalAmount || 0
+      } else if (sortColumn === 'score') {
+        valA = a.compositeScore || 0
+        valB = b.compositeScore || 0
+      } else {
+        // default rank
+        valA = a.provincialRank || 0
+        valB = b.provincialRank || 0
+      }
+
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortDirection === 'asc' ? valA - valB : valB - valA
+      }
+      return sortDirection === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1)
+    })
+  }, [filteredScorecards, sortColumn, sortDirection])
+
+  // Pagination calculations
+  const totalRowCount = sortedScorecards.length
+  const effectivePageSize = pageSize > 0 ? pageSize : totalRowCount || 1
+  const totalPages = pageSize > 0 ? Math.max(1, Math.ceil(totalRowCount / pageSize)) : 1
+  const safePage = Math.min(Math.max(1, currentPage), totalPages)
+
+  const paginatedScorecards = useMemo(() => {
+    if (pageSize <= 0) return sortedScorecards
+    const start = (safePage - 1) * pageSize
+    return sortedScorecards.slice(start, start + pageSize)
+  }, [sortedScorecards, safePage, pageSize])
+
+  const startRow = totalRowCount > 0 ? (safePage - 1) * effectivePageSize + 1 : 0
+  const endRow = Math.min(safePage * effectivePageSize, totalRowCount)
+
+  const getPageNumbers = () => {
+    const delta = 2
+    const range: (number | 'ellipsis')[] = []
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= safePage - delta && i <= safePage + delta)) {
+        range.push(i)
+      } else if (range[range.length - 1] !== 'ellipsis') {
+        range.push('ellipsis')
+      }
+    }
+    return range
+  }
+
+  const handleJumpPage = (e: React.FormEvent) => {
+    e.preventDefault()
+    const pageNum = parseInt(
+      jumpPageInput.replace(/[۰-۹]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1728)),
+      10
+    )
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+      setCurrentPage(pageNum)
+      setJumpPageInput('')
+    }
+  }
+
+  const handleSort = (column: 'rank' | 'name' | 'cases' | 'assessed' | 'final' | 'score') => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortColumn(column)
+      setSortDirection(column === 'rank' || column === 'name' ? 'asc' : 'desc')
+    }
+    setCurrentPage(1)
+  }
+
+  const renderSortIcon = (column: 'rank' | 'name' | 'cases' | 'assessed' | 'final' | 'score') => {
+    if (sortColumn !== column) {
+      return (
+        <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/th:text-slate-500 transition-colors inline-block" />
+      )
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="w-3.5 h-3.5 text-amber-600 inline-block" />
+    ) : (
+      <ArrowDown className="w-3.5 h-3.5 text-amber-600 inline-block" />
+    )
+  }
 
   // Aggregated Statistics for Top KPI Cards
   const stats = useMemo(() => {
@@ -694,21 +812,75 @@ export function ReportAuditorPerformanceTab({
         {/* Leaderboard Table */}
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full text-right text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold select-none">
               <tr>
-                <th className="py-3 px-3 w-14 text-center">رتبه</th>
-                <th className="py-3 px-4">{isDecree ? 'نام و مشخصات مجری / سرپرست قرار' : 'نام و مشخصات حسابرس'}</th>
+                <th
+                  onClick={() => handleSort('rank')}
+                  className="py-3 px-3 w-16 text-center cursor-pointer hover:bg-slate-100 transition-colors group/th"
+                  title="مرتب‌سازی بر اساس رتبه"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>رتبه</span>
+                    {renderSortIcon('rank')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('name')}
+                  className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors group/th"
+                  title="مرتب‌سازی بر اساس نام"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{isDecree ? 'نام و مشخصات مجری / سرپرست قرار' : 'نام و مشخصات حسابرس'}</span>
+                    {renderSortIcon('name')}
+                  </div>
+                </th>
                 <th className="py-3 px-4">اداره امور مالیاتی</th>
-                <th className="py-3 px-3 text-center">{isDecree ? 'تعداد قرار' : 'تعداد پرونده'}</th>
-                <th className="py-3 px-4 text-left">{isDecree ? 'درآمد (مأخذ) مشمول' : 'مجموع مالیات تشخیصی'}</th>
-                <th className="py-3 px-4 text-left">{isDecree ? 'مجموع اصل مالیات' : 'مجموع مالیات قطعی'}</th>
-                <th className="py-3 px-3 text-center">امتیاز کل (۱۰۰)</th>
+                <th
+                  onClick={() => handleSort('cases')}
+                  className="py-3 px-3 text-center cursor-pointer hover:bg-slate-100 transition-colors group/th"
+                  title="مرتب‌سازی بر اساس تعداد"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>{isDecree ? 'تعداد قرار' : 'تعداد پرونده'}</span>
+                    {renderSortIcon('cases')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('assessed')}
+                  className="py-3 px-4 text-left cursor-pointer hover:bg-slate-100 transition-colors group/th"
+                  title="مرتب‌سازی بر اساس مبالغ تشخیصی / مأخذ"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>{isDecree ? 'درآمد (مأخذ) مشمول' : 'مجموع مالیات تشخیصی'}</span>
+                    {renderSortIcon('assessed')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('final')}
+                  className="py-3 px-4 text-left cursor-pointer hover:bg-slate-100 transition-colors group/th"
+                  title="مرتب‌سازی بر اساس مبالغ قطعی / اصل مالیات"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>{isDecree ? 'مجموع اصل مالیات' : 'مجموع مالیات قطعی'}</span>
+                    {renderSortIcon('final')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('score')}
+                  className="py-3 px-3 text-center cursor-pointer hover:bg-slate-100 transition-colors group/th"
+                  title="مرتب‌سازی بر اساس امتیاز کل"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>امتیاز کل (۱۰۰)</span>
+                    {renderSortIcon('score')}
+                  </div>
+                </th>
                 <th className="py-3 px-3 text-center">طبقه عملکردی</th>
                 <th className="py-3 px-3 text-center">اقدام</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredScorecards.length === 0 ? (
+              {paginatedScorecards.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-slate-400">
                     {isDecree
@@ -717,7 +889,7 @@ export function ReportAuditorPerformanceTab({
                   </td>
                 </tr>
               ) : (
-                filteredScorecards.map((row) => {
+                paginatedScorecards.map((row) => {
                   return (
                     <tr
                       key={row.auditorName}
@@ -848,6 +1020,137 @@ export function ReportAuditorPerformanceTab({
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="pt-2 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-slate-600 border-t border-slate-100">
+          {/* Left: Range Summary & Page Size Selector */}
+          <div className="flex items-center gap-4 flex-wrap w-full md:w-auto justify-between md:justify-start">
+            <span className="text-slate-500 font-medium">
+              نمایش ردیف‌های <span className="font-bold text-slate-800 font-mono">{toPersianDigits(startRow)}</span> تا{' '}
+              <span className="font-bold text-slate-800 font-mono">{toPersianDigits(endRow)}</span> از مجموع{' '}
+              <span className="font-extrabold text-amber-700 font-mono">{toPersianDigits(totalRowCount)}</span>{' '}
+              {isDecree ? 'مجری قرار' : 'حسابرس'}
+            </span>
+
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <span>تعداد در صفحه:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value))
+                  setCurrentPage(1)
+                }}
+                className="py-1 px-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
+              >
+                <option value={10}>۱۰</option>
+                <option value={15}>۱۵</option>
+                <option value={25}>۲۵</option>
+                <option value={50}>۵۰</option>
+                <option value={100}>۱۰۰</option>
+                <option value={0}>همه ({toPersianDigits(totalRowCount)})</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Right: Page Navigation Buttons & Quick Jump */}
+          {pageSize > 0 && totalPages > 1 && (
+            <div className="flex items-center gap-2 flex-wrap justify-center">
+              {/* Pagination Button Group */}
+              <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                {/* First Page */}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={safePage === 1}
+                  className="p-1.5 rounded-lg hover:bg-white text-slate-600 hover:text-amber-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
+                  title="صفحه اول"
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </button>
+
+                {/* Previous Page */}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="p-1.5 rounded-lg hover:bg-white text-slate-600 hover:text-amber-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
+                  title="صفحه قبل"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+
+                {/* Numbered Page Buttons with Ellipsis */}
+                <div className="flex items-center gap-1 px-1">
+                  {getPageNumbers().map((item, idx) => {
+                    if (item === 'ellipsis') {
+                      return (
+                        <span key={`ellipsis-${idx}`} className="px-1.5 text-slate-400 select-none">
+                          …
+                        </span>
+                      )
+                    }
+                    const isCurrent = item === safePage
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setCurrentPage(item)}
+                        className={`w-7 h-7 text-xs font-bold rounded-lg font-mono transition-all cursor-pointer ${
+                          isCurrent
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-700 hover:bg-white hover:text-amber-700'
+                        }`}
+                      >
+                        {toPersianDigits(item)}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Next Page */}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="p-1.5 rounded-lg hover:bg-white text-slate-600 hover:text-amber-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
+                  title="صفحه بعد"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {/* Last Page */}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={safePage === totalPages}
+                  className="p-1.5 rounded-lg hover:bg-white text-slate-600 hover:text-amber-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
+                  title="صفحه آخر"
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Jump to Page Form */}
+              <form onSubmit={handleJumpPage} className="flex items-center gap-1.5 mr-2">
+                <span className="text-[11px] text-slate-500">برو به:</span>
+                <input
+                  type="text"
+                  value={jumpPageInput}
+                  onChange={(e) => setJumpPageInput(e.target.value)}
+                  placeholder={toPersianDigits(safePage)}
+                  className="w-12 py-1 px-1 text-center font-mono font-bold text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                />
+                <button
+                  type="submit"
+                  disabled={!jumpPageInput.trim()}
+                  className="px-2 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-600 hover:text-white border border-amber-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  تأیید
+                </button>
+              </form>
+            </div>
+          )}
         </div>
       </div>
 
