@@ -11,6 +11,7 @@ import {
   DynamicReportResult,
   DynamicQueryMetadata,
   SavedReportPreset,
+  ReportExecutiveKpi,
 } from '@/types/reporting'
 
 const BASE_URL = '/reporting'
@@ -65,9 +66,15 @@ export const reportingApi = {
     return res.data
   },
 
+  async getReportKpi(code: string): Promise<ReportExecutiveKpi> {
+    const res = await apiClient.get<ReportExecutiveKpi>(`${BASE_URL}/standard/${code}/kpi`)
+    return res.data
+  },
+
   async exportStandardReportExcel(code: string, params: ReportFilterParameters, fileName?: string): Promise<void> {
     const res = await apiClient.post(`${BASE_URL}/standard/${code}/export/excel`, params, {
       responseType: 'blob',
+      timeout: 180000, // 3 minutes timeout for heavy exports up to 100,000 records
     })
     downloadBlob(res.data, fileName || `${code}_Report.xlsx`)
   },
@@ -86,6 +93,7 @@ export const reportingApi = {
   async exportDynamicQueryExcel(request: DynamicReportQueryRequest, fileName?: string): Promise<void> {
     const res = await apiClient.post(`${BASE_URL}/builder/export/excel`, request, {
       responseType: 'blob',
+      timeout: 180000, // 3 minutes timeout for heavy exports
     })
     downloadBlob(res.data, fileName || 'Dynamic_Query_Report.xlsx')
   },

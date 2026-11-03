@@ -61,4 +61,12 @@ public interface IExecutiveReportingService
         string reportCode, 
         string? userRole = null, 
         CancellationToken ct = default);
+
+    /// <summary>
+    /// دریافت داشبورد مدیریتی شاخص‌های کلیدی عملکرد (KPI) برای یک گزارش استاندارد خاص
+    /// </summary>
+    Task<Result<ReportExecutiveKpiDto>> GetStandardReportKpiOverviewAsync(
+        string reportCode, 
+        List<Guid>? userAssignedOfficeIds, 
+        CancellationToken ct = default);
 }

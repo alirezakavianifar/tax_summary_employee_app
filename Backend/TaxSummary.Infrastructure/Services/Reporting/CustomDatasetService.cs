@@ -586,11 +586,37 @@ public class CustomDatasetService : ICustomDatasetService
             // 3. Department / Office Name filter (if column exists)
             if (!string.IsNullOrWhiteSpace(parameters.Department))
             {
-                var deptCol = config.Columns.FirstOrDefault(c => c.OriginalHeader.Contains("اداره") || c.FieldName.Contains("office") || c.FieldName.Contains("dept"));
+                var deptCol = config.Columns.FirstOrDefault(c => 
+                    (c.OriginalHeader.Contains("نام اداره") || c.PersianLabel.Contains("نام اداره") ||
+                     c.OriginalHeader.Contains("اداره امور") || c.PersianLabel.Contains("اداره امور") ||
+                     c.OriginalHeader.Contains("نام واحد") || c.PersianLabel.Contains("نام واحد")) &&
+                    !c.OriginalHeader.Contains("اداره کل") && !c.OriginalHeader.Contains("کد") && !c.OriginalHeader.Contains("طول") && !c.OriginalHeader.Contains("اعتراض"))
+                    ?? config.Columns.FirstOrDefault(c => 
+                        (c.OriginalHeader.Contains("اداره") || c.PersianLabel.Contains("اداره")) && 
+                        !c.OriginalHeader.Contains("اداره کل") && !c.OriginalHeader.Contains("کد") && !c.OriginalHeader.Contains("طول") && !c.OriginalHeader.Contains("اعتراض"))
+                    ?? config.Columns.FirstOrDefault(c => c.FieldName.Contains("office") || c.FieldName.Contains("dept"));
+
                 if (deptCol != null)
                 {
-                    whereClauses.Add($"[{deptCol.FieldName}] LIKE @DeptName");
-                    sqlParams.Add(new SqliteParameter("@DeptName", $"%{parameters.Department.Trim()}%"));
+                    var rawDept = parameters.Department.Trim();
+                    var normalizedEn = ToEnglishDigits(rawDept);
+                    var normalizedFa = ToPersianDigits(rawDept);
+
+                    var match = Regex.Match(normalizedEn, @"\d{3,5}");
+                    if (match.Success)
+                    {
+                        var code = match.Value;
+                        whereClauses.Add($"([{deptCol.FieldName}] LIKE @DeptCode OR [{deptCol.FieldName}] LIKE @DeptNameEn OR [{deptCol.FieldName}] LIKE @DeptNameFa)");
+                        sqlParams.Add(new SqliteParameter("@DeptCode", $"%{code}%"));
+                        sqlParams.Add(new SqliteParameter("@DeptNameEn", $"%{normalizedEn}%"));
+                        sqlParams.Add(new SqliteParameter("@DeptNameFa", $"%{normalizedFa}%"));
+                    }
+                    else
+                    {
+                        whereClauses.Add($"([{deptCol.FieldName}] LIKE @DeptNameEn OR [{deptCol.FieldName}] LIKE @DeptNameFa)");
+                        sqlParams.Add(new SqliteParameter("@DeptNameEn", $"%{normalizedEn}%"));
+                        sqlParams.Add(new SqliteParameter("@DeptNameFa", $"%{normalizedFa}%"));
+                    }
                 }
             }
 
@@ -678,7 +704,7 @@ public class CustomDatasetService : ICustomDatasetService
 
             // C. Paged Data Query
             var page = Math.Max(1, parameters.PageNumber);
-            var pageSize = Math.Max(1, Math.Min(parameters.PageSize, 10000));
+            var pageSize = Math.Max(1, Math.Min(parameters.PageSize, 100000));
             var offset = (page - 1) * pageSize;
 
             // Safe Order By
@@ -887,6 +913,35 @@ public class CustomDatasetService : ICustomDatasetService
                 await cmd.ExecuteNonQueryAsync(ct);
             }
         }
+    }
+
+    private static string ToEnglishDigits(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+        var sb = new StringBuilder(input.Length);
+        foreach (var ch in input)
+        {
+            if (ch >= '۰' && ch <= '۹') sb.Append((char)('0' + (ch - '۰')));
+            else if (ch >= '٠' && ch <= '٩') sb.Append((char)('0' + (ch - '٠')));
+            else if (ch == 'ي') sb.Append('ی');
+            else if (ch == 'ك') sb.Append('ک');
+            else sb.Append(ch);
+        }
+        return sb.ToString().Trim();
+    }
+
+    private static string ToPersianDigits(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+        var sb = new StringBuilder(input.Length);
+        foreach (var ch in input)
+        {
+            if (ch >= '0' && ch <= '9') sb.Append((char)('۰' + (ch - '0')));
+            else if (ch == 'ي') sb.Append('ی');
+            else if (ch == 'ك') sb.Append('ک');
+            else sb.Append(ch);
+        }
+        return sb.ToString().Trim();
     }
 
     private static object NormalizeInsertValue(object? rawVal, string dataType)

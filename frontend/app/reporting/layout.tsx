@@ -24,9 +24,9 @@ export default function ReportingLayout({ children }: { children: React.ReactNod
   })
 
   return (
-    <div className="min-h-screen bg-slate-50/60" dir="rtl">
+    <div className="min-h-screen bg-slate-50/60 print:min-h-0 print:bg-white" dir="rtl">
       {/* Module Sub-Navigation Bar */}
-      <div className="bg-white border-b border-slate-200/80 shadow-xs sticky top-16 z-30">
+      <div className="bg-white border-b border-slate-200/80 shadow-xs sticky top-16 z-30 no-print">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-3">
@@ -69,7 +69,7 @@ export default function ReportingLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 print:max-w-none print:p-0 print:m-0">
         {children}
       </main>
     </div>

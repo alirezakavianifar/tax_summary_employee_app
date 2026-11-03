@@ -31,6 +31,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     tokenManager.setAccessToken(response.accessToken);
                     setAccessToken(response.accessToken);
                     setUser(response.user);
+                    if (typeof window !== 'undefined') {
+                        Cookies.set('accessToken', response.accessToken, {
+                            expires: 1 / 24,
+                            secure: window.location.protocol === 'https:',
+                            sameSite: 'lax',
+                            path: '/'
+                        });
+                    }
                 } catch (refreshErr) {
                     // No active session or refresh expired
                     tokenManager.clearAccessToken();
@@ -72,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => clearInterval(refreshTimer);
     }, [accessToken, user]);
 
-    const login = useCallback(async (credentials: LoginRequest) => {
+    const login = useCallback(async (credentials: LoginRequest, callbackUrl?: string) => {
         try {
             setIsLoading(true);
             const response = await authApi.login(credentials);
@@ -96,9 +104,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 path: '/'
             });
 
-            // Redirect to change-password if required by policy, otherwise to dashboard/home
+            // Redirect to change-password if required by policy, otherwise to callbackUrl or home
             if (response.user.mustChangePassword) {
                 router.push('/change-password');
+            } else if (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('/login')) {
+                router.push(callbackUrl);
             } else {
                 router.push('/');
             }

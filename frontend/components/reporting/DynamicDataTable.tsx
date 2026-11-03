@@ -187,7 +187,7 @@ export function DynamicDataTable({
           </div>
         )}
 
-        <table className="w-full text-xs text-right border-collapse">
+        <table className="w-full text-xs text-right border-collapse print-table">
           <thead>
             <tr className="bg-slate-900 text-white select-none">
               <th className="py-3 px-3.5 text-center font-bold text-[11px] text-slate-400 w-12 border-b border-slate-800">
@@ -210,7 +210,7 @@ export function DynamicDataTable({
                     <div className={`inline-flex items-center gap-1.5 ${getAlignmentClass(col.alignment)}`}>
                       <span>{col.persianLabel}</span>
                       {col.isSortable !== false && onSortChange && (
-                        <span className="text-slate-400">
+                        <span className="text-slate-400 no-print">
                           {isCurrentSort ? (
                             sortDescending ? (
                               <ArrowDown className="w-3.5 h-3.5 text-amber-400" />
@@ -290,7 +290,7 @@ export function DynamicDataTable({
       </div>
 
       {/* Pagination & Row Count Footer */}
-      <div className="flex items-center justify-between flex-wrap gap-3 px-5 py-3.5 bg-slate-50/80 border-t border-slate-200/80 text-xs text-slate-600">
+      <div className="flex items-center justify-between flex-wrap gap-3 px-5 py-3.5 bg-slate-50/80 border-t border-slate-200/80 text-xs text-slate-600 no-print">
         <div className="flex items-center gap-2">
           <span>نمایش ردیف‌های</span>
           <span className="font-mono font-bold text-slate-800">

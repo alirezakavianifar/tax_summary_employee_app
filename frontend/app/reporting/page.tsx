@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { reportingApi } from '@/lib/api/reporting'
 import { ExecutiveDashboard } from '@/types/reporting'
 import { KpiCard } from '@/components/reporting/KpiCard'
@@ -20,6 +21,10 @@ import {
   FileSpreadsheet,
   Building2,
   Calendar,
+  ArrowLeft,
+  ExternalLink,
+  BarChart3,
+  FileText,
 } from 'lucide-react'
 
 export default function ReportingDashboardPage() {
@@ -239,6 +244,176 @@ export default function ReportingDashboardPage() {
           <DepartmentBarChart departments={dashboard?.topDepartmentBudgets || []} maxItems={6} />
         </div>
       </div>
+
+      {/* Provincial Tax Audit & Dispute Operations Monitor */}
+      {dashboard?.provincialOperations && (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 rounded-2xl p-6 text-white shadow-md border border-slate-700/80">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-700/80">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                  سامانه مدیریت عملکرد کلان استان
+                </span>
+                <span className="text-xs text-slate-400">تحلیل داده‌های آماری و عملیاتی</span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-amber-400" />
+                پایش کلان عملیات حسابرسی و دادرسی مالیاتی استان خوزستان
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                مرور تجمیعی پرونده‌های حسابرسی‌شده و قرارهای حل اختلاف مالیاتی با دسترسی بلادرنگ به داشبوردهای مدیریتی
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/reporting/standard/REP_1405?view=kpi"
+                className="px-3.5 py-2 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              >
+                <span>داشبورد KPI حسابرسی</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                href="/reporting/standard/REP_2?view=kpi"
+                className="px-3.5 py-2 text-xs font-bold rounded-xl bg-slate-700 hover:bg-slate-600 text-white transition-all cursor-pointer flex items-center gap-1.5 border border-slate-600"
+              >
+                <span>داشبورد KPI قرارها</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+            {/* Card 1: Audits (REP_1405) */}
+            <div className="bg-slate-800/80 hover:bg-slate-800 transition-all rounded-xl p-5 border border-slate-700 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-white">
+                        عملیات حسابرسی پرونده‌های مالیاتی سال ۱۴۰۵
+                      </h3>
+                      <span className="text-[11px] text-slate-400 font-mono">گزارش آماری REP_1405</span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+                    {dashboard.provincialOperations.totalAuditCases.toLocaleString('fa-IR')} پرونده
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 my-4">
+                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700/50">
+                    <div className="text-[10px] text-slate-400">مالیات تشخیصی حسابرسان</div>
+                    <div className="text-xs font-black text-emerald-400 mt-1 font-mono" dir="ltr">
+                      {(dashboard.provincialOperations.totalAssessedTaxAmount / 10_000_000_000).toFixed(2)} همت
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700/50">
+                    <div className="text-[10px] text-slate-400">شکاف تشخیصی (Tax Gap)</div>
+                    <div className="text-xs font-black text-amber-400 mt-1 font-mono" dir="ltr">
+                      +{(dashboard.provincialOperations.totalTaxAssessmentGapAmount / 10_000_000_000).toFixed(2)} همت
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700/50 col-span-2 sm:col-span-1">
+                    <div className="text-[10px] text-slate-400">مالیات قطعی‌شده</div>
+                    <div className="text-xs font-black text-slate-200 mt-1 font-mono" dir="ltr">
+                      {(dashboard.provincialOperations.totalFinalTaxAmount / 10_000_000_000).toFixed(2)} همت
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-slate-300 pt-2 border-t border-slate-700/50">
+                  <div>
+                    <span className="text-slate-400">نوع گزارش: </span>
+                    <span className="font-bold text-white">رسیدگی پرونده‌های حسابرسی استان</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">شناسه: </span>
+                    <span className="font-bold text-emerald-300 font-mono">REP_1405</span>
+                  </div>
+                </div>
+              </div>
+
+              <Link
+                href="/reporting/standard/REP_1405?view=kpi"
+                className="mt-4 w-full py-2 px-3 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/40 text-xs font-bold text-center flex items-center justify-center gap-1.5 transition-all"
+              >
+                <span>ورود به داشبورد تحلیلی حسابرسی (KPI)</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {/* Card 2: Decrees (REP_2) */}
+            <div className="bg-slate-800/80 hover:bg-slate-800 transition-all rounded-xl p-5 border border-slate-700 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
+                      <Scale className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-white">
+                        عملیات قرارهای هیأت‌های حل اختلاف مالیاتی
+                      </h3>
+                      <span className="text-[11px] text-slate-400 font-mono">گزارش آماری قرار_2 (REP_2)</span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono">
+                    {dashboard.provincialOperations.totalDecrees.toLocaleString('fa-IR')} قرار
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 my-4">
+                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700/50">
+                    <div className="text-[10px] text-slate-400">کل حجم مالی اختلافی</div>
+                    <div className="text-xs font-black text-slate-200 mt-1 font-mono" dir="ltr">
+                      {(dashboard.provincialOperations.totalDisputedBaseAmount / 10_000_000_000).toFixed(2)} همت
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700/50">
+                    <div className="text-[10px] text-slate-400">اصل مالیات در معرض رسیدگی</div>
+                    <div className="text-xs font-black text-indigo-400 mt-1 font-mono" dir="ltr">
+                      {(dashboard.provincialOperations.totalDisputedPrincipalAmount / 10_000_000_000).toFixed(2)} همت
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700/50 col-span-2 sm:col-span-1">
+                    <div className="text-[10px] text-slate-400">نرخ اجرای قرارها</div>
+                    <div className="text-xs font-black text-teal-400 mt-1 font-mono">
+                      %{dashboard.provincialOperations.decreeCompletionRate.toFixed(1)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-slate-300 pt-2 border-t border-slate-700/50">
+                  <div>
+                    <span className="text-slate-400">نوع گزارش: </span>
+                    <span className="font-bold text-white">قرارهای ماده ۲۳۸ و ۲۴۴ تا ۲۴۷</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">شناسه: </span>
+                    <span className="font-bold text-indigo-300 font-mono">REP_2</span>
+                  </div>
+                </div>
+              </div>
+
+              <Link
+                href="/reporting/standard/REP_2?view=kpi"
+                className="mt-4 w-full py-2 px-3 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 text-xs font-bold text-center flex items-center justify-center gap-1.5 transition-all"
+              >
+                <span>ورود به داشبورد تحلیلی قرارها (KPI)</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Grid: Tax Sources Breakdown & Audit Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

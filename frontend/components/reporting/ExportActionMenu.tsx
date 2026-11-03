@@ -50,19 +50,20 @@ export function ExportActionMenu({
   }
 
   return (
-    <div className="relative inline-block text-right" ref={menuRef}>
+    <div className="relative inline-block text-right no-print" ref={menuRef}>
       <button
         type="button"
         disabled={disabled || isLoading}
         onClick={() => setIsOpen((prev) => !prev)}
         className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl shadow-xs hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        title="دریافت خروجی گزارش به فرمت اکسل یا پیش‌نمایش چاپ"
       >
         {isLoading ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
           <Download className="w-4 h-4" />
         )}
-        <span>{label}</span>
+        <span>{isLoading ? 'در حال صدور...' : label}</span>
         <ChevronDown className="w-3.5 h-3.5 opacity-80" />
       </button>
 

@@ -121,6 +121,26 @@ public class StandardReportsController : ReportingControllerBase
     }
 
     /// <summary>
+    /// دریافت داشبورد جامع شاخص‌های کلیدی عملکرد (Executive KPI) برای گزارش استاندارد
+    /// </summary>
+    [HttpGet("{code}/kpi")]
+    [RequireModuleAccess("action_reporting_standard_reports")]
+    [ProducesResponseType(typeof(ReportExecutiveKpiDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ReportExecutiveKpiDto>> GetReportKpi(
+        [FromRoute] string code,
+        CancellationToken ct)
+    {
+        var userAssignedOffices = GetUserAssignedOfficeIds();
+        var result = await _reportingService.GetStandardReportKpiOverviewAsync(code, userAssignedOffices, ct);
+
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
     /// صدور فایل گزارش استاندارد به صورت فایل اکسل چندبرگی استاندارد با فرمول (EPPlus 7 RTL)
     /// </summary>
     [HttpPost("{code}/export/excel")]

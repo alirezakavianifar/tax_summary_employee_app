@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginForm() {
+    const searchParams = useSearchParams();
+    const rawCallbackUrl = searchParams.get('callbackUrl') || '/';
+    const callbackUrl = rawCallbackUrl.startsWith('/') && !rawCallbackUrl.startsWith('/login')
+        ? rawCallbackUrl
+        : '/';
+
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -13,8 +19,15 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const { login } = useAuth();
+    const { login, isAuthenticated, isLoading: authLoading, user } = useAuth();
     const router = useRouter();
+
+    // If already authenticated or silently refreshed, navigate to target route immediately
+    useEffect(() => {
+        if (!authLoading && isAuthenticated && user) {
+            router.replace(callbackUrl);
+        }
+    }, [authLoading, isAuthenticated, user, callbackUrl, router]);
 
     const toAsciiDigits = (str: string) => {
         return str
@@ -33,8 +46,8 @@ export default function LoginPage() {
                 username: toAsciiDigits(username),
                 password: toAsciiDigits(password),
                 rememberMe
-            });
-            // Redirect will be handled by AuthContext
+            }, callbackUrl);
+            // Redirect is handled by AuthContext
         } catch (err: any) {
             setError(err.message || 'خطا در ورود. لطفاً مجدداً تلاش کنید');
         } finally {
@@ -162,3 +175,16 @@ export default function LoginPage() {
         </div>
     );
 }
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+            </div>
+        }>
+            <LoginForm />
+        </Suspense>
+    );
+}
+

@@ -24,6 +24,21 @@ export interface ExecutiveDashboard {
   topDepartmentBudgets: TopDepartmentBudget[]
   taxSourceRefundDistribution: TaxSourceDistribution[]
   recentAuditActivities: RecentAuditActivity[]
+  provincialOperations?: ProvincialOperationsSummary
+}
+
+export interface ProvincialOperationsSummary {
+  totalAuditCases: number
+  totalAssessedTaxAmount: number
+  totalTaxAssessmentGapAmount: number
+  totalFinalTaxAmount: number
+  totalDecrees: number
+  totalDisputedBaseAmount: number
+  totalDisputedPrincipalAmount: number
+  decreeCompletionRate: number
+  decreeApprovalRate: number
+  auditReportCode: string
+  decreeReportCode: string
 }
 
 export interface ExecutiveKpiMetrics {
@@ -180,4 +195,89 @@ export interface SavedReportPreset {
   isSharedWithOffice: boolean
   officeId?: string | null
   createdAt: string
+}
+
+export interface ReportExecutiveKpi {
+  reportCode: string
+  reportTitle: string
+  reportActorType: 'decree' | 'auditor' | 'generic'
+  totalRowCount: number
+  fiscalYear?: number
+  generatedAt: string
+  kpiCards: ExecutiveKpiCard[]
+  financialSummary: KpiFinancialSummary
+  taxSourceDistribution: KpiTaxSourceBreakdown[]
+  stageDistribution: KpiStageBreakdown[]
+  methodologyDistribution: KpiMethodologyBreakdown[]
+  officeWorkload: KpiOfficeWorkload[]
+  topTaxpayers: KpiTopTaxpayer[]
+}
+
+export interface ExecutiveKpiCard {
+  key: string
+  title: string
+  value: string
+  rawNumericValue: number
+  subtitle: string
+  iconName: string
+  iconGradient: string
+  badgeText: string
+  badgeColor: string
+  trendValue?: number
+  trendLabel?: string
+  trendInverted?: boolean
+}
+
+export interface KpiFinancialSummary {
+  declaredTaxAmount: number
+  assessedTaxAmount: number
+  taxGapAmount: number
+  finalTaxAmount: number
+  disputedBaseAmount: number
+  principalTaxAmount: number
+  penaltiesAmount: number
+  assessmentGapPercentage: number
+}
+
+export interface KpiTaxSourceBreakdown {
+  sourceTitle: string
+  caseCount: number
+  percentage: number
+  totalAmount: number
+  totalBaseAmount: number
+}
+
+export interface KpiStageBreakdown {
+  stageCode: string
+  stageTitle: string
+  caseCount: number
+  percentage: number
+  totalAmount: number
+}
+
+export interface KpiMethodologyBreakdown {
+  title: string
+  caseCount: number
+  percentage: number
+  totalAmount: number
+}
+
+export interface KpiOfficeWorkload {
+  officeName: string
+  caseCount: number
+  completedCases: number
+  totalAssessedAmount: number
+  totalFinalAmount: number
+  completionRate: number
+}
+
+export interface KpiTopTaxpayer {
+  nationalId: string
+  taxpayerName: string
+  taxSource: string
+  officeName: string
+  caseCount: number
+  assessedAmount: number
+  finalAmount: number
+  currentStatus: string
 }
