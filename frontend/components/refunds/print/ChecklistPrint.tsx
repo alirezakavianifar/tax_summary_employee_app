@@ -2,7 +2,7 @@
 
 import React from 'react'
 import type { PrintableDocument } from '@/types/taxRefund'
-import { getTodayJalaliString, toPersianDigits } from '@/lib/jalali'
+import { getTodayJalaliString, toPersianDigits, formatCaseTrackingNumber } from '@/lib/jalali'
 import { PrintContainer, PrintHeader, SignatureBox } from './PrintContainer'
 
 interface ChecklistPrintProps {
@@ -62,7 +62,7 @@ export function ChecklistPrint({ data }: ChecklistPrintProps) {
     },
     {
       category: 'گزارش استرداد',
-      rowSpan: 3,
+      rowSpan: 4,
       id: '9',
       desc: 'تعیین وضعیت بدهی مودی مالیاتی در قسمت وصول و اجرا؛ مهر و امضای کارشناس ارشد و الصاق گواهی اتوماسیون بدهی',
     },
@@ -79,15 +79,21 @@ export function ChecklistPrint({ data }: ChecklistPrintProps) {
       desc: 'تفکیک بدهی مالیات و عوارض ارزش افزوده (مشخص بودن میزان کسر هر آیتم از مبلغ استردادی در صورت داشتن بدهی مودی)',
     },
     {
+      category: 'گزارش استرداد',
+      rowSpan: 0,
+      id: '12',
+      desc: 'گزارش توجیهی (دلایل اضافه پرداختی و بررسی امکان استرداد)',
+    },
+    {
       category: 'ضمائم و مدارک',
       rowSpan: 2,
-      id: '12',
+      id: '13',
       desc: 'ضمیمه بودن اصل قبوض مالیات پرداختی در حد مورد نیاز جهت استرداد (در صورت مفقودی: تعهدنامه مسئولین و اقرارنامه ثبتی مودی)',
     },
     {
       category: 'ضمائم و مدارک',
       rowSpan: 0,
-      id: '13',
+      id: '14',
       desc: 'نامه درخواست استرداد، تاییدیه شماره شبا بانکی به نام مودی (با مهر و امضای مجاز) و معرفی نماینده قانونی مودی',
     },
   ]
@@ -97,7 +103,7 @@ export function ChecklistPrint({ data }: ChecklistPrintProps) {
       <PrintHeader
         formTitle="چک لیست کنترل اسناد استردادی"
         subtitle={`مودی: ${data.taxpayerName} | سال عملکرد: ${toPersianDigits(data.taxYear)}`}
-        docNumber={data.caseTrackingNumber}
+        docNumber={formatCaseTrackingNumber(data.caseTrackingNumber)}
         docDate={data.refundVoucherDate || fallbackDate}
         docketNumber={data.docketNumber}
         province={data.province}
@@ -132,8 +138,8 @@ export function ChecklistPrint({ data }: ChecklistPrintProps) {
               )}
               <td className="border border-black py-1 px-1 text-center font-bold text-sm">{toPersianDigits(item.id)}</td>
               <td className="border border-black py-1 px-2 text-right leading-5 text-[11.5px]">{item.desc}</td>
-              <td className="border border-black py-1 px-1 text-center font-bold text-base">✓</td>
-              <td className="border border-black py-1 px-1 text-center text-gray-300">-</td>
+              <td className="border border-black py-1 px-1 text-center font-bold text-base"></td>
+              <td className="border border-black py-1 px-1 text-center"></td>
             </tr>
           ))}
         </tbody>

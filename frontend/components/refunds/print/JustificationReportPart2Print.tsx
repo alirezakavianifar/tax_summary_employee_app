@@ -2,8 +2,8 @@
 
 import React from 'react'
 import type { PrintableDocument } from '@/types/taxRefund'
-import { TaxRefundLetterType } from '@/types/taxRefund'
-import { getTodayJalaliString, toPersianDigits } from '@/lib/jalali'
+import { TaxRefundLetterType, TaxSourceLabels, TaxSourceType } from '@/types/taxRefund'
+import { getTodayJalaliString, toPersianDigits, formatCaseTrackingNumber } from '@/lib/jalali'
 import { PrintContainer, PrintHeader, SignatureBox } from './PrintContainer'
 
 interface JustificationReportPart2PrintProps {
@@ -13,8 +13,33 @@ interface JustificationReportPart2PrintProps {
 export function JustificationReportPart2Print({ data }: JustificationReportPart2PrintProps) {
   const fallbackDate = React.useMemo(() => getTodayJalaliString(), [])
   const formatRials = (val?: number) => (val ?? 0).toLocaleString('fa-IR')
-  const docNumber = data.justificationReport?.reportNumber || data.justificationReportNumber || data.caseTrackingNumber
+  const docNumber = formatCaseTrackingNumber(data.justificationReport?.reportNumber || data.justificationReportNumber || data.caseTrackingNumber)
   const docDate = data.justificationReport?.reportDateJalali || data.justificationReportDate || data.refundVoucherDate || fallbackDate
+
+  // Dynamic Title: "گزارش استرداد اضافه پرداختی مالیات عملکرد سال 1390 شرکت جاودادن"
+  const dynamicFormTitle = React.useMemo(() => {
+    let sourceName = (data.taxSourceName || '').trim()
+    if (!sourceName && data.taxSource && TaxSourceLabels[data.taxSource as TaxSourceType]) {
+      sourceName = TaxSourceLabels[data.taxSource as TaxSourceType]
+    }
+    if (!sourceName) {
+      sourceName = 'عملکرد'
+    }
+
+    let cleanSource = sourceName
+    if (!cleanSource.startsWith('مالیات')) {
+      cleanSource = `مالیات ${cleanSource}`
+    }
+
+    const yearStr = data.taxYear ? `سال ${toPersianDigits(data.taxYear)}` : ''
+    const taxpayer = (data.taxpayerName || '').trim()
+
+    const parts = ['گزارش استرداد اضافه پرداختی', cleanSource]
+    if (yearStr) parts.push(yearStr)
+    if (taxpayer) parts.push(taxpayer)
+
+    return parts.join(' ')
+  }, [data.taxSourceName, data.taxSource, data.taxYear, data.taxpayerName])
 
   const letters = data.letters || []
   const collectionLetter = letters.find(
@@ -50,7 +75,7 @@ export function JustificationReportPart2Print({ data }: JustificationReportPart2
   return (
     <PrintContainer>
       <PrintHeader
-        formTitle="گزارش توجیهی استرداد اضافه پرداختی مالیات (بخش دوم)"
+        formTitle={dynamicFormTitle}
         subtitle="موضوع مواد ۲۴۲ و ۲۴۳ قانون مالیات‌های مستقیم"
         docNumber={docNumber}
         docDate={docDate}
@@ -78,7 +103,7 @@ export function JustificationReportPart2Print({ data }: JustificationReportPart2
               <p>
                 با توجه به استعلام شماره{' '}
                 <span className="font-bold">
-                  {toPersianDigits(collectionLetter?.letterNumber || data.caseTrackingNumber)}
+                  {toPersianDigits(formatCaseTrackingNumber(collectionLetter?.letterNumber || data.caseTrackingNumber))}
                 </span>{' '}
                 مورخ{' '}
                 <span className="font-bold">
@@ -102,7 +127,7 @@ export function JustificationReportPart2Print({ data }: JustificationReportPart2
               <p>
                 با توجه به استعلام شماره{' '}
                 <span className="font-bold">
-                  {toPersianDigits(payrollLetter?.letterNumber || data.caseTrackingNumber)}
+                  {toPersianDigits(formatCaseTrackingNumber(payrollLetter?.letterNumber || data.caseTrackingNumber))}
                 </span>{' '}
                 مورخ{' '}
                 <span className="font-bold">
@@ -126,7 +151,7 @@ export function JustificationReportPart2Print({ data }: JustificationReportPart2
               <p>
                 با توجه به استعلام شماره{' '}
                 <span className="font-bold">
-                  {toPersianDigits(vatLetter?.letterNumber || data.caseTrackingNumber)}
+                  {toPersianDigits(formatCaseTrackingNumber(vatLetter?.letterNumber || data.caseTrackingNumber))}
                 </span>{' '}
                 مورخ{' '}
                 <span className="font-bold">

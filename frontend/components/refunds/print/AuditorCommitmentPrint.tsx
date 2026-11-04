@@ -2,7 +2,7 @@
 
 import React from 'react'
 import type { PrintableDocument } from '@/types/taxRefund'
-import { getTodayJalaliString, toPersianDigits } from '@/lib/jalali'
+import { getTodayJalaliString, toPersianDigits, formatCaseTrackingNumber } from '@/lib/jalali'
 import { PrintContainer, PrintHeader, SignatureBox } from './PrintContainer'
 
 interface AuditorCommitmentPrintProps {
@@ -11,9 +11,9 @@ interface AuditorCommitmentPrintProps {
 
 export function AuditorCommitmentPrint({ data }: AuditorCommitmentPrintProps) {
   const fallbackDate = React.useMemo(() => getTodayJalaliString(), [])
-  const docNumber = data.officeCommitmentNumber || data.caseTrackingNumber
+  const docNumber = formatCaseTrackingNumber(data.officeCommitmentNumber || data.caseTrackingNumber)
   const docDate = data.officeCommitmentDate || data.refundVoucherDate || fallbackDate
-  const voucherNumber = data.refundVoucherNumber || data.caseTrackingNumber
+  const voucherNumber = formatCaseTrackingNumber(data.refundVoucherNumber || data.caseTrackingNumber)
 
   return (
     <PrintContainer>

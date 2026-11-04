@@ -16,6 +16,8 @@ public class ReportExecutiveKpiDto
     public List<KpiMethodologyBreakdownDto> MethodologyDistribution { get; set; } = new();
     public List<KpiOfficeWorkloadDto> OfficeWorkload { get; set; } = new();
     public List<KpiTopTaxpayerDto> TopTaxpayers { get; set; } = new();
+    public ReportExecutiveKpiDto? AuditKpi { get; set; }
+    public ReportExecutiveKpiDto? DecreeKpi { get; set; }
 }
 
 public class ExecutiveKpiCardDto
@@ -80,6 +82,12 @@ public class KpiOfficeWorkloadDto
     public decimal TotalAssessedAmount { get; set; }
     public decimal TotalFinalAmount { get; set; }
     public double CompletionRate { get; set; }
+    public int AuditCaseCount { get; set; }
+    public decimal AuditAssessedAmount { get; set; }
+    public int DecreeCaseCount { get; set; }
+    public decimal DecreeDisputedAmount { get; set; }
+    public double AuditCompletionRate { get; set; }
+    public double DecreeCompletionRate { get; set; }
 }
 
 public class KpiTopTaxpayerDto

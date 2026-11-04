@@ -37,6 +37,7 @@ import { QuickEditCaseModal } from '@/components/refunds/QuickEditCaseModal'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 import { KNOWN_OFFICES, decomposeTaxUnitCode } from '@/lib/taxHierarchy'
+import { formatCaseTrackingNumber } from '@/lib/jalali'
 
 export default function RefundsDashboardPage() {
   const { isActionVisible } = useMenuSettings()
@@ -385,7 +386,7 @@ export default function RefundsDashboardPage() {
                       <tr key={c.id} className="hover:bg-purple-50/20 transition-colors">
                         <td className="py-3 px-4 font-mono font-bold text-purple-900">
                           <Link href={`/refunds/${c.id}`} className="hover:underline">
-                            {c.caseTrackingNumber}
+                            {formatCaseTrackingNumber(c.displayTrackingNumber || c.caseTrackingNumber)}
                           </Link>
                         </td>
                         <td className="py-3 px-4">
@@ -447,7 +448,7 @@ export default function RefundsDashboardPage() {
                                   const url = window.URL.createObjectURL(blob)
                                   const a = document.createElement('a')
                                   a.href = url
-                                  a.download = `tax_refund_${c.caseTrackingNumber}.xlsx`
+                                  a.download = `tax_refund_${formatCaseTrackingNumber(c.caseTrackingNumber)}.xlsx`
                                   a.click()
                                 } catch (e: any) {
                                   alert(e.message || 'خطا در دانلود فایل اکسل')
@@ -465,7 +466,7 @@ export default function RefundsDashboardPage() {
                                   setDeletingCase({
                                     id: c.id,
                                     name: c.taxpayerName,
-                                    trackingNumber: c.caseTrackingNumber,
+                                    trackingNumber: formatCaseTrackingNumber(c.displayTrackingNumber || c.caseTrackingNumber),
                                   })
                                 }
                                 disabled={isDeleting && deletingCase?.id === c.id}

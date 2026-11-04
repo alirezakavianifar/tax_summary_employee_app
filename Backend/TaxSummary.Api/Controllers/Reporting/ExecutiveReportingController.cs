@@ -51,6 +51,24 @@ public class ExecutiveReportingController : ReportingControllerBase
     }
 
     /// <summary>
+    /// دریافت داشبورد جامع شاخص‌های کلیدی عملکرد تلفیقی استان (ترکیب رسیدگی سنیم و قرارهای دادرسی)
+    /// </summary>
+    [HttpGet("combined-kpi")]
+    [RequireModuleAccess("action_reporting_view_dashboard")]
+    [ProducesResponseType(typeof(ReportExecutiveKpiDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ReportExecutiveKpiDto>> GetCombinedKpi(CancellationToken ct)
+    {
+        var userAssignedOffices = GetUserAssignedOfficeIds();
+        var result = await _reportingService.GetCombinedExecutiveKpiOverviewAsync(userAssignedOffices, ct);
+
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
     /// کارت‌های سبک شاخص‌های کلیدی جهت فراخوانی سریع یا پایش مستمر
     /// </summary>
     [HttpGet("kpis")]

@@ -38,6 +38,7 @@ import {
   MIN_SHAMSI_YEAR,
   MAX_SHAMSI_YEAR,
   toPersianDigits,
+  formatCaseTrackingNumber,
 } from '@/lib/jalali'
 
 interface QuickEditCaseModalProps {
@@ -237,7 +238,7 @@ export function QuickEditCaseModal({
                 ویرایش مشخصات پرونده استرداد
               </h3>
               <p className="text-xs text-purple-700 font-mono font-bold mt-0.5">
-                شماره پیگیری: {caseItem.caseTrackingNumber}
+                شماره پیگیری: {formatCaseTrackingNumber(caseItem.displayTrackingNumber || caseItem.caseTrackingNumber)}
               </p>
             </div>
           </div>

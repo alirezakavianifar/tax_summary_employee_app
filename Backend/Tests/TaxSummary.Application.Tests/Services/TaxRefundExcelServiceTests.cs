@@ -146,4 +146,92 @@ public class TaxRefundExcelServiceTests : IDisposable
         Assert.Equal("شرکت صادرکننده آزمایشی", dataSheet.Cells["D4"].Value?.ToString());
         Assert.Equal("1234567890", dataSheet.Cells["D5"].Value?.ToString());
     }
+
+    [Fact]
+    public async Task ParseReceiptsExcelAsync_WithTaxpayerPaymentsXmlFile_ParsesSuccessfully()
+    {
+        // Arrange
+        var samplePath = Path.Combine("E:\\projects\\tax_summary_employee_app", "لیست پرداختهای مودی.xls");
+        if (!File.Exists(samplePath))
+        {
+            samplePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "لیست پرداختهای مودی.xls");
+        }
+        if (!File.Exists(samplePath)) return;
+
+        using var fileStream = File.OpenRead(samplePath);
+
+        // Act
+        var result = await _service.ParseReceiptsExcelAsync(fileStream, "لیست پرداختهای مودی.xls", CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.NotNull(result.Value);
+        Assert.Contains("قالب ۱", result.Value.DetectedStyle);
+        Assert.Equal(2, result.Value.Receipts.Count);
+        Assert.Equal(2, result.Value.ValidRows);
+        Assert.Equal(0, result.Value.ErrorRows);
+        Assert.Equal(15_908_592, result.Value.TotalAmountRials);
+
+        var first = result.Value.Receipts[0];
+        Assert.Equal("36778674246", first.ReceiptNumber);
+        Assert.Equal("1402/06/27", first.IssueDateJalali);
+        Assert.Equal(50_000, first.AmountRials);
+        Assert.Equal("اهواز", first.City);
+        Assert.True(first.IsValid);
+
+        var second = result.Value.Receipts[1];
+        Assert.Equal("46037278382", second.ReceiptNumber);
+        Assert.Equal("1405/02/30", second.IssueDateJalali);
+        Assert.Equal(15_858_592, second.AmountRials);
+        Assert.True(second.IsValid);
+    }
+
+    [Fact]
+    public async Task ParseReceiptsExcelAsync_WithBillsListXmlFile_ParsesSuccessfully()
+    {
+        // Arrange
+        var samplePath = Path.Combine("E:\\projects\\tax_summary_employee_app", "لیست قبض ها.xls");
+        if (!File.Exists(samplePath))
+        {
+            samplePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "لیست قبض ها.xls");
+        }
+        if (!File.Exists(samplePath)) return;
+
+        using var fileStream = File.OpenRead(samplePath);
+
+        // Act
+        var result = await _service.ParseReceiptsExcelAsync(fileStream, "لیست قبض ها.xls", CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.NotNull(result.Value);
+        Assert.Contains("قالب ۲", result.Value.DetectedStyle);
+        Assert.Equal(3, result.Value.Receipts.Count);
+        Assert.Equal(3, result.Value.ValidRows);
+        Assert.Equal(0, result.Value.ErrorRows);
+        Assert.Equal(211_672_000, result.Value.TotalAmountRials);
+
+        var first = result.Value.Receipts[0];
+        Assert.Equal("37051464785", first.ReceiptNumber);
+        Assert.Equal("1402/08/07", first.IssueDateJalali);
+        Assert.Equal(48_360_000, first.AmountRials);
+        Assert.Equal("اهواز", first.City);
+        Assert.Equal("مرکزي اهواز", first.BankName);
+        Assert.NotNull(first.Notes);
+        Assert.True(first.IsValid);
+    }
+
+    [Fact]
+    public async Task ParseReceiptsExcelAsync_WithEmptyStream_ReturnsFailure()
+    {
+        // Arrange
+        using var emptyStream = new MemoryStream();
+
+        // Act
+        var result = await _service.ParseReceiptsExcelAsync(emptyStream, "empty.xls", CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Contains("خالی", result.Error);
+    }
 }

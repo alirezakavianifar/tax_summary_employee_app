@@ -6,6 +6,12 @@ public class TaxRefundCaseDto
 {
     public Guid Id { get; set; }
     public string CaseTrackingNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    /// User-facing display tracking number (e.g., "1402-8877"), hiding technical prefixes like "REF-", "TRC-", etc.
+    /// </summary>
+    public string DisplayTrackingNumber => PrintableDocumentDto.CleanTrackingNumber(CaseTrackingNumber);
+
     public string DocketNumber { get; set; } = string.Empty;
 
     // Taxpayer Information

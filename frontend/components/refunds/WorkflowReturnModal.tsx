@@ -11,6 +11,7 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import { RefundCaseStatus } from '@/types/taxRefund'
+import { formatCaseTrackingNumber } from '@/lib/jalali'
 
 interface WorkflowReturnModalProps {
   isOpen: boolean
@@ -79,7 +80,7 @@ export function WorkflowReturnModal({
                 عودت پرونده جهت اصلاح و بازبینی
               </h3>
               <p className="text-xs text-amber-700 font-mono font-bold mt-0.5">
-                شماره پیگیری: {caseTrackingNumber}
+                شماره پیگیری: {formatCaseTrackingNumber(caseTrackingNumber)}
               </p>
             </div>
           </div>

@@ -1,0 +1,367 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?mso-application progid='Excel.Sheet'?>
+<Workbook xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:html="http://www.w3.org/TR/REC-html40" xmlns="urn:schemas-microsoft-com:office:spreadsheet">
+ <o:OfficeDocumentSettings>
+  <Colors>
+   <Color>
+    <Index>1</Index>
+    <RGB>#ffffff</RGB>
+   </Color>
+   <Color>
+    <Index>2</Index>
+    <RGB>#154a93</RGB>
+   </Color>
+   <Color>
+    <Index>3</Index>
+    <RGB>#000000</RGB>
+   </Color>
+   <Color>
+    <Index>4</Index>
+    <RGB>#ecf4ff</RGB>
+   </Color>
+   <Color>
+    <Index>5</Index>
+    <RGB>#00c000</RGB>
+   </Color>
+  </Colors>
+ </o:OfficeDocumentSettings>
+ <Styles>
+  <Style ss:ID="s1">
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#154a93" />
+  </Style>
+  <Style ss:ID="s2">
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#000000" />
+  </Style>
+  <Style ss:ID="s3">
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#00c000" />
+  </Style>
+  <Style ss:ID="s4">
+   <ss:NumberFormat ss:Format="Standard" />
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#000000" />
+  </Style>
+  <Style ss:ID="s5">
+   <ss:Interior ss:Color="#ecf4ff" ss:Pattern="Solid" />
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#000000" />
+  </Style>
+  <Style ss:ID="s6">
+   <ss:Interior ss:Color="#ecf4ff" ss:Pattern="Solid" />
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#00c000" />
+  </Style>
+  <Style ss:ID="s7">
+   <ss:NumberFormat ss:Format="Standard" />
+   <ss:Interior ss:Color="#ecf4ff" ss:Pattern="Solid" />
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#000000" />
+  </Style>
+  <Style ss:ID="s8">
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#000000" />
+  </Style>
+ </Styles>
+ <ss:Worksheet ss:Name="Sheet1">
+  <Table>
+   <Column ss:AutoFit="0" ss:Width="49.5" />
+   <Column ss:AutoFit="0" ss:Width="48.75" />
+   <Column ss:AutoFit="0" ss:Width="60.75" />
+   <Column ss:AutoFit="0" ss:Width="69.75" />
+   <Column ss:AutoFit="0" ss:Width="61.5" />
+   <Column ss:AutoFit="0" ss:Width="72" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="120" />
+   <Column ss:AutoFit="0" ss:Width="84.75" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="78.75" />
+   <Column ss:AutoFit="0" ss:Width="56.25" />
+   <Column ss:AutoFit="0" ss:Width="63" />
+   <Column ss:AutoFit="0" ss:Width="66" />
+   <Column ss:AutoFit="0" ss:Width="59.25" />
+   <Column ss:AutoFit="0" ss:Width="63" />
+   <Column ss:AutoFit="0" ss:Width="51.75" />
+   <Column ss:AutoFit="0" ss:Width="96" />
+   <Column ss:AutoFit="0" ss:Width="86.25" />
+   <Column ss:AutoFit="0" ss:Width="120" />
+   <Column ss:AutoFit="0" ss:Width="111.75" />
+   <Column ss:AutoFit="0" ss:Width="120.75" />
+   <Column ss:AutoFit="0" ss:Width="97.5" />
+   <Column ss:AutoFit="0" ss:Width="76.5" />
+   <Column ss:AutoFit="0" ss:Width="57.75" />
+   <Column ss:AutoFit="0" ss:Width="65.25" />
+   <Column ss:AutoFit="0" ss:Width="94.5" />
+   <Column ss:AutoFit="0" ss:Width="112.5" />
+   <Column ss:AutoFit="0" ss:Width="216" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="112.5" />
+   <Column ss:AutoFit="0" ss:Width="180" />
+   <Column ss:AutoFit="0" ss:Width="180" />
+   <Column ss:AutoFit="0" ss:Width="96" />
+   <Column ss:AutoFit="0" ss:Width="93.75" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="90.75" />
+   <Column ss:AutoFit="0" ss:Width="106.5" />
+   <Column ss:AutoFit="0" ss:Width="129" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="86.25" />
+   <Column ss:AutoFit="0" ss:Width="94.5" />
+   <Column ss:AutoFit="0" ss:Width="83.25" />
+   <Column ss:AutoFit="0" ss:Width="56.25" />
+   <Row>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">نوع قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">نوع مالیات</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">سال عملكرد</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شماره قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">تاریخ ثبت قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">وضعیت قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">تاریخ تغییر وضعیت</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">نام مودی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">جمع مبلغ مالیات</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شماره چک</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">مبلغ چک</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">نام بانک</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">تاریخ سررسید</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">وضعیت چک</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">ردیف چک</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">واحد مالیاتی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">کلاسه</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شماره اقتصادی مودی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شماره/شناسه ملی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">کسر کننده تکلیفی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شماره اقتصادی کسرکننده</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">منبع مالیاتی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شماره حساب</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">اداره کل</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شهر</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">ساختمان</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">کاربر ثبت کننده</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">آخرین کاربر ویرایش کننده</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">توضیحات قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">مبلغ اصل مالیات</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">مبلغ جریمه</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">مبلغ عوارض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">مبلغ سایر</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">مبلغ استرداد</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">توضیحات مبلغ استرداد</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شناسه 30 رقمی قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شناسه 30 رقمی چک تکلیفی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">تاریخ سررسید قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شناسه قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شناسه پرداخت</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شناسه واریز گمرك</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شماره صیاد چک</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">آدرس مودی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">کد پستی مودی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">دوره ارزش افزوده</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">کدرهگیری ثبت نام</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">تین مودی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شماره برگ مطالبه</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">ماه حقوق</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">نقدی</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">ارزش افزوده</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">1402</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">37051464785</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">1402/08/07</Data></Cell>
+    <Cell ss:StyleID="s3"><Data ss:Type="String">وصول شد</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">1402/08/07</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">ابوذر اعتمادي</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">48360000</Data></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">160000</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2"><Data ss:Type="String">1911192371</Data></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2"><Data ss:Type="String">ماليات نقل و انتقال خودرو</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">4057001001026469</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">خوزستان</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">اهواز</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">مرکزي اهواز</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">نقل و انتقال خودرو خوزستان</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">بابت انتقال سواري-هاچ بک-جک-S3-AT شماره پلاک 67 ط 363 - ايران 14  مدل سال 1400</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">48360000</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s4" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2"><Data ss:Type="String">282001057110507000037051464785</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">        </Data></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">نقدی</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">ارزش افزوده</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">1402</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">37780520874</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">1402/11/25</Data></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String">وصول شد</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">1402/11/25</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">ابوذر اعتمادي</Data></Cell>
+    <Cell ss:StyleID="s7"><Data ss:Type="Number">22000000</Data></Cell>
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s7"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">160000</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5"><Data ss:Type="String">1911192371</Data></Cell>
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5"><Data ss:Type="String">ماليات نقل و انتقال خودرو</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">4057001001026469</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">خوزستان</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">اهواز</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">مرکزي اهواز</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">نقل و انتقال خودرو خوزستان</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">بابت انتقال سواري-هاچ بک-چري-TIGGO 5 FL شماره پلاک 25 م 671 - ايران 14  مدل سال 1396</Data></Cell>
+    <Cell ss:StyleID="s7"><Data ss:Type="Number">22000000</Data></Cell>
+    <Cell ss:StyleID="s7"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s7"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s7"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s7" />
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5"><Data ss:Type="String">226001057110507000037780520874</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String">        </Data></Cell>
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s5" />
+    <Cell ss:StyleID="s5" />
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">نقدی</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">ارزش افزوده</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">1405</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">46420580047</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">1405/04/16</Data></Cell>
+    <Cell ss:StyleID="s3"><Data ss:Type="String">وصول شد</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">1405/04/16</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">ابوذر اعتمادي</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">141312000</Data></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2"><Data ss:Type="String">160000</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2"><Data ss:Type="String">1911192371</Data></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2"><Data ss:Type="String">ماليات نقل و انتقال خودرو</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">4057001001026469</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">خوزستان</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">اهواز</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">مرکزي اهواز</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">نقل و انتقال خودرو خوزستان</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">_بابت انتقال سواري-هاچ بك-کي ام سي-X5-AT شماره پلاک 67 ط 363 - ايران 14  مدل سال 1403</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">141312000</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s4" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2"><Data ss:Type="String">230001057110507000046420580047</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">        </Data></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">211672000</Data></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">211672000</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s8"><Data ss:Type="String" /></Cell>
+   </Row>
+  </Table>
+ </ss:Worksheet>
+</Workbook>

@@ -47,13 +47,13 @@ import { decomposeTaxUnitCode, canUserVerifyStage } from '@/lib/taxHierarchy'
 import { refundWorkflowApi } from '@/lib/api/refundWorkflow'
 import type { RefundWorkflowStepItem } from '@/types/refundWorkflow'
 import { getRolePersianName } from '@/types/auth'
-import { toPersianDigits, formatIsoToJalaliDateTime } from '@/lib/jalali'
+import { toPersianDigits, formatIsoToJalaliDateTime, formatCaseTrackingNumber } from '@/lib/jalali'
 
 const PRINT_FORMS = [
   { id: 'cheklist', title: 'چک‌لیست کنترل اسناد استردادی' },
   { id: 'form1', title: 'فرم ۱: نامه به ذیحسابی جهت استرداد وجه' },
   { id: 'form2', title: 'فرم ۲: استعلام از حوزه‌های مختلف' },
-  { id: 'form3', title: 'فرم ۳: گزارش استرداد اضافه مالیات (بخش اول)' },
+  { id: 'form3', title: 'فرم ۳: گزارش استرداد' },
   { id: 'form4', title: 'فرم ۴: ادامه گزارش استرداد و تاییدات ۳ امضا' },
   { id: 'form5', title: 'فرم ۵: برگ استرداد ماده ۲۴۲ قانون مالیات‌ها' },
   { id: 'form6', title: 'فرم ۶: فرم تعهد اداره امور مالیاتی (کارشناس ارشد)' },
@@ -246,7 +246,7 @@ export default function TaxRefundDetailPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `tax_refund_${refundCase?.caseTrackingNumber || caseId}.xlsx`
+      a.download = `tax_refund_${formatCaseTrackingNumber(refundCase?.caseTrackingNumber) || caseId}.xlsx`
       a.click()
     } catch (err: any) {
       alert(err.message || 'خطا در دانلود فایل اکسل')
@@ -302,7 +302,7 @@ export default function TaxRefundDetailPage() {
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Link href="/refunds" className="hover:text-purple-700">کارپوشه استرداد</Link>
             <ChevronLeft className="w-3.5 h-3.5" />
-            <span className="text-gray-900 font-bold font-mono">{refundCase.caseTrackingNumber}</span>
+            <span className="text-gray-900 font-bold font-mono">{formatCaseTrackingNumber(refundCase.caseTrackingNumber)}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -358,7 +358,7 @@ export default function TaxRefundDetailPage() {
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 font-medium">
-                <span>شماره پیگیری: <strong className="font-mono text-purple-900">{refundCase.caseTrackingNumber}</strong></span>
+                <span>شماره پیگیری: <strong className="font-mono text-purple-900">{formatCaseTrackingNumber(refundCase.caseTrackingNumber)}</strong></span>
                 <span>کد اقتصادی: <strong className="font-mono text-gray-800">{refundCase.economicCode}</strong></span>
                 <span>نوع فعالیت: <strong className="text-blue-900 font-bold bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200">{ActivityTypeLabels[refundCase.activityType] || refundCase.activityTypeName || 'خدماتی'}</strong></span>
                 <span>سال مالیاتی: <strong className="font-mono text-gray-800">{refundCase.taxYear}</strong></span>
@@ -710,7 +710,7 @@ export default function TaxRefundDetailPage() {
         {/* Workflow Return Modal */}
         <WorkflowReturnModal
           isOpen={isReturnModalOpen}
-          caseTrackingNumber={refundCase.caseTrackingNumber}
+          caseTrackingNumber={formatCaseTrackingNumber(refundCase.caseTrackingNumber)}
           currentStatus={refundCase.status}
           onClose={() => setIsReturnModalOpen(false)}
           onConfirm={handleReturnCase}

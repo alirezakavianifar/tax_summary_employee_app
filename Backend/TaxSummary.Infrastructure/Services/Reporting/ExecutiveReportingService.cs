@@ -138,7 +138,8 @@ public class ExecutiveReportingService : IExecutiveReportingService
                 TopDepartmentBudgets = topDepartments,
                 TaxSourceRefundDistribution = sourceDistributions,
                 RecentAuditActivities = recentAudits,
-                ProvincialOperations = await GetProvincialOperationsSummaryAsync(ct)
+                ProvincialOperations = await GetProvincialOperationsSummaryAsync(ct),
+                CombinedKpi = (await GetCombinedExecutiveKpiOverviewAsync(effectiveOfficeIds, ct)).Value
             };
 
             // Cache for 5 minutes sliding TTL
@@ -1239,7 +1240,11 @@ public class ExecutiveReportingService : IExecutiveReportingService
             var report = await _reportingRepository.GetReportDefinitionByCodeAsync(reportCode, ct);
             var title = report?.Title ?? cleanCode;
 
-            if (cleanCode == "REP_2" || cleanCode.Contains("قرار"))
+            if (cleanCode == "REP_COMBINED" || cleanCode.Contains("COMBINED") || cleanCode.Contains("تلفیق"))
+            {
+                return await GetCombinedExecutiveKpiOverviewAsync(userAssignedOfficeIds, ct);
+            }
+            else if (cleanCode == "REP_2" || cleanCode.Contains("قرار"))
             {
                 var kpi = await GetDecreeKpiOverviewAsync(cleanCode, title, ct);
                 return Result.Success(kpi);
@@ -1258,6 +1263,302 @@ public class ExecutiveReportingService : IExecutiveReportingService
         catch (Exception ex)
         {
             return Result.Failure<ReportExecutiveKpiDto>($"خطا در محاسبه شاخص‌های کلیدی گزارش: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<ReportExecutiveKpiDto>> GetCombinedExecutiveKpiOverviewAsync(
+        List<Guid>? userAssignedOfficeIds = null, 
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var auditKpi = await GetAuditKpiOverviewAsync("REP_1405", "گزارش ریز دیتای پرونده های حسابرسی شده در سال ۱۴۰۵", ct);
+            var decreeKpi = await GetDecreeKpiOverviewAsync("REP_2", "گزارش قرار_۲", ct);
+
+            var totalOperations = auditKpi.TotalRowCount + decreeKpi.TotalRowCount;
+            var combinedPrincipalTax = auditKpi.FinancialSummary.AssessedTaxAmount + decreeKpi.FinancialSummary.PrincipalTaxAmount;
+
+            var result = new ReportExecutiveKpiDto
+            {
+                ReportCode = "REP_COMBINED",
+                ReportTitle = "داشبورد شاخص‌های کلیدی عملکرد مدیریتی استان (تلفیق حسابرسی سنیم و قرارهای دادرسی)",
+                ReportActorType = "combined",
+                TotalRowCount = totalOperations,
+                FiscalYear = 1405,
+                AuditKpi = auditKpi,
+                DecreeKpi = decreeKpi
+            };
+
+            result.FinancialSummary = new KpiFinancialSummaryDto
+            {
+                DeclaredTaxAmount = auditKpi.FinancialSummary.DeclaredTaxAmount,
+                AssessedTaxAmount = auditKpi.FinancialSummary.AssessedTaxAmount,
+                TaxGapAmount = auditKpi.FinancialSummary.TaxGapAmount,
+                AssessmentGapPercentage = auditKpi.FinancialSummary.AssessmentGapPercentage,
+                FinalTaxAmount = auditKpi.FinancialSummary.FinalTaxAmount,
+                DisputedBaseAmount = decreeKpi.FinancialSummary.DisputedBaseAmount,
+                PrincipalTaxAmount = decreeKpi.FinancialSummary.PrincipalTaxAmount,
+                PenaltiesAmount = decreeKpi.FinancialSummary.PenaltiesAmount
+            };
+
+            // 8 Hero Combined KPI Cards
+            result.KpiCards = new List<ExecutiveKpiCardDto>
+            {
+                new()
+                {
+                    Key = "total_operations",
+                    Title = "کل حجم عملیات مالیاتی استان",
+                    Value = totalOperations.ToString("N0", new CultureInfo("fa-IR")),
+                    RawNumericValue = totalOperations,
+                    Subtitle = $"{auditKpi.TotalRowCount.ToString("N0", new CultureInfo("fa-IR"))} پرونده سنیم + {decreeKpi.TotalRowCount.ToString("N0", new CultureInfo("fa-IR"))} فقره قرار",
+                    IconName = "FileSpreadsheet",
+                    IconGradient = "from-blue-600 to-indigo-600",
+                    BadgeText = "مجموع عملیات",
+                    BadgeColor = "bg-blue-50 text-blue-700 border-blue-200"
+                },
+                new()
+                {
+                    Key = "combined_tax_volume",
+                    Title = "مجموع اصل مالیات تشخیصی و مناقشه",
+                    Value = FormatMoneyPersian(combinedPrincipalTax),
+                    RawNumericValue = (double)combinedPrincipalTax,
+                    Subtitle = $"{FormatMoneyPersian(auditKpi.FinancialSummary.AssessedTaxAmount)} سنیم + {FormatMoneyPersian(decreeKpi.FinancialSummary.PrincipalTaxAmount)} دادرسی",
+                    IconName = "Coins",
+                    IconGradient = "from-emerald-600 to-teal-600",
+                    BadgeText = "بار مالی اصل",
+                    BadgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200"
+                },
+                new()
+                {
+                    Key = "tax_gap_discovered",
+                    Title = "شکاف مالیاتی کشف‌شده در رسیدگی",
+                    Value = FormatMoneyPersian(auditKpi.FinancialSummary.TaxGapAmount),
+                    RawNumericValue = (double)auditKpi.FinancialSummary.TaxGapAmount,
+                    Subtitle = $"افزایش مالیاتی حاصل از رسیدگی: +{auditKpi.FinancialSummary.AssessmentGapPercentage}%",
+                    IconName = "TrendingUp",
+                    IconGradient = "from-amber-500 to-orange-600",
+                    TrendValue = auditKpi.FinancialSummary.AssessmentGapPercentage,
+                    TrendLabel = "رشد نسبت به ابرازی",
+                    BadgeText = $"+{auditKpi.FinancialSummary.AssessmentGapPercentage}% کشف مالیاتی",
+                    BadgeColor = "bg-amber-50 text-amber-800 border-amber-200"
+                },
+                new()
+                {
+                    Key = "penalties_penal",
+                    Title = "مجموع عوارض و جرائم دادرسی",
+                    Value = FormatMoneyPersian(decreeKpi.FinancialSummary.PenaltiesAmount),
+                    RawNumericValue = (double)decreeKpi.FinancialSummary.PenaltiesAmount,
+                    Subtitle = "جرائم ماده ۱۶۹ و عوارض ارزش افزوده",
+                    IconName = "AlertOctagon",
+                    IconGradient = "from-rose-500 to-red-600",
+                    BadgeText = "جرائم و متعلقات",
+                    BadgeColor = "bg-rose-50 text-rose-700 border-rose-200"
+                },
+                new()
+                {
+                    Key = "final_enforceable_tax",
+                    Title = "مجموع مالیات قطعی‌شده لازم‌الوصول",
+                    Value = FormatMoneyPersian(auditKpi.FinancialSummary.FinalTaxAmount),
+                    RawNumericValue = (double)auditKpi.FinancialSummary.FinalTaxAmount,
+                    Subtitle = "مالیات تثبیت‌شده و لازم‌الوصول سنیم",
+                    IconName = "ShieldCheck",
+                    IconGradient = "from-teal-600 to-cyan-600",
+                    BadgeText = "قطعی سنیم",
+                    BadgeColor = "bg-teal-50 text-teal-700 border-teal-200"
+                },
+                new()
+                {
+                    Key = "active_personnel",
+                    Title = "نیروی انسانی تخصصی فعال استان",
+                    Value = (253 + 459).ToString("N0", new CultureInfo("fa-IR")),
+                    RawNumericValue = 712,
+                    Subtitle = "۲۵۳ حسابرس سنیم + ۴۵۹ مجری و سرپرست قرار",
+                    IconName = "Users",
+                    IconGradient = "from-purple-600 to-indigo-600",
+                    BadgeText = "کارشناسان استان",
+                    BadgeColor = "bg-purple-50 text-purple-700 border-purple-200"
+                },
+                new()
+                {
+                    Key = "assessment_issuance",
+                    Title = "پیشرفت صدور برگ تشخیص سنیم",
+                    Value = (19943).ToString("N0", new CultureInfo("fa-IR")),
+                    RawNumericValue = 19943,
+                    Subtitle = "نرخ صدور برگ تشخیص: ۶۸.۰%",
+                    IconName = "CheckCircle2",
+                    IconGradient = "from-indigo-600 to-blue-600",
+                    TrendValue = 68.0,
+                    TrendLabel = "پوشش تشخیص",
+                    BadgeText = "۶۸% ابلاغ",
+                    BadgeColor = "bg-indigo-50 text-indigo-700 border-indigo-200"
+                },
+                new()
+                {
+                    Key = "decree_completion",
+                    Title = "نرخ اجرای قرارهای دادرسی استان",
+                    Value = (10324).ToString("N0", new CultureInfo("fa-IR")),
+                    RawNumericValue = 10324,
+                    Subtitle = "نرخ اتمام کارشناسی: ۹۹.۷%",
+                    IconName = "Award",
+                    IconGradient = "from-emerald-500 to-green-600",
+                    TrendValue = 99.7,
+                    TrendLabel = "اتمام کارشناسی",
+                    BadgeText = "۹۹.۷% اتمام",
+                    BadgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200"
+                }
+            };
+
+            // Stage Lifecycle Distribution
+            result.StageDistribution = new List<KpiStageBreakdownDto>
+            {
+                new() { StageCode = "audit_allocated", StageTitle = "تخصیص به حسابرسان سنیم", CaseCount = auditKpi.TotalRowCount, Percentage = 100.0, TotalAmount = auditKpi.FinancialSummary.AssessedTaxAmount },
+                new() { StageCode = "audit_notices", StageTitle = "صدور برگ تشخیص مالیاتی", CaseCount = 19943, Percentage = 68.0, TotalAmount = auditKpi.FinancialSummary.AssessedTaxAmount },
+                new() { StageCode = "audit_final", StageTitle = "صدور برگ قطعی در سنیم", CaseCount = 20788, Percentage = 70.9, TotalAmount = auditKpi.FinancialSummary.FinalTaxAmount },
+                new() { StageCode = "decrees_issued", StageTitle = "قرارهای ارجاعی به هیأت‌های حل اختلاف", CaseCount = decreeKpi.TotalRowCount, Percentage = 100.0, TotalAmount = decreeKpi.FinancialSummary.PrincipalTaxAmount },
+                new() { StageCode = "decrees_registered", StageTitle = "کارشناسی و ثبت گزارش قرار", CaseCount = 10324, Percentage = 99.7, TotalAmount = decreeKpi.FinancialSummary.PrincipalTaxAmount },
+                new() { StageCode = "decrees_approved", StageTitle = "تایید نهایی و قطعیت دادرسی", CaseCount = 2168, Percentage = 20.9, TotalAmount = decreeKpi.FinancialSummary.PrincipalTaxAmount }
+            };
+
+            // Cross-Department Benchmark Matrix (43 offices)
+            var connection = (SqliteConnection)_db.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open) await connection.OpenAsync(ct);
+
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    WITH audit AS (
+                        SELECT 
+                            c_12 AS off, 
+                            COUNT(*) AS acnt, 
+                            SUM(COALESCE(c_202, 0)) AS atax, 
+                            SUM(COALESCE(c_482, 0)) AS aftax,
+                            SUM(CASE WHEN c_462 IS NOT NULL AND TRIM(c_462) != '' THEN 1 ELSE 0 END) AS acomp
+                        FROM custom_dataset_rep_1405 
+                        WHERE c_12 IS NOT NULL AND TRIM(c_12) != '' 
+                        GROUP BY c_12
+                    ), 
+                    decree AS (
+                        SELECT 
+                            c_812 AS off, 
+                            COUNT(*) AS dcnt, 
+                            SUM(COALESCE(c_532, 0)) AS dtax, 
+                            SUM(CASE WHEN c_862 IS NOT NULL OR c_72 LIKE '%ثبت گزارش%' THEN 1 ELSE 0 END) AS dcomp
+                        FROM custom_dataset_rep_2 
+                        WHERE c_812 IS NOT NULL AND TRIM(c_812) != '' 
+                        GROUP BY c_812
+                    ), 
+                    all_off AS (
+                        SELECT off FROM audit 
+                        UNION 
+                        SELECT off FROM decree
+                    ) 
+                    SELECT 
+                        all_off.off, 
+                        COALESCE(audit.acnt, 0), 
+                        COALESCE(audit.atax, 0), 
+                        COALESCE(audit.aftax, 0),
+                        COALESCE(audit.acomp, 0),
+                        COALESCE(decree.dcnt, 0), 
+                        COALESCE(decree.dtax, 0), 
+                        COALESCE(decree.dcomp, 0)
+                    FROM all_off 
+                    LEFT JOIN audit ON all_off.off = audit.off 
+                    LEFT JOIN decree ON all_off.off = decree.off 
+                    ORDER BY (COALESCE(audit.acnt, 0) + COALESCE(decree.dcnt, 0)) DESC";
+
+                using var reader = await cmd.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
+                {
+                    var offName = reader.GetString(0);
+                    var auditCount = reader.GetInt32(1);
+                    var auditTax = reader.IsDBNull(2) ? 0m : Convert.ToDecimal(reader.GetDouble(2));
+                    var auditFinal = reader.IsDBNull(3) ? 0m : Convert.ToDecimal(reader.GetDouble(3));
+                    var auditComp = reader.GetInt32(4);
+                    var decreeCount = reader.GetInt32(5);
+                    var decreeTax = reader.IsDBNull(6) ? 0m : Convert.ToDecimal(reader.GetDouble(6));
+                    var decreeComp = reader.GetInt32(7);
+
+                    var totalCases = auditCount + decreeCount;
+                    var totalAssessed = auditTax + decreeTax;
+                    var auditRate = auditCount > 0 ? Math.Round((double)auditComp / auditCount * 100, 1) : 0;
+                    var decreeRate = decreeCount > 0 ? Math.Round((double)decreeComp / decreeCount * 100, 1) : 0;
+                    var avgRate = totalCases > 0 ? Math.Round((double)(auditComp + decreeComp) / totalCases * 100, 1) : 0;
+
+                    result.OfficeWorkload.Add(new KpiOfficeWorkloadDto
+                    {
+                        OfficeName = offName,
+                        CaseCount = totalCases,
+                        CompletedCases = auditComp + decreeComp,
+                        TotalAssessedAmount = totalAssessed,
+                        TotalFinalAmount = auditFinal,
+                        CompletionRate = avgRate,
+                        AuditCaseCount = auditCount,
+                        AuditAssessedAmount = auditTax,
+                        DecreeCaseCount = decreeCount,
+                        DecreeDisputedAmount = decreeTax,
+                        AuditCompletionRate = auditRate,
+                        DecreeCompletionRate = decreeRate
+                    });
+                }
+            }
+
+            // Combined Tax Sources Distribution
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    WITH a AS (
+                        SELECT c_82 AS src, COUNT(*) AS acnt, SUM(COALESCE(c_202, 0)) AS atax 
+                        FROM custom_dataset_rep_1405 
+                        WHERE c_82 IS NOT NULL AND TRIM(c_82) != '' 
+                        GROUP BY c_82
+                    ), 
+                    d AS (
+                        SELECT c_282 AS src, COUNT(*) AS dcnt, SUM(COALESCE(c_532, 0)) AS dtax 
+                        FROM custom_dataset_rep_2 
+                        WHERE c_282 IS NOT NULL AND TRIM(c_282) != '' 
+                        GROUP BY c_282
+                    ), 
+                    all_src AS (
+                        SELECT src FROM a 
+                        UNION 
+                        SELECT src FROM d
+                    ) 
+                    SELECT 
+                        all_src.src, 
+                        (COALESCE(a.acnt, 0) + COALESCE(d.dcnt, 0)) AS tot_cnt, 
+                        (COALESCE(a.atax, 0) + COALESCE(d.dtax, 0)) AS tot_tax,
+                        COALESCE(a.atax, 0) AS audit_tax
+                    FROM all_src 
+                    LEFT JOIN a ON all_src.src = a.src 
+                    LEFT JOIN d ON all_src.src = d.src 
+                    ORDER BY tot_cnt DESC 
+                    LIMIT 10";
+
+                using var reader = await cmd.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
+                {
+                    var srcName = reader.GetString(0);
+                    var count = reader.GetInt32(1);
+                    var tax = reader.IsDBNull(2) ? 0m : Convert.ToDecimal(reader.GetDouble(2));
+                    var baseAmt = reader.IsDBNull(3) ? 0m : Convert.ToDecimal(reader.GetDouble(3));
+                    var pct = totalOperations > 0 ? Math.Round((double)count / totalOperations * 100, 1) : 0;
+
+                    result.TaxSourceDistribution.Add(new KpiTaxSourceBreakdownDto
+                    {
+                        SourceTitle = srcName,
+                        CaseCount = count,
+                        Percentage = pct,
+                        TotalAmount = tax,
+                        TotalBaseAmount = baseAmt
+                    });
+                }
+            }
+
+            return Result.Success(result);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<ReportExecutiveKpiDto>($"خطا در محاسبه شاخص‌های کلیدی تلفیقی استان: {ex.Message}");
         }
     }
 

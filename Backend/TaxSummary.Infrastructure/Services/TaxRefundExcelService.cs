@@ -1,7 +1,11 @@
 using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
+using TaxSummary.Application.DTOs.TaxRefund;
 using TaxSummary.Application.Services;
 using TaxSummary.Domain.Common;
 using TaxSummary.Domain.Entities;
@@ -540,5 +544,429 @@ public class TaxRefundExcelService : ITaxRefundExcelService
             // If the sample mock sheba does not pass MOD-97 ISO 7064, fallback to benchmark valid Iranian IBAN
             return "IR160120000000001234567890";
         }
+    }
+
+    public async Task<Result<ReceiptExcelParseResultDto>> ParseReceiptsExcelAsync(
+        Stream fileStream,
+        string fileName,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            using var ms = new MemoryStream();
+            await fileStream.CopyToAsync(ms, ct);
+            ms.Position = 0;
+
+            if (ms.Length == 0)
+            {
+                return Result.Failure<ReceiptExcelParseResultDto>("فایل ارسال شده خالی است.");
+            }
+
+            // 1. Detect if it is SpreadsheetML (XML) or OpenXml (.xlsx)
+            List<List<string>> rawRows = new();
+            string detectedFormat = "Unknown";
+
+            bool isXml = false;
+            byte[] buffer = new byte[Math.Min(ms.Length, 1024)];
+            ms.Read(buffer, 0, buffer.Length);
+            ms.Position = 0;
+
+            string headerText = Encoding.UTF8.GetString(buffer);
+            if (headerText.Contains("<?xml") || headerText.Contains("<Workbook") || headerText.Contains("urn:schemas-microsoft-com:office:spreadsheet"))
+            {
+                isXml = true;
+            }
+
+            if (isXml)
+            {
+                try
+                {
+                    rawRows = ParseSpreadsheetMLXml(ms);
+                    detectedFormat = "XML Spreadsheet 2003 (.xls)";
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse as SpreadsheetML XML, attempting EPPlus fallback");
+                    ms.Position = 0;
+                    try
+                    {
+                        rawRows = ParseOpenXmlPackage(ms);
+                        detectedFormat = "Excel Workbook (.xlsx)";
+                    }
+                    catch
+                    {
+                        return Result.Failure<ReceiptExcelParseResultDto>("خطا در پردازش ساختار فایل اکسل XML: " + ex.Message);
+                    }
+                }
+            }
+            else
+            {
+                try
+                {
+                    rawRows = ParseOpenXmlPackage(ms);
+                    detectedFormat = "Excel Workbook (.xlsx)";
+                }
+                catch (Exception ex)
+                {
+                    ms.Position = 0;
+                    try
+                    {
+                        rawRows = ParseSpreadsheetMLXml(ms);
+                        detectedFormat = "XML Spreadsheet 2003 (.xls)";
+                    }
+                    catch
+                    {
+                        return Result.Failure<ReceiptExcelParseResultDto>("فرمت فایل انتخاب شده پشتیبانی نمی‌شود. لطفاً فایل اکسل معتبر بارگذاری نمایید. خطا: " + ex.Message);
+                    }
+                }
+            }
+
+            if (rawRows.Count == 0)
+            {
+                return Result.Failure<ReceiptExcelParseResultDto>("هیچ داده‌ای در فایل اکسل یافت نشد.");
+            }
+
+            var result = ProcessParsedRows(rawRows, detectedFormat);
+            return Result.Success(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in ParseReceiptsExcelAsync");
+            return Result.Failure<ReceiptExcelParseResultDto>("خطای پیش‌بینی‌نشده در استخراج اطلاعات قبوض: " + ex.Message);
+        }
+    }
+
+    private static List<List<string>> ParseSpreadsheetMLXml(MemoryStream ms)
+    {
+        ms.Position = 0;
+        using var reader = new StreamReader(ms, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 4096, leaveOpen: true);
+        var doc = XDocument.Load(reader);
+        XNamespace ss = "urn:schemas-microsoft-com:office:spreadsheet";
+
+        var table = doc.Descendants(ss + "Table").FirstOrDefault();
+        if (table == null)
+            return new List<List<string>>();
+
+        var rowsList = new List<List<string>>();
+        foreach (var rowElem in table.Elements(ss + "Row"))
+        {
+            var cellValues = new Dictionary<int, string>();
+            int currentColIdx = 0;
+
+            foreach (var cellElem in rowElem.Elements(ss + "Cell"))
+            {
+                var indexAttr = cellElem.Attribute(ss + "Index");
+                if (indexAttr != null && int.TryParse(indexAttr.Value, out int explicitIndex))
+                {
+                    currentColIdx = explicitIndex - 1; // 1-based in XML
+                }
+
+                var dataElem = cellElem.Element(ss + "Data");
+                string cellVal = dataElem?.Value?.Trim() ?? string.Empty;
+                cellValues[currentColIdx] = cellVal;
+                currentColIdx++;
+            }
+
+            if (cellValues.Count > 0)
+            {
+                int maxIdx = cellValues.Keys.Max();
+                var rowList = new List<string>(new string[maxIdx + 1]);
+                for (int i = 0; i <= maxIdx; i++)
+                {
+                    rowList[i] = cellValues.TryGetValue(i, out var val) ? val : string.Empty;
+                }
+                rowsList.Add(rowList);
+            }
+        }
+
+        return rowsList;
+    }
+
+    private static List<List<string>> ParseOpenXmlPackage(MemoryStream ms)
+    {
+        ms.Position = 0;
+        using var package = new ExcelPackage(ms);
+        var sheet = package.Workbook.Worksheets.FirstOrDefault();
+        if (sheet == null || sheet.Dimension == null)
+            return new List<List<string>>();
+
+        int startRow = sheet.Dimension.Start.Row;
+        int endRow = sheet.Dimension.End.Row;
+        int startCol = sheet.Dimension.Start.Column;
+        int endCol = sheet.Dimension.End.Column;
+
+        var rowsList = new List<List<string>>();
+        for (int r = startRow; r <= endRow; r++)
+        {
+            var rowList = new List<string>();
+            bool hasAnyValue = false;
+            for (int c = startCol; c <= endCol; c++)
+            {
+                var cellVal = sheet.Cells[r, c].Text?.Trim() ?? string.Empty;
+                if (!string.IsNullOrEmpty(cellVal))
+                    hasAnyValue = true;
+                rowList.Add(cellVal);
+            }
+            if (hasAnyValue)
+            {
+                rowsList.Add(rowList);
+            }
+        }
+
+        return rowsList;
+    }
+
+    private static ReceiptExcelParseResultDto ProcessParsedRows(List<List<string>> rawRows, string detectedFormat)
+    {
+        var result = new ReceiptExcelParseResultDto
+        {
+            FileFormat = detectedFormat
+        };
+
+        if (rawRows.Count == 0)
+        {
+            result.Errors.Add("ردیف داده‌ای یافت نشد.");
+            return result;
+        }
+
+        // 1. Identify header row
+        int headerRowIdx = 0;
+        var headers = rawRows[0].Select(h => CleanPersianText(h)).ToList();
+
+        // If row 0 doesn't look like a header (e.g. doesn't have "شماره" or "قبض"), check subsequent rows
+        for (int r = 0; r < Math.Min(rawRows.Count, 4); r++)
+        {
+            var candidateHeaders = rawRows[r].Select(h => CleanPersianText(h)).ToList();
+            if (candidateHeaders.Any(h => h.Contains("شماره قبض") || h.Contains("تاریخ قبض") || h.Contains("تاریخ ثبت") || h.Contains("مبلغ")))
+            {
+                headerRowIdx = r;
+                headers = candidateHeaders;
+                break;
+            }
+        }
+
+        // 2. Identify Column Indices
+        int receiptNumIdx = -1;
+        int issueDateIdx = -1;
+        int paymentDateIdx = -1;
+        int amountIdx = -1;
+        int bankNameIdx = -1;
+        int buildingIdx = -1;
+        int cityIdx = -1;
+        int taxOfficeIdx = -1;
+        int notesIdx = -1;
+
+        for (int i = 0; i < headers.Count; i++)
+        {
+            string h = headers[i];
+            if (string.IsNullOrWhiteSpace(h)) continue;
+
+            // Receipt Number
+            if (receiptNumIdx == -1 && (h == "شماره قبض" || h.Contains("شماره قبض") || h == "قبض"))
+            {
+                receiptNumIdx = i;
+            }
+            // Issue Date
+            else if (issueDateIdx == -1 && (h == "تاریخ ثبت قبض" || h == "تاریخ قبض" || h == "تاریخ صدور" || h.Contains("تاریخ صدور") || h.Contains("تاریخ ثبت")))
+            {
+                issueDateIdx = i;
+            }
+            // Payment Date
+            else if (paymentDateIdx == -1 && (h == "تاریخ تغییر وضعیت" || h == "تاریخ وصول" || h == "تاریخ پرداخت" || h.Contains("وصول") || h.Contains("پرداخت")))
+            {
+                paymentDateIdx = i;
+            }
+            // Amount
+            else if (amountIdx == -1 && (h == "جمع مبلغ مالیات" || h == "مبلغ اصل مالیات" || h == "مبلغ" || h.Contains("مبلغ مالیات") || h.Contains("مبلغ اصل")))
+            {
+                amountIdx = i;
+            }
+            // Bank Name
+            else if (bankNameIdx == -1 && (h == "نام بانک" || h == "بانک"))
+            {
+                bankNameIdx = i;
+            }
+            // Building
+            else if (buildingIdx == -1 && h == "ساختمان")
+            {
+                buildingIdx = i;
+            }
+            // City
+            else if (cityIdx == -1 && (h == "شهر" || h == "شهرستان"))
+            {
+                cityIdx = i;
+            }
+            // Tax Office
+            else if (taxOfficeIdx == -1 && (h == "واحد مالیاتی" || h == "اداره کل (محل پرداخت)" || h == "اداره کل"))
+            {
+                taxOfficeIdx = i;
+            }
+            // Notes
+            else if (notesIdx == -1 && (h == "توضیحات قبض" || h == "توضیحات" || h == "شرح"))
+            {
+                notesIdx = i;
+            }
+        }
+
+        // Determine detected style
+        if (headers.Count >= 30 || headers.Any(h => h.Contains("شناسه 30 رقمی") || h == "توضیحات قبض"))
+        {
+            result.DetectedStyle = "لیست قبوض سامانه مالیاتی (قالب ۲)";
+        }
+        else if (headers.Any(h => h == "اداره کل (محل پرداخت)" || h == "واحد مالیاتی"))
+        {
+            result.DetectedStyle = "لیست پرداخت‌های مودی (قالب ۱)";
+        }
+        else
+        {
+            result.DetectedStyle = "قالب اکسل استاندارد";
+        }
+
+        if (receiptNumIdx == -1)
+        {
+            result.Errors.Add("ستون «شماره قبض» در فایل اکسل شناسایی نشد.");
+            return result;
+        }
+
+        // 3. Process Data Rows
+        int rowIndex = 1;
+        for (int r = headerRowIdx + 1; r < rawRows.Count; r++)
+        {
+            var row = rawRows[r];
+            string rawReceiptNumber = GetCell(row, receiptNumIdx);
+            string rawAmount = amountIdx >= 0 ? GetCell(row, amountIdx) : string.Empty;
+            string rawIssueDate = issueDateIdx >= 0 ? GetCell(row, issueDateIdx) : string.Empty;
+            string rawPaymentDate = paymentDateIdx >= 0 ? GetCell(row, paymentDateIdx) : string.Empty;
+            string rawBankName = bankNameIdx >= 0 ? GetCell(row, bankNameIdx) : string.Empty;
+            if (string.IsNullOrWhiteSpace(rawBankName) && buildingIdx >= 0)
+            {
+                rawBankName = GetCell(row, buildingIdx);
+            }
+            string rawCity = cityIdx >= 0 ? GetCell(row, cityIdx) : string.Empty;
+            string rawTaxOffice = taxOfficeIdx >= 0 ? GetCell(row, taxOfficeIdx) : string.Empty;
+            string rawNotes = notesIdx >= 0 ? GetCell(row, notesIdx) : string.Empty;
+
+            string cleanReceiptNumber = NormalizeDigits(rawReceiptNumber).Trim();
+            long amount = ParseAmount(rawAmount);
+
+            // Check if this is a summary / total footer row (no receipt number, but amount > 0, or row containing "جمع")
+            bool isRowSummary = string.IsNullOrWhiteSpace(cleanReceiptNumber) ||
+                                row.Any(c => c.Contains("جمع کل") || c.Trim() == "جمع");
+
+            if (isRowSummary)
+            {
+                // Skip summary footer
+                continue;
+            }
+
+            // If entire row is blank
+            if (string.IsNullOrWhiteSpace(cleanReceiptNumber) && amount == 0 && string.IsNullOrWhiteSpace(rawIssueDate))
+            {
+                continue;
+            }
+
+            var item = new ParsedReceiptRowDto
+            {
+                RowIndex = rowIndex++,
+                ReceiptNumber = cleanReceiptNumber,
+                IssueDateJalali = NormalizeJalaliDate(rawIssueDate),
+                PaymentDateJalali = string.IsNullOrWhiteSpace(rawPaymentDate) ? null : NormalizeJalaliDate(rawPaymentDate),
+                AmountRials = amount,
+                BankName = string.IsNullOrWhiteSpace(rawBankName) ? null : rawBankName.Trim(),
+                City = string.IsNullOrWhiteSpace(rawCity) ? null : rawCity.Trim(),
+                TaxOffice = string.IsNullOrWhiteSpace(rawTaxOffice) ? null : rawTaxOffice.Trim(),
+                Notes = string.IsNullOrWhiteSpace(rawNotes) ? null : rawNotes.Trim()
+            };
+
+            // Validation and warnings
+            if (string.IsNullOrWhiteSpace(item.ReceiptNumber))
+            {
+                item.Warnings.Add("شماره قبض خالی است.");
+                item.IsValid = false;
+            }
+            if (item.AmountRials <= 0)
+            {
+                item.Warnings.Add("مبلغ قبض صفر یا منفی است.");
+                item.IsValid = false;
+            }
+            if (string.IsNullOrWhiteSpace(item.IssueDateJalali))
+            {
+                // Fallback to payment date if issue date missing
+                if (!string.IsNullOrWhiteSpace(item.PaymentDateJalali))
+                {
+                    item.IssueDateJalali = item.PaymentDateJalali;
+                    item.Warnings.Add("تاریخ صدور از تاریخ وصول/تغییر وضعیت جایگزین شد.");
+                }
+                else
+                {
+                    item.Warnings.Add("تاریخ قبض نامعتبر یا خالی است.");
+                }
+            }
+
+            result.Receipts.Add(item);
+        }
+
+        result.TotalRows = result.Receipts.Count;
+        result.ValidRows = result.Receipts.Count(x => x.IsValid);
+        result.ErrorRows = result.Receipts.Count(x => !x.IsValid);
+        result.TotalAmountRials = result.Receipts.Where(x => x.IsValid).Sum(x => x.AmountRials);
+
+        return result;
+    }
+
+    private static string GetCell(List<string> row, int idx)
+    {
+        if (idx >= 0 && idx < row.Count)
+            return row[idx]?.Trim() ?? string.Empty;
+        return string.Empty;
+    }
+
+    private static string CleanPersianText(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        return input.Replace("\u200C", " ")
+                    .Replace("ي", "ی")
+                    .Replace("ك", "ک")
+                    .Trim();
+    }
+
+    private static string NormalizeDigits(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        var sb = new StringBuilder(input.Length);
+        foreach (char c in input)
+        {
+            if (c >= '0' && c <= '9') sb.Append(c);
+            else if (c >= '۰' && c <= '۹') sb.Append((char)('0' + (c - '۰')));
+            else if (c >= '٠' && c <= '٩') sb.Append((char)('0' + (c - '٠')));
+            else if (c == '-' || c == '/' || char.IsLetter(c)) sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    private static long ParseAmount(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return 0;
+        string clean = NormalizeDigits(raw);
+        var digitsOnly = new string(clean.Where(c => char.IsDigit(c) || c == '-').ToArray());
+        if (long.TryParse(digitsOnly, out long val))
+            return val;
+        return 0;
+    }
+
+    private static string NormalizeJalaliDate(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+        string clean = NormalizeDigits(raw).Replace("-", "/").Trim();
+        var match = Regex.Match(clean, @"^(\d{2,4})/(\d{1,2})/(\d{1,2})");
+        if (match.Success)
+        {
+            string y = match.Groups[1].Value;
+            if (y.Length == 2) y = "14" + y;
+            string m = match.Groups[2].Value.PadLeft(2, '0');
+            string d = match.Groups[3].Value.PadLeft(2, '0');
+            return $"{y}/{m}/{d}";
+        }
+        return clean;
     }
 }

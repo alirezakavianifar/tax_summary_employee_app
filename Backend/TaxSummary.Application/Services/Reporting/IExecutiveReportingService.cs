@@ -69,4 +69,11 @@ public interface IExecutiveReportingService
         string reportCode, 
         List<Guid>? userAssignedOfficeIds, 
         CancellationToken ct = default);
+
+    /// <summary>
+    /// دریافت داشبورد تلفیقی شاخص‌های کلیدی عملکرد استان (ترکیب حسابرسی پرونده‌های سنیم و قرارهای دادرسی)
+    /// </summary>
+    Task<Result<ReportExecutiveKpiDto>> GetCombinedExecutiveKpiOverviewAsync(
+        List<Guid>? userAssignedOfficeIds = null, 
+        CancellationToken ct = default);
 }

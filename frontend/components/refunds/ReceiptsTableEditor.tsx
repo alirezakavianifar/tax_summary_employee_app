@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Plus, Trash2, Receipt, AlertCircle, Calendar } from 'lucide-react'
+import { Plus, Trash2, Receipt, AlertCircle, Calendar, FileSpreadsheet } from 'lucide-react'
+import ReceiptsExcelImportModal from './ReceiptsExcelImportModal'
 import {
   toEnglishDigits,
   toPersianDigits,
@@ -51,6 +52,7 @@ export default function ReceiptsTableEditor({
   const [inputError, setInputError] = useState<string | null>(null)
   const [issueDateError, setIssueDateError] = useState<string | null>(null)
   const [paymentDateError, setPaymentDateError] = useState<string | null>(null)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   const handleAddReceipt = () => {
     setInputError(null)
@@ -180,7 +182,17 @@ export default function ReceiptsTableEditor({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          {!disabled && (
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all hover:shadow-purple-600/25 active:scale-95"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>بارگذاری گروهی از اکسل</span>
+            </button>
+          )}
           <span className="text-xs font-bold bg-purple-50 text-purple-800 px-3 py-1.5 rounded-xl border border-purple-200">
             تعداد قبوض: {receipts.length}
           </span>
@@ -497,6 +509,14 @@ export default function ReceiptsTableEditor({
           )}
         </table>
       </div>
+
+      {/* Excel Bulk Import Modal */}
+      <ReceiptsExcelImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        currentReceipts={receipts}
+        onImport={(updated) => onChange(updated)}
+      />
     </div>
   )
 }

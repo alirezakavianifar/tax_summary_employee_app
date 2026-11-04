@@ -520,5 +520,33 @@ public class TaxRefundServiceTests
         Assert.True(result.IsSuccess);
         Assert.Null(passedAllowedCodes);
     }
+
+    [Theory]
+    [InlineData("REF-1402-8447", "1402-8447")]
+    [InlineData("TRC-1403-1602", "1403-1602")]
+    [InlineData("TRC-1403-0001", "1403-0001")]
+    [InlineData("CASE-1403-1234", "1403-1234")]
+    [InlineData("REF_TRC-1403-9999", "1403-9999")]
+    [InlineData("1402-8877", "1402-8877")]
+    [InlineData("TRC-۱۴۰۳-۱۶۰۲", "۱۴۰۳-۱۶۰۲")]
+    [InlineData("", "")]
+    [InlineData(null, "")]
+    public void CleanTrackingNumber_HidesTechnicalLetterPrefixes(string? input, string expected)
+    {
+        var result = PrintableDocumentDto.CleanTrackingNumber(input);
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void TaxRefundCaseSummaryDto_DisplayTrackingNumber_HidesTrcAndRefPrefixes()
+    {
+        var summaryDtoRef = new TaxRefundCaseSummaryDto { CaseTrackingNumber = "REF-1402-8447" };
+        var summaryDtoTrc = new TaxRefundCaseSummaryDto { CaseTrackingNumber = "TRC-1403-1602" };
+        var caseDtoTrc = new TaxRefundCaseDto { CaseTrackingNumber = "TRC-1403-0001" };
+
+        Assert.Equal("1402-8447", summaryDtoRef.DisplayTrackingNumber);
+        Assert.Equal("1403-1602", summaryDtoTrc.DisplayTrackingNumber);
+        Assert.Equal("1403-0001", caseDtoTrc.DisplayTrackingNumber);
+    }
 }
 

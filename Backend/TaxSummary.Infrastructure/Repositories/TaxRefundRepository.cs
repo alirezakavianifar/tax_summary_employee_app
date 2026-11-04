@@ -37,6 +37,10 @@ public class TaxRefundRepository : ITaxRefundRepository
 
     public async Task<TaxRefundCase?> GetByTrackingNumberAsync(string trackingNumber, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(trackingNumber)) return null;
+        var normalized = trackingNumber.Trim();
+        var withPrefix = normalized.StartsWith("REF-", StringComparison.OrdinalIgnoreCase) ? normalized : $"REF-{normalized}";
+        var withTrcPrefix = normalized.StartsWith("TRC-", StringComparison.OrdinalIgnoreCase) ? normalized : $"TRC-{normalized}";
         return await _context.TaxRefundCases
             .Include(c => c.Office)
             .Include(c => c.Receipts)
@@ -44,7 +48,7 @@ public class TaxRefundRepository : ITaxRefundRepository
             .Include(c => c.Letters)
             .Include(c => c.Approvals)
             .Include(c => c.Documents)
-            .FirstOrDefaultAsync(c => c.CaseTrackingNumber == trackingNumber, cancellationToken);
+            .FirstOrDefaultAsync(c => c.CaseTrackingNumber == normalized || c.CaseTrackingNumber == withPrefix || c.CaseTrackingNumber == withTrcPrefix || c.CaseTrackingNumber.EndsWith("-" + normalized), cancellationToken);
     }
 
     public async Task<IEnumerable<TaxRefundCase>> GetCasesAsync(

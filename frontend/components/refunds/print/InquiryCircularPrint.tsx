@@ -2,7 +2,7 @@
 
 import React from 'react'
 import type { PrintableDocument } from '@/types/taxRefund'
-import { getTodayJalaliString, toPersianDigits } from '@/lib/jalali'
+import { getTodayJalaliString, toPersianDigits, formatCaseTrackingNumber } from '@/lib/jalali'
 import { PrintContainer, PrintHeader, SignatureBox } from './PrintContainer'
 import { TaxRefundLetterType } from '@/types/taxRefund'
 
@@ -40,7 +40,7 @@ export function InquiryCircularPrint({ data }: InquiryCircularPrintProps) {
       <PrintHeader
         formTitle="استعلام وضعیت بدهی از حوزه‌های مختلف مالیاتی"
         subtitle="جهت احراز بدهی‌های احتمالی و تهاتر با مبلغ استردادی"
-        docNumber={data.caseTrackingNumber}
+        docNumber={formatCaseTrackingNumber(data.caseTrackingNumber)}
         docDate={data.justificationReportDate || fallbackDate}
         docketNumber={data.docketNumber}
         province={data.province}

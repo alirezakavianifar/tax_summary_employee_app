@@ -459,6 +459,34 @@ public class TaxRefundsController : ControllerBase
     }
 
     /// <summary>
+    /// Parse and extract receipt records from an uploaded Excel file (supports .xls and .xlsx formats from tax automation)
+    /// استخراج و اعتبارسنجی گروهی اطلاعات قبوض پرداختی از فایل اکسل
+    /// </summary>
+    [HttpPost("parse-receipts-excel")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ReceiptExcelParseResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ReceiptExcelParseResultDto>> ParseReceiptsExcel(
+        IFormFile file,
+        CancellationToken ct)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = "لطفاً فایل اکسل حاوی قبوض را انتخاب نمایید" });
+
+        var allowedExts = new[] { ".xls", ".xlsx", ".xml" };
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExts.Contains(ext))
+            return BadRequest(new { error = "صرفاً فایل‌های با پسوند .xls یا .xlsx یا .xml مجاز می‌باشند" });
+
+        using var stream = file.OpenReadStream();
+        var result = await _excelService.ParseReceiptsExcelAsync(stream, file.FileName, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
     /// Export the tax refund case as an authentic 9-sheet formula-wired Excel workbook
     /// دریافت فایل خروجی اکسل ۹ برگه‌ای منطبق با الگوی استاندارد
     /// </summary>

@@ -2,7 +2,7 @@
 
 import React from 'react'
 import type { PrintableDocument } from '@/types/taxRefund'
-import { getTodayJalaliString, toPersianDigits } from '@/lib/jalali'
+import { getTodayJalaliString, toPersianDigits, formatCaseTrackingNumber } from '@/lib/jalali'
 import { PrintContainer, PrintHeader, SignatureBox } from './PrintContainer'
 
 interface TableAPrintProps {
@@ -17,7 +17,7 @@ export function TableAPrint({ data }: TableAPrintProps) {
   const receipts = data.receipts || []
   const totalAmount = receipts.reduce((acc, r) => acc + (r.amountRials || 0), 0)
 
-  const docNumber = data.refundVoucherNumber || data.caseTrackingNumber
+  const docNumber = formatCaseTrackingNumber(data.refundVoucherNumber || data.caseTrackingNumber)
   const docDate = data.refundVoucherDate || fallbackDate
   const reportDate = data.justificationReportDate || fallbackDate
 

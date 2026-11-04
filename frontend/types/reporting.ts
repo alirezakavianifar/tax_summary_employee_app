@@ -25,6 +25,7 @@ export interface ExecutiveDashboard {
   taxSourceRefundDistribution: TaxSourceDistribution[]
   recentAuditActivities: RecentAuditActivity[]
   provincialOperations?: ProvincialOperationsSummary
+  combinedKpi?: ReportExecutiveKpi
 }
 
 export interface ProvincialOperationsSummary {
@@ -200,7 +201,7 @@ export interface SavedReportPreset {
 export interface ReportExecutiveKpi {
   reportCode: string
   reportTitle: string
-  reportActorType: 'decree' | 'auditor' | 'generic'
+  reportActorType: 'decree' | 'auditor' | 'generic' | 'combined'
   totalRowCount: number
   fiscalYear?: number
   generatedAt: string
@@ -211,6 +212,8 @@ export interface ReportExecutiveKpi {
   methodologyDistribution: KpiMethodologyBreakdown[]
   officeWorkload: KpiOfficeWorkload[]
   topTaxpayers: KpiTopTaxpayer[]
+  auditKpi?: ReportExecutiveKpi
+  decreeKpi?: ReportExecutiveKpi
 }
 
 export interface ExecutiveKpiCard {
@@ -269,6 +272,12 @@ export interface KpiOfficeWorkload {
   totalAssessedAmount: number
   totalFinalAmount: number
   completionRate: number
+  auditCaseCount?: number
+  auditAssessedAmount?: number
+  decreeCaseCount?: number
+  decreeDisputedAmount?: number
+  auditCompletionRate?: number
+  decreeCompletionRate?: number
 }
 
 export interface KpiTopTaxpayer {

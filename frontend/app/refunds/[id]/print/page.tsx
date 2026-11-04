@@ -14,6 +14,7 @@ import { StatutoryRefundVoucherPrint } from '@/components/refunds/print/Statutor
 import { AuditorCommitmentPrint } from '@/components/refunds/print/AuditorCommitmentPrint'
 import { TableAPrint } from '@/components/refunds/print/TableAPrint'
 import { BatchRefundPackagePrint } from '@/components/refunds/print/BatchRefundPackagePrint'
+import { formatCaseTrackingNumber } from '@/lib/jalali'
 
 type FormTab =
   | 'batch'
@@ -31,7 +32,7 @@ const FORMS_META: { key: FormTab; title: string; badge?: string }[] = [
   { key: 'cheklist', title: 'چک‌لیست اسناد' },
   { key: 'form1', title: 'نامه ذیحسابی (فرم ۱)' },
   { key: 'form2', title: 'استعلام حوزه‌ها (فرم ۲)' },
-  { key: 'form3', title: 'گزارش توجیهی ۱ (فرم ۳)' },
+  { key: 'form3', title: 'گزارش استرداد' },
   { key: 'form4', title: 'گزارش توجیهی ۲ (فرم ۴)' },
   { key: 'form5', title: 'برگ استرداد م. ۲۴۲ (فرم ۵)' },
   { key: 'form6', title: 'فرم تعهد (فرم ۶)' },
@@ -129,7 +130,7 @@ export default function TaxRefundPrintPage() {
               <h1 className="text-base font-bold text-white flex items-center gap-2">
                 <span>پیش‌نمایش چاپ مدارک استرداد مالیات</span>
                 <span className="font-mono text-xs px-2 py-0.5 bg-indigo-900/80 border border-indigo-500 rounded text-indigo-200">
-                  {doc.caseTrackingNumber}
+                  {formatCaseTrackingNumber(doc.caseTrackingNumber)}
                 </span>
               </h1>
               <p className="text-xs text-gray-400">

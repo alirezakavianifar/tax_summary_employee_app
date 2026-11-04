@@ -62,6 +62,7 @@ import {
   validateJalaliDate,
   MIN_SHAMSI_YEAR,
   MAX_SHAMSI_YEAR,
+  formatCaseTrackingNumber,
 } from '@/lib/jalali'
 
 const WIZARD_STEPS = [
@@ -640,7 +641,7 @@ export default function EditTaxRefundCasePage() {
             {refundCase.status === RefundCaseStatus.AdministrationHeadApproved ||
             refundCase.status === RefundCaseStatus.DirectorGeneralApproved ? (
               <>
-                این پرونده با شماره پیگیری <strong className="font-mono text-purple-900">{refundCase.caseTrackingNumber}</strong> در مرحله «{refundCase.statusDescription || 'تایید نهایی / مدیر کل'}» قرار دارد. برای بازگشایی قفل و ویرایش اطلاعات، پرونده باید عودت داده شود.
+                این پرونده با شماره پیگیری <strong className="font-mono text-purple-900">{formatCaseTrackingNumber(refundCase.caseTrackingNumber)}</strong> در مرحله «{refundCase.statusDescription || 'تایید نهایی / مدیر کل'}» قرار دارد. برای بازگشایی قفل و ویرایش اطلاعات، پرونده باید عودت داده شود.
               </>
             ) : (
               <>
@@ -671,7 +672,7 @@ export default function EditTaxRefundCasePage() {
 
           <WorkflowReturnModal
             isOpen={isReturnModalOpen}
-            caseTrackingNumber={refundCase.caseTrackingNumber}
+            caseTrackingNumber={formatCaseTrackingNumber(refundCase.caseTrackingNumber)}
             currentStatus={refundCase.status}
             onClose={() => setIsReturnModalOpen(false)}
             onConfirm={handleReturnCase}
@@ -692,7 +693,7 @@ export default function EditTaxRefundCasePage() {
                 <Link href="/refunds" className="hover:text-purple-700">کارپوشه استرداد</Link>
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <Link href={`/refunds/${caseId}`} className="hover:text-purple-700 font-mono font-bold">
-                  {refundCase.caseTrackingNumber}
+                  {formatCaseTrackingNumber(refundCase.caseTrackingNumber)}
                 </Link>
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span className="text-purple-900 font-bold">ویرایش جامع ۶ مرحله‌ای</span>
@@ -700,7 +701,7 @@ export default function EditTaxRefundCasePage() {
               <h1 className="text-xl sm:text-2xl font-black text-gray-900 flex items-center gap-3">
                 <span>ویرایش پرونده استرداد مالیات</span>
                 <span className="text-xs px-2.5 py-1 bg-purple-100 border border-purple-300 text-purple-800 rounded-lg font-mono font-bold">
-                  {refundCase.caseTrackingNumber}
+                  {formatCaseTrackingNumber(refundCase.caseTrackingNumber)}
                 </span>
               </h1>
             </div>

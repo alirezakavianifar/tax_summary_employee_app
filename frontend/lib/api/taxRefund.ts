@@ -20,6 +20,7 @@ import type {
   UpdateJustificationReportInput,
   FinalizeJustificationReportInput,
   PresidingOfficers,
+  ReceiptExcelParseResult,
 } from '@/types/taxRefund'
 
 export const taxRefundApi = {
@@ -304,6 +305,20 @@ export const taxRefundApi = {
   async getPresidingOfficers(taxUnitCode?: string): Promise<PresidingOfficers> {
     const response = await apiClient.get<PresidingOfficers>('/tax-refunds/presiding-officers', {
       params: { taxUnitCode: taxUnitCode || undefined },
+    })
+    return response.data
+  },
+
+  /**
+   * Parse and extract receipt records from an uploaded Excel file (.xls, .xlsx, .xml)
+   */
+  async parseReceiptsExcel(file: File): Promise<ReceiptExcelParseResult> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post<ReceiptExcelParseResult>('/tax-refunds/parse-receipts-excel', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     })
     return response.data
   },

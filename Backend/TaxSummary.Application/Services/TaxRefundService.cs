@@ -161,7 +161,9 @@ public class TaxRefundService : ITaxRefundService
             }
 
             var trackingNumber = !string.IsNullOrWhiteSpace(dto.CaseTrackingNumber)
-                ? dto.CaseTrackingNumber.Trim()
+                ? (dto.CaseTrackingNumber.Trim().StartsWith("REF-", StringComparison.OrdinalIgnoreCase)
+                    ? dto.CaseTrackingNumber.Trim()
+                    : $"REF-{dto.CaseTrackingNumber.Trim()}")
                 : $"REF-{dto.TaxYear}-{new Random().Next(1000, 9999)}";
 
             var dgName = !string.IsNullOrWhiteSpace(dto.DirectorGeneralName)
@@ -1017,9 +1019,9 @@ public class TaxRefundService : ITaxRefundService
         var doc = new PrintableDocumentDto
         {
             FormType = formType.ToLowerInvariant(),
-            FormTitle = GetFormTitle(formType),
+            FormTitle = GetFormTitle(formType, refundCase),
             CaseId = refundCase.Id,
-            CaseTrackingNumber = refundCase.CaseTrackingNumber,
+            CaseTrackingNumber = PrintableDocumentDto.CleanTrackingNumber(refundCase.CaseTrackingNumber),
             DocketNumber = refundCase.DocketNumber,
             TaxpayerName = refundCase.TaxpayerName,
             EconomicCode = refundCase.EconomicCode,
@@ -1063,25 +1065,25 @@ public class TaxRefundService : ITaxRefundService
 
         // Extract letter numbers & dates with sensible fallbacks to case tracking number & Persian date
         var voucherLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.RefundVoucher);
-        doc.RefundVoucherNumber = !string.IsNullOrWhiteSpace(voucherLetter?.LetterNumber)
+        doc.RefundVoucherNumber = PrintableDocumentDto.CleanTrackingNumber(!string.IsNullOrWhiteSpace(voucherLetter?.LetterNumber)
             ? voucherLetter.LetterNumber
-            : refundCase.CaseTrackingNumber;
+            : refundCase.CaseTrackingNumber);
         doc.RefundVoucherDate = !string.IsNullOrWhiteSpace(voucherLetter?.LetterDateJalali)
             ? voucherLetter.LetterDateJalali
             : defaultCaseDateJalali;
 
         var reportLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.JustificationReport);
-        doc.JustificationReportNumber = !string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportNumber)
+        doc.JustificationReportNumber = PrintableDocumentDto.CleanTrackingNumber(!string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportNumber)
             ? refundCase.JustificationReport.ReportNumber
-            : (!string.IsNullOrWhiteSpace(reportLetter?.LetterNumber) ? reportLetter.LetterNumber : refundCase.CaseTrackingNumber);
+            : (!string.IsNullOrWhiteSpace(reportLetter?.LetterNumber) ? reportLetter.LetterNumber : refundCase.CaseTrackingNumber));
         doc.JustificationReportDate = !string.IsNullOrWhiteSpace(refundCase.JustificationReport?.ReportDateJalali)
             ? refundCase.JustificationReport.ReportDateJalali
             : (!string.IsNullOrWhiteSpace(reportLetter?.LetterDateJalali) ? reportLetter.LetterDateJalali : defaultCaseDateJalali);
 
         var commitLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.OfficeCommitment);
-        doc.OfficeCommitmentNumber = !string.IsNullOrWhiteSpace(commitLetter?.LetterNumber)
+        doc.OfficeCommitmentNumber = PrintableDocumentDto.CleanTrackingNumber(!string.IsNullOrWhiteSpace(commitLetter?.LetterNumber)
             ? commitLetter.LetterNumber
-            : refundCase.CaseTrackingNumber;
+            : refundCase.CaseTrackingNumber);
         doc.OfficeCommitmentDate = !string.IsNullOrWhiteSpace(commitLetter?.LetterDateJalali)
             ? commitLetter.LetterDateJalali
             : defaultCaseDateJalali;
@@ -1136,15 +1138,15 @@ public class TaxRefundService : ITaxRefundService
         doc.TreasuryOfficerName = !string.IsNullOrWhiteSpace(resolvedTreasuryName) ? resolvedTreasuryName : null;
 
         var treasuryLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.TreasuryLetter);
-        doc.TreasuryLetterNumber = !string.IsNullOrWhiteSpace(treasuryLetter?.LetterNumber)
+        doc.TreasuryLetterNumber = PrintableDocumentDto.CleanTrackingNumber(!string.IsNullOrWhiteSpace(treasuryLetter?.LetterNumber)
             ? treasuryLetter.LetterNumber
-            : refundCase.CaseTrackingNumber;
+            : refundCase.CaseTrackingNumber);
         doc.TreasuryLetterDate = !string.IsNullOrWhiteSpace(treasuryLetter?.LetterDateJalali)
             ? treasuryLetter.LetterDateJalali
             : (treasuryApproval != null ? TaxSummary.Domain.ValueObjects.JalaliDate.FromDateTime(treasuryApproval.ActionDate).ToString() : doc.RefundVoucherDate);
 
         var requestLetter = refundCase.Letters.FirstOrDefault(l => l.LetterType == TaxRefundLetterType.InboundTaxpayerRequest);
-        doc.TaxpayerRequestNumber = requestLetter?.LetterNumber;
+        doc.TaxpayerRequestNumber = PrintableDocumentDto.CleanTrackingNumber(requestLetter?.LetterNumber);
         doc.TaxpayerRequestDate = !string.IsNullOrWhiteSpace(requestLetter?.LetterDateJalali)
             ? requestLetter.LetterDateJalali
             : defaultCaseDateJalali;
@@ -1206,18 +1208,40 @@ public class TaxRefundService : ITaxRefundService
             calc.DelayDamages));
     }
 
-    private static string GetFormTitle(string formType) => formType.ToLowerInvariant() switch
+    private static string GetFormTitle(string formType, TaxRefundCase? refundCase = null)
     {
-        "cheklist" => "چک‌لیست کنترل اسناد استردادی",
-        "form1" => "نامه ذیحسابی جهت پرداخت وجه استرداد",
-        "form2" => "استعلام از حوزه‌های مختلف مالیاتی",
-        "form3" => "گزارش استرداد مالیات اضافه دریافتی (بخش ۱)",
-        "form4" => "ادامه گزارش استرداد مالیات اضافه دریافتی (بخش ۲)",
-        "form5" => "برگ استرداد مالیات اضافه دریافتی (موضوع ماده ۲۴۲ ق.م.م)",
-        "form6" => "فرم تعهد اداره امور مالیاتی",
-        "form7" => "جدول (الف) قبوض پرداختی برگ استرداد",
-        _ => "سند استرداد مالیاتی"
-    };
+        var type = formType.ToLowerInvariant();
+        if (type == "form4" && refundCase != null)
+        {
+            var sourceName = TaxRefundMappingProfile.GetTaxSourceName(refundCase.TaxSource);
+            var cleanSource = string.IsNullOrWhiteSpace(sourceName) ? "عملکرد" : sourceName.Trim();
+            if (!cleanSource.StartsWith("مالیات"))
+            {
+                cleanSource = "مالیات " + cleanSource;
+            }
+            var yearStr = refundCase.TaxYear > 0 ? $"سال {refundCase.TaxYear}" : string.Empty;
+            var taxpayer = refundCase.TaxpayerName?.Trim() ?? string.Empty;
+
+            var parts = new List<string> { "گزارش استرداد اضافه پرداختی", cleanSource };
+            if (!string.IsNullOrEmpty(yearStr)) parts.Add(yearStr);
+            if (!string.IsNullOrEmpty(taxpayer)) parts.Add(taxpayer);
+
+            return string.Join(" ", parts);
+        }
+
+        return type switch
+        {
+            "cheklist" => "چک‌لیست کنترل اسناد استردادی",
+            "form1" => "نامه ذیحسابی جهت پرداخت وجه استرداد",
+            "form2" => "استعلام از حوزه‌های مختلف مالیاتی",
+            "form3" => "گزارش استرداد موضوع ماده 242 مالیات های مستقیم",
+            "form4" => "گزارش استرداد اضافه پرداختی مالیات عملکرد (بخش ۲)",
+            "form5" => "برگ استرداد مالیات اضافه دریافتی (موضوع ماده ۲۴۲ ق.م.م)",
+            "form6" => "فرم تعهد اداره امور مالیاتی",
+            "form7" => "جدول (الف) قبوض پرداختی برگ استرداد",
+            _ => "سند استرداد مالیاتی"
+        };
+    }
 
     private static string NumberToWords(decimal number)
     {

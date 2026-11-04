@@ -3,7 +3,7 @@
 import React from 'react'
 import type { PrintableDocument } from '@/types/taxRefund'
 import { ActivityTypeLabels } from '@/types/taxRefund'
-import { getTodayJalaliString, toPersianDigits } from '@/lib/jalali'
+import { getTodayJalaliString, toPersianDigits, formatCaseTrackingNumber } from '@/lib/jalali'
 import { PrintContainer, PrintHeader, SignatureBox } from './PrintContainer'
 
 interface StatutoryRefundVoucherPrintProps {
@@ -28,9 +28,9 @@ export function StatutoryRefundVoucherPrint({ data }: StatutoryRefundVoucherPrin
           revenueLedgerRow: r.revenueLedgerRow,
         }))
 
-  const docNumber = data.refundVoucherNumber || data.caseTrackingNumber
+  const docNumber = formatCaseTrackingNumber(data.refundVoucherNumber || data.caseTrackingNumber)
   const docDate = data.refundVoucherDate || fallbackDate
-  const reportNumber = data.justificationReportNumber || data.caseTrackingNumber
+  const reportNumber = formatCaseTrackingNumber(data.justificationReportNumber || data.caseTrackingNumber)
   const reportDate = data.justificationReportDate || fallbackDate
 
   return (

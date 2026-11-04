@@ -3,7 +3,7 @@
 import React from 'react'
 import type { PrintableDocument } from '@/types/taxRefund'
 import { ActivityTypeLabels } from '@/types/taxRefund'
-import { getTodayJalaliString, toPersianDigits } from '@/lib/jalali'
+import { getTodayJalaliString, toPersianDigits, formatCaseTrackingNumber } from '@/lib/jalali'
 import { PrintContainer, PrintHeader, SignatureBox } from './PrintContainer'
 
 interface JustificationReportPart1PrintProps {
@@ -14,13 +14,13 @@ export function JustificationReportPart1Print({ data }: JustificationReportPart1
   const fallbackDate = React.useMemo(() => getTodayJalaliString(), [])
   const formatRials = (val?: number) => (val ?? 0).toLocaleString('fa-IR')
 
-  const docNumber = data.justificationReportNumber || data.caseTrackingNumber
+  const docNumber = formatCaseTrackingNumber(data.justificationReportNumber || data.caseTrackingNumber)
   const docDate = data.justificationReportDate || fallbackDate
 
   return (
     <PrintContainer>
       <PrintHeader
-        formTitle="گزارش توجیهی استرداد اضافه پرداختی مالیات (بخش اول)"
+        formTitle="گزارش استرداد موضوع ماده 242 مالیات های مستقیم"
         subtitle="موضوع مواد ۲۴۲ و ۲۴۳ قانون مالیات‌های مستقیم"
         docNumber={docNumber}
         docDate={docDate}

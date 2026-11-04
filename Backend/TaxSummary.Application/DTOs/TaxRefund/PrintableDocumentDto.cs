@@ -12,7 +12,16 @@ public class PrintableDocumentDto
     public string FormTitle { get; set; } = string.Empty;
     public Guid CaseId { get; set; }
     public string CaseTrackingNumber { get; set; } = string.Empty;
+    public string DisplayTrackingNumber => CleanTrackingNumber(CaseTrackingNumber);
     public string DocketNumber { get; set; } = string.Empty;
+
+    public static string CleanTrackingNumber(string? number)
+    {
+        if (string.IsNullOrWhiteSpace(number)) return string.Empty;
+        var trimmed = number.Trim();
+        var cleaned = System.Text.RegularExpressions.Regex.Replace(trimmed, @"^(?:[A-Za-z]+[-_\s]*)+", string.Empty);
+        return string.IsNullOrWhiteSpace(cleaned) ? trimmed : cleaned;
+    }
 
     // Taxpayer Information
     public string TaxpayerName { get; set; } = string.Empty;

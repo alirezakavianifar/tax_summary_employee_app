@@ -52,6 +52,21 @@ export function toPersianDigits(str: string | number | null | undefined): string
 }
 
 /**
+ * Formats a Case Tracking Number for user-facing display.
+ * Strips internal technical prefixes (like "REF-", "TRC-", "CASE-", etc.) so that end users only see
+ * the administrative reference (e.g. "1402-8877" or "۱۴۰۲-۸۸۷۷").
+ */
+export function formatCaseTrackingNumber(trackingNumber?: string | null, toPersian: boolean = false): string {
+  if (!trackingNumber) return ''
+  const str = trackingNumber.toString().trim()
+  let cleaned = str.replace(/^(?:[A-Za-z]+[-_\s]*)+/, '').trim()
+  cleaned = cleaned.replace(/\b(?:REF|TRC|CASE)[-_\s]*/gi, '').trim()
+  const finalStr = cleaned.length > 0 ? cleaned : str
+  return toPersian ? toPersianDigits(finalStr) : finalStr
+}
+
+
+/**
  * Converts Gregorian date to Jalali date
  * @returns [jy, jm, jd] where jm is 1-12
  */

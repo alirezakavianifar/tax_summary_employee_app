@@ -253,6 +253,7 @@ export interface FinalizeJustificationReportInput {
 export interface TaxRefundCase {
   id: string
   caseTrackingNumber: string
+  displayTrackingNumber?: string
   docketNumber: string
   taxpayerName: string
   economicCode: string
@@ -351,6 +352,7 @@ export interface UploadTaxRefundDocumentInput {
 export interface TaxRefundCaseSummary {
   id: string
   caseTrackingNumber: string
+  displayTrackingNumber?: string
   docketNumber: string
   taxpayerName: string
   economicCode: string
@@ -465,6 +467,7 @@ export interface PrintableDocument {
   formType: string
   formTitle: string
   caseTrackingNumber: string
+  displayTrackingNumber?: string
   docketNumber: string
   taxpayerName: string
   economicCode: string
@@ -480,6 +483,7 @@ export interface PrintableDocument {
   shebaNumber: string
   taxYear: number
   period: number
+  taxSource?: TaxSourceType | number
   taxSourceName: string
   refundReason?: string
   directorGeneralName?: string
@@ -516,3 +520,29 @@ export interface PresidingOfficers {
   seniorAuditorName: string
   inferredTaxUnitCode?: string
 }
+
+export interface ParsedReceiptRow {
+  rowIndex: number
+  receiptNumber: string
+  issueDateJalali: string
+  paymentDateJalali?: string | null
+  amountRials: number
+  bankName?: string | null
+  city?: string | null
+  taxOffice?: string | null
+  notes?: string | null
+  warnings: string[]
+  isValid: boolean
+}
+
+export interface ReceiptExcelParseResult {
+  fileFormat: string
+  detectedStyle: string
+  totalRows: number
+  validRows: number
+  errorRows: number
+  totalAmountRials: number
+  receipts: ParsedReceiptRow[]
+  errors: string[]
+}
+

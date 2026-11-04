@@ -8,6 +8,7 @@ public class ExecutiveDashboardDto
     public List<TaxSourceDistributionDto> TaxSourceRefundDistribution { get; set; } = new();
     public List<RecentAuditActivityDto> RecentAuditActivities { get; set; } = new();
     public ProvincialOperationsSummaryDto? ProvincialOperations { get; set; }
+    public ReportExecutiveKpiDto? CombinedKpi { get; set; }
 }
 
 public class ProvincialOperationsSummaryDto

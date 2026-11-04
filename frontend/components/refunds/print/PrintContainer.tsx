@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { toPersianDigits } from '@/lib/jalali'
+import { toPersianDigits, formatCaseTrackingNumber } from '@/lib/jalali'
 
 interface PrintHeaderProps {
   formTitle: string
@@ -28,11 +28,13 @@ export function PrintHeader({
   taxUnitCode,
   logoSrc = '/images/Intamedia_Logo.png',
 }: PrintHeaderProps) {
+  const displayDocNumber = formatCaseTrackingNumber(docNumber)
+  const displayTrackingNumber = formatCaseTrackingNumber(trackingNumber)
   return (
     <div className="border-b-2 border-black pb-3 mb-4 font-nazanin">
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start gap-2">
         {/* Right: Administrative Hierarchy */}
-        <div className="text-right text-xs leading-5 text-gray-900 w-1/3">
+        <div className="text-right text-xs leading-5 text-gray-900 w-1/4 min-w-[140px]">
           <p className="font-titr text-sm font-bold text-black">جمهوری اسلامی ایران</p>
           <p className="font-titr text-xs font-bold text-gray-900">وزارت امور اقتصادی و دارایی</p>
           <p className="font-titr text-xs font-bold text-gray-900">سازمان امور مالیاتی کشور</p>
@@ -43,7 +45,7 @@ export function PrintHeader({
         </div>
 
         {/* Center: Title & Official Emblem */}
-        <div className="text-center w-1/3 flex flex-col items-center">
+        <div className="text-center flex-1 px-2 flex flex-col items-center justify-center">
           {logoSrc && (
             <div className="w-12 h-12 mb-1 flex items-center justify-center">
               <img
@@ -53,16 +55,16 @@ export function PrintHeader({
               />
             </div>
           )}
-          <h1 className="text-base font-titr font-bold text-black tracking-tight">{formTitle}</h1>
-          {subtitle && <p className="text-xs font-nazanin font-semibold text-gray-800 mt-0.5">{subtitle}</p>}
+          <h1 className="text-base font-titr font-bold text-black tracking-tight leading-6 text-center">{formTitle}</h1>
+          {subtitle && <p className="text-xs font-nazanin font-semibold text-gray-800 mt-0.5">{subtitle.replace(/REF-/gi, '')}</p>}
         </div>
 
         {/* Left: Metadata */}
-        <div className="text-left text-xs leading-5 text-gray-900 w-1/3 font-nazanin">
-          {docNumber && (
+        <div className="text-left text-xs leading-5 text-gray-900 w-1/4 min-w-[140px] font-nazanin">
+          {displayDocNumber && (
             <div className="flex justify-end gap-1">
               <span className="font-bold">شماره:</span>
-              <span className="font-bold">{toPersianDigits(docNumber)}</span>
+              <span className="font-bold">{toPersianDigits(displayDocNumber)}</span>
             </div>
           )}
           {docDate && (
@@ -71,10 +73,10 @@ export function PrintHeader({
               <span className="font-bold">{toPersianDigits(docDate)}</span>
             </div>
           )}
-          {trackingNumber && (
+          {displayTrackingNumber && (
             <div className="flex justify-end gap-1">
               <span className="font-bold">کد پیگیری:</span>
-              <span>{toPersianDigits(trackingNumber)}</span>
+              <span>{toPersianDigits(displayTrackingNumber)}</span>
             </div>
           )}
           {docketNumber && (

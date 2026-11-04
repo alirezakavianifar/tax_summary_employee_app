@@ -1,0 +1,140 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?mso-application progid='Excel.Sheet'?>
+<Workbook xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:html="http://www.w3.org/TR/REC-html40" xmlns="urn:schemas-microsoft-com:office:spreadsheet">
+ <o:OfficeDocumentSettings>
+  <Colors>
+   <Color>
+    <Index>1</Index>
+    <RGB>#ffffff</RGB>
+   </Color>
+   <Color>
+    <Index>2</Index>
+    <RGB>#154a93</RGB>
+   </Color>
+   <Color>
+    <Index>3</Index>
+    <RGB>#000000</RGB>
+   </Color>
+   <Color>
+    <Index>4</Index>
+    <RGB>#ecf4ff</RGB>
+   </Color>
+  </Colors>
+ </o:OfficeDocumentSettings>
+ <Styles>
+  <Style ss:ID="s1">
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#154a93" />
+  </Style>
+  <Style ss:ID="s2">
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#000000" />
+  </Style>
+  <Style ss:ID="s3">
+   <ss:NumberFormat ss:Format="Standard" />
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#000000" />
+  </Style>
+  <Style ss:ID="s4">
+   <ss:Interior ss:Color="#ecf4ff" ss:Pattern="Solid" />
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#000000" />
+  </Style>
+  <Style ss:ID="s5">
+   <ss:NumberFormat ss:Format="Standard" />
+   <ss:Interior ss:Color="#ecf4ff" ss:Pattern="Solid" />
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#000000" />
+  </Style>
+  <Style ss:ID="s6">
+   <ss:Font ss:FontName="Tahoma" ss:Size="9" ss:Color="#000000" />
+  </Style>
+ </Styles>
+ <ss:Worksheet ss:Name="Sheet1">
+  <Table>
+   <Column ss:AutoFit="0" ss:Width="49.5" />
+   <Column ss:AutoFit="0" ss:Width="51" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="69.75" />
+   <Column ss:AutoFit="0" ss:Width="61.5" />
+   <Column ss:AutoFit="0" ss:Width="63.75" />
+   <Column ss:AutoFit="0" ss:Width="102.75" />
+   <Column ss:AutoFit="0" ss:Width="74.25" />
+   <Column ss:AutoFit="0" ss:Width="63" />
+   <Column ss:AutoFit="0" ss:Width="112.5" />
+   <Column ss:AutoFit="0" ss:Width="66.75" />
+   <Column ss:AutoFit="0" ss:Width="89.25" />
+   <Column ss:AutoFit="0" ss:Width="84.75" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Column ss:AutoFit="0" ss:Width="129.75" />
+   <Column ss:AutoFit="0" ss:Width="75" />
+   <Row>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">نوع قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">نوع مالیات</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">سال عملکرد</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شماره قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">تاریخ قبض</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">تاریخ وصول</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">اداره کل (محل پرداخت)</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شهر</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">واحد مالیاتی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">منبع مالیاتی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">شماره چک</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">تاریخ سررسید چک</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">جمع مبلغ مالیات</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">مبلغ استرداد</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">آدرس مودی</Data></Cell>
+    <Cell ss:StyleID="s1"><Data ss:Type="String">کد پستی مودی</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">نقدی</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">عملکرد</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="Number">1402</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">36778674246</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">1402/06/27</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">1402/06/27</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">خوزستان</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">اهواز</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">161500</Data></Cell>
+    <Cell ss:StyleID="s2"><Data ss:Type="String">حق تمبر</Data></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s3"><Data ss:Type="Number">50000</Data></Cell>
+    <Cell ss:StyleID="s3"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s2" />
+    <Cell ss:StyleID="s2" />
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s4"><Data ss:Type="String">نقدی</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="String">عملکرد</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="Number">1405</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="String">46037278382</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="String">1405/02/30</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="String">1405/02/30</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="String">خوزستان</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="String">رامهرمز</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="String">167123</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="String">نقل و انتقال املاک</Data></Cell>
+    <Cell ss:StyleID="s4" />
+    <Cell ss:StyleID="s4" />
+    <Cell ss:StyleID="s5"><Data ss:Type="Number">15858592</Data></Cell>
+    <Cell ss:StyleID="s5"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s4"><Data ss:Type="String">6383167115</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s3"><Data ss:Type="Number">15908592</Data></Cell>
+    <Cell ss:StyleID="s3"><Data ss:Type="Number">0</Data></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+    <Cell ss:StyleID="s6"><Data ss:Type="String" /></Cell>
+   </Row>
+  </Table>
+ </ss:Worksheet>
+</Workbook>

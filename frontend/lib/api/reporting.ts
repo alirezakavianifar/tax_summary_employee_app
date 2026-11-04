@@ -23,6 +23,11 @@ export const reportingApi = {
     return res.data
   },
 
+  async getCombinedKpi(): Promise<ReportExecutiveKpi> {
+    const res = await apiClient.get<ReportExecutiveKpi>(`${BASE_URL}/executive/combined-kpi`)
+    return res.data
+  },
+
   async getKpis(fiscalYear?: number): Promise<ExecutiveKpiMetrics> {
     const res = await apiClient.get<ExecutiveKpiMetrics>(`${BASE_URL}/executive/kpis`, { params: { fiscalYear } })
     return res.data
