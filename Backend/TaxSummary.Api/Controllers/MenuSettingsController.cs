@@ -78,26 +78,105 @@ public class MenuSettingsController : ControllerBase
             return BadRequest(new { error = "داده‌های درخواست نامعتبر است" });
         }
 
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        Guid? currentUserId = Guid.TryParse(userIdString, out var parsedGuid) ? parsedGuid : null;
-
-        var updatedSettings = await _menuSettingsService.UpdateSettingsAsync(request, currentUserId, ct);
+        var updatedSettings = await _menuSettingsService.UpdateSettingsAsync(request, GetCurrentUserId(), ct);
         return Ok(updatedSettings);
     }
 
     /// <summary>
-    /// Resets all menu settings back to system defaults. Restricted to Admins.
+    /// Creates a new custom menu option or module. Restricted to Admins.
+    /// </summary>
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(List<MenuSettingDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<MenuSettingDto>>> CreateSetting(
+        [FromBody] CreateMenuSettingRequestDto request,
+        CancellationToken ct)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { error = "اطلاعات گزینه منو نامعتبر است" });
+        }
+
+        return await ExecuteMutationAsync(() =>
+            _menuSettingsService.CreateSettingAsync(request, GetCurrentUserId(), ct));
+    }
+
+    /// <summary>
+    /// Updates metadata and access settings for a custom menu option. Restricted to Admins.
+    /// </summary>
+    [HttpPut("{menuKey}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(List<MenuSettingDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<MenuSettingDto>>> UpdateSettingMetadata(
+        string menuKey,
+        [FromBody] UpdateMenuSettingMetadataDto request,
+        CancellationToken ct)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { error = "اطلاعات ویرایش منو نامعتبر است" });
+        }
+
+        return await ExecuteMutationAsync(() =>
+            _menuSettingsService.UpdateSettingMetadataAsync(menuKey, request, GetCurrentUserId(), ct));
+    }
+
+    /// <summary>
+    /// Deletes a custom menu option (built-in options cannot be deleted). Restricted to Admins.
+    /// </summary>
+    [HttpDelete("{menuKey}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(List<MenuSettingDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<MenuSettingDto>>> DeleteSetting(
+        string menuKey,
+        CancellationToken ct)
+    {
+        return await ExecuteMutationAsync(() =>
+            _menuSettingsService.DeleteSettingAsync(menuKey, GetCurrentUserId(), ct));
+    }
+
+    /// <summary>
+    /// Resets built-in menu settings back to system defaults while preserving custom items. Restricted to Admins.
     /// </summary>
     [HttpPost("reset")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(List<MenuSettingDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<MenuSettingDto>>> ResetToDefaults(CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        Guid? currentUserId = Guid.TryParse(userIdString, out var parsedGuid) ? parsedGuid : null;
-
-        await _menuSettingsService.ResetToDefaultsAsync(currentUserId, ct);
+        await _menuSettingsService.ResetToDefaultsAsync(GetCurrentUserId(), ct);
         var settings = await _menuSettingsService.GetAllSettingsAsync(ct);
         return Ok(settings);
+    }
+
+    private Guid? GetCurrentUserId()
+    {
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdString, out var parsedGuid) ? parsedGuid : null;
+    }
+
+    private async Task<ActionResult<List<MenuSettingDto>>> ExecuteMutationAsync(Func<Task<List<MenuSettingDto>>> action)
+    {
+        try
+        {
+            var result = await action();
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 }

@@ -4,15 +4,27 @@ import React, { useState, useEffect, useMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import MenuItemFormModal from '@/components/admin/MenuItemFormModal'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 import { menuSettingsApi } from '@/lib/api/menuSettings'
-import type { MenuSettingItem, UpdateMenuSettingItem } from '@/types/menuSettings'
+import { resolveMenuIcon } from '@/lib/icons/menuIcons'
+import {
+  ORGANIZATIONAL_ROLES,
+  getRoleLabel,
+  getPresetRoles,
+  toggleRoleSelection,
+  type RolePreset,
+} from '@/lib/constants/menuRoles'
+import type {
+  MenuSettingItem,
+  UpdateMenuSettingItem,
+  CreateMenuSettingPayload,
+  UpdateMenuSettingMetadataPayload,
+} from '@/types/menuSettings'
 import {
   Sliders,
   Eye,
   EyeOff,
-  Lock,
-  Unlock,
   RotateCcw,
   Save,
   Search,
@@ -22,115 +34,25 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
-  Info,
-  Sparkles,
   Users,
-  Calculator,
-  Scale,
-  Home,
-  ShieldCheck,
   FileText,
-  Building2,
-  History,
-  PlusCircle,
+  Plus,
+  Pencil,
   Trash2,
 } from 'lucide-react'
 
-// Helper icon resolver
-const ICON_MAP: Record<string, React.ElementType> = {
-  Home,
-  Users,
-  FileText,
-  PlusCircle,
-  Search,
-  Calculator,
-  FileSpreadsheet: Layers,
-  Building2,
-  History,
-  Scale,
-  ShieldCheck,
-  Menu: Sliders,
-  Trash2,
+function sanitizeMenuItemRoles(data: MenuSettingItem[]): MenuSettingItem[] {
+  return data.map((item) => {
+    let roles = item.allowedRoles ? [...item.allowedRoles] : []
+    if (!roles.some((r) => r.toLowerCase() === 'officehead')) {
+      roles = roles.filter((r) => r.toLowerCase() !== 'manager')
+    }
+    if (!roles.some((r) => r.toLowerCase() === 'expert')) {
+      roles = roles.filter((r) => r.toLowerCase() !== 'employee')
+    }
+    return { ...item, allowedRoles: roles }
+  })
 }
-
-interface RoleDef {
-  key: string;
-  label: string;
-  shortLabel: string;
-  colorClass: string;
-  activeClass: string;
-}
-
-const ORGANIZATIONAL_ROLES: RoleDef[] = [
-  {
-    key: 'DirectorGeneral',
-    label: 'مدیر کل امور مالیاتی',
-    shortLabel: 'مدیر کل',
-    colorClass: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    activeClass: 'bg-indigo-50 text-indigo-700 border-indigo-300 shadow-xs hover:bg-indigo-100',
-  },
-  {
-    key: 'Treasury',
-    label: 'ذیحساب',
-    shortLabel: 'ذیحساب',
-    colorClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    activeClass: 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-xs hover:bg-emerald-100',
-  },
-  {
-    key: 'OfficeHead',
-    label: 'رئیس اداره',
-    shortLabel: 'رئیس اداره',
-    colorClass: 'bg-purple-50 text-purple-700 border-purple-200',
-    activeClass: 'bg-purple-50 text-purple-700 border-purple-300 shadow-xs hover:bg-purple-100',
-  },
-  {
-    key: 'GroupHead',
-    label: 'رئیس گروه',
-    shortLabel: 'رئیس گروه',
-    colorClass: 'bg-amber-50 text-amber-700 border-amber-200',
-    activeClass: 'bg-amber-50 text-amber-700 border-amber-300 shadow-xs hover:bg-amber-100',
-  },
-  {
-    key: 'Expert',
-    label: 'کارشناس',
-    shortLabel: 'کارشناس',
-    colorClass: 'bg-blue-50 text-blue-700 border-blue-200',
-    activeClass: 'bg-blue-50 text-blue-700 border-blue-300 shadow-xs hover:bg-blue-100',
-  },
-  {
-    key: 'ITSpecialist',
-    label: 'کارشناس فناوری',
-    shortLabel: 'فناوری',
-    colorClass: 'bg-teal-50 text-teal-700 border-teal-200',
-    activeClass: 'bg-teal-50 text-teal-700 border-teal-300 shadow-xs hover:bg-teal-100',
-  },
-];
-
-const getRoleLabel = (role: string): string => {
-  switch (role.toLowerCase()) {
-    case 'admin':
-      return 'مدیر ارشد';
-    case 'directorgeneral':
-      return 'مدیر کل امور مالیاتی';
-    case 'treasury':
-      return 'ذیحساب';
-    case 'officehead':
-      return 'رئیس اداره';
-    case 'grouphead':
-      return 'رئیس گروه';
-    case 'expert':
-      return 'کارشناس';
-    case 'itspecialist':
-      return 'کارشناس فناوری';
-    case 'manager':
-      return 'معاونت / مدیر';
-    case 'employee':
-      return 'کارمند';
-    default:
-      return role;
-  }
-};
 
 function MenuSettingsAdminContent() {
   const searchParams = useSearchParams()
@@ -145,6 +67,17 @@ function MenuSettingsAdminContent() {
   const [collapsedParents, setCollapsedParents] = useState<Record<string, boolean>>({})
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<MenuSettingItem | null>(null)
+  const [initialParentKey, setInitialParentKey] = useState<string | null>(null)
+  const [mutatingCustom, setMutatingCustom] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<MenuSettingItem | null>(null)
+
+  const syncWithServerList = (data: MenuSettingItem[]) => {
+    const sanitized = sanitizeMenuItemRoles(data)
+    setItems(sanitized)
+    setOriginalItems(JSON.parse(JSON.stringify(sanitized)))
+  }
 
   // Load all settings for admin
   const loadData = async () => {
@@ -152,18 +85,7 @@ function MenuSettingsAdminContent() {
       setLoading(true)
       setStatusMessage(null)
       const data = await menuSettingsApi.getAllSettingsForAdmin()
-      const sanitized = data.map((item) => {
-        let roles = item.allowedRoles ? [...item.allowedRoles] : []
-        if (!roles.some((r) => r.toLowerCase() === 'officehead')) {
-          roles = roles.filter((r) => r.toLowerCase() !== 'manager')
-        }
-        if (!roles.some((r) => r.toLowerCase() === 'expert')) {
-          roles = roles.filter((r) => r.toLowerCase() !== 'employee')
-        }
-        return { ...item, allowedRoles: roles }
-      })
-      setItems(sanitized)
-      setOriginalItems(JSON.parse(JSON.stringify(sanitized)))
+      syncWithServerList(data)
     } catch (err: any) {
       setStatusMessage({
         type: 'error',
@@ -270,32 +192,7 @@ function MenuSettingsAdminContent() {
             ? [...item.allowedRoles]
             : (item.adminOnly ? ['Admin'] : ['Admin', 'OfficeHead', 'GroupHead', 'Expert', 'ITSpecialist', 'Manager', 'Employee'])
 
-          const hasRole = currentRoles.some((r) => r.toLowerCase() === role.toLowerCase())
-          let newRoles: string[]
-
-          if (hasRole) {
-            newRoles = currentRoles.filter((r) => r.toLowerCase() !== role.toLowerCase())
-          } else {
-            newRoles = [...currentRoles, role]
-          }
-
-          // Ensure legacy aliases are purged if primary role is not selected
-          if (!newRoles.some((r) => r.toLowerCase() === 'officehead')) {
-            newRoles = newRoles.filter((r) => r.toLowerCase() !== 'manager')
-          }
-          if (!newRoles.some((r) => r.toLowerCase() === 'expert')) {
-            newRoles = newRoles.filter((r) => r.toLowerCase() !== 'employee')
-          }
-
-          if (newRoles.length === 0) {
-            newRoles = ['Admin']
-          }
-
-          // Ensure Admin is always included
-          if (!newRoles.some((r) => r.toLowerCase() === 'admin')) {
-            newRoles.unshift('Admin')
-          }
-
+          const newRoles = toggleRoleSelection(currentRoles, role)
           const isActuallyAdminOnly = !newRoles.some((r) => r.toLowerCase() !== 'admin')
 
           return {
@@ -310,17 +207,8 @@ function MenuSettingsAdminContent() {
   }
 
   // Set roles by quick preset
-  const setRolesPreset = (menuKey: string, preset: 'all' | 'managers' | 'experts' | 'admin') => {
-    let newRoles: string[]
-    if (preset === 'all') {
-      newRoles = ['Admin', 'OfficeHead', 'GroupHead', 'Expert', 'ITSpecialist', 'Manager', 'Employee']
-    } else if (preset === 'managers') {
-      newRoles = ['Admin', 'OfficeHead', 'GroupHead', 'Manager']
-    } else if (preset === 'experts') {
-      newRoles = ['Admin', 'Expert', 'Employee']
-    } else {
-      newRoles = ['Admin']
-    }
+  const setRolesPreset = (menuKey: string, preset: RolePreset) => {
+    const newRoles = getPresetRoles(preset)
 
     setItems((prev) =>
       prev.map((item) => {
@@ -419,13 +307,12 @@ function MenuSettingsAdminContent() {
       setShowResetConfirm(false)
 
       const defaults = await menuSettingsApi.resetMenuSettings()
-      setItems(defaults)
-      setOriginalItems(JSON.parse(JSON.stringify(defaults)))
+      syncWithServerList(defaults)
       await refreshSettings()
 
       setStatusMessage({
         type: 'success',
-        text: 'تمامی گزینه‌های منو به تنظیمات پیش‌فرض کارخانه بازنشانی شدند.',
+        text: 'گزینه‌های پیش‌فرض منو بازنشانی شدند (گزینه‌های سفارشی حفظ گردیدند).',
       })
     } catch (err: any) {
       setStatusMessage({
@@ -434,6 +321,75 @@ function MenuSettingsAdminContent() {
       })
     } finally {
       setResetting(false)
+    }
+  }
+
+  const openCreateModal = (parentKey: string | null = null) => {
+    setEditingItem(null)
+    setInitialParentKey(parentKey)
+    setIsFormModalOpen(true)
+  }
+
+  const openEditModal = (item: MenuSettingItem) => {
+    setEditingItem(item)
+    setInitialParentKey(item.parentKey)
+    setIsFormModalOpen(true)
+  }
+
+  const handleCreateCustomItem = async (payload: CreateMenuSettingPayload) => {
+    setMutatingCustom(true)
+    try {
+      const updated = await menuSettingsApi.createMenuSetting(payload)
+      syncWithServerList(updated)
+      await refreshSettings()
+      setStatusMessage({
+        type: 'success',
+        text: `گزینه منوی «${payload.title}» با موفقیت ایجاد و در نوار ناوبری فعال شد.`,
+      })
+    } finally {
+      setMutatingCustom(false)
+    }
+  }
+
+  const handleUpdateCustomItem = async (
+    menuKey: string,
+    payload: UpdateMenuSettingMetadataPayload
+  ) => {
+    setMutatingCustom(true)
+    try {
+      const updated = await menuSettingsApi.updateMenuSettingMetadata(menuKey, payload)
+      syncWithServerList(updated)
+      await refreshSettings()
+      setStatusMessage({
+        type: 'success',
+        text: `مشخصات گزینه «${payload.title}» با موفقیت به‌روزرسانی شد.`,
+      })
+    } finally {
+      setMutatingCustom(false)
+    }
+  }
+
+  const handleDeleteCustomItem = async () => {
+    if (!deleteTarget) return
+    try {
+      setMutatingCustom(true)
+      const targetTitle = deleteTarget.title
+      const updated = await menuSettingsApi.deleteMenuSetting(deleteTarget.menuKey)
+      setDeleteTarget(null)
+      syncWithServerList(updated)
+      await refreshSettings()
+      setStatusMessage({
+        type: 'success',
+        text: `گزینه سفارشی «${targetTitle}» با موفقیت حذف شد.`,
+      })
+    } catch (err: any) {
+      setStatusMessage({
+        type: 'error',
+        text: err?.response?.data?.error || 'خطا در حذف گزینه منو',
+      })
+      setDeleteTarget(null)
+    } finally {
+      setMutatingCustom(false)
     }
   }
 
@@ -519,10 +475,21 @@ function MenuSettingsAdminContent() {
             </div>
 
             {/* Quick Actions */}
-            <div className="flex items-center gap-3 self-end md:self-center">
+            <div className="flex flex-wrap items-center gap-3 self-end md:self-center">
               <button
+                type="button"
+                onClick={() => openCreateModal(null)}
+                disabled={saving || resetting || mutatingCustom}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-xs disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" />
+                افزودن گزینه منو
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setShowResetConfirm(true)}
-                disabled={resetting || saving}
+                disabled={resetting || saving || mutatingCustom}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-xs disabled:opacity-50"
               >
                 <RotateCcw className="w-4 h-4 text-gray-500" />
@@ -674,7 +641,7 @@ function MenuSettingsAdminContent() {
               {filteredRootModules.map((module) => {
                 const isCollapsed = collapsedParents[module.menuKey]
                 const children = childrenByParent[module.menuKey] || []
-                const ModuleIcon = ICON_MAP[module.iconName || ''] || Layers
+                const ModuleIcon = resolveMenuIcon(module.iconName, Layers)
                 const isParentHidden = !module.isVisible
 
                 return (
@@ -710,6 +677,11 @@ function MenuSettingsAdminContent() {
                             <code className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded font-mono">
                               {module.menuKey}
                             </code>
+                            {module.isCustom && (
+                              <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
+                                سفارشی
+                              </span>
+                            )}
                             {module.adminOnly ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
                                 <Shield className="w-3 h-3" />
@@ -840,7 +812,43 @@ function MenuSettingsAdminContent() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                          {module.menuKey !== 'nav_home' && (
+                            <button
+                              type="button"
+                              onClick={() => openCreateModal(module.menuKey)}
+                              disabled={mutatingCustom}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50"
+                              title="افزودن زیرمنوی سفارشی به این بخش"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              افزودن زیرمنو
+                            </button>
+                          )}
+
+                          {module.isCustom && (
+                            <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5 bg-gray-50/70">
+                              <button
+                                type="button"
+                                onClick={() => openEditModal(module)}
+                                disabled={mutatingCustom}
+                                className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-50"
+                                title="ویرایش گزینه سفارشی"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteTarget(module)}
+                                disabled={mutatingCustom}
+                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors disabled:opacity-50"
+                                title="حذف گزینه سفارشی"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+
                           {/* Visibility Switch */}
                           <div className="flex items-center gap-2">
                             <button
@@ -869,8 +877,9 @@ function MenuSettingsAdminContent() {
                           {/* Collapse/Expand Submenu button */}
                           {children.length > 0 && (
                             <button
+                              type="button"
                               onClick={() => toggleCollapse(module.menuKey)}
-                              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors mr-2"
+                              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors mr-1"
                               title={isCollapsed ? 'مشاهده زیرمنوها' : 'بستن زیرمنوها'}
                             >
                               {isCollapsed ? (
@@ -899,7 +908,7 @@ function MenuSettingsAdminContent() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {children.map((child) => {
-                            const ChildIcon = ICON_MAP[child.iconName || ''] || FileText
+                            const ChildIcon = resolveMenuIcon(child.iconName, FileText)
                             const isChildInactive = !child.isVisible || isParentHidden
                             const isHighlighted = Boolean(
                               highlightKey && child.menuKey.toLowerCase() === highlightKey.toLowerCase()
@@ -938,6 +947,11 @@ function MenuSettingsAdminContent() {
                                       <span className="text-xs font-bold text-gray-900 truncate block">
                                         {child.title}
                                       </span>
+                                      {child.isCustom && (
+                                        <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-full">
+                                          سفارشی
+                                        </span>
+                                      )}
                                       {isHighlighted && (
                                         <span className="text-[9px] font-black text-white bg-primary-600 px-2 py-0.5 rounded-full shadow-xs animate-pulse">
                                           تنظیم انتخابی
@@ -1004,6 +1018,29 @@ function MenuSettingsAdminContent() {
                                       )
                                     })}
                                   </div>
+
+                                  {child.isCustom && (
+                                    <div className="flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-gray-50/70">
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditModal(child)}
+                                        disabled={mutatingCustom}
+                                        className="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-50"
+                                        title="ویرایش زیرمنوی سفارشی"
+                                      >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setDeleteTarget(child)}
+                                        disabled={mutatingCustom}
+                                        className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors disabled:opacity-50"
+                                        title="حذف زیرمنوی سفارشی"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
 
                                   {/* Submenu Visibility Switch */}
                                   <button
@@ -1083,23 +1120,84 @@ function MenuSettingsAdminContent() {
                 </div>
 
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  آیا از بازنشانی تمامی وضعیت‌های نمایش و دسترسی‌های منو به حالت پیش‌فرض اولیه اطمینان
-                  دارید؟ تمامی تغییرات اختصاصی اعمال شده لغو خواهند شد.
+                  آیا از بازنشانی تمامی وضعیت‌های نمایش و دسترسی‌های منوهای پیش‌فرض سیستم به حالت اولیه اطمینان دارید؟
+                  گزینه‌های سفارشی ایجاد شده توسط مدیر حذف نخواهند شد و حفظ می‌شوند.
                 </p>
 
                 <div className="flex items-center justify-end gap-3 pt-2">
                   <button
+                    type="button"
                     onClick={() => setShowResetConfirm(false)}
                     className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
                   >
                     انصراف
                   </button>
                   <button
+                    type="button"
                     onClick={handleReset}
                     disabled={resetting}
                     className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow flex items-center gap-1.5"
                   >
                     {resetting ? 'در حال بازنشانی...' : 'بله، بازنشانی شود'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Create / Edit Custom Menu Item Modal */}
+          <MenuItemFormModal
+            isOpen={isFormModalOpen}
+            editingItem={editingItem}
+            initialParentKey={initialParentKey}
+            rootModules={rootModules}
+            hasChildren={Boolean(editingItem && (childrenByParent[editingItem.menuKey]?.length || 0) > 0)}
+            submitting={mutatingCustom}
+            onClose={() => {
+              setIsFormModalOpen(false)
+              setEditingItem(null)
+            }}
+            onSubmitCreate={handleCreateCustomItem}
+            onSubmitUpdate={handleUpdateCustomItem}
+          />
+
+          {/* Delete Custom Menu Item Confirmation Modal */}
+          {deleteTarget !== null && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl p-6 max-w-md w-full border border-gray-200 shadow-2xl space-y-4">
+                <div className="flex items-center gap-3 text-rose-600">
+                  <div className="p-2.5 bg-rose-50 rounded-xl">
+                    <Trash2 className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base font-bold text-gray-900">حذف گزینه منوی سفارشی</h3>
+                </div>
+
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  آیا از حذف گزینه منوی <span className="font-bold text-gray-900">«{deleteTarget.title}»</span> اطمینان دارید؟ این عملیات قابل بازگشت نیست.
+                </p>
+
+                {(childrenByParent[deleteTarget.menuKey]?.length || 0) > 0 && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-3 text-xs leading-relaxed">
+                    هشدار: این بخش دارای {childrenByParent[deleteTarget.menuKey].length} زیرمنو است. با حذف این گزینه، تمامی زیرمنوهای سفارشی آن نیز به صورت خودکار حذف خواهند شد.
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(null)}
+                    disabled={mutatingCustom}
+                    className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    انصراف
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCustomItem()}
+                    disabled={mutatingCustom}
+                    className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {mutatingCustom ? 'در حال حذف...' : 'بله، حذف شود'}
                   </button>
                 </div>
               </div>

@@ -3,7 +3,7 @@ import localFont from 'next/font/local'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { MenuSettingsProvider } from '@/contexts/MenuSettingsContext'
-import Navbar from '@/components/layout/Navbar'
+import AppShell from '@/components/layout/AppShell'
 
 const vazirmatn = localFont({
   src: [
@@ -108,12 +108,9 @@ export default function RootLayout({
       <body className={`${vazirmatn.variable} ${bNazanin.variable} ${bTitr.variable} ${bMitra.variable} font-vazirmatn antialiased bg-gray-50`}>
         <AuthProvider>
           <MenuSettingsProvider>
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-grow">
-                {children}
-              </main>
-            </div>
+            <AppShell>
+              {children}
+            </AppShell>
           </MenuSettingsProvider>
         </AuthProvider>
       </body>

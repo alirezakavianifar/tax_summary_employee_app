@@ -11,6 +11,9 @@ public interface IMenuSettingsRepository
     Task<List<MenuSetting>> GetVisibleAsync(string? role, CancellationToken cancellationToken = default);
     Task<List<MenuSetting>> GetVisibleAsync(bool isAdmin, CancellationToken cancellationToken = default);
     Task<MenuSetting?> GetByKeyAsync(string menuKey, CancellationToken cancellationToken = default);
+    Task AddAsync(MenuSetting setting, CancellationToken cancellationToken = default);
+    Task UpdateAsync(MenuSetting setting, CancellationToken cancellationToken = default);
     Task UpdateRangeAsync(IEnumerable<MenuSetting> settings, CancellationToken cancellationToken = default);
+    Task DeleteRangeAsync(IEnumerable<MenuSetting> settings, CancellationToken cancellationToken = default);
     Task ResetToDefaultsAsync(IEnumerable<MenuSetting> defaults, CancellationToken cancellationToken = default);
 }

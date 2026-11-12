@@ -16,7 +16,41 @@ public class MenuSettingDto
     public List<string> AllowedRoles { get; set; } = new();
     public int DisplayOrder { get; set; }
     public string? Description { get; set; }
+    public bool IsCustom { get; set; }
     public List<MenuSettingDto> Children { get; set; } = new();
+}
+
+/// <summary>
+/// Request payload for creating a custom navigation menu option or module.
+/// </summary>
+public class CreateMenuSettingRequestDto
+{
+    public string? MenuKey { get; set; }
+    public string? ParentKey { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Route { get; set; } = string.Empty;
+    public string? IconName { get; set; }
+    public string? Description { get; set; }
+    public bool IsVisible { get; set; } = true;
+    public bool AdminOnly { get; set; }
+    public List<string>? AllowedRoles { get; set; }
+    public int? DisplayOrder { get; set; }
+}
+
+/// <summary>
+/// Request payload for editing metadata, hierarchy, visibility, and roles of a custom menu item.
+/// </summary>
+public class UpdateMenuSettingMetadataDto
+{
+    public string? ParentKey { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Route { get; set; } = string.Empty;
+    public string? IconName { get; set; }
+    public string? Description { get; set; }
+    public bool IsVisible { get; set; } = true;
+    public bool AdminOnly { get; set; }
+    public List<string>? AllowedRoles { get; set; }
+    public int? DisplayOrder { get; set; }
 }
 
 /// <summary>

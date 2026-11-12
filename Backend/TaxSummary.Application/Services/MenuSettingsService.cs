@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using TaxSummary.Application.DTOs.MenuSettings;
 using TaxSummary.Domain.Common;
@@ -11,6 +12,12 @@ namespace TaxSummary.Application.Services;
 /// </summary>
 public class MenuSettingsService : IMenuSettingsService
 {
+    private static readonly Regex MenuKeyPattern = new("^[a-z0-9_-]{2,100}$", RegexOptions.Compiled);
+    private static readonly HashSet<string> DefaultMenuKeys = DefaultMenuSettings
+        .GetDefaults()
+        .Select(d => d.MenuKey)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     private readonly IMenuSettingsRepository _repository;
     private readonly ILogger<MenuSettingsService> _logger;
 
@@ -53,15 +60,7 @@ public class MenuSettingsService : IMenuSettingsService
             var key = updateItem.MenuKey.Trim().ToLowerInvariant();
             if (settingsDict.TryGetValue(key, out var existingSetting))
             {
-                var incomingRoles = updateItem.AllowedRoles?.ToList() ?? new List<string>();
-                if (!incomingRoles.Any(r => string.Equals(r, "OfficeHead", StringComparison.OrdinalIgnoreCase)))
-                {
-                    incomingRoles.RemoveAll(r => string.Equals(r, "Manager", StringComparison.OrdinalIgnoreCase));
-                }
-                if (!incomingRoles.Any(r => string.Equals(r, "Expert", StringComparison.OrdinalIgnoreCase)))
-                {
-                    incomingRoles.RemoveAll(r => string.Equals(r, "Employee", StringComparison.OrdinalIgnoreCase));
-                }
+                var incomingRoles = SanitizeAllowedRoles(updateItem.AllowedRoles);
 
                 existingSetting.UpdateVisibility(
                     updateItem.IsVisible,
@@ -86,11 +85,210 @@ public class MenuSettingsService : IMenuSettingsService
         return await GetAllSettingsAsync(cancellationToken);
     }
 
+    public async Task<List<MenuSettingDto>> CreateSettingAsync(
+        CreateMenuSettingRequestDto request,
+        Guid? currentUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (request == null)
+            throw new ArgumentException("اطلاعات گزینه منو ارسال نشده است.");
+
+        var title = ValidateTitle(request.Title);
+        var route = ValidateAndNormalizeRoute(request.Route);
+        var normalizedKey = string.IsNullOrWhiteSpace(request.MenuKey)
+            ? $"custom_{Guid.NewGuid().ToString("N")[..10]}"
+            : request.MenuKey.Trim().ToLowerInvariant();
+
+        if (!MenuKeyPattern.IsMatch(normalizedKey))
+            throw new ArgumentException("شناسه یکتای منو باید شامل حروف کوچک انگلیسی، اعداد، خط تیره یا زیرخط باشد.");
+
+        if (DefaultMenuKeys.Contains(normalizedKey))
+            throw new InvalidOperationException("امکان استفاده از شناسه رزرو شده پیش‌فرض سیستم وجود ندارد.");
+
+        var duplicate = await _repository.GetByKeyAsync(normalizedKey, cancellationToken);
+        if (duplicate != null)
+            throw new InvalidOperationException($"گزینه‌ای با شناسه '{normalizedKey}' قبلاً ثبت شده است.");
+
+        var allSettings = await _repository.GetAllAsync(cancellationToken);
+        var parentKey = ValidateParentKey(request.ParentKey, normalizedKey, selfHasChildren: false, allSettings);
+
+        var nextOrder = request.DisplayOrder ?? (
+            allSettings
+                .Where(s => string.Equals(s.ParentKey ?? string.Empty, parentKey ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+                .Select(s => s.DisplayOrder)
+                .DefaultIfEmpty(0)
+                .Max() + 1
+        );
+
+        var roles = SanitizeAllowedRoles(request.AllowedRoles);
+        var allowedRolesCsv = roles.Count > 0
+            ? string.Join(",", roles)
+            : (request.AdminOnly ? "Admin" : null);
+
+        var entity = MenuSetting.Create(
+            menuKey: normalizedKey,
+            title: title,
+            route: route,
+            parentKey: parentKey,
+            iconName: request.IconName,
+            isVisible: request.IsVisible,
+            adminOnly: request.AdminOnly,
+            displayOrder: nextOrder,
+            description: request.Description,
+            updatedByUserId: currentUserId,
+            allowedRoles: allowedRolesCsv);
+
+        await _repository.AddAsync(entity, cancellationToken);
+        _logger.LogInformation("Created custom menu setting '{MenuKey}' by user {UserId}.", normalizedKey, currentUserId);
+
+        return await GetAllSettingsAsync(cancellationToken);
+    }
+
+    public async Task<List<MenuSettingDto>> UpdateSettingMetadataAsync(
+        string menuKey,
+        UpdateMenuSettingMetadataDto request,
+        Guid? currentUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(menuKey))
+            throw new ArgumentException("شناسه منو نامعتبر است.");
+
+        if (request == null)
+            throw new ArgumentException("اطلاعات ویرایش منو ارسال نشده است.");
+
+        var existing = await _repository.GetByKeyAsync(menuKey, cancellationToken)
+            ?? throw new KeyNotFoundException("گزینه منوی مورد نظر یافت نشد.");
+
+        if (DefaultMenuKeys.Contains(existing.MenuKey))
+            throw new InvalidOperationException("ویرایش ساختار گزینه‌های پیش‌فرض سیستم مجاز نیست؛ فقط گزینه‌های سفارشی قابل ویرایش هستند.");
+
+        var title = ValidateTitle(request.Title);
+        var route = ValidateAndNormalizeRoute(request.Route);
+        var allSettings = await _repository.GetAllAsync(cancellationToken);
+        var hasChildren = allSettings.Any(s => string.Equals(s.ParentKey, existing.MenuKey, StringComparison.OrdinalIgnoreCase));
+        var parentKey = ValidateParentKey(request.ParentKey, existing.MenuKey, hasChildren, allSettings);
+
+        existing.UpdateMetadata(title, route, request.Description, currentUserId, request.IconName);
+        existing.UpdateParentKey(parentKey, currentUserId);
+
+        var roles = SanitizeAllowedRoles(request.AllowedRoles);
+        existing.UpdateVisibility(
+            request.IsVisible,
+            request.AdminOnly,
+            request.DisplayOrder,
+            currentUserId,
+            roles.Count > 0 ? roles : null);
+
+        await _repository.UpdateAsync(existing, cancellationToken);
+        _logger.LogInformation("Updated custom menu setting '{MenuKey}' by user {UserId}.", existing.MenuKey, currentUserId);
+
+        return await GetAllSettingsAsync(cancellationToken);
+    }
+
+    public async Task<List<MenuSettingDto>> DeleteSettingAsync(
+        string menuKey,
+        Guid? currentUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(menuKey))
+            throw new ArgumentException("شناسه منو نامعتبر است.");
+
+        var existing = await _repository.GetByKeyAsync(menuKey, cancellationToken)
+            ?? throw new KeyNotFoundException("گزینه منوی مورد نظر یافت نشد.");
+
+        if (DefaultMenuKeys.Contains(existing.MenuKey))
+            throw new InvalidOperationException("گزینه‌های پیش‌فرض سیستم قابل حذف نیستند؛ می‌توانید آن‌ها را مخفی کنید.");
+
+        var allSettings = await _repository.GetAllAsync(cancellationToken);
+        var toDelete = allSettings
+            .Where(s =>
+                string.Equals(s.MenuKey, existing.MenuKey, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(s.ParentKey, existing.MenuKey, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        await _repository.DeleteRangeAsync(toDelete, cancellationToken);
+        _logger.LogInformation("Deleted custom menu setting '{MenuKey}' ({Count} rows) by user {UserId}.",
+            existing.MenuKey, toDelete.Count, currentUserId);
+
+        return await GetAllSettingsAsync(cancellationToken);
+    }
+
     public async Task ResetToDefaultsAsync(Guid? currentUserId, CancellationToken cancellationToken = default)
     {
         var defaults = DefaultMenuSettings.GetDefaults();
         await _repository.ResetToDefaultsAsync(defaults, cancellationToken);
-        _logger.LogInformation("Reset all menu settings to default configurations by user {UserId}.", currentUserId);
+        _logger.LogInformation("Reset built-in menu settings to default configurations by user {UserId}.", currentUserId);
+    }
+
+    private static List<string> SanitizeAllowedRoles(IEnumerable<string>? roles)
+    {
+        var list = roles?.ToList() ?? new List<string>();
+        if (!list.Any(r => string.Equals(r, "OfficeHead", StringComparison.OrdinalIgnoreCase)))
+        {
+            list.RemoveAll(r => string.Equals(r, "Manager", StringComparison.OrdinalIgnoreCase));
+        }
+        if (!list.Any(r => string.Equals(r, "Expert", StringComparison.OrdinalIgnoreCase)))
+        {
+            list.RemoveAll(r => string.Equals(r, "Employee", StringComparison.OrdinalIgnoreCase));
+        }
+        return list;
+    }
+
+    private static string ValidateTitle(string? title)
+    {
+        var trimmed = title?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmed))
+            throw new ArgumentException("عنوان منو الزامی است.");
+        if (trimmed.Length > 150)
+            throw new ArgumentException("عنوان منو نباید بیشتر از ۱۵۰ کاراکتر باشد.");
+        return trimmed;
+    }
+
+    private static string ValidateAndNormalizeRoute(string? route)
+    {
+        var trimmed = route?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmed))
+            throw new ArgumentException("مسیر یا لینک مقصد منو الزامی است.");
+
+        if (trimmed.Length > 250)
+            throw new ArgumentException("مسیر یا لینک مقصد نباید بیشتر از ۲۵۰ کاراکتر باشد.");
+
+        bool isInternalRoute = trimmed.StartsWith("/", StringComparison.Ordinal) && !trimmed.StartsWith("//", StringComparison.Ordinal);
+        bool isHttpUrl = Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) &&
+                         (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
+        if (!isInternalRoute && !isHttpUrl)
+            throw new ArgumentException("مسیر باید با '/' شروع شود (مسیر داخلی) یا یک آدرس معتبر http/https باشد.");
+
+        return trimmed;
+    }
+
+    private static string? ValidateParentKey(
+        string? rawParentKey,
+        string selfKey,
+        bool selfHasChildren,
+        List<MenuSetting> allSettings)
+    {
+        if (string.IsNullOrWhiteSpace(rawParentKey))
+            return null;
+
+        var normalizedParent = rawParentKey.Trim().ToLowerInvariant();
+        if (string.Equals(normalizedParent, selfKey, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("یک گزینه نمی‌تواند زیرمجموعه خودش باشد.");
+
+        if (selfHasChildren)
+            throw new InvalidOperationException("یک ماژول دارای زیرمنو نمی‌تواند به زیرمنوی ماژول دیگر تبدیل شود.");
+
+        var parent = allSettings.FirstOrDefault(s =>
+            string.Equals(s.MenuKey, normalizedParent, StringComparison.OrdinalIgnoreCase));
+
+        if (parent == null)
+            throw new ArgumentException("ماژول والد انتخاب‌شده یافت نشد.");
+
+        if (!string.IsNullOrWhiteSpace(parent.ParentKey))
+            throw new ArgumentException("حداکثر دو سطح منو پشتیبانی می‌شود؛ ماژول والد باید سطح اول باشد.");
+
+        return parent.MenuKey;
     }
 
     private static List<MenuSettingDto> MapAndBuildHierarchy(List<MenuSetting> entities)
@@ -110,6 +308,7 @@ public class MenuSettingsService : IMenuSettingsService
                 .ToList(),
             DisplayOrder = e.DisplayOrder,
             Description = e.Description,
+            IsCustom = !DefaultMenuKeys.Contains(e.MenuKey),
             Children = new List<MenuSettingDto>()
         }).ToList();
 

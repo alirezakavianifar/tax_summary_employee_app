@@ -70,16 +70,45 @@ public class MenuSettingsRepository : IMenuSettingsRepository
             .FirstOrDefaultAsync(m => m.MenuKey == normalizedKey, cancellationToken);
     }
 
+    public async Task AddAsync(MenuSetting setting, CancellationToken cancellationToken = default)
+    {
+        await _context.MenuSettings.AddAsync(setting, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateAsync(MenuSetting setting, CancellationToken cancellationToken = default)
+    {
+        _context.MenuSettings.Update(setting);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task UpdateRangeAsync(IEnumerable<MenuSetting> settings, CancellationToken cancellationToken = default)
     {
         _context.MenuSettings.UpdateRange(settings);
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task DeleteRangeAsync(IEnumerable<MenuSetting> settings, CancellationToken cancellationToken = default)
+    {
+        _context.MenuSettings.RemoveRange(settings);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task ResetToDefaultsAsync(IEnumerable<MenuSetting> defaults, CancellationToken cancellationToken = default)
     {
-        _context.MenuSettings.RemoveRange(_context.MenuSettings);
-        await _context.MenuSettings.AddRangeAsync(defaults, cancellationToken);
+        var defaultList = defaults.ToList();
+        var defaultKeys = defaultList
+            .Select(d => d.MenuKey.ToLowerInvariant())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Preserve admin-created custom items; reset only built-in defaults
+        var existingAll = await _context.MenuSettings.ToListAsync(cancellationToken);
+        var builtInExisting = existingAll
+            .Where(m => defaultKeys.Contains(m.MenuKey))
+            .ToList();
+
+        _context.MenuSettings.RemoveRange(builtInExisting);
+        await _context.MenuSettings.AddRangeAsync(defaultList, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
 }

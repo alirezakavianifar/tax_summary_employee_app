@@ -23,7 +23,22 @@ public interface IMenuSettingsService
     Task<List<MenuSettingDto>> UpdateSettingsAsync(UpdateMenuSettingsRequestDto request, Guid? currentUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Resets all menu settings to initial system defaults.
+    /// Creates a new custom menu option or module.
+    /// </summary>
+    Task<List<MenuSettingDto>> CreateSettingAsync(CreateMenuSettingRequestDto request, Guid? currentUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates metadata and access settings for a custom menu item.
+    /// </summary>
+    Task<List<MenuSettingDto>> UpdateSettingMetadataAsync(string menuKey, UpdateMenuSettingMetadataDto request, Guid? currentUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a custom menu item (and any custom children). Built-in items cannot be deleted.
+    /// </summary>
+    Task<List<MenuSettingDto>> DeleteSettingAsync(string menuKey, Guid? currentUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resets built-in menu settings to initial system defaults while preserving custom items.
     /// </summary>
     Task ResetToDefaultsAsync(Guid? currentUserId, CancellationToken cancellationToken = default);
 }

@@ -193,7 +193,12 @@ public class MenuSetting
         UpdatedByUserId = updatedByUserId;
     }
 
-    public void UpdateMetadata(string title, string route, string? description = null, Guid? updatedByUserId = null)
+    public void UpdateMetadata(
+        string title,
+        string route,
+        string? description = null,
+        Guid? updatedByUserId = null,
+        string? iconName = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("عنوان منو الزامی است", nameof(title));
@@ -201,6 +206,18 @@ public class MenuSetting
         Title = title.Trim();
         Route = string.IsNullOrWhiteSpace(route) ? "/" : route.Trim();
         Description = description?.Trim();
+        IconName = string.IsNullOrWhiteSpace(iconName) ? null : iconName.Trim();
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedByUserId = updatedByUserId;
+    }
+
+    public void UpdateParentKey(string? parentKey, Guid? updatedByUserId = null)
+    {
+        var normalized = string.IsNullOrWhiteSpace(parentKey) ? null : parentKey.Trim().ToLowerInvariant();
+        if (normalized == MenuKey)
+            throw new ArgumentException("یک گزینه نمی‌تواند زیرمجموعه خودش باشد", nameof(parentKey));
+
+        ParentKey = normalized;
         UpdatedAt = DateTime.UtcNow;
         UpdatedByUserId = updatedByUserId;
     }

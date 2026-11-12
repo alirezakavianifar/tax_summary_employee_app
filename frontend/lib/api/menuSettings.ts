@@ -2,6 +2,8 @@ import { apiClient } from './client'
 import type {
   MenuSettingItem,
   UpdateMenuSettingsPayload,
+  CreateMenuSettingPayload,
+  UpdateMenuSettingMetadataPayload,
 } from '@/types/menuSettings'
 
 export const menuSettingsApi = {
@@ -33,7 +35,39 @@ export const menuSettingsApi = {
   },
 
   /**
-   * Resets all menu settings back to system defaults.
+   * Creates a new custom menu option or module.
+   */
+  async createMenuSetting(payload: CreateMenuSettingPayload): Promise<MenuSettingItem[]> {
+    const response = await apiClient.post<MenuSettingItem[]>('/menu-settings', payload)
+    return response.data
+  },
+
+  /**
+   * Updates metadata and access settings for a custom menu option.
+   */
+  async updateMenuSettingMetadata(
+    menuKey: string,
+    payload: UpdateMenuSettingMetadataPayload
+  ): Promise<MenuSettingItem[]> {
+    const response = await apiClient.put<MenuSettingItem[]>(
+      `/menu-settings/${encodeURIComponent(menuKey)}`,
+      payload
+    )
+    return response.data
+  },
+
+  /**
+   * Deletes a custom menu option (and any custom children).
+   */
+  async deleteMenuSetting(menuKey: string): Promise<MenuSettingItem[]> {
+    const response = await apiClient.delete<MenuSettingItem[]>(
+      `/menu-settings/${encodeURIComponent(menuKey)}`
+    )
+    return response.data
+  },
+
+  /**
+   * Resets built-in menu settings back to system defaults while preserving custom items.
    */
   async resetMenuSettings(): Promise<MenuSettingItem[]> {
     const response = await apiClient.post<MenuSettingItem[]>('/menu-settings/reset')
