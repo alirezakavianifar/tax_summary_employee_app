@@ -1,280 +1,188 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
-import {
-  getRolePersianName,
-  getUserDisplayName,
-  getUserFullName,
-  getUserAvatarLetter,
-} from '@/types/auth'
+import { getUserDisplayName } from '@/types/auth'
 import { getAuthorizedPortalModules } from '@/lib/modules/portalRegistry'
 import ModuleCard from '@/components/portal/ModuleCard'
 import {
-  Sparkles,
-  Users,
-  ShieldCheck,
-  HelpCircle,
-  LogIn,
+  Calendar,
   Layers,
-  Sliders,
+  LogIn,
+  ExternalLink,
+  HelpCircle,
+  Activity,
+  CheckCircle2,
 } from 'lucide-react'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
+import {
+  getTodayJalali,
+  getJalaliWeekday,
+  PERSIAN_WEEK_DAYS,
+  PERSIAN_MONTH_NAMES,
+  toPersianDigits,
+} from '@/lib/jalali'
 
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth()
-  const { isModuleVisible, isActionVisible } = useMenuSettings()
+  const { isModuleVisible } = useMenuSettings()
+  const [todayString, setTodayString] = useState<string>('')
+
+  useEffect(() => {
+    try {
+      const { jy, jm, jd } = getTodayJalali()
+      const weekday = getJalaliWeekday(jy, jm, jd)
+      const dayName = PERSIAN_WEEK_DAYS[weekday]?.name || ''
+      const monthName = PERSIAN_MONTH_NAMES[jm - 1] || ''
+      setTodayString(`${dayName}، ${toPersianDigits(jd)} ${monthName} ${toPersianDigits(jy)}`)
+    } catch {
+      // Fallback in case of date error
+    }
+  }, [])
+
   const modules = getAuthorizedPortalModules(user?.role)
   const visibleModules = modules.filter((m) => isModuleVisible(m.id))
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-100/50 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-10">
-        {/* Hero Welcome Section */}
-        <div className="relative rounded-3xl bg-gradient-to-r from-slate-900 via-primary-950 to-indigo-950 text-white p-6 sm:p-10 lg:p-12 shadow-2xl overflow-hidden border border-white/10">
-          {/* Background Decorative Glow */}
-          <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+    <main className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-100/60 py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+        {/* Compact Executive Hero Banner */}
+        <div className="relative rounded-2xl bg-gradient-to-r from-slate-900 via-primary-950 to-indigo-950 text-white p-5 sm:p-7 shadow-xl overflow-hidden border border-white/10">
+          {/* Subtle Ambient Glow */}
+          <div className="absolute -top-12 -right-12 w-64 h-64 bg-primary-500/15 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
 
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* Left Content (RTL right-aligned text) */}
-            <div className="lg:col-span-7 space-y-5">
-              {/* Organization Branding Pill */}
-              <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-primary-200 border border-white/15 shadow-sm">
-                <div className="w-6 h-6 rounded-full bg-white p-0.5 flex items-center justify-center shadow">
-                  <img
-                    src="/images/Intamedia_Logo.png"
-                    alt="نشان رسمی اداره کل امور مالیاتی استان خوزستان"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <span className="text-emerald-300 font-bold">اداره کل امور مالیاتی استان خوزستان</span>
-                <span className="text-white/40">|</span>
-                <span className="text-gray-200">درگاه خدمات سازمانی و منابع انسانی</span>
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  سامانه‌های یکپارچه برخط
+                </span>
+
+                {todayString && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-300 bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
+                    <Calendar className="w-3 h-3 text-primary-300" />
+                    <span>{todayString}</span>
+                  </span>
+                )}
               </div>
 
-              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white">
                 سامانه یکپارچه امور سازمانی و مالیاتی
               </h1>
 
-              <p className="text-xs sm:text-sm lg:text-base text-gray-300 leading-relaxed max-w-2xl font-normal">
-                پرتال یکپارچه مدیریت فرآیندهای ارزیابی شایستگی و انتصابات مدیریتی، محاسبه مشارکتی حقوق و اضافه‌کار، و سامانه جامع استرداد مالیات اضافه دریافتی اداره کل امور مالیاتی استان خوزستان.
-              </p>
-
-              {/* Action buttons & Login Status */}
-              <div className="pt-2 flex flex-wrap items-center gap-4">
+              <p className="text-xs sm:text-sm text-gray-300 max-w-2xl font-normal leading-relaxed">
                 {isAuthenticated ? (
-                  <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl px-4 py-2.5">
-                    <div className="w-9 h-9 rounded-full bg-primary-500/30 border border-primary-400/40 flex items-center justify-center font-bold text-sm text-primary-200 shadow-xs flex-shrink-0">
-                      {getUserAvatarLetter(user)}
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-300 block">کاربر فعال:</span>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-white">{getUserDisplayName(user)}</span>
-                        {getUserFullName(user) && user?.username && (
-                          <span className="text-xs text-gray-300/80 font-mono" dir="ltr">
-                            ({user.username})
-                          </span>
-                        )}
-                        <span className="text-[11px] bg-primary-500/20 text-primary-300 px-2 py-0.5 rounded-md font-medium border border-primary-500/30">
-                          نقش: {getRolePersianName(user?.role)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  <span>
+                    خوش آمدید، <strong className="text-white font-semibold">{getUserDisplayName(user)}</strong>. کلیه کارپوشه‌ها و ابزارهای سازمانی در دسترس شما قرار دارد.
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-3">
-                    <Link
-                      href="/login"
-                      className="inline-flex items-center gap-2 bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg hover:shadow-primary-500/25"
-                    >
-                      <LogIn className="w-4 h-4" />
-                      ورود به حساب کاربری
-                    </Link>
-                    <span className="text-xs text-gray-400">جهت دسترسی به فرم‌ها و پنل‌های مدیریتی</span>
-                  </div>
+                  <span>
+                    درگاه خدمات الکترونیک، ارزیابی انتصابات، محاسبات مشارکتی حقوق و استرداد مالیات اداره کل امور مالیاتی استان خوزستان
+                  </span>
                 )}
-              </div>
+              </p>
             </div>
 
-            {/* Right Visual Image Showcase (Hero Image) */}
-            <div className="lg:col-span-5 relative flex justify-center lg:justify-end">
-              <div className="relative group w-full max-w-md">
-                {/* Ambient glow behind image */}
-                <div className="absolute -inset-1 bg-gradient-to-r from-primary-500 to-indigo-500 rounded-3xl blur-xl opacity-40 group-hover:opacity-70 transition duration-500" />
-                
-                {/* Main Illustration Container */}
-                <div className="relative rounded-2xl overflow-hidden border border-white/20 bg-slate-900/80 shadow-2xl">
-                  <img
-                    src="/images/tax_hero_illustration.jpg"
-                    alt="نمای هوشمند سامانه امور مالیاتی کشور"
-                    className="w-full h-auto object-cover transform group-hover:scale-105 transition-transform duration-500"
-                  />
-                  
-                  {/* Glassmorphism Floating Overlays */}
-                  <div className="absolute bottom-3 right-3 left-3 bg-slate-950/75 backdrop-blur-md rounded-xl p-3 border border-white/15 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="font-semibold text-gray-200 text-[11px]">سامانه یکپارچه هوشمند مالیاتی</span>
-                    </div>
-                    <span className="text-[10px] text-amber-300 font-bold bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
-                      نسخه پرتال ۲.۰
-                    </span>
-                  </div>
+            {/* Quick Hero Meta / Auth Button */}
+            <div className="flex items-center gap-3 w-full md:w-auto justify-start md:justify-end flex-shrink-0">
+              {isAuthenticated ? (
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-3.5 py-2 text-xs">
+                  <Activity className="w-4 h-4 text-emerald-400" />
+                  <span className="text-gray-200">وضعیت دسترسی:</span>
+                  <span className="text-emerald-300 font-bold">فعال و متصل</span>
                 </div>
-              </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-xl transition-all shadow-md hover:shadow-primary-500/25"
+                >
+                  <LogIn className="w-4 h-4" />
+                  ورود به حساب کاربری
+                </Link>
+              )}
             </div>
           </div>
         </div>
 
         {/* Modules Section Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-black text-gray-900 flex items-center gap-2">
-              <Layers className="w-6 h-6 text-primary-600" />
-              ماژول‌ها و سامانه‌های فعال پرتال
-            </h2>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              جهت ورود به هر بخش، بر روی سامانه مورد نظر کلیک نمایید.
-            </p>
+        <div className="flex items-center justify-between border-b border-gray-200/80 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-primary-100 text-primary-700 rounded-lg">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-black text-gray-900">
+                سامانه‌ها و کارپوشه‌های عملیاتی
+              </h2>
+              <p className="text-xs text-gray-500">
+                جهت دسترسی به خدمات و بخش‌های هر ماژول، گزینه مورد نظر را انتخاب نمایید.
+              </p>
+            </div>
           </div>
-          <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-            {visibleModules.length} سامانه اصلی
+          <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full border border-gray-200/80">
+            {toPersianDigits(visibleModules.length)} سامانه فعال
           </span>
         </div>
 
         {/* Extensible Modules Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {visibleModules.map((module) => (
             <ModuleCard key={module.id} module={module} userRole={user?.role} />
           ))}
         </div>
 
-        {/* Quick Utilities & Shortcuts Bar */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary-600" />
-            دسترسی‌های سریع و راهنمای سامانه
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {user?.role === 'Admin' && isActionVisible('/admin/menu-settings', 'admin') && (
-              <Link
-                href="/admin/menu-settings"
-                className="p-4 rounded-xl bg-purple-50/60 hover:bg-purple-50 border border-purple-200 hover:border-purple-300 transition-all flex items-center gap-3 group"
-              >
-                <div className="p-2.5 bg-white rounded-lg border border-purple-200 group-hover:border-purple-300 shadow-xs">
-                  <Sliders className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-gray-900 block group-hover:text-purple-700">
-                    مدیریت منوها و دسترسی‌ها
-                  </span>
-                  <span className="text-[11px] text-gray-500">پیکربندی نمایش و پنهان‌سازی بخش‌ها</span>
-                </div>
-              </Link>
-            )}
-
-            {user?.role === 'Admin' && isActionVisible('/admin/users', 'admin') && (
-              <Link
-                href="/admin/users"
-                className="p-4 rounded-xl bg-gray-50 hover:bg-primary-50/50 border border-gray-200 hover:border-primary-300 transition-all flex items-center gap-3 group"
-              >
-                <div className="p-2.5 bg-white rounded-lg border border-gray-200 group-hover:border-primary-200 shadow-xs">
-                  <ShieldCheck className="w-5 h-5 text-primary-600" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-gray-900 block group-hover:text-primary-700">
-                    مدیریت کاربران و دسترسی‌ها
-                  </span>
-                  <span className="text-[11px] text-gray-500">تعریف حساب‌ها و سطوح سازمانی</span>
-                </div>
-              </Link>
-            )}
-
-            {isActionVisible('/reports/search', 'employee-evaluation') && (
-              <Link
-                href="/reports/search"
-                className="p-4 rounded-xl bg-gray-50 hover:bg-primary-50/50 border border-gray-200 hover:border-primary-300 transition-all flex items-center gap-3 group"
-              >
-                <div className="p-2.5 bg-white rounded-lg border border-gray-200 group-hover:border-primary-200 shadow-xs">
-                  <Users className="w-5 h-5 text-indigo-600" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-gray-900 block group-hover:text-primary-700">
-                    بانک سوابق و جستجوی پرسنل
-                  </span>
-                  <span className="text-[11px] text-gray-500">فیلتر و مشاهده پرونده کارکنان</span>
-                </div>
-              </Link>
-            )}
-
-            <Link
-              href="/about"
-              className="p-4 rounded-xl bg-gray-50 hover:bg-primary-50/50 border border-gray-200 hover:border-primary-300 transition-all flex items-center gap-3 group"
-            >
-              <div className="p-2.5 bg-white rounded-lg border border-gray-200 group-hover:border-primary-200 shadow-xs">
-                <HelpCircle className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-gray-900 block group-hover:text-primary-700">
-                  راهنمای سامانه و دستورالعمل‌ها
-                </span>
-                <span className="text-[11px] text-gray-500">مستندات و فرآیندهای سازمانی</span>
-              </div>
-            </Link>
-          </div>
-        </div>
-
-        {/* Organizational Tax Administration Identity Section */}
-        <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-6 sm:p-8 border border-gray-800 shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl overflow-hidden ring-2 ring-emerald-500/40 shadow-lg flex-shrink-0 bg-white p-2 flex items-center justify-center">
+        {/* Streamlined Government Identity & Utility Footer */}
+        <footer className="mt-12 pt-6 border-t border-gray-200/80 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-white p-0.5 border border-gray-200 shadow-xs flex items-center justify-center flex-shrink-0">
               <img
                 src="/images/Intamedia_Logo.png"
-                alt="لوگوی رسمی اداره کل امور مالیاتی استان خوزستان"
+                alt="لوگوی اداره کل امور مالیاتی استان خوزستان"
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <h4 className="text-base font-bold text-white flex items-center gap-2">
-                اداره کل امور مالیاتی استان خوزستان
-                <span className="text-[10px] font-normal text-emerald-300 bg-emerald-400/15 border border-emerald-400/30 px-2 py-0.5 rounded-full">
-                  سازمان امور مالیاتی کشور
-                </span>
-              </h4>
-              <p className="text-xs text-gray-300 mt-1 max-w-2xl leading-relaxed">
-                سامانه هوشمند پایش ارزیابی انتصابات و محاسبات رفاهی و اضافه کار — طراحی شده منطبق با آخرین بخشنامه‌ها و ضوابط اداری اداره کل امور مالیاتی استان خوزستان.
-              </p>
-            </div>
+            <p>
+              اداره کل امور مالیاتی استان خوزستان — تمامی حقوق محفوظ است.
+            </p>
           </div>
 
-          <div className="flex items-center gap-3 flex-shrink-0 w-full md:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/about"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-gray-500" />
+              راهنمای سامانه
+            </Link>
+
             <a
               href="https://www.intamedia.ir"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-gray-200 border border-white/10 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
             >
-              پرتال اطلاع‌رسانی سازمان
+              پرتال سازمان امور مالیاتی
+              <ExternalLink className="w-3 h-3 text-gray-400" />
             </a>
+
             <a
               href="https://my.tax.gov.ir"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-500 text-white transition-colors shadow"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200/60 transition-colors font-medium"
             >
               درگاه ملی خدمات مالیاتی
+              <ExternalLink className="w-3 h-3 text-primary-500" />
             </a>
-          </div>
-        </div>
 
-        {/* Footer */}
-        <div className="text-center text-xs text-gray-400 py-4">
-          <p>سامانه یکپارچه مدیریت منابع انسانی و امور اداری — تمامی حقوق متعلق به اداره کل امور مالیاتی استان خوزستان می‌باشد.</p>
-        </div>
+            <span className="text-[11px] bg-gray-100 text-gray-500 px-2 py-1 rounded border border-gray-200 font-mono">
+              v2.0
+            </span>
+          </div>
+        </footer>
       </div>
     </main>
   )
