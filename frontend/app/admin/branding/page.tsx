@@ -42,6 +42,7 @@ export default function BrandingManagementPage() {
   const [reportingSubtitle, setReportingSubtitle] = useState(branding.reportingModuleSubtitle)
   const [footerCopyright, setFooterCopyright] = useState(branding.footerCopyrightText || 'تمامی حقوق محفوظ است.')
   const [footerVersion, setFooterVersion] = useState(branding.footerVersionText || 'v2.0')
+  const [footerBadge, setFooterBadge] = useState(branding.footerBadgeText || 'سامانه رسمی')
   const [footerLinks, setFooterLinks] = useState<FooterLinkDto[]>(branding.footerLinks || [])
 
   // Modal state for adding / editing a link
@@ -69,6 +70,7 @@ export default function BrandingManagementPage() {
     setReportingSubtitle(branding.reportingModuleSubtitle)
     setFooterCopyright(branding.footerCopyrightText || 'تمامی حقوق محفوظ است.')
     setFooterVersion(branding.footerVersionText ?? 'v2.0')
+    setFooterBadge(branding.footerBadgeText ?? 'سامانه رسمی')
     setFooterLinks(branding.footerLinks || [])
   }, [branding])
 
@@ -171,6 +173,7 @@ export default function BrandingManagementPage() {
         reportingModuleSubtitle: reportingSubtitle.trim(),
         footerCopyrightText: footerCopyright.trim(),
         footerVersionText: footerVersion.trim(),
+        footerBadgeText: footerBadge.trim(),
         footerLinksJson: JSON.stringify(footerLinks),
       })
       setStatusMessage({ type: 'success', text: 'تنظیمات برندینگ، هویت و فوتر سازمان با موفقیت ذخیره شد.' })
@@ -376,7 +379,7 @@ export default function BrandingManagementPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-700 mb-1.5">
                           متن کپی‌رایت و پانویس فوتر
@@ -390,6 +393,22 @@ export default function BrandingManagementPage() {
                         />
                         <p className="text-[11px] text-gray-400 mt-1">
                           در فوتر پس از نام سازمان نمایش می‌یابد.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                          برچسب هویت رسمی (Badge)
+                        </label>
+                        <input
+                          type="text"
+                          value={footerBadge}
+                          onChange={(e) => setFooterBadge(e.target.value)}
+                          placeholder="مثال: سامانه رسمی یا خالی برای عدم نمایش"
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all font-medium"
+                        />
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          نشان کنار نام سازمان. در صورت خالی بودن، این نشان مخفی می‌شود.
                         </p>
                       </div>
 
@@ -718,6 +737,7 @@ export default function BrandingManagementPage() {
                       resolvedLogoUrl,
                       footerCopyrightText: footerCopyright,
                       footerVersionText: footerVersion,
+                      footerBadgeText: footerBadge,
                       footerLinks,
                     }}
                   />

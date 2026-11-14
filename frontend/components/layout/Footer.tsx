@@ -21,6 +21,7 @@ interface FooterProps {
     resolvedLogoUrl?: string
     footerCopyrightText?: string
     footerVersionText?: string
+    footerBadgeText?: string
     footerLinks?: FooterLinkDto[]
   }
 }
@@ -75,6 +76,10 @@ export default function Footer({ className = '', overrideBranding }: FooterProps
   const logoUrl = overrideBranding?.resolvedLogoUrl ?? resolvedLogoUrl
   const copyrightText = overrideBranding?.footerCopyrightText ?? branding.footerCopyrightText ?? 'تمامی حقوق محفوظ است.'
   const versionText = overrideBranding?.footerVersionText ?? branding.footerVersionText
+  const badgeText =
+    overrideBranding?.footerBadgeText !== undefined
+      ? overrideBranding.footerBadgeText
+      : (branding.footerBadgeText ?? 'سامانه رسمی')
   const rawLinks = overrideBranding?.footerLinks ?? branding.footerLinks ?? []
 
   const visibleLinks = [...rawLinks]
@@ -109,10 +114,12 @@ export default function Footer({ className = '', overrideBranding }: FooterProps
               <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
                 {orgName}
               </h3>
-              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-50 text-primary-700 border border-primary-200/60 shadow-2xs">
-                <ShieldCheck className="w-3 h-3 text-primary-600" />
-                سامانه رسمی
-              </span>
+              {badgeText && badgeText.trim() !== '' && (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-50 text-primary-700 border border-primary-200/60 shadow-2xs">
+                  <ShieldCheck className="w-3 h-3 text-primary-600" />
+                  {badgeText.trim()}
+                </span>
+              )}
             </div>
 
             <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">

@@ -17,6 +17,7 @@ export interface SystemSettingsDto {
   reportingModuleSubtitle: string
   footerCopyrightText: string
   footerVersionText: string
+  footerBadgeText: string
   footerLinksJson: string
   footerLinks?: FooterLinkDto[]
   updatedAt: string
@@ -31,6 +32,7 @@ export interface UpdateSystemSettingsPayload {
   reportingModuleSubtitle: string
   footerCopyrightText?: string
   footerVersionText?: string
+  footerBadgeText?: string
   footerLinksJson?: string
 }
 

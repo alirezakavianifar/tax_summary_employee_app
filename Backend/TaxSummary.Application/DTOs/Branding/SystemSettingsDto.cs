@@ -21,6 +21,7 @@ public class SystemSettingsDto
     public string ReportingModuleSubtitle { get; set; } = string.Empty;
     public string FooterCopyrightText { get; set; } = string.Empty;
     public string FooterVersionText { get; set; } = string.Empty;
+    public string FooterBadgeText { get; set; } = string.Empty;
     public string FooterLinksJson { get; set; } = string.Empty;
     public List<FooterLinkDto> FooterLinks { get; set; } = new();
     public DateTime UpdatedAt { get; set; }
@@ -36,6 +37,7 @@ public class UpdateSystemSettingsDto
     public string ReportingModuleSubtitle { get; set; } = string.Empty;
     public string? FooterCopyrightText { get; set; }
     public string? FooterVersionText { get; set; }
+    public string? FooterBadgeText { get; set; }
     public string? FooterLinksJson { get; set; }
 }
 

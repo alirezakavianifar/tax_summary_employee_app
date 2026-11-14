@@ -22,6 +22,7 @@ public class SystemSettingTests
         setting.ReportingModuleSubtitle.Should().Be("اداره کل امور مالیاتی استان خوزستان");
         setting.FooterCopyrightText.Should().Be("تمامی حقوق محفوظ است.");
         setting.FooterVersionText.Should().Be("v2.0");
+        setting.FooterBadgeText.Should().Be("سامانه رسمی");
         setting.FooterLinksJson.Should().NotBeNullOrWhiteSpace();
     }
 
@@ -40,6 +41,7 @@ public class SystemSettingTests
             reportingModuleSubtitle: "اداره کل استان تهران",
             footerCopyrightText: "حقوق نشر محفوظ برای استان تهران",
             footerVersionText: "v3.0",
+            footerBadgeText: "پرتال اختصاصی",
             footerLinksJson: "[]",
             updatedBy: "admin"
         );
@@ -52,6 +54,7 @@ public class SystemSettingTests
         setting.ReportingModuleSubtitle.Should().Be("اداره کل استان تهران");
         setting.FooterCopyrightText.Should().Be("حقوق نشر محفوظ برای استان تهران");
         setting.FooterVersionText.Should().Be("v3.0");
+        setting.FooterBadgeText.Should().Be("پرتال اختصاصی");
         setting.FooterLinksJson.Should().Be("[]");
         setting.UpdatedBy.Should().Be("admin");
     }
@@ -69,6 +72,7 @@ public class SystemSettingTests
             reportingModuleSubtitle: "زیرعنوان",
             footerCopyrightText: "متن دلخواه",
             footerVersionText: "v9.9",
+            footerBadgeText: "نشان سفارشی",
             footerLinksJson: "[{\"id\":\"1\"}]",
             updatedBy: "user1"
         );
@@ -84,6 +88,7 @@ public class SystemSettingTests
         setting.ReportingModuleSubtitle.Should().Be("اداره کل امور مالیاتی استان خوزستان");
         setting.FooterCopyrightText.Should().Be("تمامی حقوق محفوظ است.");
         setting.FooterVersionText.Should().Be("v2.0");
+        setting.FooterBadgeText.Should().Be("سامانه رسمی");
         setting.UpdatedBy.Should().Be("admin_reset");
     }
 }

@@ -1151,6 +1151,7 @@ public static class DbInitializer
                     ""ReportingModuleSubtitle"" TEXT NOT NULL,
                     ""FooterCopyrightText"" TEXT NOT NULL DEFAULT 'تمامی حقوق محفوظ است.',
                     ""FooterVersionText"" TEXT NOT NULL DEFAULT 'v2.0',
+                    ""FooterBadgeText"" TEXT NOT NULL DEFAULT 'سامانه رسمی',
                     ""FooterLinksJson"" TEXT NOT NULL DEFAULT '[]',
                     ""UpdatedAt"" TEXT NOT NULL,
                     ""UpdatedBy"" TEXT NULL
@@ -1178,6 +1179,11 @@ public static class DbInitializer
                 if (!systemSettingColumns.Contains("FooterVersionText"))
                 {
                     command.CommandText = "ALTER TABLE SystemSettings ADD COLUMN FooterVersionText TEXT NOT NULL DEFAULT 'v2.0';";
+                    await command.ExecuteNonQueryAsync();
+                }
+                if (!systemSettingColumns.Contains("FooterBadgeText"))
+                {
+                    command.CommandText = "ALTER TABLE SystemSettings ADD COLUMN FooterBadgeText TEXT NOT NULL DEFAULT 'سامانه رسمی';";
                     await command.ExecuteNonQueryAsync();
                 }
                 if (!systemSettingColumns.Contains("FooterLinksJson"))

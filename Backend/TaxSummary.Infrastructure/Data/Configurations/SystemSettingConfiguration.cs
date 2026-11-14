@@ -46,6 +46,10 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             .IsRequired()
             .HasMaxLength(50);
 
+        builder.Property(x => x.FooterBadgeText)
+            .IsRequired()
+            .HasMaxLength(100);
+
         builder.Property(x => x.FooterLinksJson)
             .IsRequired()
             .HasMaxLength(4000);

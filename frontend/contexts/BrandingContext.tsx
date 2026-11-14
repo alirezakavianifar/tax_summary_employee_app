@@ -26,6 +26,7 @@ const DEFAULT_BRANDING: SystemSettingsDto = {
   reportingModuleSubtitle: 'اداره کل امور مالیاتی استان خوزستان',
   footerCopyrightText: 'تمامی حقوق محفوظ است.',
   footerVersionText: 'v2.0',
+  footerBadgeText: 'سامانه رسمی',
   footerLinksJson: '[{"id":"link-about","title":"راهنمای سامانه","url":"/about","isExternal":false,"isVisible":true,"order":1},{"id":"link-intamedia","title":"پرتال سازمان امور مالیاتی","url":"https://www.intamedia.ir","isExternal":true,"isVisible":true,"order":2},{"id":"link-mytax","title":"درگاه ملی خدمات مالیاتی","url":"https://my.tax.gov.ir","isExternal":true,"isVisible":true,"order":3}]',
   footerLinks: [
     { id: 'link-about', title: 'راهنمای سامانه', url: '/about', isExternal: false, isVisible: true, order: 1 },
@@ -61,6 +62,7 @@ function normalizeBranding(data: SystemSettingsDto): SystemSettingsDto {
     ...data,
     footerCopyrightText: data.footerCopyrightText ?? DEFAULT_BRANDING.footerCopyrightText,
     footerVersionText: data.footerVersionText ?? DEFAULT_BRANDING.footerVersionText,
+    footerBadgeText: data.footerBadgeText ?? DEFAULT_BRANDING.footerBadgeText,
     footerLinks: links ?? DEFAULT_BRANDING.footerLinks,
   }
 }

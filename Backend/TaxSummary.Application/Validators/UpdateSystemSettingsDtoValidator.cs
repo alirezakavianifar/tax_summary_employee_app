@@ -29,6 +29,9 @@ public class UpdateSystemSettingsDtoValidator : AbstractValidator<UpdateSystemSe
         RuleFor(x => x.FooterVersionText)
             .MaximumLength(50).WithMessage("عنوان نسخه فوتر نمی‌تواند بیش از ۵۰ کاراکتر باشد");
 
+        RuleFor(x => x.FooterBadgeText)
+            .MaximumLength(100).WithMessage("عنوان برچسب هویت رسمی فوتر نمی‌تواند بیش از ۱۰۰ کاراکتر باشد");
+
         RuleFor(x => x.FooterLinksJson)
             .MaximumLength(4000).WithMessage("داده‌های پیوندهای فوتر بیش از حد مجاز است");
     }

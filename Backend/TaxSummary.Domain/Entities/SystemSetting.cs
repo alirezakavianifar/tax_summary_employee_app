@@ -13,6 +13,7 @@ public class SystemSetting
     public const string DefaultReportingModuleSubtitle = "اداره کل امور مالیاتی استان خوزستان";
     public const string DefaultFooterCopyrightText = "تمامی حقوق محفوظ است.";
     public const string DefaultFooterVersionText = "v2.0";
+    public const string DefaultFooterBadgeText = "سامانه رسمی";
     public const string DefaultFooterLinksJson = "[{\"id\":\"link-about\",\"title\":\"راهنمای سامانه\",\"url\":\"/about\",\"isExternal\":false,\"isVisible\":true,\"order\":1},{\"id\":\"link-intamedia\",\"title\":\"پرتال سازمان امور مالیاتی\",\"url\":\"https://www.intamedia.ir\",\"isExternal\":true,\"isVisible\":true,\"order\":2},{\"id\":\"link-mytax\",\"title\":\"درگاه ملی خدمات مالیاتی\",\"url\":\"https://my.tax.gov.ir\",\"isExternal\":true,\"isVisible\":true,\"order\":3}]";
 
     public Guid Id { get; private set; }
@@ -24,6 +25,7 @@ public class SystemSetting
     public string ReportingModuleSubtitle { get; private set; } = DefaultReportingModuleSubtitle;
     public string FooterCopyrightText { get; private set; } = DefaultFooterCopyrightText;
     public string FooterVersionText { get; private set; } = DefaultFooterVersionText;
+    public string FooterBadgeText { get; private set; } = DefaultFooterBadgeText;
     public string FooterLinksJson { get; private set; } = DefaultFooterLinksJson;
     public DateTime UpdatedAt { get; private set; } = DateTime.UtcNow;
     public string? UpdatedBy { get; private set; }
@@ -43,6 +45,7 @@ public class SystemSetting
             ReportingModuleSubtitle = DefaultReportingModuleSubtitle,
             FooterCopyrightText = DefaultFooterCopyrightText,
             FooterVersionText = DefaultFooterVersionText,
+            FooterBadgeText = DefaultFooterBadgeText,
             FooterLinksJson = DefaultFooterLinksJson,
             UpdatedAt = DateTime.UtcNow
         };
@@ -56,6 +59,7 @@ public class SystemSetting
         string reportingModuleSubtitle,
         string? footerCopyrightText,
         string? footerVersionText,
+        string? footerBadgeText,
         string? footerLinksJson,
         string? updatedBy)
     {
@@ -69,6 +73,7 @@ public class SystemSetting
         ReportingModuleSubtitle = string.IsNullOrWhiteSpace(reportingModuleSubtitle) ? DefaultReportingModuleSubtitle : reportingModuleSubtitle.Trim();
         FooterCopyrightText = footerCopyrightText != null ? footerCopyrightText.Trim() : DefaultFooterCopyrightText;
         FooterVersionText = footerVersionText != null ? footerVersionText.Trim() : string.Empty;
+        FooterBadgeText = footerBadgeText != null ? footerBadgeText.Trim() : string.Empty;
         if (!string.IsNullOrWhiteSpace(footerLinksJson))
         {
             FooterLinksJson = footerLinksJson.Trim();
@@ -96,6 +101,7 @@ public class SystemSetting
         ReportingModuleSubtitle = DefaultReportingModuleSubtitle;
         FooterCopyrightText = DefaultFooterCopyrightText;
         FooterVersionText = DefaultFooterVersionText;
+        FooterBadgeText = DefaultFooterBadgeText;
         FooterLinksJson = DefaultFooterLinksJson;
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = updatedBy;

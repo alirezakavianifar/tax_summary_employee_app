@@ -71,6 +71,7 @@ public class SystemSettingsService : ISystemSettingsService
                 request.ReportingModuleSubtitle,
                 request.FooterCopyrightText,
                 request.FooterVersionText,
+                request.FooterBadgeText,
                 request.FooterLinksJson,
                 updatedBy);
 
