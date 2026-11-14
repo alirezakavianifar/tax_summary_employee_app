@@ -16,6 +16,10 @@ If `.gitignore` does not exist, create one based on the codebase structure and l
 
 **NEVER create markdown (.md) files unless the user explicitly requests it.** This includes documentation files, README files, plan files, or any other .md files. Only create markdown files when the user specifically asks for them.
 
+## README Maintenance Policy
+
+The root `README.md` must **always remain up-to-date**. Whenever new core modules, major architectural changes, deployment procedures, or significant features are added, updated, or removed, you MUST proactively update `README.md` accordingly so that it accurately reflects the current state of the application.
+
 ## Git Push Workflow
 
 When the user uses the keyword "push" in a request (e.g., "please push these changes", "push", or similar), you MUST follow this specific workflow:
