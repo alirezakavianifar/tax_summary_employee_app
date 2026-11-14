@@ -1,3 +1,12 @@
+export interface FooterLinkDto {
+  id: string
+  title: string
+  url: string
+  isExternal: boolean
+  isVisible: boolean
+  order: number
+}
+
 export interface SystemSettingsDto {
   id: string
   settingKey: string
@@ -6,6 +15,10 @@ export interface SystemSettingsDto {
   logoPath: string
   reportingModuleTitle: string
   reportingModuleSubtitle: string
+  footerCopyrightText: string
+  footerVersionText: string
+  footerLinksJson: string
+  footerLinks?: FooterLinkDto[]
   updatedAt: string
   updatedBy: string | null
 }
@@ -16,5 +29,8 @@ export interface UpdateSystemSettingsPayload {
   logoPath?: string
   reportingModuleTitle: string
   reportingModuleSubtitle: string
+  footerCopyrightText?: string
+  footerVersionText?: string
+  footerLinksJson?: string
 }
 

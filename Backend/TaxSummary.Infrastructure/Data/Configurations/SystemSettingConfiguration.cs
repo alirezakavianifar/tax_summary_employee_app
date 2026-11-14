@@ -38,6 +38,18 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             .IsRequired()
             .HasMaxLength(250);
 
+        builder.Property(x => x.FooterCopyrightText)
+            .IsRequired()
+            .HasMaxLength(500);
+
+        builder.Property(x => x.FooterVersionText)
+            .IsRequired()
+            .HasMaxLength(50);
+
+        builder.Property(x => x.FooterLinksJson)
+            .IsRequired()
+            .HasMaxLength(4000);
+
         builder.Property(x => x.UpdatedBy)
             .HasMaxLength(150);
     }

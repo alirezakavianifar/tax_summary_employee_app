@@ -20,6 +20,9 @@ public class SystemSettingTests
         setting.LogoPath.Should().Be("/images/Intamedia_Logo.png");
         setting.ReportingModuleTitle.Should().Be("سامانه آمار و هوش تجاری");
         setting.ReportingModuleSubtitle.Should().Be("اداره کل امور مالیاتی استان خوزستان");
+        setting.FooterCopyrightText.Should().Be("تمامی حقوق محفوظ است.");
+        setting.FooterVersionText.Should().Be("v2.0");
+        setting.FooterLinksJson.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -35,6 +38,9 @@ public class SystemSettingTests
             logoPath: "/uploads/branding/tehran_logo.png",
             reportingModuleTitle: "سامانه داشبورد و آمار",
             reportingModuleSubtitle: "اداره کل استان تهران",
+            footerCopyrightText: "حقوق نشر محفوظ برای استان تهران",
+            footerVersionText: "v3.0",
+            footerLinksJson: "[]",
             updatedBy: "admin"
         );
 
@@ -44,6 +50,9 @@ public class SystemSettingTests
         setting.LogoPath.Should().Be("/uploads/branding/tehran_logo.png");
         setting.ReportingModuleTitle.Should().Be("سامانه داشبورد و آمار");
         setting.ReportingModuleSubtitle.Should().Be("اداره کل استان تهران");
+        setting.FooterCopyrightText.Should().Be("حقوق نشر محفوظ برای استان تهران");
+        setting.FooterVersionText.Should().Be("v3.0");
+        setting.FooterLinksJson.Should().Be("[]");
         setting.UpdatedBy.Should().Be("admin");
     }
 
@@ -58,6 +67,9 @@ public class SystemSettingTests
             logoPath: "/uploads/custom.png",
             reportingModuleTitle: "گزارشات",
             reportingModuleSubtitle: "زیرعنوان",
+            footerCopyrightText: "متن دلخواه",
+            footerVersionText: "v9.9",
+            footerLinksJson: "[{\"id\":\"1\"}]",
             updatedBy: "user1"
         );
 
@@ -70,6 +82,8 @@ public class SystemSettingTests
         setting.LogoPath.Should().Be("/images/Intamedia_Logo.png");
         setting.ReportingModuleTitle.Should().Be("سامانه آمار و هوش تجاری");
         setting.ReportingModuleSubtitle.Should().Be("اداره کل امور مالیاتی استان خوزستان");
+        setting.FooterCopyrightText.Should().Be("تمامی حقوق محفوظ است.");
+        setting.FooterVersionText.Should().Be("v2.0");
         setting.UpdatedBy.Should().Be("admin_reset");
     }
 }

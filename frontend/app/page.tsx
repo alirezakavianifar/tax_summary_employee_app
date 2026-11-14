@@ -7,12 +7,11 @@ import { useBranding } from '@/contexts/BrandingContext'
 import { getUserDisplayName } from '@/types/auth'
 import { getAuthorizedPortalModules } from '@/lib/modules/portalRegistry'
 import ModuleCard from '@/components/portal/ModuleCard'
+import Footer from '@/components/layout/Footer'
 import {
   Calendar,
   Layers,
   LogIn,
-  ExternalLink,
-  HelpCircle,
   Activity,
   LayoutGrid,
   Link2,
@@ -203,54 +202,7 @@ export default function HomePage() {
         </div>
 
         {/* Streamlined Government Identity & Utility Footer */}
-        <footer className="mt-12 pt-6 border-t border-gray-200/80 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-white p-0.5 border border-gray-200 shadow-xs flex items-center justify-center flex-shrink-0">
-              <img
-                src={resolvedLogoUrl}
-                alt={`لوگوی ${branding.organizationName}`}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <p>
-              {branding.organizationName} — تمامی حقوق محفوظ است.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/about"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-gray-500" />
-              راهنمای سامانه
-            </Link>
-
-            <a
-              href="https://www.intamedia.ir"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-            >
-              پرتال سازمان امور مالیاتی
-              <ExternalLink className="w-3 h-3 text-gray-400" />
-            </a>
-
-            <a
-              href="https://my.tax.gov.ir"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200/60 transition-colors font-medium"
-            >
-              درگاه ملی خدمات مالیاتی
-              <ExternalLink className="w-3 h-3 text-primary-500" />
-            </a>
-
-            <span className="text-[11px] bg-gray-100 text-gray-500 px-2 py-1 rounded border border-gray-200 font-mono">
-              v2.0
-            </span>
-          </div>
-        </footer>
+        <Footer />
       </div>
     </main>
   )

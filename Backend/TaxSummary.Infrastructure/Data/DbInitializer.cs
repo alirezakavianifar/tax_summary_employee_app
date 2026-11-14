@@ -1149,11 +1149,44 @@ public static class DbInitializer
                     ""LogoPath"" TEXT NOT NULL,
                     ""ReportingModuleTitle"" TEXT NOT NULL,
                     ""ReportingModuleSubtitle"" TEXT NOT NULL,
+                    ""FooterCopyrightText"" TEXT NOT NULL DEFAULT 'تمامی حقوق محفوظ است.',
+                    ""FooterVersionText"" TEXT NOT NULL DEFAULT 'v2.0',
+                    ""FooterLinksJson"" TEXT NOT NULL DEFAULT '[]',
                     ""UpdatedAt"" TEXT NOT NULL,
                     ""UpdatedBy"" TEXT NULL
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS ""IX_SystemSettings_SettingKey"" ON ""SystemSettings"" (""SettingKey"");";
             await command.ExecuteNonQueryAsync();
+
+            command.CommandText = "PRAGMA table_info(SystemSettings);";
+            var systemSettingColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    systemSettingColumns.Add(reader.GetString(1));
+                }
+            }
+
+            if (systemSettingColumns.Count > 0)
+            {
+                if (!systemSettingColumns.Contains("FooterCopyrightText"))
+                {
+                    command.CommandText = "ALTER TABLE SystemSettings ADD COLUMN FooterCopyrightText TEXT NOT NULL DEFAULT 'تمامی حقوق محفوظ است.';";
+                    await command.ExecuteNonQueryAsync();
+                }
+                if (!systemSettingColumns.Contains("FooterVersionText"))
+                {
+                    command.CommandText = "ALTER TABLE SystemSettings ADD COLUMN FooterVersionText TEXT NOT NULL DEFAULT 'v2.0';";
+                    await command.ExecuteNonQueryAsync();
+                }
+                if (!systemSettingColumns.Contains("FooterLinksJson"))
+                {
+                    var defaultLinks = SystemSetting.DefaultFooterLinksJson.Replace("'", "''");
+                    command.CommandText = $"ALTER TABLE SystemSettings ADD COLUMN FooterLinksJson TEXT NOT NULL DEFAULT '{defaultLinks}';";
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
 
             // Record migrations as applied in __EFMigrationsHistory
             command.CommandText = @"

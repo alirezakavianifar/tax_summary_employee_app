@@ -24,6 +24,14 @@ const DEFAULT_BRANDING: SystemSettingsDto = {
   logoPath: '/images/Intamedia_Logo.png',
   reportingModuleTitle: 'سامانه آمار و هوش تجاری',
   reportingModuleSubtitle: 'اداره کل امور مالیاتی استان خوزستان',
+  footerCopyrightText: 'تمامی حقوق محفوظ است.',
+  footerVersionText: 'v2.0',
+  footerLinksJson: '[{"id":"link-about","title":"راهنمای سامانه","url":"/about","isExternal":false,"isVisible":true,"order":1},{"id":"link-intamedia","title":"پرتال سازمان امور مالیاتی","url":"https://www.intamedia.ir","isExternal":true,"isVisible":true,"order":2},{"id":"link-mytax","title":"درگاه ملی خدمات مالیاتی","url":"https://my.tax.gov.ir","isExternal":true,"isVisible":true,"order":3}]',
+  footerLinks: [
+    { id: 'link-about', title: 'راهنمای سامانه', url: '/about', isExternal: false, isVisible: true, order: 1 },
+    { id: 'link-intamedia', title: 'پرتال سازمان امور مالیاتی', url: 'https://www.intamedia.ir', isExternal: true, isVisible: true, order: 2 },
+    { id: 'link-mytax', title: 'درگاه ملی خدمات مالیاتی', url: 'https://my.tax.gov.ir', isExternal: true, isVisible: true, order: 3 },
+  ],
   updatedAt: new Date().toISOString(),
   updatedBy: null,
 }
@@ -40,6 +48,23 @@ export function resolveLogoUrl(logoPath?: string | null): string {
   return logoPath
 }
 
+function normalizeBranding(data: SystemSettingsDto): SystemSettingsDto {
+  let links = data.footerLinks
+  if ((!links || links.length === 0) && data.footerLinksJson) {
+    try {
+      links = JSON.parse(data.footerLinksJson)
+    } catch {
+      links = DEFAULT_BRANDING.footerLinks
+    }
+  }
+  return {
+    ...data,
+    footerCopyrightText: data.footerCopyrightText ?? DEFAULT_BRANDING.footerCopyrightText,
+    footerVersionText: data.footerVersionText ?? DEFAULT_BRANDING.footerVersionText,
+    footerLinks: links ?? DEFAULT_BRANDING.footerLinks,
+  }
+}
+
 export function BrandingProvider({ children }: { children: React.ReactNode }) {
   const [branding, setBranding] = useState<SystemSettingsDto>(DEFAULT_BRANDING)
   const [loading, setLoading] = useState(true)
@@ -51,7 +76,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       setError(null)
       const data = await systemSettingsApi.getBrandingSettings()
       if (data) {
-        setBranding(data)
+        setBranding(normalizeBranding(data))
       }
     } catch (err: any) {
       console.warn('Could not fetch dynamic branding from API, falling back to default:', err?.message)
@@ -70,7 +95,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       setError(null)
       const updated = await systemSettingsApi.updateBrandingSettings(payload)
-      setBranding(updated)
+      setBranding(normalizeBranding(updated))
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'خطا در ذخیره تغییرات برندینگ'
       setError(msg)
@@ -85,7 +110,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       setError(null)
       const updated = await systemSettingsApi.uploadLogo(file)
-      setBranding(updated)
+      setBranding(normalizeBranding(updated))
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'خطا در بارگذاری لوگو'
       setError(msg)
@@ -100,7 +125,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       setError(null)
       const updated = await systemSettingsApi.resetBrandingSettings()
-      setBranding(updated)
+      setBranding(normalizeBranding(updated))
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'خطا در بازنشانی تنظیمات برندینگ'
       setError(msg)

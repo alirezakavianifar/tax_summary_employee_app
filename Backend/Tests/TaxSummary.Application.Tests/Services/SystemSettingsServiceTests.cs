@@ -75,7 +75,10 @@ public class SystemSettingsServiceTests
             OrganizationName = "اداره کل امور مالیاتی استان اصفهان",
             SystemTitle = "سامانه هوشمند مالیاتی",
             ReportingModuleTitle = "سامانه گزارشات",
-            ReportingModuleSubtitle = "اداره کل اصفهان"
+            ReportingModuleSubtitle = "اداره کل اصفهان",
+            FooterCopyrightText = "تمامی حقوق استان اصفهان محفوظ است",
+            FooterVersionText = "v2.5",
+            FooterLinksJson = "[{\"id\":\"link-1\",\"title\":\"تست\",\"url\":\"/test\",\"isExternal\":false,\"isVisible\":true,\"order\":1}]"
         };
 
         // Act
@@ -85,6 +88,10 @@ public class SystemSettingsServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
         result.Value!.OrganizationName.Should().Be("اداره کل امور مالیاتی استان اصفهان");
+        result.Value.FooterCopyrightText.Should().Be("تمامی حقوق استان اصفهان محفوظ است");
+        result.Value.FooterVersionText.Should().Be("v2.5");
+        result.Value.FooterLinks.Should().HaveCount(1);
+        result.Value.FooterLinks[0].Title.Should().Be("تست");
         _mockRepo.Verify(r => r.UpdateAsync(It.IsAny<SystemSetting>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -113,7 +120,7 @@ public class SystemSettingsServiceTests
     {
         // Arrange
         var setting = SystemSetting.CreateDefault();
-        setting.UpdateBranding("نام تغییر یافته", "عنوان تغییر یافته", null, "گزارشات", "زیرعنوان", "test");
+        setting.UpdateBranding("نام تغییر یافته", "عنوان تغییر یافته", null, "گزارشات", "زیرعنوان", "متن کپی‌رایت", "v9.0", "[]", "test");
         _mockRepo.Setup(r => r.GetOrCreateDefaultAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(setting);
 
@@ -123,6 +130,8 @@ public class SystemSettingsServiceTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.OrganizationName.Should().Be("اداره کل امور مالیاتی استان خوزستان");
+        result.Value.FooterCopyrightText.Should().Be("تمامی حقوق محفوظ است.");
+        result.Value.FooterVersionText.Should().Be("v2.0");
         _mockRepo.Verify(r => r.UpdateAsync(It.IsAny<SystemSetting>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

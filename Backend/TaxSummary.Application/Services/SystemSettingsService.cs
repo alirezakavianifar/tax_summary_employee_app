@@ -1,9 +1,11 @@
+using System.Text.Json;
 using AutoMapper;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using TaxSummary.Application.DTOs.Branding;
 using TaxSummary.Domain.Common;
+using TaxSummary.Domain.Entities;
 using TaxSummary.Domain.Interfaces;
 
 namespace TaxSummary.Application.Services;
@@ -15,6 +17,7 @@ public class SystemSettingsService : ISystemSettingsService
     private readonly IMapper _mapper;
     private readonly IValidator<UpdateSystemSettingsDto> _validator;
     private readonly ILogger<SystemSettingsService> _logger;
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public SystemSettingsService(
         ISystemSettingsRepository repository,
@@ -35,7 +38,7 @@ public class SystemSettingsService : ISystemSettingsService
         try
         {
             var setting = await _repository.GetOrCreateDefaultAsync(cancellationToken);
-            var dto = _mapper.Map<SystemSettingsDto>(setting);
+            var dto = MapToDto(setting);
             return Result.Success(dto);
         }
         catch (Exception ex)
@@ -66,13 +69,16 @@ public class SystemSettingsService : ISystemSettingsService
                 request.LogoPath,
                 request.ReportingModuleTitle,
                 request.ReportingModuleSubtitle,
+                request.FooterCopyrightText,
+                request.FooterVersionText,
+                request.FooterLinksJson,
                 updatedBy);
 
             await _repository.UpdateAsync(setting, cancellationToken);
             _logger.LogInformation("System branding updated by {UpdatedBy}: Org={OrgName}, Title={Title}",
                 updatedBy ?? "Unknown", setting.OrganizationName, setting.SystemTitle);
 
-            var dto = _mapper.Map<SystemSettingsDto>(setting);
+            var dto = MapToDto(setting);
             return Result.Success(dto);
         }
         catch (Exception ex)
@@ -100,7 +106,7 @@ public class SystemSettingsService : ISystemSettingsService
             await _repository.UpdateAsync(setting, cancellationToken);
             _logger.LogInformation("System logo updated by {UpdatedBy}: {LogoUrl}", updatedBy ?? "Unknown", logoUrl);
 
-            var dto = _mapper.Map<SystemSettingsDto>(setting);
+            var dto = MapToDto(setting);
             return Result.Success(dto);
         }
         catch (ArgumentException aex)
@@ -126,7 +132,7 @@ public class SystemSettingsService : ISystemSettingsService
             await _repository.UpdateAsync(setting, cancellationToken);
             _logger.LogInformation("System branding reset to defaults by {UpdatedBy}", updatedBy ?? "Unknown");
 
-            var dto = _mapper.Map<SystemSettingsDto>(setting);
+            var dto = MapToDto(setting);
             return Result.Success(dto);
         }
         catch (Exception ex)
@@ -134,5 +140,26 @@ public class SystemSettingsService : ISystemSettingsService
             _logger.LogError(ex, "خطا در بازنشانی تنظیمات برندینگ به پیش‌فرض");
             return Result.Failure<SystemSettingsDto>("خطا در بازنشانی تنظیمات برندینگ");
         }
+    }
+
+    private SystemSettingsDto MapToDto(SystemSetting setting)
+    {
+        var dto = _mapper.Map<SystemSettingsDto>(setting);
+        if (!string.IsNullOrWhiteSpace(setting.FooterLinksJson))
+        {
+            try
+            {
+                var links = JsonSerializer.Deserialize<List<FooterLinkDto>>(setting.FooterLinksJson, JsonOptions);
+                if (links != null)
+                {
+                    dto.FooterLinks = links.OrderBy(l => l.Order).ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to deserialize FooterLinksJson for SystemSetting {Id}", setting.Id);
+            }
+        }
+        return dto;
     }
 }
