@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { BrandingProvider } from '@/contexts/BrandingContext'
 import { MenuSettingsProvider } from '@/contexts/MenuSettingsContext'
 import AppShell from '@/components/layout/AppShell'
 
@@ -107,11 +108,13 @@ export default function RootLayout({
     <html lang="fa" dir="rtl">
       <body className={`${vazirmatn.variable} ${bNazanin.variable} ${bTitr.variable} ${bMitra.variable} font-vazirmatn antialiased bg-gray-50`}>
         <AuthProvider>
-          <MenuSettingsProvider>
-            <AppShell>
-              {children}
-            </AppShell>
-          </MenuSettingsProvider>
+          <BrandingProvider>
+            <MenuSettingsProvider>
+              <AppShell>
+                {children}
+              </AppShell>
+            </MenuSettingsProvider>
+          </BrandingProvider>
         </AuthProvider>
       </body>
     </html>

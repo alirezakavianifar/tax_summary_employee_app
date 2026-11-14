@@ -33,6 +33,7 @@ import {
   HelpCircle,
   Briefcase,
   ClipboardList,
+  Palette,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -71,6 +72,7 @@ export const MENU_ICON_OPTIONS: MenuIconOption[] = [
   { name: 'Search', label: 'جستجو', icon: Search },
   { name: 'PlusCircle', label: 'ثبت جدید', icon: PlusCircle },
   { name: 'Sliders', label: 'تنظیمات', icon: Sliders },
+  { name: 'Palette', label: 'رنگ و برندینگ', icon: Palette },
   { name: 'Settings', label: 'پیکربندی', icon: Settings },
   { name: 'Bell', label: 'اطلاعیه‌ها', icon: Bell },
   { name: 'HelpCircle', label: 'راهنما', icon: HelpCircle },

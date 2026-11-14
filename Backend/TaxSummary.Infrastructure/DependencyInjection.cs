@@ -98,6 +98,10 @@ public static class DependencyInjection
         services.AddScoped<IMenuSettingsRepository, MenuSettingsRepository>();
         services.AddScoped<IMenuSettingsService, MenuSettingsService>();
 
+        // Register System Settings & Branding Services
+        services.AddScoped<ISystemSettingsRepository, SystemSettingsRepository>();
+        services.AddScoped<ISystemSettingsService, SystemSettingsService>();
+
         // Register Refund Workflow Settings Services
         services.AddScoped<IRefundWorkflowSettingsRepository, RefundWorkflowSettingsRepository>();
         services.AddScoped<IRefundWorkflowSettingsService, RefundWorkflowSettingsService>();

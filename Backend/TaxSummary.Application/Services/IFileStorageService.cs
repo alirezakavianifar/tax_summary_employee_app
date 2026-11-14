@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
 
-namespace TaxSummary.Infrastructure.Services;
+namespace TaxSummary.Application.Services;
 
 /// <summary>
 /// Service interface for file storage operations
@@ -28,4 +28,12 @@ public interface IFileStorageService
     /// <param name="fileName">The filename</param>
     /// <returns>The relative URL</returns>
     string GetPhotoUrl(string fileName);
+
+    /// <summary>
+    /// Saves a branding logo and returns the relative URL
+    /// </summary>
+    /// <param name="file">The logo image file</param>
+    /// <returns>The relative URL of the saved logo</returns>
+    Task<string> SaveBrandingLogoAsync(IFormFile file);
 }
+

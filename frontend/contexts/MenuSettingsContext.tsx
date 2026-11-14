@@ -22,6 +22,7 @@ interface MenuSettingsContextType {
   refreshSettings: () => Promise<void>
   isModuleVisible: (moduleIdOrKey: string) => boolean
   isActionVisible: (actionHrefOrKey: string, parentModuleIdOrKey?: string) => boolean
+  getModuleSetting: (moduleIdOrKey: string) => MenuSettingItem | undefined
   updateSettings: (payload: UpdateMenuSettingsPayload) => Promise<void>
   resetSettings: () => Promise<void>
 }
@@ -70,6 +71,8 @@ const ACTION_ROUTE_MAP: Record<string, string> = {
   '/admin/auditor-metrics': 'action_reporting_auditor_metrics',
   'action_reporting_auditor_metrics': 'action_reporting_auditor_metrics',
   'action_admin_auditor_metrics': 'action_admin_auditor_metrics',
+  '/admin/branding': 'action_admin_branding',
+  'action_admin_branding': 'action_admin_branding',
 }
 
 const MenuSettingsContext = createContext<MenuSettingsContextType | undefined>(undefined)
@@ -211,6 +214,14 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
     [loading, isAuthenticated, settings.length, settingsByKey, settingsByRoute, isModuleVisible, isRolePermitted]
   )
 
+  const getModuleSetting = useCallback(
+    (moduleIdOrKey: string): MenuSettingItem | undefined => {
+      const normalizedKey = (MODULE_KEY_MAP[moduleIdOrKey] || moduleIdOrKey).toLowerCase()
+      return settingsByKey[normalizedKey]
+    },
+    [settingsByKey]
+  )
+
   const updateSettings = useCallback(
     async (payload: UpdateMenuSettingsPayload) => {
       setLoading(true)
@@ -249,6 +260,7 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
         refreshSettings: fetchSettings,
         isModuleVisible,
         isActionVisible,
+        getModuleSetting,
         updateSettings,
         resetSettings,
       }}

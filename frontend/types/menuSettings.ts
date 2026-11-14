@@ -5,6 +5,8 @@ export interface MenuSettingItem {
   title: string;
   route: string;
   iconName: string | null;
+  colorTheme?: string | null;
+  badgeText?: string | null;
   isVisible: boolean;
   adminOnly: boolean;
   allowedRoles: string[];
@@ -20,6 +22,8 @@ export interface CreateMenuSettingPayload {
   title: string;
   route: string;
   iconName?: string | null;
+  colorTheme?: string | null;
+  badgeText?: string | null;
   description?: string | null;
   isVisible: boolean;
   adminOnly: boolean;
@@ -32,6 +36,8 @@ export interface UpdateMenuSettingMetadataPayload {
   title: string;
   route: string;
   iconName?: string | null;
+  colorTheme?: string | null;
+  badgeText?: string | null;
   description?: string | null;
   isVisible: boolean;
   adminOnly: boolean;

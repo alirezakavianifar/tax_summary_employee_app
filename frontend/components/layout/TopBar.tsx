@@ -15,6 +15,7 @@ import {
   PanelRightOpen,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useBranding } from '@/contexts/BrandingContext'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 import {
   getRolePersianName,
@@ -43,6 +44,7 @@ export default function TopBar({
   onToggleMobileDrawer,
 }: TopBarProps) {
   const { user, isAuthenticated, logout } = useAuth()
+  const { branding, resolvedLogoUrl } = useBranding()
   const { isModuleVisible } = useMenuSettings()
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
@@ -116,17 +118,17 @@ export default function TopBar({
           <Link href="/" className="flex items-center gap-2.5 group min-w-0">
             <div className="w-10 h-10 rounded-xl overflow-hidden p-1 border border-gray-200 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center bg-white flex-shrink-0">
               <img
-                src="/images/Intamedia_Logo.png"
-                alt="اداره کل امور مالیاتی استان خوزستان"
+                src={resolvedLogoUrl}
+                alt={branding.organizationName}
                 className="w-full h-full object-contain"
               />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-xs sm:text-base font-black text-gray-900 leading-tight truncate">
-                اداره کل امور مالیاتی استان خوزستان
+                {branding.organizationName}
               </span>
               <span className="hidden sm:block text-[10px] text-primary-600 font-bold truncate">
-                سامانه یکپارچه امور سازمانی و مالیاتی
+                {branding.systemTitle}
               </span>
             </div>
           </Link>

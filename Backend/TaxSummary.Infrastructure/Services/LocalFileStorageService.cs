@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using TaxSummary.Application.Services;
 
 namespace TaxSummary.Infrastructure.Services;
 
@@ -149,6 +150,60 @@ public class LocalFileStorageService : IFileStorageService
             return string.Empty;
 
         return $"/uploads/employee-photos/{fileName}";
+    }
+
+    public async Task<string> SaveBrandingLogoAsync(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            throw new ArgumentException("فایل لوگو ارسال نشده است", nameof(file));
+
+        if (file.Length > _maxFileSizeInBytes)
+            throw new ArgumentException($"حجم فایل بیش از حد مجاز ({_maxFileSizeInBytes / (1024 * 1024)} مگابایت) است");
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowedBrandingExtensions = new[] { ".png", ".jpg", ".jpeg", ".svg", ".webp" };
+        if (!allowedBrandingExtensions.Contains(extension))
+            throw new ArgumentException($"فرمت فایل لوگو مجاز نیست. فرمت‌های مجاز: {string.Join(", ", allowedBrandingExtensions)}");
+
+        // Validate magic bytes for binary image formats
+        if (extension == ".jpg" || extension == ".jpeg" || extension == ".png")
+        {
+            using var checkStream = file.OpenReadStream();
+            var headerBytes = new byte[8];
+            var bytesRead = checkStream.Read(headerBytes, 0, headerBytes.Length);
+            if (bytesRead >= 8)
+            {
+                if ((extension == ".jpg" || extension == ".jpeg") && (headerBytes[0] != 0xFF || headerBytes[1] != 0xD8 || headerBytes[2] != 0xFF))
+                    throw new ArgumentException("محتوای فایل با ساختار تصویر JPG تطابق ندارد");
+
+                if (extension == ".png")
+                {
+                    byte[] pngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+                    for (int i = 0; i < pngSignature.Length; i++)
+                    {
+                        if (headerBytes[i] != pngSignature[i])
+                            throw new ArgumentException("محتوای فایل با ساختار تصویر PNG تطابق ندارد");
+                    }
+                }
+            }
+        }
+
+        var brandingDir = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads", "branding");
+        if (!Directory.Exists(brandingDir))
+        {
+            Directory.CreateDirectory(brandingDir);
+        }
+
+        var uniqueFileName = $"logo_{DateTime.UtcNow.Ticks}{extension}";
+        var fullPath = Path.Combine(brandingDir, uniqueFileName);
+
+        using (var stream = new FileStream(fullPath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        _logger.LogInformation("Saved new branding logo to: {FullPath}", fullPath);
+        return $"/uploads/branding/{uniqueFileName}";
     }
 
     private static string SanitizeFileName(string fileName)

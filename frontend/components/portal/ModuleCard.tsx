@@ -3,70 +3,92 @@
 import React from 'react'
 import Link from 'next/link'
 import { BasePortalModule } from '@/types/portal'
-import { ChevronLeft, ArrowUpRight } from 'lucide-react'
+import { ChevronLeft, ArrowUpRight, Link2 } from 'lucide-react'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 import { toPersianDigits } from '@/lib/jalali'
+import { getCardTheme } from '@/lib/constants/cardThemes'
+import { resolveMenuIcon } from '@/lib/icons/menuIcons'
+import type { MenuSettingItem } from '@/types/menuSettings'
 
 interface ModuleCardProps {
   module: BasePortalModule
   userRole?: string
 }
 
-interface ThemeConfig {
-  header: string
-  primaryBtn: string
-  hoverBorder: string
-  accentText: string
-  chipHover: string
-}
-
-const THEME_MAP: Record<string, ThemeConfig> = {
-  'employee-evaluation': {
-    header: 'bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white',
-    primaryBtn: 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/20',
-    hoverBorder: 'hover:border-blue-400',
-    accentText: 'text-blue-600',
-    chipHover: 'hover:bg-blue-50/80 hover:text-blue-700 hover:border-blue-300',
-  },
-  'collaborative-payroll': {
-    header: 'bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 text-white',
-    primaryBtn: 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-500/20',
-    hoverBorder: 'hover:border-emerald-400',
-    accentText: 'text-emerald-600',
-    chipHover: 'hover:bg-emerald-50/80 hover:text-emerald-700 hover:border-emerald-300',
-  },
-  'tax-refund': {
-    header: 'bg-gradient-to-r from-purple-600 via-violet-600 to-purple-800 text-white',
-    primaryBtn: 'bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 text-white shadow-purple-500/20',
-    hoverBorder: 'hover:border-purple-400',
-    accentText: 'text-purple-600',
-    chipHover: 'hover:bg-purple-50/80 hover:text-purple-700 hover:border-purple-300',
-  },
-  'executive-reporting': {
-    header: 'bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white',
-    primaryBtn: 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-amber-500/20',
-    hoverBorder: 'hover:border-amber-400',
-    accentText: 'text-amber-600',
-    chipHover: 'hover:bg-amber-50/80 hover:text-amber-700 hover:border-amber-300',
-  },
-}
-
 export default function ModuleCard({ module, userRole }: ModuleCardProps) {
-  const { isActionVisible } = useMenuSettings()
-  const actions = module
-    .getAuthorizedActions(userRole)
-    .filter((a) => isActionVisible(a.href, module.id))
-  const Icon = module.icon
-  const theme = THEME_MAP[module.id] || {
-    header: 'bg-gradient-to-r from-slate-800 to-slate-900 text-white',
-    primaryBtn: 'bg-primary-600 hover:bg-primary-500 text-white shadow-primary-500/20',
-    hoverBorder: 'hover:border-primary-400',
-    accentText: 'text-primary-600',
-    chipHover: 'hover:bg-gray-100 hover:text-gray-900 hover:border-gray-300',
+  const { isActionVisible, getModuleSetting } = useMenuSettings()
+  const moduleSetting = getModuleSetting(module.id)
+
+  const theme = getCardTheme(moduleSetting?.colorTheme, module.id)
+
+  const title = moduleSetting?.title || module.title
+  const subtitle = moduleSetting?.description || module.subtitle
+  const badgeText = moduleSetting?.badgeText || module.badgeText
+  const description = moduleSetting?.description || module.description
+  const CardIcon = moduleSetting?.iconName
+    ? resolveMenuIcon(moduleSetting.iconName, module.icon)
+    : module.icon
+
+  // Build authorized and customized actions
+  const baseActions = module.getAuthorizedActions(userRole)
+
+  // Map of child settings for overrides
+  const childSettingsByRoute: Record<string, MenuSettingItem> = {}
+  const childSettingsByKey: Record<string, MenuSettingItem> = {}
+  if (moduleSetting?.children) {
+    for (const child of moduleSetting.children) {
+      if (child.route) {
+        childSettingsByRoute[child.route.toLowerCase().replace(/\/+$/, '')] = child
+      }
+      childSettingsByKey[child.menuKey.toLowerCase()] = child
+    }
   }
 
-  const primaryAction = actions[0]
-  const secondaryActions = actions.slice(1)
+  // Enrich base actions with admin customizations (custom titles, icons, display order)
+  const enrichedActions = baseActions
+    .filter((a) => isActionVisible(a.href, module.id))
+    .map((action) => {
+      const trimmedHref = action.href.toLowerCase().replace(/\/+$/, '')
+      const match = childSettingsByRoute[trimmedHref] || childSettingsByKey[action.id.toLowerCase()]
+      return {
+        id: action.id,
+        title: match?.title || action.title,
+        href: action.href,
+        description: match?.description || action.description,
+        icon: match?.iconName ? resolveMenuIcon(match.iconName, action.icon) : action.icon,
+        variant: action.variant,
+        displayOrder: match?.displayOrder ?? 99,
+      }
+    })
+
+  // Also include any custom children added by admin under this module that aren't in baseActions
+  if (moduleSetting?.children) {
+    for (const child of moduleSetting.children) {
+      if (!child.isVisible) continue
+      const alreadyPresent = enrichedActions.some(
+        (ea) =>
+          ea.id.toLowerCase() === child.menuKey.toLowerCase() ||
+          ea.href.toLowerCase().replace(/\/+$/, '') === child.route.toLowerCase().replace(/\/+$/, '')
+      )
+      if (!alreadyPresent && isActionVisible(child.route, module.id)) {
+        enrichedActions.push({
+          id: child.menuKey,
+          title: child.title,
+          href: child.route,
+          description: child.description || undefined,
+          icon: resolveMenuIcon(child.iconName, Link2),
+          variant: 'secondary',
+          displayOrder: child.displayOrder ?? 99,
+        })
+      }
+    }
+  }
+
+  // Sort actions by display order
+  enrichedActions.sort((a, b) => a.displayOrder - b.displayOrder)
+
+  const primaryAction = enrichedActions[0]
+  const secondaryActions = enrichedActions.slice(1)
 
   return (
     <div
@@ -77,25 +99,29 @@ export default function ModuleCard({ module, userRole }: ModuleCardProps) {
         <div className={`p-5 sm:p-6 ${theme.header} relative`}>
           <div className="flex justify-between items-center">
             <div className="p-2.5 bg-white/15 backdrop-blur-md rounded-xl inline-flex items-center justify-center shadow-inner">
-              <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+              <CardIcon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
             </div>
-            <span className="text-[11px] font-semibold px-2.5 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-white/95">
-              {module.badgeText}
-            </span>
+            {badgeText && (
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-white/95">
+                {badgeText}
+              </span>
+            )}
           </div>
 
           <h2 className="text-lg sm:text-xl font-black mt-3.5 leading-snug tracking-tight">
-            {module.title}
+            {title}
           </h2>
-          <p className="text-xs text-white/85 mt-1 leading-relaxed font-normal">
-            {module.subtitle}
-          </p>
+          {subtitle && (
+            <p className="text-xs text-white/85 mt-1 leading-relaxed font-normal">
+              {subtitle}
+            </p>
+          )}
         </div>
 
         {/* Content Body */}
         <div className="p-4 sm:p-5">
           <p className="text-xs text-gray-600 leading-relaxed">
-            {module.description}
+            {description}
           </p>
         </div>
       </div>
@@ -103,7 +129,7 @@ export default function ModuleCard({ module, userRole }: ModuleCardProps) {
       {/* Action Buttons Section */}
       <div className="p-4 sm:p-5 bg-gray-50/70 border-t border-gray-100 space-y-3">
         {/* Primary Gateway CTA */}
-        {primaryAction && (
+        {primaryAction ? (
           <Link
             href={primaryAction.href}
             className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-md ${theme.primaryBtn}`}
@@ -114,6 +140,10 @@ export default function ModuleCard({ module, userRole }: ModuleCardProps) {
             </span>
             <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           </Link>
+        ) : (
+          <div className="w-full py-2.5 px-4 rounded-xl text-xs font-medium text-gray-400 bg-gray-100 text-center">
+            هیچ بخش فعالی در دسترس شما نیست
+          </div>
         )}
 
         {/* Secondary Actions Quick Chips */}
@@ -150,4 +180,3 @@ export default function ModuleCard({ module, userRole }: ModuleCardProps) {
     </div>
   )
 }
-

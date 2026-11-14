@@ -41,6 +41,8 @@ A modern, full-stack enterprise web application for managing employee performanc
 5. **Administration & Dynamic Menu Management (`/admin`)**:
    - Granular Role-Based Access Control (Admin, Manager, Employee, OfficeHead, Expert, Auditor).
    - Database-backed dynamic menu visibility management and collapsible RTL sidebar navigation.
+   - Dynamic organizational branding, custom logo upload, and system-wide title management (`/admin/branding`).
+   - Dynamic Portal Operational Cards & Home Page Management (`/admin/menu-settings`): Administrators can customize module titles, descriptions, color themes (8 distinct corporate palettes), group badge tags, icons, and display ordering directly for both built-in and custom modules.
    - System audit trail and security logging.
 
 ---
@@ -59,7 +61,7 @@ A modern, full-stack enterprise web application for managing employee performanc
 - **Framework:** Next.js 14 (App Router, React 18, TypeScript)
 - **Styling & Typography:** Tailwind CSS, RTL layout (`dir="rtl"`), Vazirmatn & Persian B-Fonts
 - **Print Engine:** Physical A4 layout engine with CSS `@media print`, repeated table headers, and page break isolation
-- **State & Routing:** ProtectedRoute RBAC guard, AuthContext, MenuSettingsContext
+- **State & Routing:** ProtectedRoute RBAC guard, AuthContext, MenuSettingsContext, BrandingContext
 
 ---
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -20,6 +21,7 @@ function LoginForm() {
     const [isLoading, setIsLoading] = useState(false);
 
     const { login, isAuthenticated, isLoading: authLoading, user } = useAuth();
+    const { branding, resolvedLogoUrl } = useBranding();
     const router = useRouter();
 
     // If already authenticated or silently refreshed, navigate to target route immediately
@@ -63,16 +65,16 @@ function LoginForm() {
                     <div className="text-center mb-8">
                         <div className="mx-auto w-16 h-16 rounded-2xl p-2 border border-gray-200 shadow-sm flex items-center justify-center bg-white mb-3">
                             <img
-                                src="/images/Intamedia_Logo.png"
-                                alt="اداره کل امور مالیاتی استان خوزستان"
+                                src={resolvedLogoUrl}
+                                alt={branding.organizationName}
                                 className="w-full h-full object-contain"
                             />
                         </div>
                         <p className="text-xs font-bold text-primary-700 mb-1">
-                            اداره کل امور مالیاتی استان خوزستان
+                            {branding.organizationName}
                         </p>
                         <h1 className="text-2xl font-black text-gray-900 mb-2">
-                            سامانه یکپارچه امور سازمانی و مالیاتی
+                            {branding.systemTitle}
                         </h1>
                         <p className="text-gray-500 text-sm">ورود به سیستم</p>
                     </div>

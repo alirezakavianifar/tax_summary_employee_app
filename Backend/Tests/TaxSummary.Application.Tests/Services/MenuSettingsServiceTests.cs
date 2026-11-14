@@ -244,20 +244,35 @@ public class MenuSettingsServiceTests
     }
 
     [Fact]
-    public async Task UpdateSettingMetadataAsync_BuiltInItem_ThrowsInvalidOperationException()
+    public async Task UpdateSettingMetadataAsync_BuiltInItem_UpdatesMetadataWhileKeepingRouteImmutable()
     {
-        var builtIn = MenuSetting.Create("module_payroll", "حقوق و اضافه کار", "/payroll/cycles");
+        var builtIn = MenuSetting.Create("module_payroll", "حقوق و اضافه کار", "/payroll/cycles", colorTheme: "emerald", badgeText: "امور مالی");
         _mockRepo.Setup(r => r.GetByKeyAsync("module_payroll", It.IsAny<CancellationToken>()))
             .ReturnsAsync(builtIn);
+        _mockRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<MenuSetting> { builtIn });
 
         var request = new UpdateMenuSettingMetadataDto
         {
-            Title = "نام جدید",
-            Route = "/about"
+            Title = "سامانه حقوق پیشرفته",
+            Route = "/attempted-route-change", // Should be ignored for built-in items
+            Description = "توضیحات سفارشی ماژول",
+            ColorTheme = "indigo",
+            BadgeText = "بخش مالی سازمانی",
+            IsVisible = true,
+            DisplayOrder = 1
         };
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.UpdateSettingMetadataAsync("module_payroll", request, Guid.NewGuid()));
+        var result = await _service.UpdateSettingMetadataAsync("module_payroll", request, Guid.NewGuid());
+
+        Assert.NotNull(result);
+        Assert.Equal("سامانه حقوق پیشرفته", builtIn.Title);
+        Assert.Equal("/payroll/cycles", builtIn.Route); // Route remains unchanged
+        Assert.Equal("indigo", builtIn.ColorTheme);
+        Assert.Equal("بخش مالی سازمانی", builtIn.BadgeText);
+        Assert.Equal("توضیحات سفارشی ماژول", builtIn.Description);
+
+        _mockRepo.Verify(r => r.UpdateAsync(builtIn, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

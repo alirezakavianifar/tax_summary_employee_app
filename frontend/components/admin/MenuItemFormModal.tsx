@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { X, Plus, Save, Shield, CheckCircle2, AlertTriangle, Users } from 'lucide-react'
+import { X, Plus, Save, Shield, CheckCircle2, AlertTriangle, Users, Palette, Info } from 'lucide-react'
 import type {
   MenuSettingItem,
   CreateMenuSettingPayload,
   UpdateMenuSettingMetadataPayload,
 } from '@/types/menuSettings'
 import { MENU_ICON_OPTIONS } from '@/lib/icons/menuIcons'
+import { PORTAL_COLOR_THEMES } from '@/lib/constants/cardThemes'
 import {
   ALL_GENERAL_ROLES,
   ORGANIZATIONAL_ROLES,
@@ -41,6 +42,7 @@ export default function MenuItemFormModal({
   onSubmitUpdate,
 }: MenuItemFormModalProps) {
   const isEditing = Boolean(editingItem)
+  const isBuiltIn = Boolean(editingItem && !editingItem.isCustom)
 
   const [itemType, setItemType] = useState<'root' | 'child'>('root')
   const [parentKey, setParentKey] = useState<string>('')
@@ -49,6 +51,8 @@ export default function MenuItemFormModal({
   const [menuKey, setMenuKey] = useState('')
   const [description, setDescription] = useState('')
   const [iconName, setIconName] = useState('Link2')
+  const [colorTheme, setColorTheme] = useState<string>('blue')
+  const [badgeText, setBadgeText] = useState<string>('')
   const [displayOrder, setDisplayOrder] = useState<number>(10)
   const [isVisible, setIsVisible] = useState(true)
   const [allowedRoles, setAllowedRoles] = useState<string[]>([...ALL_GENERAL_ROLES])
@@ -71,6 +75,8 @@ export default function MenuItemFormModal({
       setMenuKey(editingItem.menuKey)
       setDescription(editingItem.description || '')
       setIconName(editingItem.iconName || (isChild ? 'Link2' : 'Folder'))
+      setColorTheme(editingItem.colorTheme || 'blue')
+      setBadgeText(editingItem.badgeText || '')
       setDisplayOrder(editingItem.displayOrder)
       setIsVisible(editingItem.isVisible)
       setAllowedRoles(
@@ -91,6 +97,8 @@ export default function MenuItemFormModal({
       setMenuKey('')
       setDescription('')
       setIconName(isChild ? 'Link2' : 'LayoutGrid')
+      setColorTheme('blue')
+      setBadgeText('')
       setDisplayOrder(rootModules.length + 1)
       setIsVisible(true)
       setAllowedRoles([...ALL_GENERAL_ROLES])
@@ -117,21 +125,23 @@ export default function MenuItemFormModal({
       return
     }
 
-    const isInternal = trimmedRoute.startsWith('/') && !trimmedRoute.startsWith('//')
-    const isExternal = /^https?:\/\/.+/i.test(trimmedRoute)
-    if (!isInternal && !isExternal) {
-      setFormError("مسیر باید با '/' شروع شود (مسیر داخلی) یا یک آدرس معتبر http/https باشد.")
-      return
-    }
+    if (!isBuiltIn) {
+      const isInternal = trimmedRoute.startsWith('/') && !trimmedRoute.startsWith('//')
+      const isExternal = /^https?:\/\/.+/i.test(trimmedRoute)
+      if (!isInternal && !isExternal) {
+        setFormError("مسیر باید با '/' شروع شود (مسیر داخلی) یا یک آدرس معتبر http/https باشد.")
+        return
+      }
 
-    if (!isEditing && trimmedKey && !/^[a-z0-9_-]{2,100}$/.test(trimmedKey)) {
-      setFormError('شناسه یکتا باید فقط شامل حروف کوچک انگلیسی، اعداد، خط تیره یا زیرخط باشد (حداقل ۲ کاراکتر).')
-      return
-    }
+      if (!isEditing && trimmedKey && !/^[a-z0-9_-]{2,100}$/.test(trimmedKey)) {
+        setFormError('شناسه یکتا باید فقط شامل حروف کوچک انگلیسی، اعداد، خط تیره یا زیرخط باشد (حداقل ۲ کاراکتر).')
+        return
+      }
 
-    if (itemType === 'child' && !parentKey) {
-      setFormError('انتخاب سامانه والد برای زیرمنو الزامی است.')
-      return
+      if (itemType === 'child' && !parentKey) {
+        setFormError('انتخاب سامانه والد برای زیرمنو الزامی است.')
+        return
+      }
     }
 
     const sanitizedRoles = sanitizeRolesSelection(allowedRoles)
@@ -140,10 +150,12 @@ export default function MenuItemFormModal({
     try {
       if (isEditing && editingItem) {
         await onSubmitUpdate(editingItem.menuKey, {
-          parentKey: itemType === 'child' ? parentKey : null,
+          parentKey: isBuiltIn ? editingItem.parentKey : itemType === 'child' ? parentKey : null,
           title: trimmedTitle,
-          route: trimmedRoute,
+          route: isBuiltIn ? editingItem.route : trimmedRoute,
           iconName,
+          colorTheme: itemType === 'root' ? colorTheme : null,
+          badgeText: itemType === 'root' ? (badgeText.trim() || null) : null,
           description: description.trim() || null,
           isVisible,
           adminOnly,
@@ -157,6 +169,8 @@ export default function MenuItemFormModal({
           title: trimmedTitle,
           route: trimmedRoute,
           iconName,
+          colorTheme: itemType === 'root' ? colorTheme : null,
+          badgeText: itemType === 'root' ? (badgeText.trim() || null) : null,
           description: description.trim() || null,
           isVisible,
           adminOnly,
@@ -177,7 +191,13 @@ export default function MenuItemFormModal({
       className="fixed inset-0 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4 z-50"
       role="dialog"
       aria-modal="true"
-      aria-label={isEditing ? 'ویرایش گزینه سفارشی منو' : 'افزودن گزینه جدید به منو'}
+      aria-label={
+        isBuiltIn
+          ? 'ویرایش مشخصات ماژول و کارت پورتال'
+          : isEditing
+          ? 'ویرایش گزینه سفارشی منو'
+          : 'افزودن گزینه جدید به منو'
+      }
     >
       <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
@@ -188,10 +208,16 @@ export default function MenuItemFormModal({
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-black text-gray-900">
-                {isEditing ? 'ویرایش گزینه سفارشی منو' : 'افزودن گزینه جدید به منو'}
+                {isBuiltIn
+                  ? 'ویرایش مشخصات ماژول و کارت پورتال'
+                  : isEditing
+                  ? 'ویرایش گزینه سفارشی منو'
+                  : 'افزودن گزینه جدید به منو'}
               </h2>
               <p className="text-[11px] text-gray-500">
-                تعریف لینک داخلی سامانه یا پیوند خارجی با کنترل سطح دسترسی نقش‌ها
+                {isBuiltIn
+                  ? 'شخصی‌سازی عنوان، توضیحات، رنگ تم، برچسب کارت، آیکون و سطح دسترسی'
+                  : 'تعریف لینک داخلی سامانه یا پیوند خارجی با کنترل سطح دسترسی نقش‌ها'}
               </p>
             </div>
           </div>
@@ -214,46 +240,58 @@ export default function MenuItemFormModal({
             </div>
           )}
 
-          {/* Level selector */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-gray-800">جایگاه در ساختار منو</label>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => setItemType('root')}
-                className={`p-3 rounded-xl border text-right transition-all ${
-                  itemType === 'root'
-                    ? 'border-indigo-500 bg-indigo-50/70 text-indigo-900 ring-2 ring-indigo-500/15'
-                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                }`}
-              >
-                <span className="text-xs font-bold block">گزینه اصلی (سطح اول)</span>
-                <span className="text-[11px] text-gray-500 block mt-0.5">
-                  لینک مستقل در منوی کناری یا سرگروه ماژول جدید
-                </span>
-              </button>
-
-              <button
-                type="button"
-                disabled={hasChildren || availableParents.length === 0}
-                onClick={() => setItemType('child')}
-                className={`p-3 rounded-xl border text-right transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                  itemType === 'child'
-                    ? 'border-indigo-500 bg-indigo-50/70 text-indigo-900 ring-2 ring-indigo-500/15'
-                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                }`}
-              >
-                <span className="text-xs font-bold block">زیرمنو (داخل یک سامانه)</span>
-                <span className="text-[11px] text-gray-500 block mt-0.5">
-                  {hasChildren
-                    ? 'این ماژول دارای زیرمنو است و نمی‌تواند زیرمنو شود'
-                    : 'افزودن به زیرمجموعه یکی از سامانه‌های موجود'}
-                </span>
-              </button>
+          {isBuiltIn && (
+            <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-blue-900 text-xs flex items-start gap-2">
+              <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">ماژول پیش‌فرض سیستم: </span>
+                مسیر و ساختار هسته این ماژول ثابت است، اما می‌توانید عنوان، توضیحات، رنگ تم کارت، برچسب گروه، آیکون و اولویت نمایش آن را تغییر دهید.
+              </div>
             </div>
-          </div>
+          )}
 
-          {itemType === 'child' && (
+          {/* Level selector */}
+          {!isBuiltIn && (
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-800">جایگاه در ساختار منو</label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setItemType('root')}
+                  className={`p-3 rounded-xl border text-right transition-all ${
+                    itemType === 'root'
+                      ? 'border-indigo-500 bg-indigo-50/70 text-indigo-900 ring-2 ring-indigo-500/15'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <span className="text-xs font-bold block">گزینه اصلی (سطح اول)</span>
+                  <span className="text-[11px] text-gray-500 block mt-0.5">
+                    کارت مستقل در صفحه اصلی یا سرگروه ماژول جدید
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={hasChildren || availableParents.length === 0}
+                  onClick={() => setItemType('child')}
+                  className={`p-3 rounded-xl border text-right transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    itemType === 'child'
+                      ? 'border-indigo-500 bg-indigo-50/70 text-indigo-900 ring-2 ring-indigo-500/15'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <span className="text-xs font-bold block">زیرمنو (داخل یک سامانه)</span>
+                  <span className="text-[11px] text-gray-500 block mt-0.5">
+                    {hasChildren
+                      ? 'این ماژول دارای زیرمنو است و نمی‌تواند زیرمنو شود'
+                      : 'افزودن به زیرمجموعه یکی از سامانه‌های موجود'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {itemType === 'child' && !isBuiltIn && (
             <div>
               <label className="block text-xs font-bold text-gray-800 mb-1.5">
                 سامانه / ماژول والد *
@@ -276,13 +314,13 @@ export default function MenuItemFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-800 mb-1.5">
-                عنوان نمایشی در منو *
+                عنوان نمایشی در منو و کارت *
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="مثلاً: درگاه قوانین مالیاتی"
+                placeholder="مثلاً: سامانه هوش تجاری و نظارت"
                 maxLength={150}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
@@ -290,31 +328,91 @@ export default function MenuItemFormModal({
 
             <div>
               <label className="block text-xs font-bold text-gray-800 mb-1.5">
-                مسیر صفحه یا لینک مقصد *
+                مسیر صفحه یا لینک مقصد {isBuiltIn ? '(ثابت سیستمی)' : '*'}
               </label>
               <input
                 type="text"
                 dir="ltr"
+                disabled={isBuiltIn}
                 value={route}
                 onChange={(e) => setRoute(e.target.value)}
                 placeholder="/about یا https://intamedia.ir"
                 maxLength={250}
-                className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-left"
+                className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-gray-300 disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-left"
               />
             </div>
           </div>
+
+          {/* Root Card Extras: Color Theme & Badge Text */}
+          {itemType === 'root' && (
+            <div className="space-y-4 pt-1 border-t border-gray-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                    برچسب بالای کارت (نشانگر گروه موضوعی)
+                  </label>
+                  <input
+                    type="text"
+                    value={badgeText}
+                    onChange={(e) => setBadgeText(e.target.value)}
+                    placeholder="مثلاً: سرمایه انسانی و ارزیابی، امور مالی و اضافه کار"
+                    maxLength={100}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                  <span className="text-[10px] text-gray-400 mt-1 block">
+                    نشان کوچکی که در گوشه بالای کارت در پورتال اصلی نمایش داده می‌شود.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                    رنگ تم کارت عملیاتی
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto p-1 border border-gray-200 rounded-xl bg-gray-50/50">
+                    {PORTAL_COLOR_THEMES.map((opt) => {
+                      const selected = (colorTheme || 'blue').toLowerCase() === opt.key.toLowerCase()
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setColorTheme(opt.key)}
+                          className={`p-2 rounded-lg border text-right transition-all flex items-center justify-between text-xs ${
+                            selected
+                              ? 'border-indigo-600 bg-white shadow-xs ring-1 ring-indigo-500/30'
+                              : 'border-transparent hover:border-gray-300 bg-white/70'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span
+                              className={`w-3.5 h-3.5 rounded-full bg-gradient-to-tr ${opt.swatchGradient} shadow-xs flex-shrink-0`}
+                            />
+                            <span className="text-[11px] font-semibold text-gray-800 truncate">
+                              {opt.label}
+                            </span>
+                          </div>
+                          {selected && (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Description, MenuKey, DisplayOrder */}
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
             <div className="sm:col-span-6">
               <label className="block text-xs font-bold text-gray-800 mb-1.5">
-                توضیح کوتاه (اختیاری)
+                توضیح کوتاه (متن داخل کارت پورتال)
               </label>
               <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="نمایش در راهنما و پنجره بازشو"
+                placeholder="توضیح عملکرد ماژول در بدنه کارت پورتال و راهنما"
                 maxLength={500}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
@@ -338,13 +436,13 @@ export default function MenuItemFormModal({
 
             <div className="sm:col-span-2">
               <label className="block text-xs font-bold text-gray-800 mb-1.5">
-                ترتیب
+                ترتیب نمایش
               </label>
               <input
                 type="number"
                 value={displayOrder}
                 onChange={(e) => setDisplayOrder(Number(e.target.value))}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-center"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-center font-bold"
               />
             </div>
           </div>
@@ -352,9 +450,9 @@ export default function MenuItemFormModal({
           {/* Icon Picker */}
           <div>
             <label className="block text-xs font-bold text-gray-800 mb-1.5">
-              آیکون نمایشی
+              آیکون نمایشی کارت و منو
             </label>
-            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-200 max-h-40 overflow-y-auto">
+            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-200 max-h-36 overflow-y-auto">
               {MENU_ICON_OPTIONS.map((opt) => {
                 const IconComp = opt.icon
                 const selected = iconName.toLowerCase() === opt.name.toLowerCase()
@@ -478,4 +576,3 @@ export default function MenuItemFormModal({
     </div>
   )
 }
-

@@ -58,6 +58,16 @@ public class MenuSetting
     public string? Description { get; private set; }
 
     /// <summary>
+    /// Visual color theme key for portal cards (e.g. "blue", "emerald", "purple", "amber", "rose", "cyan", "indigo", "slate").
+    /// </summary>
+    public string? ColorTheme { get; private set; }
+
+    /// <summary>
+    /// Badge text displayed on portal card banners (e.g. "سرمایه انسانی و ارزیابی").
+    /// </summary>
+    public string? BadgeText { get; private set; }
+
+    /// <summary>
     /// Timestamp when this setting was created.
     /// </summary>
     public DateTime CreatedAt { get; private set; }
@@ -86,7 +96,9 @@ public class MenuSetting
         int displayOrder = 0,
         string? description = null,
         Guid? updatedByUserId = null,
-        string? allowedRoles = null)
+        string? allowedRoles = null,
+        string? colorTheme = null,
+        string? badgeText = null)
     {
         if (string.IsNullOrWhiteSpace(menuKey))
             throw new ArgumentException("شناسه یکتای منو الزامی است", nameof(menuKey));
@@ -119,6 +131,8 @@ public class MenuSetting
             Title = title.Trim(),
             Route = string.IsNullOrWhiteSpace(route) ? "/" : route.Trim(),
             IconName = string.IsNullOrWhiteSpace(iconName) ? null : iconName.Trim(),
+            ColorTheme = string.IsNullOrWhiteSpace(colorTheme) ? null : colorTheme.Trim().ToLowerInvariant(),
+            BadgeText = string.IsNullOrWhiteSpace(badgeText) ? null : badgeText.Trim(),
             IsVisible = isVisible,
             AdminOnly = isActuallyAdminOnly,
             AllowedRoles = resolvedRoles,
@@ -198,7 +212,9 @@ public class MenuSetting
         string route,
         string? description = null,
         Guid? updatedByUserId = null,
-        string? iconName = null)
+        string? iconName = null,
+        string? colorTheme = null,
+        string? badgeText = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("عنوان منو الزامی است", nameof(title));
@@ -207,6 +223,8 @@ public class MenuSetting
         Route = string.IsNullOrWhiteSpace(route) ? "/" : route.Trim();
         Description = description?.Trim();
         IconName = string.IsNullOrWhiteSpace(iconName) ? null : iconName.Trim();
+        ColorTheme = string.IsNullOrWhiteSpace(colorTheme) ? null : colorTheme.Trim().ToLowerInvariant();
+        BadgeText = string.IsNullOrWhiteSpace(badgeText) ? null : badgeText.Trim();
         UpdatedAt = DateTime.UtcNow;
         UpdatedByUserId = updatedByUserId;
     }

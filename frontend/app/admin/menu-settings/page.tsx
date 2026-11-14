@@ -682,6 +682,17 @@ function MenuSettingsAdminContent() {
                                 سفارشی
                               </span>
                             )}
+                            {module.badgeText && (
+                              <span className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
+                                {module.badgeText}
+                              </span>
+                            )}
+                            {module.colorTheme && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 rounded-full">
+                                <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                {module.colorTheme}
+                              </span>
+                            )}
                             {module.adminOnly ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
                                 <Shield className="w-3 h-3" />
@@ -826,28 +837,28 @@ function MenuSettingsAdminContent() {
                             </button>
                           )}
 
-                          {module.isCustom && (
-                            <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5 bg-gray-50/70">
-                              <button
-                                type="button"
-                                onClick={() => openEditModal(module)}
-                                disabled={mutatingCustom}
-                                className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-50"
-                                title="ویرایش گزینه سفارشی"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
+                          <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5 bg-gray-50/70">
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(module)}
+                              disabled={mutatingCustom}
+                              className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-50"
+                              title={module.isCustom ? "ویرایش ماژول سفارشی" : "ویرایش عنوان، رنگ تم و کارت ماژول"}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            {module.isCustom && (
                               <button
                                 type="button"
                                 onClick={() => setDeleteTarget(module)}
                                 disabled={mutatingCustom}
                                 className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors disabled:opacity-50"
-                                title="حذف گزینه سفارشی"
+                                title="حذف ماژول سفارشی"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
-                            </div>
-                          )}
+                            )}
+                          </div>
 
                           {/* Visibility Switch */}
                           <div className="flex items-center gap-2">
@@ -1019,17 +1030,17 @@ function MenuSettingsAdminContent() {
                                     })}
                                   </div>
 
-                                  {child.isCustom && (
-                                    <div className="flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-gray-50/70">
-                                      <button
-                                        type="button"
-                                        onClick={() => openEditModal(child)}
-                                        disabled={mutatingCustom}
-                                        className="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-50"
-                                        title="ویرایش زیرمنوی سفارشی"
-                                      >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                      </button>
+                                  <div className="flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-gray-50/70">
+                                    <button
+                                      type="button"
+                                      onClick={() => openEditModal(child)}
+                                      disabled={mutatingCustom}
+                                      className="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-50"
+                                      title={child.isCustom ? "ویرایش زیرمنوی سفارشی" : "ویرایش عنوان، آیکون و اولویت زیرمنو"}
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                    {child.isCustom && (
                                       <button
                                         type="button"
                                         onClick={() => setDeleteTarget(child)}
@@ -1039,8 +1050,8 @@ function MenuSettingsAdminContent() {
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
-                                    </div>
-                                  )}
+                                    )}
+                                  </div>
 
                                   {/* Submenu Visibility Switch */}
                                   <button

@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Folder,
   Link2,
+  Palette,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -114,6 +115,14 @@ const ADMIN_ACTIONS: AdminActionDef[] = [
     href: '/admin/auditor-metrics',
     icon: Award,
     checkVisibility: false,
+  },
+  {
+    id: 'admin-branding',
+    title: 'هویت بصری و برندینگ سازمان',
+    description: 'شخصی‌سازی لوگو، نام اداره کل و عناوین سامانه',
+    href: '/admin/branding',
+    icon: Palette,
+    checkVisibility: true,
   },
 ]
 

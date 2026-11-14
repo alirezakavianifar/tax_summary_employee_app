@@ -105,3 +105,38 @@ export abstract class BasePortalModule {
     }
   }
 }
+
+export class CustomPortalModule extends BasePortalModule {
+  public readonly id: string
+  public readonly title: string
+  public readonly navTitle: string
+  public readonly subtitle: string
+  public readonly description: string
+  public readonly badgeText: string
+  public readonly icon: LucideIcon
+  public readonly gradient: string = ''
+  public readonly accentColor: string = ''
+  public readonly borderHoverColor: string = ''
+  public readonly iconBgColor: string = ''
+  public readonly actions: PortalAction[]
+  public readonly highlights: string[] = []
+
+  constructor(
+    id: string,
+    title: string,
+    description: string,
+    badgeText: string,
+    icon: LucideIcon,
+    actions: PortalAction[] = []
+  ) {
+    super()
+    this.id = id
+    this.title = title
+    this.navTitle = title
+    this.subtitle = description
+    this.description = description
+    this.badgeText = badgeText
+    this.icon = icon
+    this.actions = actions
+  }
+}

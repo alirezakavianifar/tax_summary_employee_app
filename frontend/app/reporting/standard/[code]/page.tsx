@@ -233,7 +233,7 @@ export default function StandardReportDetailPage() {
   const isCustom = reportDef?.domainSource === 6 || code.toUpperCase().startsWith('REP_CUSTOM_')
 
   return (
-    <div className="space-y-5 print-landscape">
+    <div className="space-y-3.5 print-landscape">
       {/* Explicit A4 Landscape Orientation for Multi-Column Standard Reports */}
       <style jsx global>{`
         @media print {
@@ -267,63 +267,65 @@ export default function StandardReportDetailPage() {
         </div>
       </div>
 
-      {/* Breadcrumb & Navigation */}
-      <div className="flex items-center justify-between flex-wrap gap-3 no-print">
-        <Link
-          href="/reporting/standard"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-amber-700 transition-colors"
-        >
-          <ArrowRight className="w-4 h-4" />
-          <span>بازگشت به کاتالوگ گزارش‌ها</span>
-        </Link>
-
-        <div className="flex items-center gap-2">
-          <ExportActionMenu onExportExcel={handleExportExcel} disabled={isLoading || !executionResult} />
-        </div>
-      </div>
-
-      {/* Report Header Card */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
+      {/* Unified Command Header Card */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 no-print">
+        <div className="min-w-0">
+          {/* Breadcrumb + Code Badge + Type Label */}
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <Link
+              href="/reporting/standard"
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-amber-700 transition-colors"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+              <span>کاتالوگ گزارش‌ها</span>
+            </Link>
+            <span className="text-slate-300">/</span>
             <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
               {reportDef?.code || code}
             </span>
-            <span className="text-xs text-slate-400">گزارش استاندارد مصوب</span>
+            <span className="text-[11px] text-slate-400">گزارش استاندارد مصوب</span>
           </div>
 
-          <h1 className="text-lg sm:text-xl font-extrabold text-slate-800">
-            {reportDef?.title || executionResult?.reportTitle || 'گزارش آماری'}
-          </h1>
-
-          {reportDef?.description && (
-            <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
-              {reportDef.description}
-            </p>
-          )}
+          {/* Title & Description */}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <h1 className="text-base sm:text-lg font-black text-slate-800 truncate">
+              {reportDef?.title || executionResult?.reportTitle || 'گزارش آماری'}
+            </h1>
+            {reportDef?.description && (
+              <span
+                className="text-xs text-slate-500 hidden lg:inline truncate max-w-xl"
+                title={reportDef.description}
+              >
+                — {reportDef.description}
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Unified Actions Bar (Export, Tweak, Delete, Refresh) */}
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <ExportActionMenu onExportExcel={handleExportExcel} disabled={isLoading || !executionResult} />
+
           {/* Custom Report Actions: Tweak & Delete */}
           {isCustom && (
             <>
               <button
                 type="button"
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 transition-all cursor-pointer shadow-2xs"
-                title="حذف دائمی این گزارش و داده‌های جدول آن"
+                onClick={() => setIsTweakOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white border border-purple-200 transition-all cursor-pointer shadow-2xs"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>حذف گزارش</span>
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">سفارشی‌سازی (Tweak)</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setIsTweakOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white border border-purple-200 transition-all cursor-pointer shadow-2xs"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 transition-all cursor-pointer shadow-2xs"
+                title="حذف دائمی این گزارش و داده‌های جدول آن"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>سفارشی‌سازی ستون‌ها و فیلترها (Tweak)</span>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">حذف گزارش</span>
               </button>
             </>
           )}
@@ -332,7 +334,7 @@ export default function StandardReportDetailPage() {
             type="button"
             onClick={execute}
             disabled={isLoading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-all cursor-pointer shadow-2xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-amber-600' : ''}`} />
             <span>تازه‌سازی</span>

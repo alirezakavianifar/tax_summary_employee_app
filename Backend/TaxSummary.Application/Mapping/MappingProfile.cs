@@ -1,6 +1,7 @@
 using AutoMapper;
 using TaxSummary.Application.DTOs;
 using TaxSummary.Application.DTOs.Auth;
+using TaxSummary.Application.DTOs.Branding;
 using TaxSummary.Application.DTOs.Office;
 using TaxSummary.Domain.Entities;
 
@@ -83,5 +84,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Employee, opt => opt.Ignore())
             .ForMember(dest => dest.RefreshTokens, opt => opt.Ignore());
+
+        // System Settings & Branding mappings
+        CreateMap<SystemSetting, SystemSettingsDto>();
     }
 }

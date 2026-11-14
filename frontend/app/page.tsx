@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { useBranding } from '@/contexts/BrandingContext'
 import { getUserDisplayName } from '@/types/auth'
 import { getAuthorizedPortalModules } from '@/lib/modules/portalRegistry'
 import ModuleCard from '@/components/portal/ModuleCard'
@@ -13,9 +14,12 @@ import {
   ExternalLink,
   HelpCircle,
   Activity,
-  CheckCircle2,
+  LayoutGrid,
+  Link2,
 } from 'lucide-react'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
+import { resolveMenuIcon } from '@/lib/icons/menuIcons'
+import { BasePortalModule, CustomPortalModule, PortalAction } from '@/types/portal'
 import {
   getTodayJalali,
   getJalaliWeekday,
@@ -24,9 +28,19 @@ import {
   toPersianDigits,
 } from '@/lib/jalali'
 
+const BUILT_IN_MODULE_KEYS = new Set([
+  'module_evaluation',
+  'module_payroll',
+  'module_tax_refund',
+  'module_reporting',
+  'module_admin',
+  'nav_home',
+])
+
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth()
-  const { isModuleVisible } = useMenuSettings()
+  const { branding, resolvedLogoUrl } = useBranding()
+  const { settings, isModuleVisible, getModuleSetting } = useMenuSettings()
   const [todayString, setTodayString] = useState<string>('')
 
   useEffect(() => {
@@ -41,8 +55,62 @@ export default function HomePage() {
     }
   }, [])
 
-  const modules = getAuthorizedPortalModules(user?.role)
-  const visibleModules = modules.filter((m) => isModuleVisible(m.id))
+  const allPortalModules = useMemo(() => {
+    // 1. Authorized built-in modules
+    const builtInModules = getAuthorizedPortalModules(user?.role).filter((m) =>
+      isModuleVisible(m.id)
+    )
+
+    // 2. Custom root modules created by admin
+    const customModules: BasePortalModule[] = []
+    for (const item of settings) {
+      if (
+        !item.parentKey &&
+        !BUILT_IN_MODULE_KEYS.has(item.menuKey.toLowerCase()) &&
+        isModuleVisible(item.menuKey)
+      ) {
+        const childActions: PortalAction[] = (item.children || [])
+          .filter((c) => c.isVisible)
+          .map((c, idx) => ({
+            id: c.menuKey,
+            title: c.title,
+            href: c.route,
+            description: c.description || undefined,
+            icon: resolveMenuIcon(c.iconName, Link2),
+            variant: idx === 0 ? 'primary' : 'secondary',
+          }))
+
+        if (childActions.length === 0) {
+          childActions.push({
+            id: item.menuKey,
+            title: `ورود به ${item.title}`,
+            href: item.route,
+            icon: resolveMenuIcon(item.iconName, LayoutGrid),
+            variant: 'primary',
+          })
+        }
+
+        customModules.push(
+          new CustomPortalModule(
+            item.menuKey,
+            item.title,
+            item.description || '',
+            item.badgeText || 'سامانه سازمانی',
+            resolveMenuIcon(item.iconName, LayoutGrid),
+            childActions
+          )
+        )
+      }
+    }
+
+    // Combine and sort by display order from MenuSettings
+    const combined = [...builtInModules, ...customModules]
+    return combined.sort((a, b) => {
+      const orderA = getModuleSetting(a.id)?.displayOrder ?? 99
+      const orderB = getModuleSetting(b.id)?.displayOrder ?? 99
+      return orderA - orderB
+    })
+  }, [user?.role, settings, isModuleVisible, getModuleSetting])
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-100/60 py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
@@ -80,7 +148,7 @@ export default function HomePage() {
                   </span>
                 ) : (
                   <span>
-                    درگاه خدمات الکترونیک، ارزیابی انتصابات، محاسبات مشارکتی حقوق و استرداد مالیات اداره کل امور مالیاتی استان خوزستان
+                    درگاه خدمات الکترونیک، ارزیابی انتصابات، محاسبات مشارکتی حقوق و استرداد مالیات {branding.organizationName}
                   </span>
                 )}
               </p>
@@ -123,13 +191,13 @@ export default function HomePage() {
             </div>
           </div>
           <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full border border-gray-200/80">
-            {toPersianDigits(visibleModules.length)} سامانه فعال
+            {toPersianDigits(allPortalModules.length)} سامانه فعال
           </span>
         </div>
 
         {/* Extensible Modules Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {visibleModules.map((module) => (
+          {allPortalModules.map((module) => (
             <ModuleCard key={module.id} module={module} userRole={user?.role} />
           ))}
         </div>
@@ -139,13 +207,13 @@ export default function HomePage() {
           <div className="flex items-center gap-3">
             <div className="w-7 h-7 rounded-lg bg-white p-0.5 border border-gray-200 shadow-xs flex items-center justify-center flex-shrink-0">
               <img
-                src="/images/Intamedia_Logo.png"
-                alt="لوگوی اداره کل امور مالیاتی استان خوزستان"
+                src={resolvedLogoUrl}
+                alt={`لوگوی ${branding.organizationName}`}
                 className="w-full h-full object-contain"
               />
             </div>
             <p>
-              اداره کل امور مالیاتی استان خوزستان — تمامی حقوق محفوظ است.
+              {branding.organizationName} — تمامی حقوق محفوظ است.
             </p>
           </div>
 

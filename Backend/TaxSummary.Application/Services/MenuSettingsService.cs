@@ -136,7 +136,9 @@ public class MenuSettingsService : IMenuSettingsService
             displayOrder: nextOrder,
             description: request.Description,
             updatedByUserId: currentUserId,
-            allowedRoles: allowedRolesCsv);
+            allowedRoles: allowedRolesCsv,
+            colorTheme: request.ColorTheme,
+            badgeText: request.BadgeText);
 
         await _repository.AddAsync(entity, cancellationToken);
         _logger.LogInformation("Created custom menu setting '{MenuKey}' by user {UserId}.", normalizedKey, currentUserId);
@@ -159,17 +161,19 @@ public class MenuSettingsService : IMenuSettingsService
         var existing = await _repository.GetByKeyAsync(menuKey, cancellationToken)
             ?? throw new KeyNotFoundException("گزینه منوی مورد نظر یافت نشد.");
 
-        if (DefaultMenuKeys.Contains(existing.MenuKey))
-            throw new InvalidOperationException("ویرایش ساختار گزینه‌های پیش‌فرض سیستم مجاز نیست؛ فقط گزینه‌های سفارشی قابل ویرایش هستند.");
-
+        var isBuiltIn = DefaultMenuKeys.Contains(existing.MenuKey);
         var title = ValidateTitle(request.Title);
-        var route = ValidateAndNormalizeRoute(request.Route);
-        var allSettings = await _repository.GetAllAsync(cancellationToken);
-        var hasChildren = allSettings.Any(s => string.Equals(s.ParentKey, existing.MenuKey, StringComparison.OrdinalIgnoreCase));
-        var parentKey = ValidateParentKey(request.ParentKey, existing.MenuKey, hasChildren, allSettings);
+        var route = isBuiltIn ? existing.Route : ValidateAndNormalizeRoute(request.Route);
+        
+        if (!isBuiltIn)
+        {
+            var allSettings = await _repository.GetAllAsync(cancellationToken);
+            var hasChildren = allSettings.Any(s => string.Equals(s.ParentKey, existing.MenuKey, StringComparison.OrdinalIgnoreCase));
+            var parentKey = ValidateParentKey(request.ParentKey, existing.MenuKey, hasChildren, allSettings);
+            existing.UpdateParentKey(parentKey, currentUserId);
+        }
 
-        existing.UpdateMetadata(title, route, request.Description, currentUserId, request.IconName);
-        existing.UpdateParentKey(parentKey, currentUserId);
+        existing.UpdateMetadata(title, route, request.Description, currentUserId, request.IconName, request.ColorTheme, request.BadgeText);
 
         var roles = SanitizeAllowedRoles(request.AllowedRoles);
         existing.UpdateVisibility(
@@ -301,6 +305,8 @@ public class MenuSettingsService : IMenuSettingsService
             Title = e.Title,
             Route = e.Route,
             IconName = e.IconName,
+            ColorTheme = e.ColorTheme,
+            BadgeText = e.BadgeText,
             IsVisible = e.IsVisible,
             AdminOnly = e.AdminOnly,
             AllowedRoles = e.AllowedRoles

@@ -52,6 +52,9 @@ public static class DbInitializer
         // Seed Menu & Module Visibility Settings
         await SeedMenuSettingsAsync(context);
 
+        // Seed System Branding & Global Settings
+        await SeedSystemSettingsAsync(context);
+
         // Seed Tax Sources
         await SeedTaxSourcesAsync(context);
 
@@ -570,6 +573,29 @@ public static class DbInitializer
             hasModified = true;
         }
 
+        // Backfill default ColorTheme and BadgeText for existing root modules if empty
+        var rootModules = await context.MenuSettings
+            .Where(m => m.ParentKey == null)
+            .ToListAsync();
+
+        foreach (var root in rootModules)
+        {
+            var def = defaultMenus.FirstOrDefault(d => string.Equals(d.MenuKey, root.MenuKey, StringComparison.OrdinalIgnoreCase));
+            if (def != null && (root.ColorTheme == null || root.BadgeText == null))
+            {
+                root.UpdateMetadata(
+                    root.Title,
+                    root.Route,
+                    root.Description,
+                    root.UpdatedByUserId,
+                    root.IconName,
+                    root.ColorTheme ?? def.ColorTheme,
+                    root.BadgeText ?? def.BadgeText
+                );
+                hasModified = true;
+            }
+        }
+
         if (hasModified)
         {
             await context.SaveChangesAsync();
@@ -1022,6 +1048,32 @@ public static class DbInitializer
                 }
             }
 
+            // Ensure MenuSettings columns ColorTheme and BadgeText exist
+            command.CommandText = "PRAGMA table_info(MenuSettings);";
+            var menuColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    menuColumns.Add(reader.GetString(1));
+                }
+            }
+
+            if (menuColumns.Count > 0)
+            {
+                if (!menuColumns.Contains("ColorTheme"))
+                {
+                    command.CommandText = "ALTER TABLE MenuSettings ADD COLUMN ColorTheme TEXT NULL;";
+                    await command.ExecuteNonQueryAsync();
+                }
+
+                if (!menuColumns.Contains("BadgeText"))
+                {
+                    command.CommandText = "ALTER TABLE MenuSettings ADD COLUMN BadgeText TEXT NULL;";
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
+
             // 4. Ensure AuditorPerformanceMetricDefinitions table exists
             command.CommandText = @"
                 CREATE TABLE IF NOT EXISTS ""AuditorPerformanceMetricDefinitions"" (
@@ -1087,7 +1139,23 @@ public static class DbInitializer
                 );";
             await command.ExecuteNonQueryAsync();
 
-            // 6. Record these migrations as applied in __EFMigrationsHistory so MigrateAsync won't attempt duplicate column adds
+            // 7. Ensure SystemSettings table exists
+            command.CommandText = @"
+                CREATE TABLE IF NOT EXISTS ""SystemSettings"" (
+                    ""Id"" TEXT NOT NULL CONSTRAINT ""PK_SystemSettings"" PRIMARY KEY,
+                    ""SettingKey"" TEXT NOT NULL,
+                    ""OrganizationName"" TEXT NOT NULL,
+                    ""SystemTitle"" TEXT NOT NULL,
+                    ""LogoPath"" TEXT NOT NULL,
+                    ""ReportingModuleTitle"" TEXT NOT NULL,
+                    ""ReportingModuleSubtitle"" TEXT NOT NULL,
+                    ""UpdatedAt"" TEXT NOT NULL,
+                    ""UpdatedBy"" TEXT NULL
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_SystemSettings_SettingKey"" ON ""SystemSettings"" (""SettingKey"");";
+            await command.ExecuteNonQueryAsync();
+
+            // Record migrations as applied in __EFMigrationsHistory
             command.CommandText = @"
                 INSERT OR IGNORE INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
                 VALUES ('20261102050338_AddExecutiveServiceDatesAndPerformanceMetrics', '8.0.0');
@@ -1098,6 +1166,15 @@ public static class DbInitializer
         catch (Exception ex)
         {
             Console.WriteLine($"[DbInitializer] Warning during EnsureSchemaUpToDateAsync: {ex.Message}");
+        }
+    }
+
+    private static async Task SeedSystemSettingsAsync(TaxSummaryDbContext context)
+    {
+        if (!await context.SystemSettings.AnyAsync(s => s.SettingKey == SystemSetting.DefaultSettingKey))
+        {
+            await context.SystemSettings.AddAsync(SystemSetting.CreateDefault());
+            await context.SaveChangesAsync();
         }
     }
 }

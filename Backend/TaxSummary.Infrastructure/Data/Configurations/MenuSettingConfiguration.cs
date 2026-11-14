@@ -36,6 +36,12 @@ public class MenuSettingConfiguration : IEntityTypeConfiguration<MenuSetting>
         builder.Property(m => m.Description)
             .HasMaxLength(500);
 
+        builder.Property(m => m.ColorTheme)
+            .HasMaxLength(50);
+
+        builder.Property(m => m.BadgeText)
+            .HasMaxLength(100);
+
         builder.Property(m => m.IsVisible)
             .IsRequired();
 

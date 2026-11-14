@@ -11,6 +11,8 @@ import {
   Filter,
   RefreshCw,
   Sparkles,
+  ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -55,6 +57,31 @@ export function ReportAuditorPerformanceTab({
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOffice, setSelectedOffice] = useState('all')
   const [selectedAuditorForDrawer, setSelectedAuditorForDrawer] = useState<string | null>(null)
+  const [isInsightsExpanded, setIsInsightsExpanded] = useState<boolean>(false)
+
+  // Restore user's insights panel preference from storage
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('reporting_auditor_insights_expanded')
+      if (saved !== null) {
+        setIsInsightsExpanded(saved === 'true')
+      }
+    } catch {
+      // Ignore storage access errors
+    }
+  }, [])
+
+  const toggleInsights = () => {
+    setIsInsightsExpanded((prev) => {
+      const next = !prev
+      try {
+        window.localStorage.setItem('reporting_auditor_insights_expanded', String(next))
+      } catch {
+        // Ignore storage access errors
+      }
+      return next
+    })
+  }
 
   // Pagination & Sorting State
   const [currentPage, setCurrentPage] = useState<number>(1)
@@ -443,43 +470,82 @@ export function ReportAuditorPerformanceTab({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner Notice */}
-      <div className="bg-linear-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-amber-600 text-white shadow-xs">
-            <Award className="w-6 h-6" />
+    <div className="space-y-4">
+      {/* Collapsible Executive Insights Tray */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden transition-all">
+        {/* Toggle Ribbon Header */}
+        <div className="p-3 sm:px-4 sm:py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5 bg-gradient-to-r from-amber-500/5 via-slate-50/60 to-white">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              type="button"
+              onClick={toggleInsights}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-2xs ${
+                isInsightsExpanded
+                  ? 'bg-amber-600 text-white hover:bg-amber-700'
+                  : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border border-amber-300/70'
+              }`}
+              title={isInsightsExpanded ? 'بستن پنل شاخص‌ها و سکوی افتخار' : 'نمایش کامل شاخص‌ها و سکوی افتخار'}
+            >
+              <Award className={`w-3.5 h-3.5 ${isInsightsExpanded ? 'text-amber-200' : 'text-amber-600'}`} />
+              <span>
+                {isDecree
+                  ? 'داشبورد شاخص‌های کلیدی و سکوی افتخار مجریان (KPI)'
+                  : 'داشبورد شاخص‌های کلیدی و سکوی افتخار حسابرسان (KPI)'}
+              </span>
+              {isInsightsExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5 mr-0.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 mr-0.5" />
+              )}
+            </button>
+
+            {/* Micro-metrics pills (always visible in ribbon) */}
+            <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
+              <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200/60 font-mono">
+                {isDecree
+                  ? `${toPersianDigits(scorecards.length)} مجری`
+                  : `${toPersianDigits(scorecards.length)} حسابرس`}
+              </span>
+              <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200/60 font-mono">
+                {isDecree
+                  ? `${toPersianDigits(stats.totalAssigned.toLocaleString())} فقره قرار`
+                  : `${toPersianDigits(stats.totalAssigned.toLocaleString())} پرونده`}
+              </span>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/70 font-mono">
+                <span>رتبه A:</span>
+                <span>{toPersianDigits(stats.tierA)} نفر</span>
+              </span>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200/70 font-mono">
+                <span>رتبه B:</span>
+                <span>{toPersianDigits(stats.tierB)} نفر</span>
+              </span>
+              {stats.totalAssessed > 0 && (
+                <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-200/70 font-mono">
+                  <span>تثبیت:</span>
+                  <span>{toPersianDigits(((stats.totalFinal / stats.totalAssessed) * 100).toFixed(1))}٪</span>
+                </span>
+              )}
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900">
-              {isDecree
-                ? 'ارزیابی عملکرد و کارنامه ۳۶۰ درجه مجریان قرار (بر اساس فایل بارگذاری‌شده)'
-                : 'ارزیابی عملکرد و کارنامه ۳۶۰ درجه حسابرسان (بر اساس فایل بارگذاری‌شده)'}
-            </h2>
-            <p className="text-xs text-slate-600 mt-0.5">
-              {isDecree
-                ? `محاسبه زنده شاخص‌ها از روی ${toPersianDigits(
-                    scorecards.reduce((s, c) => s + c.totalAssignedCases, 0).toLocaleString()
-                  )} فقره قرار دادرسی برای ${toPersianDigits(scorecards.length)} مجری و سرپرست اجرای قرار`
-                : `محاسبه زنده شاخص‌ها از روی ${toPersianDigits(
-                    scorecards.reduce((s, c) => s + c.totalAssignedCases, 0).toLocaleString()
-                  )} پرونده حسابرسی شده برای ${toPersianDigits(scorecards.length)} حسابرس مستقل`}
-            </p>
+
+          <div className="flex items-center gap-2 self-end md:self-auto shrink-0">
+            <button
+              type="button"
+              onClick={loadData}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer shadow-2xs"
+              title="محاسبه مجدد شاخص‌های ارزیابی ۳۶۰ درجه"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : ''}`} />
+              <span className="hidden sm:inline">محاسبه مجدد</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={loadData}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer shadow-2xs"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>محاسبه مجدد شاخص‌ها</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Active KPI Cards Grid */}
+        {/* Collapsible Content: 6 KPI Cards + Tiers + Podium (+ Decree if applicable) */}
+        {isInsightsExpanded && (
+          <div className="p-4 sm:p-5 border-t border-slate-200/80 space-y-5 bg-slate-50/40 animate-in fade-in slide-in-from-top-1 duration-200">
+            {/* Active KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
         {metrics.map((metric) => {
           // Average / aggregate value of this metric across all auditors/supervisors
@@ -755,6 +821,9 @@ export function ReportAuditorPerformanceTab({
           </div>
         </div>
       )}
+          </div>
+        )}
+      </div>
 
       {/* Leaderboard Section Header & Filters */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
