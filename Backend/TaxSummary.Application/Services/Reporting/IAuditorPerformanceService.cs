@@ -44,4 +44,34 @@ public interface IAuditorPerformanceService
     /// دریافت فهرست منابع داده ارزیابی حسابرسی (پایگاه داده اصلی و گزارش‌های اکسل بارگذاری‌شده)
     /// </summary>
     Task<Result<List<AuditDataSourceDto>>> GetAuditReportSourcesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// دریافت پیکربندی فعال قواعد و ماتریس اوزان امتیازی دستورالعمل ارزیابی عملکرد (SRS)
+    /// </summary>
+    Task<Result<SrsRuleSetConfigDto>> GetSrsRuleConfigurationAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// ذخیره و به‌روزرسانی قواعد و ماتریس اوزان امتیازی دستورالعمل ارزیابی عملکرد توسط مدیر
+    /// </summary>
+    Task<Result<SrsRuleSetConfigDto>> SaveSrsRuleConfigurationAsync(SaveSrsRuleConfigRequestDto request, CancellationToken ct = default);
+
+    /// <summary>
+    /// بازیابی مقادیر پیش‌فرض مصوب بخشنامه ارزیابی عملکرد (SRS v1.0)
+    /// </summary>
+    Task<Result<SrsRuleSetConfigDto>> ResetSrsRuleConfigurationAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// ارزیابی و رتبه‌بندی استانی کلیه حسابرسان بر اساس قواعد دستورالعمل ارزیابی عملکرد (SRS)
+    /// </summary>
+    Task<Result<List<SrsEmployeeScorecardDto>>> EvaluateAuditorsSrsAsync(int? fiscalYear, string? officeName, string? reportCode = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// دریافت کارنامه تفصیلی و ریزامتیازات ماتریسی ۸ در ۷ یک حسابرس بر اساس دستورالعمل ارزیابی عملکرد
+    /// </summary>
+    Task<Result<SrsEmployeeScorecardDto>> GetAuditorSrsScorecardAsync(string auditorName, int? fiscalYear = null, string? reportCode = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// همگام‌سازی پرونده‌های ۳۰۰ پرونده مهم و ۱۰۰ پرونده از فایل اکسل سنیم در پایگاه داده
+    /// </summary>
+    Task<Result<int>> Sync300CasesFromExcelAsync(string? customExcelPath = null, CancellationToken ct = default);
 }

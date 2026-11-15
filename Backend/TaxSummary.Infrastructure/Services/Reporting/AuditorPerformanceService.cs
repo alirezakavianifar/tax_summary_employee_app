@@ -1,6 +1,8 @@
 using System.Data;
+using System.IO;
 using System.Text;
 using System.Text.Json;
+using MiniExcelLibs;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -330,13 +332,22 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 FinalOfficeName = s.FinalOfficeName,
                 AuditStatus = !string.IsNullOrWhiteSpace(s.CurrentStatus) ? s.CurrentStatus : s.AuditStatus,
                 RiskLevel = s.RiskLevel,
+                TaxpayerTin = s.TaxpayerTin,
+                CaseType = s.CaseType,
+                TaxSource = s.TaxSource,
+                CurrentStatus = s.CurrentStatus,
+                FinalizationSource = s.FinalizationSource,
+                AssessmentNoticeDateJalali = s.AssessmentNoticeDateJalali,
+                FinalNoticeDateJalali = s.FinalNoticeDateJalali,
+                AuditorAssignmentDateJalali = s.AuditorAssignmentDateJalali,
                 DeclaredTaxAmount = s.DeclaredTaxAmount,
                 AssessedTaxAmount = s.AssessedTaxAmount,
                 FinalTaxAmount = s.FinalTaxAmount,
                 DaysAssignmentToNotice = s.DaysAssignmentToNotice,
                 DaysNoticeToFinal = s.DaysNoticeToFinal,
                 DaysAssignmentToFinal = s.DaysAssignmentToFinal,
-                FiscalYear = s.FiscalYear
+                FiscalYear = s.FiscalYear,
+                ImportanceType = s.ImportanceType
             }).ToListAsync(ct);
 
             return Result.Success(cases);
@@ -393,7 +404,8 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 RiskLevel = mapper.RiskLevelField != null ? reader[mapper.RiskLevelField]?.ToString()?.Trim() : null,
                 DeclaredTaxAmount = mapper.DeclaredTaxField != null ? ParseDecimal(reader[mapper.DeclaredTaxField]) : 0m,
                 AssessedTaxAmount = mapper.AssessedTaxField != null ? ParseDecimal(reader[mapper.AssessedTaxField]) : 0m,
-                FinalTaxAmount = mapper.FinalTaxField != null ? ParseDecimal(reader[mapper.FinalTaxField]) : 0m
+                FinalTaxAmount = mapper.FinalTaxField != null ? ParseDecimal(reader[mapper.FinalTaxField]) : 0m,
+                ImportanceType = mapper.ImportanceTypeField != null ? reader[mapper.ImportanceTypeField]?.ToString()?.Trim() : null
             };
 
             // Parse Dates
@@ -859,6 +871,14 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         public string? FinalOfficeName { get; set; }
         public string? AuditStatus { get; set; }
         public string? RiskLevel { get; set; }
+        public string? TaxpayerTin { get; set; }
+        public string? CaseType { get; set; }
+        public string? TaxSource { get; set; }
+        public string? CurrentStatus { get; set; }
+        public string? FinalizationSource { get; set; }
+        public string? AssessmentNoticeDateJalali { get; set; }
+        public string? FinalNoticeDateJalali { get; set; }
+        public string? AuditorAssignmentDateJalali { get; set; }
         public decimal DeclaredTaxAmount { get; set; }
         public decimal AssessedTaxAmount { get; set; }
         public decimal FinalTaxAmount { get; set; }
@@ -866,6 +886,7 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         public double? DaysNoticeToFinal { get; set; }
         public double? DaysAssignmentToFinal { get; set; }
         public int? FiscalYear { get; set; }
+        public string? ImportanceType { get; set; }
     }
 
     private static decimal CalculateNormalizedScore(AuditorPerformanceMetricDefinition metric, decimal rawValue)
@@ -951,4 +972,714 @@ public class AuditorPerformanceService : IAuditorPerformanceService
             _ => "عمومی"
         };
     }
+
+    #region SRS Performance Evaluation System (FR-01 to FR-08)
+
+    public async Task<Result<SrsRuleSetConfigDto>> GetSrsRuleConfigurationAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var ruleSet = await _db.AuditorEvaluationRuleSets.FirstOrDefaultAsync(r => r.IsActive, ct);
+            if (ruleSet == null)
+            {
+                ruleSet = AuditorEvaluationRuleSet.CreateDefault();
+                await _db.AuditorEvaluationRuleSets.AddAsync(ruleSet, ct);
+                await _db.SaveChangesAsync(ct);
+            }
+
+            return Result.Success(MapRuleSetToDto(ruleSet));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting SRS rule configuration");
+            return Result.Failure<SrsRuleSetConfigDto>($"خطا در دریافت تنظیمات بخشنامه ارزیابی عملکرد: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<SrsRuleSetConfigDto>> SaveSrsRuleConfigurationAsync(
+        SaveSrsRuleConfigRequestDto request, 
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var ruleSet = await _db.AuditorEvaluationRuleSets.FirstOrDefaultAsync(r => r.IsActive, ct);
+            if (ruleSet == null)
+            {
+                ruleSet = AuditorEvaluationRuleSet.CreateDefault();
+                await _db.AuditorEvaluationRuleSets.AddAsync(ruleSet, ct);
+            }
+
+            var weightsJson = JsonSerializer.Serialize(request.WeightsMatrix);
+            var allowedDaysJson = JsonSerializer.Serialize(request.AllowedDays);
+
+            ruleSet.Update(
+                request.Title,
+                request.Description,
+                weightsJson,
+                request.GrowthThresholdLegalEntity,
+                request.GrowthThresholdIndividual,
+                request.AdjustmentThreshold,
+                request.DailyDelayPenalty,
+                allowedDaysJson,
+                request.Top300TaxpayersCount,
+                request.AllowNegativeSpeedScore,
+                request.IsActive
+            );
+
+            await _db.SaveChangesAsync(ct);
+            return Result.Success(MapRuleSetToDto(ruleSet));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving SRS rule configuration");
+            return Result.Failure<SrsRuleSetConfigDto>($"خطا در ذخیره تنظیمات بخشنامه ارزیابی: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<SrsRuleSetConfigDto>> ResetSrsRuleConfigurationAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var ruleSet = await _db.AuditorEvaluationRuleSets.FirstOrDefaultAsync(r => r.IsActive, ct);
+            if (ruleSet == null)
+            {
+                ruleSet = AuditorEvaluationRuleSet.CreateDefault();
+                await _db.AuditorEvaluationRuleSets.AddAsync(ruleSet, ct);
+            }
+            else
+            {
+                ruleSet.ResetToDefaults();
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return Result.Success(MapRuleSetToDto(ruleSet));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting SRS rule configuration");
+            return Result.Failure<SrsRuleSetConfigDto>($"خطا در بازنشانی تنظیمات پیش‌فرض بخشنامه: {ex.Message}");
+        }
+    }
+
+    private static SrsRuleSetConfigDto MapRuleSetToDto(AuditorEvaluationRuleSet ruleSet)
+    {
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var weights = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, decimal>>>(ruleSet.WeightsMatrixJson, options)
+                      ?? new();
+        var allowedDays = JsonSerializer.Deserialize<Dictionary<string, AllowedDaysLimitDto>>(ruleSet.AllowedDaysJson, options)
+                          ?? new();
+
+        return new SrsRuleSetConfigDto
+        {
+            Id = ruleSet.Id,
+            Code = ruleSet.Code,
+            Title = ruleSet.Title,
+            Description = ruleSet.Description,
+            GrowthThresholdLegalEntity = ruleSet.GrowthThresholdLegalEntity,
+            GrowthThresholdIndividual = ruleSet.GrowthThresholdIndividual,
+            AdjustmentThreshold = ruleSet.AdjustmentThreshold,
+            DailyDelayPenalty = ruleSet.DailyDelayPenalty,
+            Top300TaxpayersCount = ruleSet.Top300TaxpayersCount,
+            AllowNegativeSpeedScore = ruleSet.AllowNegativeSpeedScore,
+            IsActive = ruleSet.IsActive,
+            WeightsMatrix = weights,
+            AllowedDays = allowedDays
+        };
+    }
+
+    public async Task<Result<List<SrsEmployeeScorecardDto>>> EvaluateAuditorsSrsAsync(
+        int? fiscalYear, 
+        string? officeName, 
+        string? reportCode = null, 
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var ruleResult = await GetSrsRuleConfigurationAsync(ct);
+            if (ruleResult.IsFailure)
+                return Result.Failure<List<SrsEmployeeScorecardDto>>(ruleResult.Error);
+
+            var rules = ruleResult.Value;
+
+            var casesResult = await LoadAuditCasesAsync(reportCode, fiscalYear, officeName, ct);
+            if (casesResult.IsFailure)
+                return Result.Failure<List<SrsEmployeeScorecardDto>>(casesResult.Error);
+
+            var rawCases = casesResult.Value;
+            if (!rawCases.Any())
+                return Result.Success(new List<SrsEmployeeScorecardDto>());
+
+            // Identify Major Corporate Taxpayers (300Parvande and 100Parvande) from official Sanim tagging
+            var top300Tins = rawCases
+                .Where(c => !string.IsNullOrWhiteSpace(c.TaxpayerTin) && 
+                            !string.IsNullOrWhiteSpace(c.ImportanceType) && 
+                            (c.ImportanceType.Equals("300Parvande", StringComparison.OrdinalIgnoreCase) || 
+                             c.ImportanceType.Equals("100Parvande", StringComparison.OrdinalIgnoreCase)))
+                .Select(c => c.TaxpayerTin!.Trim())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // If rawCases did not include ImportanceType (e.g. from an older dataset), query DB for all tagged major TINs
+            if (!top300Tins.Any())
+            {
+                var dbMajorTins = await _db.SanimAuditAssessments
+                    .Where(s => s.ImportanceType != null && (s.ImportanceType == "300Parvande" || s.ImportanceType == "100Parvande"))
+                    .Select(s => s.TaxpayerTin)
+                    .Distinct()
+                    .ToListAsync(ct);
+
+                foreach (var tin in dbMajorTins)
+                {
+                    if (!string.IsNullOrWhiteSpace(tin)) top300Tins.Add(tin.Trim());
+                }
+            }
+
+            var categories = new[]
+            {
+                "Corporate300",
+                "CorporateOther",
+                "Vat300",
+                "VatLegalOther",
+                "BusinessIncome",
+                "VatIndividual",
+                "PropertyTax"
+            };
+
+            var indicatorsMeta = new (string Code, string Title, int Order, bool IsNegative)[]
+            {
+                ("AssessmentsIssued", "تعداد برگ تشخیص صادره", 1, false),
+                ("FinalizedAssessments", "تعداد پرونده‌های قطعی شده", 2, false),
+                ("TaxpayerAcceptance", "تمکین و قبولی برگ تشخیص", 3, false),
+                ("Article238Agreements", "توافقات موضوع ماده ۲۳۸", 4, false),
+                ("AssessmentGrowth", "رشد تشخیص نسبت به ابراز", 5, false),
+                ("TaxAdjustment", "تعدیل مالیات قطعی نسبت به تشخیصی", 6, true),
+                ("IssuanceSpeed", "سرعت صدور برگ تشخیص از مرحله ۲", 7, false),
+                ("FinalizationSpeed", "سرعت قطعیت پرونده از مرحله ۲", 8, false)
+            };
+
+            var auditorGroups = rawCases.GroupBy(c => c.AuditorName).ToList();
+            var scorecards = new List<SrsEmployeeScorecardDto>();
+
+            foreach (var group in auditorGroups)
+            {
+                var auditorName = group.Key;
+                var sample = group.First();
+                int totalCases = group.Count();
+
+                var categoryCounts = categories.ToDictionary(c => c, _ => 0);
+                var categorizedCases = new List<(AuditorCaseRecord Case, string Category)>();
+
+                foreach (var item in group)
+                {
+                    string cat = ClassifyTaxCase(item, top300Tins);
+                    categorizedCases.Add((item, cat));
+                    categoryCounts[cat]++;
+                }
+
+                var indicatorScores = new List<SrsIndicatorScoreDto>();
+                decimal totalPositivePoints = 0m;
+                decimal totalNegativeDeductions = 0m;
+
+                foreach (var meta in indicatorsMeta)
+                {
+                    var details = new Dictionary<string, SrsIndicatorCategoryDetailDto>();
+                    decimal indicatorTotalPoints = 0m;
+
+                    var indWeights = rules.WeightsMatrix.ContainsKey(meta.Code) 
+                        ? rules.WeightsMatrix[meta.Code] 
+                        : new Dictionary<string, decimal>();
+
+                    foreach (var cat in categories)
+                    {
+                        decimal weight = indWeights.ContainsKey(cat) ? indWeights[cat] : 0m;
+                        var casesInCat = categorizedCases.Where(x => x.Category == cat).Select(x => x.Case).ToList();
+
+                        var detail = CalculateIndicatorCategoryDetail(
+                            meta.Code,
+                            cat,
+                            casesInCat,
+                            weight,
+                            rules
+                        );
+
+                        details[cat] = detail;
+                        indicatorTotalPoints += detail.Points;
+
+                        if (meta.IsNegative || detail.Points < 0)
+                        {
+                            totalNegativeDeductions += Math.Abs(detail.Points);
+                        }
+                        else
+                        {
+                            totalPositivePoints += detail.Points;
+                        }
+
+                        // Also track speed delay deduction points separately if positive indicator has deductions
+                        if (detail.DeductionPoints.HasValue && detail.DeductionPoints.Value > 0)
+                        {
+                            totalNegativeDeductions += detail.DeductionPoints.Value;
+                        }
+                    }
+
+                    indicatorScores.Add(new SrsIndicatorScoreDto
+                    {
+                        IndicatorCode = meta.Code,
+                        IndicatorTitle = meta.Title,
+                        IndicatorOrder = meta.Order,
+                        IsNegative = meta.IsNegative,
+                        TotalPoints = Math.Round(indicatorTotalPoints, 2),
+                        CategoryDetails = details
+                    });
+                }
+
+                decimal totalScore = Math.Round(totalPositivePoints - totalNegativeDeductions, 2);
+
+                scorecards.Add(new SrsEmployeeScorecardDto
+                {
+                    AuditorName = auditorName,
+                    AuditorNationalId = sample.AuditorNationalId,
+                    PhotoUrl = ResolveAuditorPhotoUrl(sample.AuditorNationalId),
+                    OfficeName = sample.FinalOfficeName ?? string.Empty,
+                    TotalCases = totalCases,
+                    TotalScore = totalScore,
+                    TotalPositivePoints = Math.Round(totalPositivePoints, 2),
+                    TotalNegativeDeductions = Math.Round(totalNegativeDeductions, 2),
+                    CategorySummaries = categoryCounts,
+                    Indicators = indicatorScores
+                });
+            }
+
+            // Sort by TotalScore descending, then by TotalCases descending
+            var ranked = scorecards
+                .OrderByDescending(s => s.TotalScore)
+                .ThenByDescending(s => s.TotalCases)
+                .ToList();
+
+            int totalRanked = ranked.Count;
+            for (int i = 0; i < totalRanked; i++)
+            {
+                ranked[i].ProvincialRank = i + 1;
+                double percentile = (double)(i + 1) / totalRanked;
+                if (percentile <= 0.20)
+                {
+                    ranked[i].PerformanceTier = "A";
+                    ranked[i].TierTitleFa = "ممتاز (الف)";
+                }
+                else if (percentile <= 0.55)
+                {
+                    ranked[i].PerformanceTier = "B";
+                    ranked[i].TierTitleFa = "مطلوب (ب)";
+                }
+                else if (percentile <= 0.85)
+                {
+                    ranked[i].PerformanceTier = "C";
+                    ranked[i].TierTitleFa = "متوسط (ج)";
+                }
+                else
+                {
+                    ranked[i].PerformanceTier = "D";
+                    ranked[i].TierTitleFa = "نیازمند بهبود (د)";
+                }
+            }
+
+            return Result.Success(ranked);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error evaluating auditors under SRS rules");
+            return Result.Failure<List<SrsEmployeeScorecardDto>>($"خطا در ارزیابی عملکرد بر اساس بخشنامه: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<SrsEmployeeScorecardDto>> GetAuditorSrsScorecardAsync(
+        string auditorName, 
+        int? fiscalYear = null, 
+        string? reportCode = null, 
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(auditorName))
+                return Result.Failure<SrsEmployeeScorecardDto>("نام حسابرس الزامی است");
+
+            var evaluateResult = await EvaluateAuditorsSrsAsync(fiscalYear, null, reportCode, ct);
+            if (evaluateResult.IsFailure)
+                return Result.Failure<SrsEmployeeScorecardDto>(evaluateResult.Error);
+
+            var scorecard = evaluateResult.Value.FirstOrDefault(s => s.AuditorName.Trim().Equals(auditorName.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (scorecard == null)
+                return Result.Failure<SrsEmployeeScorecardDto>($"حسابرس با نام '{auditorName}' یافت نشد");
+
+            return Result.Success(scorecard);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching SRS scorecard for auditor {AuditorName}", auditorName);
+            return Result.Failure<SrsEmployeeScorecardDto>($"خطا در دریافت کارنامه امتیازی حسابرس: {ex.Message}");
+        }
+    }
+
+    private static string ClassifyTaxCase(AuditorCaseRecord rec, HashSet<string> top300Tins)
+    {
+        bool isLegal = (rec.CaseType != null && rec.CaseType.Contains("حقوقی")) || 
+                       (!string.IsNullOrEmpty(rec.TaxpayerTin) && rec.TaxpayerTin.Trim().Length == 11);
+
+        bool isTop300 = isLegal && (
+            (!string.IsNullOrEmpty(rec.ImportanceType) && 
+             (rec.ImportanceType.Equals("300Parvande", StringComparison.OrdinalIgnoreCase) ||
+              rec.ImportanceType.Equals("100Parvande", StringComparison.OrdinalIgnoreCase))) ||
+            (!string.IsNullOrEmpty(rec.TaxpayerTin) && top300Tins.Contains(rec.TaxpayerTin.Trim()))
+        );
+        string source = rec.TaxSource ?? string.Empty;
+
+        if (isLegal)
+        {
+            if (source.Contains("ارزش افزوده") || source.Contains("دخانی") || source.Contains("طلا"))
+                return isTop300 ? "Vat300" : "VatLegalOther";
+
+            if (source.Contains("شرکت") || source.Contains("حقوقی"))
+                return isTop300 ? "Corporate300" : "CorporateOther";
+
+            if (source.Contains("مستغلات") || source.Contains("املاک") || source.Contains("آلاینده"))
+                return "PropertyTax";
+
+            return isTop300 ? "Corporate300" : "CorporateOther";
+        }
+        else
+        {
+            if (source.Contains("ارزش افزوده") || source.Contains("دخانی") || source.Contains("طلا"))
+                return "VatIndividual";
+
+            if (source.Contains("مشاغل") || source.Contains("حقیقی"))
+                return "BusinessIncome";
+
+            if (source.Contains("مستغلات") || source.Contains("املاک"))
+                return "PropertyTax";
+
+            return "BusinessIncome";
+        }
+    }
+
+    private static SrsIndicatorCategoryDetailDto CalculateIndicatorCategoryDetail(
+        string indicatorCode,
+        string category,
+        List<AuditorCaseRecord> cases,
+        decimal weight,
+        SrsRuleSetConfigDto rules)
+    {
+        switch (indicatorCode)
+        {
+            case "AssessmentsIssued": // FR-01
+                int issuedCount = cases.Count(c =>
+                    c.DaysAssignmentToNotice.HasValue ||
+                    !string.IsNullOrWhiteSpace(c.AssessmentNoticeDateJalali) ||
+                    (!string.IsNullOrEmpty(c.CurrentStatus) && (c.CurrentStatus.Contains("تشخیص") || c.CurrentStatus.Contains("قطعی") || c.CurrentStatus.Contains("اعتراض") || c.CurrentStatus.Contains("رای"))) ||
+                    (!string.IsNullOrEmpty(c.AuditStatus) && c.AuditStatus.Contains("رسیدگی شده")));
+
+                return new SrsIndicatorCategoryDetailDto
+                {
+                    CaseCount = issuedCount,
+                    Weight = weight,
+                    Points = Math.Round(issuedCount * weight, 2)
+                };
+
+            case "FinalizedAssessments": // FR-02
+                int finalizedCount = cases.Count(c =>
+                    c.DaysNoticeToFinal.HasValue ||
+                    !string.IsNullOrWhiteSpace(c.FinalNoticeDateJalali) ||
+                    (!string.IsNullOrEmpty(c.CurrentStatus) && (c.CurrentStatus.Contains("قطعی") || c.CurrentStatus.Contains("رای"))) ||
+                    c.FinalTaxAmount > 0);
+
+                return new SrsIndicatorCategoryDetailDto
+                {
+                    CaseCount = finalizedCount,
+                    Weight = weight,
+                    Points = Math.Round(finalizedCount * weight, 2)
+                };
+
+            case "TaxpayerAcceptance": // FR-03 (Only finalized cases qualify)
+                int acceptedCount = cases.Count(c =>
+                    (c.DaysNoticeToFinal.HasValue || !string.IsNullOrWhiteSpace(c.FinalNoticeDateJalali) || (!string.IsNullOrEmpty(c.CurrentStatus) && c.CurrentStatus.Contains("قطعی")) || c.FinalTaxAmount > 0) &&
+                    ((c.FinalizationSource != null && (c.FinalizationSource.Contains("اصلاح") || c.FinalizationSource.Contains("تمکین"))) ||
+                     (c.CurrentStatus != null && c.CurrentStatus.Contains("تمکین")) ||
+                     (c.FinalizationSource == null && !string.IsNullOrEmpty(c.CurrentStatus) && c.CurrentStatus.Contains("قطعی") && !c.CurrentStatus.Contains("هیات") && !c.CurrentStatus.Contains("اعتراض"))));
+
+                return new SrsIndicatorCategoryDetailDto
+                {
+                    CaseCount = acceptedCount,
+                    Weight = weight,
+                    Points = Math.Round(acceptedCount * weight, 2)
+                };
+
+            case "Article238Agreements": // FR-04 (Only finalized cases qualify)
+                int art238Count = cases.Count(c =>
+                    (c.DaysNoticeToFinal.HasValue || !string.IsNullOrWhiteSpace(c.FinalNoticeDateJalali) || (!string.IsNullOrEmpty(c.CurrentStatus) && c.CurrentStatus.Contains("قطعی")) || c.FinalTaxAmount > 0) &&
+                    ((c.FinalizationSource != null && (c.FinalizationSource.Contains("اعتراض به اداره") || c.FinalizationSource.Contains("238") || c.FinalizationSource.Contains("۲۳۸"))) ||
+                     (c.CurrentStatus != null && (c.CurrentStatus.Contains("رای اعتراض اداره") || c.CurrentStatus.Contains("اعتراض در اداره")))));
+
+                return new SrsIndicatorCategoryDetailDto
+                {
+                    CaseCount = art238Count,
+                    Weight = weight,
+                    Points = Math.Round(art238Count * weight, 2)
+                };
+
+            case "AssessmentGrowth": // FR-05 (Only finalized cases qualify)
+                bool isLegal = category.StartsWith("Corporate") || category.StartsWith("Vat300") || category.StartsWith("VatLegal");
+                decimal growthThreshold = isLegal ? rules.GrowthThresholdLegalEntity : rules.GrowthThresholdIndividual;
+
+                int growthCount = cases.Count(c =>
+                {
+                    bool isFinal = c.DaysNoticeToFinal.HasValue || !string.IsNullOrWhiteSpace(c.FinalNoticeDateJalali) || (!string.IsNullOrEmpty(c.CurrentStatus) && c.CurrentStatus.Contains("قطعی")) || c.FinalTaxAmount > 0;
+                    if (!isFinal) return false;
+
+                    if (c.DeclaredTaxAmount <= 0)
+                        return c.AssessedTaxAmount > 0; // Infinite growth from zero declared tax
+
+                    decimal growth = ((c.AssessedTaxAmount - c.DeclaredTaxAmount) / c.DeclaredTaxAmount) * 100m;
+                    return growth > growthThreshold;
+                });
+
+                return new SrsIndicatorCategoryDetailDto
+                {
+                    CaseCount = growthCount,
+                    Weight = weight,
+                    Points = Math.Round(growthCount * weight, 2)
+                };
+
+            case "TaxAdjustment": // FR-06 (Only finalized cases qualify, negative points)
+                decimal adjThreshold = rules.AdjustmentThreshold;
+
+                int adjCount = cases.Count(c =>
+                {
+                    bool isFinal = c.DaysNoticeToFinal.HasValue || !string.IsNullOrWhiteSpace(c.FinalNoticeDateJalali) || (!string.IsNullOrEmpty(c.CurrentStatus) && c.CurrentStatus.Contains("قطعی")) || c.FinalTaxAmount > 0;
+                    if (!isFinal) return false;
+
+                    if (c.AssessedTaxAmount <= 0) return false;
+                    if (c.FinalTaxAmount >= c.AssessedTaxAmount) return false;
+
+                    decimal reductionRate = ((c.AssessedTaxAmount - c.FinalTaxAmount) / c.AssessedTaxAmount) * 100m;
+                    return reductionRate > adjThreshold;
+                });
+
+                // Weight is typically negative (-10, -4, etc.)
+                decimal negativeWeight = weight < 0 ? weight : -Math.Abs(weight);
+                return new SrsIndicatorCategoryDetailDto
+                {
+                    CaseCount = adjCount,
+                    Weight = negativeWeight,
+                    Points = Math.Round(adjCount * negativeWeight, 2)
+                };
+
+            case "IssuanceSpeed": // FR-07 (Step 2 to Notice)
+                int allowedIssuanceDays = rules.AllowedDays.ContainsKey(category) 
+                    ? rules.AllowedDays[category].IssuanceAllowedDays 
+                    : 45;
+
+                var validIssuanceCases = cases.Where(c => c.DaysAssignmentToNotice.HasValue && c.DaysAssignmentToNotice.Value >= 0).ToList();
+                int speedIssuanceCount = validIssuanceCases.Count;
+                if (speedIssuanceCount == 0)
+                {
+                    return new SrsIndicatorCategoryDetailDto
+                    {
+                        CaseCount = 0,
+                        Weight = weight,
+                        AllowedDays = allowedIssuanceDays,
+                        Points = 0m
+                    };
+                }
+
+                double avgIssuanceDays = validIssuanceCases.Average(c => c.DaysAssignmentToNotice!.Value);
+                double totalIssuanceDelay = validIssuanceCases.Sum(c => Math.Max(0.0, c.DaysAssignmentToNotice!.Value - allowedIssuanceDays));
+                decimal totalIssuanceDeductions = (decimal)totalIssuanceDelay * rules.DailyDelayPenalty;
+
+                decimal netIssuancePoints = (speedIssuanceCount * weight) - totalIssuanceDeductions;
+                if (!rules.AllowNegativeSpeedScore && netIssuancePoints < 0)
+                    netIssuancePoints = 0m;
+
+                return new SrsIndicatorCategoryDetailDto
+                {
+                    CaseCount = speedIssuanceCount,
+                    Weight = weight,
+                    AvgActualDays = Math.Round(avgIssuanceDays, 1),
+                    AllowedDays = allowedIssuanceDays,
+                    DelayDays = Math.Round(totalIssuanceDelay, 1),
+                    DeductionPoints = Math.Round(totalIssuanceDeductions, 2),
+                    Points = Math.Round(netIssuancePoints, 2)
+                };
+
+            case "FinalizationSpeed": // FR-08 (Step 2 to Finalization)
+                int allowedFinalDays = rules.AllowedDays.ContainsKey(category) 
+                    ? rules.AllowedDays[category].FinalizationAllowedDays 
+                    : 45;
+
+                var validFinalCases = cases.Where(c => 
+                    (c.DaysAssignmentToFinal.HasValue && c.DaysAssignmentToFinal.Value >= 0) ||
+                    (c.DaysAssignmentToNotice.HasValue && c.DaysNoticeToFinal.HasValue && (c.DaysAssignmentToNotice.Value + c.DaysNoticeToFinal.Value) >= 0)
+                ).ToList();
+
+                int speedFinalCount = validFinalCases.Count;
+                if (speedFinalCount == 0)
+                {
+                    return new SrsIndicatorCategoryDetailDto
+                    {
+                        CaseCount = 0,
+                        Weight = weight,
+                        AllowedDays = allowedFinalDays,
+                        Points = 0m
+                    };
+                }
+
+                double avgFinalDays = validFinalCases.Average(c => 
+                    c.DaysAssignmentToFinal ?? (c.DaysAssignmentToNotice!.Value + c.DaysNoticeToFinal!.Value));
+
+                double totalFinalDelay = validFinalCases.Sum(c =>
+                {
+                    double actual = c.DaysAssignmentToFinal ?? (c.DaysAssignmentToNotice!.Value + c.DaysNoticeToFinal!.Value);
+                    return Math.Max(0.0, actual - allowedFinalDays);
+                });
+
+                decimal totalFinalDeductions = (decimal)totalFinalDelay * rules.DailyDelayPenalty;
+                decimal netFinalPoints = (speedFinalCount * weight) - totalFinalDeductions;
+                if (!rules.AllowNegativeSpeedScore && netFinalPoints < 0)
+                    netFinalPoints = 0m;
+
+                return new SrsIndicatorCategoryDetailDto
+                {
+                    CaseCount = speedFinalCount,
+                    Weight = weight,
+                    AvgActualDays = Math.Round(avgFinalDays, 1),
+                    AllowedDays = allowedFinalDays,
+                    DelayDays = Math.Round(totalFinalDelay, 1),
+                    DeductionPoints = Math.Round(totalFinalDeductions, 2),
+                    Points = Math.Round(netFinalPoints, 2)
+                };
+
+            default:
+                return new SrsIndicatorCategoryDetailDto { CaseCount = 0, Weight = weight, Points = 0m };
+        }
+    }
+
+    public async Task<Result<int>> Sync300CasesFromExcelAsync(string? customExcelPath = null, CancellationToken ct = default)
+    {
+        try
+        {
+            string? filePath = ResolveExcelFilePath(customExcelPath);
+            if (filePath == null || !File.Exists(filePath))
+            {
+                return Result.Failure<int>("فایل اکسل داده‌های سنیم سال ۱۴۰۵ یافت نشد.");
+            }
+
+            var p300Tins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var p100Tins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var p300Trackings = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var p100Trackings = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            using var stream = File.OpenRead(filePath);
+            var rows = stream.Query(useHeaderRow: true).ToList();
+
+            foreach (IDictionary<string, object> row in rows)
+            {
+                object? typeVal = null;
+                if (row.ContainsKey("type")) typeVal = row["type"];
+                else if (row.ContainsKey("Type")) typeVal = row["Type"];
+
+                var typeStr = typeVal?.ToString()?.Trim();
+                if (string.IsNullOrEmpty(typeStr)) continue;
+
+                string? tin = null;
+                if (row.ContainsKey("تین سنیم مودی")) tin = row["تین سنیم مودی"]?.ToString()?.Trim();
+                else if (row.ContainsKey("تین سنیم")) tin = row["تین سنیم"]?.ToString()?.Trim();
+
+                string? tracking = null;
+                if (row.ContainsKey("کد رهگیری مودی درسامانه ثبت نام")) tracking = row["کد رهگیری مودی درسامانه ثبت نام"]?.ToString()?.Trim();
+                else if (row.ContainsKey("کد رهگیری")) tracking = row["کد رهگیری"]?.ToString()?.Trim();
+
+                if (typeStr.Equals("300Parvande", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrEmpty(tin)) p300Tins.Add(tin);
+                    if (!string.IsNullOrEmpty(tracking)) p300Trackings.Add(tracking);
+                }
+                else if (typeStr.Equals("100Parvande", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrEmpty(tin)) p100Tins.Add(tin);
+                    if (!string.IsNullOrEmpty(tracking)) p100Trackings.Add(tracking);
+                }
+            }
+
+            int updatedCount = 0;
+            var cases = await _db.SanimAuditAssessments.ToListAsync(ct);
+
+            foreach (var item in cases)
+            {
+                string? newType = null;
+                string tin = item.TaxpayerTin?.Trim() ?? string.Empty;
+                string tracking = item.TaxpayerTrackingCode?.Trim() ?? string.Empty;
+
+                if ((!string.IsNullOrEmpty(tin) && p300Tins.Contains(tin)) ||
+                    (!string.IsNullOrEmpty(tracking) && p300Trackings.Contains(tracking)))
+                {
+                    newType = "300Parvande";
+                }
+                else if ((!string.IsNullOrEmpty(tin) && p100Tins.Contains(tin)) ||
+                         (!string.IsNullOrEmpty(tracking) && p100Trackings.Contains(tracking)))
+                {
+                    newType = "100Parvande";
+                }
+
+                if (item.ImportanceType != newType)
+                {
+                    item.SetImportanceType(newType);
+                    updatedCount++;
+                }
+            }
+
+            if (updatedCount > 0)
+            {
+                await _db.SaveChangesAsync(ct);
+            }
+
+            return Result.Success(updatedCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing 300Parvande cases from Excel");
+            return Result.Failure<int>($"خطا در همگام‌سازی ۳۰۰ پرونده از فایل اکسل: {ex.Message}");
+        }
+    }
+
+    private static string? ResolveExcelFilePath(string? customExcelPath)
+    {
+        if (!string.IsNullOrWhiteSpace(customExcelPath) && File.Exists(customExcelPath))
+            return customExcelPath;
+
+        const string fileName = "پرونده های حسابرسی شده ادارات-سنیم-در سال 1405.xlsx";
+
+        try
+        {
+            var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+            while (dir != null)
+            {
+                var candidate = Path.Combine(dir.FullName, "sample_data", fileName);
+                if (File.Exists(candidate)) return candidate;
+                dir = dir.Parent;
+            }
+        }
+        catch { }
+
+        try
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null)
+            {
+                var candidate = Path.Combine(dir.FullName, "sample_data", fileName);
+                if (File.Exists(candidate)) return candidate;
+                dir = dir.Parent;
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
+    #endregion
 }

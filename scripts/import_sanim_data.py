@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS SanimAuditAssessments (
     CurrentStatus TEXT NULL,
     NextStatus TEXT NULL,
     FinalizationSource TEXT NULL,
-    OfficeId TEXT NULL
+    OfficeId TEXT NULL,
+    ImportanceType TEXT NULL
 );
 
 CREATE INDEX IF NOT EXISTS IX_SanimAuditAssessments_FiscalYear ON SanimAuditAssessments (FiscalYear);
@@ -55,6 +56,7 @@ CREATE INDEX IF NOT EXISTS IX_SanimAuditAssessments_FinalOfficeName ON SanimAudi
 CREATE INDEX IF NOT EXISTS IX_SanimAuditAssessments_TaxpayerTin ON SanimAuditAssessments (TaxpayerTin);
 CREATE INDEX IF NOT EXISTS IX_SanimAuditAssessments_AuditorName ON SanimAuditAssessments (AuditorName);
 CREATE INDEX IF NOT EXISTS IX_SanimAuditAssessments_OfficeId ON SanimAuditAssessments (OfficeId);
+CREATE INDEX IF NOT EXISTS IX_SanimAuditAssessments_ImportanceType ON SanimAuditAssessments (ImportanceType);
 """
 
 def parse_int(val):
@@ -131,7 +133,8 @@ def load_data_from_excel():
             parse_str(r[29]),
             parse_str(r[30]),
             parse_str(r[31]),
-            None # OfficeId resolved later
+            None, # OfficeId resolved later
+            parse_str(r[90]) if len(r) > 90 else None # ImportanceType (300Parvande / 100Parvande)
         )
         rows.append(item)
     print(f"Loaded {len(rows)} records from Excel.")
@@ -186,7 +189,7 @@ def import_into_db(db_path, data):
         AssessedTaxAmount, DeclaredTaxAmount, FinalTaxAmount, Stage,
         YearlyType, CaseType, WarehouseUploadDateJalali, AuditorAssignmentDateJalali,
         DaysAssignmentToNotice, DaysAssignmentToFinal, DaysNoticeToFinal,
-        CurrentStatus, NextStatus, FinalizationSource, OfficeId
+        CurrentStatus, NextStatus, FinalizationSource, OfficeId, ImportanceType
     ) VALUES (
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
@@ -194,7 +197,7 @@ def import_into_db(db_path, data):
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
-        ?, ?, ?
+        ?, ?, ?, ?
     )
     """
 

@@ -151,6 +151,100 @@ public class AuditorPerformanceController : ReportingControllerBase
 
         return Ok(result.Value);
     }
+
+    /// <summary>
+    /// دریافت پیکربندی فعال و ماتریس اوزان امتیازی دستورالعمل ارزیابی عملکرد (SRS)
+    /// </summary>
+    [HttpGet("srs/rules")]
+    public async Task<ActionResult<SrsRuleSetConfigDto>> GetSrsRules(CancellationToken ct = default)
+    {
+        var result = await _performanceService.GetSrsRuleConfigurationAsync(ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// ذخیره و به‌روزرسانی پیکربندی قواعد و ماتریس اوزان دستورالعمل ارزیابی عملکرد
+    /// </summary>
+    [HttpPut("srs/rules")]
+    [Authorize(Roles = "Admin,DirectorGeneral,Manager")]
+    public async Task<ActionResult<SrsRuleSetConfigDto>> SaveSrsRules(
+        [FromBody] SaveSrsRuleConfigRequestDto request, 
+        CancellationToken ct = default)
+    {
+        if (request == null)
+            return BadRequest(new { error = "داده‌های پیکربندی بخشنامه نامعتبر است" });
+
+        var result = await _performanceService.SaveSrsRuleConfigurationAsync(request, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// بازنشانی قواعد و ماتریس اوزان به مقادیر پیش‌فرض مصوب بخشنامه ارزیابی عملکرد
+    /// </summary>
+    [HttpPost("srs/rules/reset")]
+    [Authorize(Roles = "Admin,DirectorGeneral")]
+    public async Task<ActionResult<SrsRuleSetConfigDto>> ResetSrsRules(CancellationToken ct = default)
+    {
+        var result = await _performanceService.ResetSrsRuleConfigurationAsync(ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// ارزیابی و رتبه‌بندی استانی حسابرسان بر اساس قواعد امتیازی دستورالعمل ارزیابی عملکرد (SRS)
+    /// </summary>
+    [HttpGet("srs/evaluation")]
+    public async Task<ActionResult<List<SrsEmployeeScorecardDto>>> EvaluateAuditorsSrs(
+        [FromQuery] int? fiscalYear = null, 
+        [FromQuery] string? officeName = null, 
+        [FromQuery] string? reportCode = null, 
+        CancellationToken ct = default)
+    {
+        var result = await _performanceService.EvaluateAuditorsSrsAsync(fiscalYear, officeName, reportCode, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// دریافت کارنامه تفصیلی و جدول ماتریسی ۸ در ۷ یک حسابرس بر اساس دستورالعمل ارزیابی عملکرد
+    /// </summary>
+    [HttpGet("srs/scorecard/{auditorName}")]
+    public async Task<ActionResult<SrsEmployeeScorecardDto>> GetAuditorSrsScorecard(
+        string auditorName, 
+        [FromQuery] int? fiscalYear = null, 
+        [FromQuery] string? reportCode = null, 
+        CancellationToken ct = default)
+    {
+        var result = await _performanceService.GetAuditorSrsScorecardAsync(auditorName, fiscalYear, reportCode, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// همگام‌سازی پرونده‌های ۳۰۰ پرونده مهم و ۱۰۰ پرونده از فایل اکسل سنیم در پایگاه داده
+    /// </summary>
+    [HttpPost("srs/sync-300-cases")]
+    [Authorize(Roles = "Admin,DirectorGeneral")]
+    public async Task<ActionResult> Sync300Cases(CancellationToken ct = default)
+    {
+        var result = await _performanceService.Sync300CasesFromExcelAsync(null, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(new { message = "همگام‌سازی ۳۰۰ پرونده مهم با موفقیت انجام شد", updatedCount = result.Value });
+    }
 }
 
 public class ToggleMetricStatusRequest

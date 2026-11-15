@@ -147,6 +147,17 @@ public static class ReportingDataSeeder
         await context.SaveChangesAsync();
 
         await SeedDefaultAuditorMetricsAsync(context);
+        await SeedDefaultSrsRulesAsync(context);
+    }
+
+    private static async Task SeedDefaultSrsRulesAsync(TaxSummaryDbContext context)
+    {
+        if (await context.AuditorEvaluationRuleSets.AnyAsync())
+            return;
+
+        var defaultRuleSet = AuditorEvaluationRuleSet.CreateDefault();
+        await context.AuditorEvaluationRuleSets.AddAsync(defaultRuleSet);
+        await context.SaveChangesAsync();
     }
 
     private static async Task SeedDefaultAuditorMetricsAsync(TaxSummaryDbContext context)

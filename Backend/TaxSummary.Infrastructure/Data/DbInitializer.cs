@@ -1100,6 +1100,27 @@ public static class DbInitializer
                 );";
             await command.ExecuteNonQueryAsync();
 
+            // 4.1 Ensure AuditorEvaluationRuleSets table exists
+            command.CommandText = @"
+                CREATE TABLE IF NOT EXISTS ""AuditorEvaluationRuleSets"" (
+                    ""Id"" TEXT NOT NULL CONSTRAINT ""PK_AuditorEvaluationRuleSets"" PRIMARY KEY,
+                    ""Code"" TEXT NOT NULL,
+                    ""Title"" TEXT NOT NULL,
+                    ""Description"" TEXT NOT NULL,
+                    ""WeightsMatrixJson"" TEXT NOT NULL,
+                    ""GrowthThresholdLegalEntity"" decimal(18,2) NOT NULL,
+                    ""GrowthThresholdIndividual"" decimal(18,2) NOT NULL,
+                    ""AdjustmentThreshold"" decimal(18,2) NOT NULL,
+                    ""DailyDelayPenalty"" decimal(18,4) NOT NULL,
+                    ""AllowedDaysJson"" TEXT NOT NULL,
+                    ""Top300TaxpayersCount"" INTEGER NOT NULL,
+                    ""AllowNegativeSpeedScore"" INTEGER NOT NULL,
+                    ""IsActive"" INTEGER NOT NULL,
+                    ""CreatedAt"" TEXT NOT NULL,
+                    ""UpdatedAt"" TEXT NULL
+                );";
+            await command.ExecuteNonQueryAsync();
+
             // 5. Ensure SanimAuditAssessments table exists
             command.CommandText = @"
                 CREATE TABLE IF NOT EXISTS ""SanimAuditAssessments"" (
@@ -1135,9 +1156,29 @@ public static class DbInitializer
                     ""CurrentStatus"" TEXT NULL,
                     ""NextStatus"" TEXT NULL,
                     ""FinalizationSource"" TEXT NULL,
-                    ""OfficeId"" TEXT NULL
+                    ""OfficeId"" TEXT NULL,
+                    ""ImportanceType"" TEXT NULL
                 );";
             await command.ExecuteNonQueryAsync();
+
+            // Ensure ImportanceType column exists in SanimAuditAssessments if table was already created
+            command.CommandText = "PRAGMA table_info(SanimAuditAssessments);";
+            var sanimAssessmentColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    sanimAssessmentColumns.Add(reader.GetString(1));
+                }
+            }
+
+            if (!sanimAssessmentColumns.Contains("ImportanceType"))
+            {
+                command.CommandText = "ALTER TABLE SanimAuditAssessments ADD COLUMN ImportanceType TEXT NULL;";
+                await command.ExecuteNonQueryAsync();
+                command.CommandText = "CREATE INDEX IF NOT EXISTS IX_SanimAuditAssessments_ImportanceType ON SanimAuditAssessments (ImportanceType);";
+                await command.ExecuteNonQueryAsync();
+            }
 
             // 7. Ensure SystemSettings table exists
             command.CommandText = @"

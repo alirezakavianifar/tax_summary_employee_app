@@ -36,6 +36,7 @@ public class SanimAuditAssessmentConfiguration : IEntityTypeConfiguration<SanimA
         builder.Property(s => s.CurrentStatus).HasMaxLength(64);
         builder.Property(s => s.NextStatus).HasMaxLength(64);
         builder.Property(s => s.FinalizationSource).HasMaxLength(128);
+        builder.Property(s => s.ImportanceType).HasMaxLength(64);
 
         builder.Property(s => s.AssessedTaxAmount).HasColumnType("decimal(18,2)");
         builder.Property(s => s.DeclaredTaxAmount).HasColumnType("decimal(18,2)");
@@ -48,5 +49,6 @@ public class SanimAuditAssessmentConfiguration : IEntityTypeConfiguration<SanimA
         builder.HasIndex(s => s.TaxpayerTin);
         builder.HasIndex(s => s.AuditorName);
         builder.HasIndex(s => s.OfficeId);
+        builder.HasIndex(s => s.ImportanceType);
     }
 }

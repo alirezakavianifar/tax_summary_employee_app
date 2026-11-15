@@ -38,9 +38,15 @@ public class SanimAuditAssessment
     public string? NextStatus { get; private set; }
     public string? FinalizationSource { get; private set; }
     public Guid? OfficeId { get; private set; }
+    public string? ImportanceType { get; private set; }
 
     // Parameterless constructor for EF Core
     protected SanimAuditAssessment() { }
+
+    public void SetImportanceType(string? importanceType)
+    {
+        ImportanceType = importanceType;
+    }
 
     public static SanimAuditAssessment Create(
         long id,
@@ -75,7 +81,8 @@ public class SanimAuditAssessment
         string? currentStatus,
         string? nextStatus,
         string? finalizationSource,
-        Guid? officeId = null)
+        Guid? officeId = null,
+        string? importanceType = null)
     {
         return new SanimAuditAssessment
         {
@@ -111,7 +118,8 @@ public class SanimAuditAssessment
             CurrentStatus = currentStatus,
             NextStatus = nextStatus,
             FinalizationSource = finalizationSource,
-            OfficeId = officeId
+            OfficeId = officeId,
+            ImportanceType = importanceType
         };
     }
 }

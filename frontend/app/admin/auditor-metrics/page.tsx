@@ -14,6 +14,9 @@ import {
   AuditDataSource,
 } from '@/types/auditorMetrics'
 import { AuditorScorecardDrawer } from '@/components/reporting/AuditorScorecardDrawer'
+import { SrsScoringMatrixEditor } from '@/components/reporting/SrsScoringMatrixEditor'
+import { SrsScorecardMatrixModal } from '@/components/reporting/SrsScorecardMatrixModal'
+import { SrsEmployeeScorecard } from '@/types/srsAuditorMetrics'
 import { toPersianDigits } from '@/lib/jalali'
 import {
   Award,
@@ -47,7 +50,8 @@ export default function AuditorMetricsManagementPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'metrics' | 'leaderboard' | 'simulation'>('metrics')
+  const [activeTab, setActiveTab] = useState<'srs-matrix' | 'leaderboard' | 'metrics' | 'simulation'>('srs-matrix')
+  const [evaluationModel, setEvaluationModel] = useState<'srs' | 'legacy'>('srs')
 
   // Data Sources State (Built-in Sanim DB vs Uploaded Excel Reports)
   const [dataSources, setDataSources] = useState<AuditDataSource[]>([])
@@ -57,6 +61,12 @@ export default function AuditorMetricsManagementPage() {
   const [scorecards, setScorecards] = useState<AuditorScorecard[]>([])
   const [loadingScorecards, setLoadingScorecards] = useState(false)
   const [selectedAuditorForDrawer, setSelectedAuditorForDrawer] = useState<string | null>(null)
+
+  // SRS Scorecards State
+  const [srsScorecards, setSrsScorecards] = useState<SrsEmployeeScorecard[]>([])
+  const [loadingSrsScorecards, setLoadingSrsScorecards] = useState(false)
+  const [selectedSrsScorecard, setSelectedSrsScorecard] = useState<SrsEmployeeScorecard | null>(null)
+
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOfficeFilter, setSelectedOfficeFilter] = useState('all')
 
@@ -113,6 +123,21 @@ export default function AuditorMetricsManagementPage() {
     }
   }
 
+  // Load SRS Scorecards
+  const loadSrsScorecards = async (sourceId: string = selectedSourceId) => {
+    try {
+      setLoadingSrsScorecards(true)
+      const data = await auditorMetricsApi.evaluateAuditorsSrs({
+        reportCode: sourceId === 'SYSTEM' ? undefined : sourceId,
+      })
+      setSrsScorecards(data || [])
+    } catch (err: any) {
+      console.error('Failed to load SRS auditor scorecards:', err)
+    } finally {
+      setLoadingSrsScorecards(false)
+    }
+  }
+
   // Load leaderboard / scorecards for selected data source
   const loadScorecards = async (sourceId: string = selectedSourceId) => {
     try {
@@ -131,13 +156,18 @@ export default function AuditorMetricsManagementPage() {
   useEffect(() => {
     loadMetrics()
     loadDataSources()
+    loadSrsScorecards()
   }, [])
 
   useEffect(() => {
-    if (activeTab === 'leaderboard' && scorecards.length === 0) {
-      loadScorecards(selectedSourceId)
+    if (activeTab === 'leaderboard') {
+      if (evaluationModel === 'srs') {
+        if (srsScorecards.length === 0) loadSrsScorecards(selectedSourceId)
+      } else {
+        if (scorecards.length === 0) loadScorecards(selectedSourceId)
+      }
     }
-  }, [activeTab, selectedSourceId])
+  }, [activeTab, selectedSourceId, evaluationModel])
 
   // Computed total weights
   const totalWeight = useMemo(() => {
@@ -353,13 +383,27 @@ export default function AuditorMetricsManagementPage() {
     }
   }
 
+  // Filtered SRS scorecards for leaderboard tab
+  const filteredSrsScorecards = useMemo(() => {
+    return srsScorecards.filter((sc) => {
+      const matchSearch =
+        !searchTerm.trim() ||
+        sc.auditorName.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
+        (sc.officeName && sc.officeName.toLowerCase().includes(searchTerm.toLowerCase().trim())) ||
+        (sc.auditorNationalId && sc.auditorNationalId.includes(searchTerm.trim()))
+      const matchOffice =
+        selectedOfficeFilter === 'all' || sc.officeName === selectedOfficeFilter
+      return matchSearch && matchOffice
+    })
+  }, [srsScorecards, searchTerm, selectedOfficeFilter])
+
   // Filtered scorecards for leaderboard tab
   const filteredScorecards = useMemo(() => {
     return scorecards.filter((sc) => {
       const matchSearch =
-        !searchTerm ||
-        sc.auditorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (sc.officeName && sc.officeName.toLowerCase().includes(searchTerm.toLowerCase()))
+        !searchTerm.trim() ||
+        sc.auditorName.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
+        (sc.officeName && sc.officeName.toLowerCase().includes(searchTerm.toLowerCase().trim()))
       const matchOffice =
         selectedOfficeFilter === 'all' || sc.officeName === selectedOfficeFilter
       return matchSearch && matchOffice
@@ -369,11 +413,14 @@ export default function AuditorMetricsManagementPage() {
   // Unique offices for filter
   const distinctOffices = useMemo(() => {
     const set = new Set<string>()
+    srsScorecards.forEach((sc) => {
+      if (sc.officeName) set.add(sc.officeName)
+    })
     scorecards.forEach((sc) => {
       if (sc.officeName) set.add(sc.officeName)
     })
-    return Array.from(set)
-  }, [scorecards])
+    return Array.from(set).sort()
+  }, [srsScorecards, scorecards])
 
   return (
     <ProtectedRoute requiredRoles={['Admin', 'DirectorGeneral', 'Manager']}>
@@ -398,42 +445,44 @@ export default function AuditorMetricsManagementPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={handleAutoRebalance}
-                  disabled={loading || totalWeight === 100}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-                  title="تعدیل متناسب اوزان به مجموع ۱۰۰٪"
-                >
-                  <Percent className="w-3.5 h-3.5 text-amber-600" />
-                  <span>تراز خودکار اوزان</span>
-                </button>
+              {/* Action Buttons (for custom metrics tab) */}
+              {activeTab === 'metrics' && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={handleAutoRebalance}
+                    disabled={loading || totalWeight === 100}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                    title="تعدیل متناسب اوزان به مجموع ۱۰۰٪"
+                  >
+                    <Percent className="w-3.5 h-3.5 text-amber-600" />
+                    <span>تراز خودکار اوزان</span>
+                  </button>
 
-                <button
-                  onClick={handleOpenCreate}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-md shadow-amber-600/20 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>تعریف شاخص جدید</span>
-                </button>
-              </div>
+                  <button
+                    onClick={handleOpenCreate}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-md shadow-amber-600/20 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>تعریف شاخص جدید</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex items-center gap-2 mt-5 border-t border-slate-100 pt-3">
+            <div className="flex items-center gap-2 mt-5 border-t border-slate-100 pt-3 flex-wrap">
               <button
-                onClick={() => setActiveTab('metrics')}
+                onClick={() => setActiveTab('srs-matrix')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'metrics'
-                    ? 'bg-slate-900 text-white shadow-xs'
+                  activeTab === 'srs-matrix'
+                    ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>تعاریف و اوزان شاخص‌ها</span>
+                <Layers className="w-3.5 h-3.5" />
+                <span>دستورالعمل مصوب ارزیابی (SRS)</span>
                 <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
-                  {toPersianDigits(metrics.length)}
+                  ماتریس ۸×۷
                 </span>
               </button>
 
@@ -447,11 +496,26 @@ export default function AuditorMetricsManagementPage() {
               >
                 <Award className="w-3.5 h-3.5" />
                 <span>رتبه‌بندی استانی و کارنامه‌ها</span>
-                {scorecards.length > 0 && (
+                {(srsScorecards.length > 0 || scorecards.length > 0) && (
                   <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
-                    {toPersianDigits(scorecards.length)}
+                    {toPersianDigits(evaluationModel === 'srs' ? srsScorecards.length : scorecards.length)}
                   </span>
                 )}
+              </button>
+
+              <button
+                onClick={() => setActiveTab('metrics')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'metrics'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>شاخص‌های سفارشی سنیم</span>
+                <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
+                  {toPersianDigits(metrics.length)}
+                </span>
               </button>
             </div>
           </div>
@@ -473,8 +537,8 @@ export default function AuditorMetricsManagementPage() {
             </div>
           )}
 
-          {/* Weight Health Indicator Alert */}
-          {totalWeight !== 100 && (
+          {/* Weight Health Indicator Alert (only in metrics tab) */}
+          {activeTab === 'metrics' && totalWeight !== 100 && (
             <div className="p-3.5 mb-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -496,6 +560,16 @@ export default function AuditorMetricsManagementPage() {
 
         {/* Main Content Area */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          {/* TAB 0: SRS SCORING MATRIX & RULES */}
+          {activeTab === 'srs-matrix' && (
+            <SrsScoringMatrixEditor
+              onRulesSaved={() => {
+                loadSrsScorecards(selectedSourceId)
+                loadScorecards(selectedSourceId)
+              }}
+            />
+          )}
+
           {/* TAB 1: METRIC DEFINITIONS */}
           {activeTab === 'metrics' && (
             <div className="space-y-4">
@@ -640,6 +714,55 @@ export default function AuditorMetricsManagementPage() {
           {/* TAB 2: LEADERBOARD & EVALUATION */}
           {activeTab === 'leaderboard' && (
             <div className="space-y-4">
+              {/* Evaluation Model Selector Pill */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEvaluationModel('srs')
+                      if (srsScorecards.length === 0) loadSrsScorecards(selectedSourceId)
+                    }}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      evaluationModel === 'srs'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>دستورالعمل مصوب ارزیابی عملکرد (SRS)</span>
+                    <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
+                      ماتریس ۸×۷
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEvaluationModel('legacy')
+                      if (scorecards.length === 0) loadScorecards(selectedSourceId)
+                    }}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      evaluationModel === 'legacy'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>الگوی شاخص‌های ترکیبی سنیم</span>
+                    <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
+                      تراز ۱۰۰
+                    </span>
+                  </button>
+                </div>
+
+                <div className="text-xs text-slate-500 font-medium px-2">
+                  {evaluationModel === 'srs'
+                    ? 'محاسبه کارنامه امتیازی بر مبنای ۸ شاخص مصوب و ۷ دسته‌بندی موضوعی پرونده‌ها'
+                    : 'محاسبه نمره کل بر مبنای اوزان و نسبت‌های ۶ شاخص سنیم'}
+                </div>
+              </div>
+
               {/* Filter & Search Bar */}
               <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="relative w-full sm:w-80">
@@ -649,7 +772,7 @@ export default function AuditorMetricsManagementPage() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="جستجوی نام حسابرس یا نام اداره..."
-                    className="w-full pl-3 pr-9 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full pl-3 pr-9 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
 
@@ -664,7 +787,8 @@ export default function AuditorMetricsManagementPage() {
                         onChange={(e) => {
                           const val = e.target.value
                           setSelectedSourceId(val)
-                          loadScorecards(val)
+                          if (evaluationModel === 'srs') loadSrsScorecards(val)
+                          else loadScorecards(val)
                         }}
                         className="text-xs bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer py-1"
                       >
@@ -681,7 +805,7 @@ export default function AuditorMetricsManagementPage() {
                   <select
                     value={selectedOfficeFilter}
                     onChange={(e) => setSelectedOfficeFilter(e.target.value)}
-                    className="w-full sm:w-auto text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full sm:w-auto text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     <option value="all">همه ادارات مالیاتی استان ({toPersianDigits(distinctOffices.length)})</option>
                     {distinctOffices.map((off) => (
@@ -692,130 +816,264 @@ export default function AuditorMetricsManagementPage() {
                   </select>
 
                   <button
-                    onClick={() => loadScorecards(selectedSourceId)}
-                    disabled={loadingScorecards}
+                    onClick={() => {
+                      if (evaluationModel === 'srs') loadSrsScorecards(selectedSourceId)
+                      else loadScorecards(selectedSourceId)
+                    }}
+                    disabled={loadingSrsScorecards || loadingScorecards}
                     className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
                     title="به‌روزرسانی رتبه‌بندی"
                   >
-                    <RefreshCw className={`w-4 h-4 ${loadingScorecards ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 ${loadingSrsScorecards || loadingScorecards ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
               </div>
 
-              {/* Leaderboard Table */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-right border-collapse">
-                    <thead>
-                      <tr className="bg-slate-900 text-white select-none">
-                        <th className="py-3 px-3 text-center w-12 font-bold text-[11px] text-slate-400 border-b border-slate-800">
-                          رتبه
-                        </th>
-                        <th className="py-3 px-4 font-bold text-[11px] border-b border-slate-800">نام حسابرس مالیاتی</th>
-                        <th className="py-3 px-4 font-bold text-[11px] border-b border-slate-800">اداره امور مالیاتی</th>
-                        <th className="py-3 px-3 font-bold text-[11px] text-center border-b border-slate-800">
-                          پرونده‌ها
-                        </th>
-                        <th className="py-3 px-4 font-bold text-[11px] text-left border-b border-slate-800">
-                          مالیات تشخیص (ریال)
-                        </th>
-                        <th className="py-3 px-4 font-bold text-[11px] text-left border-b border-slate-800">
-                          مالیات قطعی (ریال)
-                        </th>
-                        <th className="py-3 px-3 font-bold text-[11px] text-center border-b border-slate-800">
-                          رده عملکرد
-                        </th>
-                        <th className="py-3 px-4 font-bold text-[11px] text-center border-b border-slate-800">
-                          نمره تراز شده
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {loadingScorecards ? (
-                        <tr>
-                          <td colSpan={8} className="py-16 text-center text-slate-400">
-                            در حال محاسبه رتبه‌بندی ۲۳۰ حسابرس بر اساس آخرین اوزان فعال...
-                          </td>
+              {/* Leaderboard Table (SRS Point Scoring Mode) */}
+              {evaluationModel === 'srs' ? (
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-right border-collapse">
+                      <thead>
+                        <tr className="bg-slate-900 text-white select-none">
+                          <th className="py-3 px-3 text-center w-12 font-bold text-[11px] text-slate-400 border-b border-slate-800">
+                            رتبه
+                          </th>
+                          <th className="py-3 px-4 font-bold text-[11px] border-b border-slate-800">نام حسابرس مالیاتی</th>
+                          <th className="py-3 px-4 font-bold text-[11px] border-b border-slate-800">اداره امور مالیاتی</th>
+                          <th className="py-3 px-3 font-bold text-[11px] text-center border-b border-slate-800">
+                            کل پرونده‌ها
+                          </th>
+                          <th className="py-3 px-3 font-bold text-[11px] text-center border-b border-slate-800 text-emerald-400">
+                            + امتیاز مثبت
+                          </th>
+                          <th className="py-3 px-3 font-bold text-[11px] text-center border-b border-slate-800 text-rose-400">
+                            - کسورات و جریمه
+                          </th>
+                          <th className="py-3 px-3 font-bold text-[11px] text-center border-b border-slate-800">
+                            گرید عملکرد
+                          </th>
+                          <th className="py-3 px-4 font-bold text-[11px] text-center border-b border-slate-800">
+                            امتیاز کل (SRS)
+                          </th>
+                          <th className="py-3 px-3 font-bold text-[11px] text-center border-b border-slate-800">
+                            عملیات
+                          </th>
                         </tr>
-                      ) : filteredScorecards.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} className="py-12 text-center text-slate-400">
-                            هیچ حسابرسی مطابق با فیلترها یافت نشد
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredScorecards.map((sc) => {
-                          const isTop = sc.provincialRank <= 3
-                          return (
-                            <tr
-                              key={sc.auditorName}
-                              className="hover:bg-amber-50/40 transition-colors odd:bg-white even:bg-slate-50/50"
-                            >
-                              <td className="py-2.5 px-3 text-center font-mono font-bold text-xs">
-                                {isTop ? (
-                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-slate-900 font-black shadow-xs">
-                                    {toPersianDigits(sc.provincialRank)}
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {loadingSrsScorecards ? (
+                          <tr>
+                            <td colSpan={9} className="py-16 text-center text-slate-400">
+                              در حال محاسبه رتبه‌بندی استانی بر اساس ماتریس ۸×۷ و قواعد دستورالعمل...
+                            </td>
+                          </tr>
+                        ) : filteredSrsScorecards.length === 0 ? (
+                          <tr>
+                            <td colSpan={9} className="py-12 text-center text-slate-400">
+                              هیچ حسابرسی مطابق با فیلترها یافت نشد
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredSrsScorecards.map((sc) => {
+                            const isTop = sc.provincialRank <= 3
+
+                            return (
+                              <tr
+                                key={sc.auditorName}
+                                className="hover:bg-indigo-50/40 transition-colors odd:bg-white even:bg-slate-50/50"
+                              >
+                                <td className="py-2.5 px-3 text-center font-mono font-bold text-xs">
+                                  {isTop ? (
+                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-slate-900 font-black shadow-xs">
+                                      {toPersianDigits(sc.provincialRank)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-500">#{toPersianDigits(sc.provincialRank)}</span>
+                                  )}
+                                </td>
+
+                                <td className="py-2.5 px-4 font-bold text-slate-800">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSrsScorecard(sc)}
+                                    className="text-indigo-700 hover:text-indigo-900 hover:underline cursor-pointer flex items-center gap-1.5"
+                                    title="مشاهده کارنامه ماتریسی و جزئیات ارزیابی"
+                                  >
+                                    <Award className="w-3.5 h-3.5 text-indigo-600" />
+                                    <span>{sc.auditorName}</span>
+                                  </button>
+                                </td>
+
+                                <td className="py-2.5 px-4 text-slate-600 text-[11px]">{sc.officeName || 'اداره کل'}</td>
+
+                                <td className="py-2.5 px-3 text-center font-mono text-slate-700 font-bold">
+                                  {toPersianDigits(sc.totalCases)}
+                                </td>
+
+                                <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-700 bg-emerald-50/40">
+                                  +{toPersianDigits(sc.totalPositivePoints.toFixed(1))}
+                                </td>
+
+                                <td className="py-2.5 px-3 text-center font-mono font-bold text-rose-700 bg-rose-50/40">
+                                  -{toPersianDigits(sc.totalNegativeDeductions.toFixed(1))}
+                                </td>
+
+                                <td className="py-2.5 px-3 text-center">
+                                  <span
+                                    className={`inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-lg border ${
+                                      sc.performanceTier === 'A'
+                                        ? 'bg-amber-50 text-amber-700 border-amber-300'
+                                        : sc.performanceTier === 'B'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                        : sc.performanceTier === 'C'
+                                        ? 'bg-sky-50 text-sky-700 border-sky-300'
+                                        : 'bg-rose-50 text-rose-700 border-rose-300'
+                                    }`}
+                                  >
+                                    {sc.tierTitleFa}
                                   </span>
-                                ) : (
-                                  <span className="text-slate-500">#{toPersianDigits(sc.provincialRank)}</span>
-                                )}
-                              </td>
+                                </td>
 
-                              <td className="py-2.5 px-4 font-bold text-slate-800">
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedAuditorForDrawer(sc.auditorName)}
-                                  className="text-amber-700 hover:text-amber-900 hover:underline cursor-pointer flex items-center gap-1.5"
-                                  title="مشاهده کارنامه ۳۶۰ درجه و جزئیات ارزیابی"
-                                >
-                                  <Award className="w-3.5 h-3.5 text-amber-500" />
-                                  <span>{sc.auditorName}</span>
-                                </button>
-                              </td>
+                                <td className="py-2.5 px-4 text-center">
+                                  <span className="font-mono font-black text-xs text-indigo-900 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-md">
+                                    {toPersianDigits(sc.totalScore.toFixed(1))}
+                                  </span>
+                                </td>
 
-                              <td className="py-2.5 px-4 text-slate-600 text-[11px]">{sc.officeName || 'اداره کل'}</td>
-
-                              <td className="py-2.5 px-3 text-center font-mono text-slate-700">
-                                {toPersianDigits(sc.completedCases)} / {toPersianDigits(sc.totalAssignedCases)}
-                              </td>
-
-                              <td className="py-2.5 px-4 text-left font-mono font-semibold text-slate-700" dir="ltr">
-                                {toPersianDigits(sc.totalAssessedAmount.toLocaleString('fa-IR'))}
-                              </td>
-
-                              <td className="py-2.5 px-4 text-left font-mono font-semibold text-slate-700" dir="ltr">
-                                {toPersianDigits(sc.totalFinalAmount.toLocaleString('fa-IR'))}
-                              </td>
-
-                              <td className="py-2.5 px-3 text-center">
-                                <span
-                                  className={`inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-lg border ${
-                                    sc.performanceTier === 'A'
-                                      ? 'bg-amber-50 text-amber-700 border-amber-300'
-                                      : sc.performanceTier === 'B'
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                      : sc.performanceTier === 'C'
-                                      ? 'bg-sky-50 text-sky-700 border-sky-300'
-                                      : 'bg-rose-50 text-rose-700 border-rose-300'
-                                  }`}
-                                >
-                                  {sc.tierTitleFa}
-                                </span>
-                              </td>
-
-                              <td className="py-2.5 px-4 text-center">
-                                <span className="font-mono font-black text-xs text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
-                                  {toPersianDigits(sc.compositeScore.toFixed(1))}
-                                </span>
-                              </td>
-                            </tr>
-                          )
-                        })
-                      )}
-                    </tbody>
-                  </table>
+                                <td className="py-2.5 px-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSrsScorecard(sc)}
+                                    className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold border border-indigo-200 transition-colors cursor-pointer"
+                                  >
+                                    کارنامه ۸×۷
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Legacy Leaderboard Table */
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-right border-collapse">
+                      <thead>
+                        <tr className="bg-slate-900 text-white select-none">
+                          <th className="py-3 px-3 text-center w-12 font-bold text-[11px] text-slate-400 border-b border-slate-800">
+                            رتبه
+                          </th>
+                          <th className="py-3 px-4 font-bold text-[11px] border-b border-slate-800">نام حسابرس مالیاتی</th>
+                          <th className="py-3 px-4 font-bold text-[11px] border-b border-slate-800">اداره امور مالیاتی</th>
+                          <th className="py-3 px-3 font-bold text-[11px] text-center border-b border-slate-800">
+                            پرونده‌ها
+                          </th>
+                          <th className="py-3 px-4 font-bold text-[11px] text-left border-b border-slate-800">
+                            مالیات تشخیص (ریال)
+                          </th>
+                          <th className="py-3 px-4 font-bold text-[11px] text-left border-b border-slate-800">
+                            مالیات قطعی (ریال)
+                          </th>
+                          <th className="py-3 px-3 font-bold text-[11px] text-center border-b border-slate-800">
+                            رده عملکرد
+                          </th>
+                          <th className="py-3 px-4 font-bold text-[11px] text-center border-b border-slate-800">
+                            نمره تراز شده
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {loadingScorecards ? (
+                          <tr>
+                            <td colSpan={8} className="py-16 text-center text-slate-400">
+                              در حال محاسبه رتبه‌بندی ۲۳۰ حسابرس بر اساس آخرین اوزان فعال...
+                            </td>
+                          </tr>
+                        ) : filteredScorecards.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="py-12 text-center text-slate-400">
+                              هیچ حسابرسی مطابق با فیلترها یافت نشد
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredScorecards.map((sc) => {
+                            const isTop = sc.provincialRank <= 3
+                            return (
+                              <tr
+                                key={sc.auditorName}
+                                className="hover:bg-amber-50/40 transition-colors odd:bg-white even:bg-slate-50/50"
+                              >
+                                <td className="py-2.5 px-3 text-center font-mono font-bold text-xs">
+                                  {isTop ? (
+                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-slate-900 font-black shadow-xs">
+                                      {toPersianDigits(sc.provincialRank)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-500">#{toPersianDigits(sc.provincialRank)}</span>
+                                  )}
+                                </td>
+
+                                <td className="py-2.5 px-4 font-bold text-slate-800">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedAuditorForDrawer(sc.auditorName)}
+                                    className="text-amber-700 hover:text-amber-900 hover:underline cursor-pointer flex items-center gap-1.5"
+                                    title="مشاهده کارنامه ۳۶۰ درجه و جزئیات ارزیابی"
+                                  >
+                                    <Award className="w-3.5 h-3.5 text-amber-500" />
+                                    <span>{sc.auditorName}</span>
+                                  </button>
+                                </td>
+
+                                <td className="py-2.5 px-4 text-slate-600 text-[11px]">{sc.officeName || 'اداره کل'}</td>
+
+                                <td className="py-2.5 px-3 text-center font-mono text-slate-700">
+                                  {toPersianDigits(sc.completedCases)} / {toPersianDigits(sc.totalAssignedCases)}
+                                </td>
+
+                                <td className="py-2.5 px-4 text-left font-mono font-semibold text-slate-700" dir="ltr">
+                                  {toPersianDigits(sc.totalAssessedAmount.toLocaleString('fa-IR'))}
+                                </td>
+
+                                <td className="py-2.5 px-4 text-left font-mono font-semibold text-slate-700" dir="ltr">
+                                  {toPersianDigits(sc.totalFinalAmount.toLocaleString('fa-IR'))}
+                                </td>
+
+                                <td className="py-2.5 px-3 text-center">
+                                  <span
+                                    className={`inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-lg border ${
+                                      sc.performanceTier === 'A'
+                                        ? 'bg-amber-50 text-amber-700 border-amber-300'
+                                        : sc.performanceTier === 'B'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                        : sc.performanceTier === 'C'
+                                        ? 'bg-sky-50 text-sky-700 border-sky-300'
+                                        : 'bg-rose-50 text-rose-700 border-rose-300'
+                                    }`}
+                                  >
+                                    {sc.tierTitleFa}
+                                  </span>
+                                </td>
+
+                                <td className="py-2.5 px-4 text-center">
+                                  <span className="font-mono font-black text-xs text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
+                                    {toPersianDigits(sc.compositeScore.toFixed(1))}
+                                  </span>
+                                </td>
+                              </tr>
+                            )
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1130,6 +1388,12 @@ export default function AuditorMetricsManagementPage() {
             onClose={() => setSelectedAuditorForDrawer(null)}
           />
         )}
+
+        {/* SRS Detailed Scorecard Matrix Modal */}
+        <SrsScorecardMatrixModal
+          scorecard={selectedSrsScorecard}
+          onClose={() => setSelectedSrsScorecard(null)}
+        />
       </div>
     </ProtectedRoute>
   )

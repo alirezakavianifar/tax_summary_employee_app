@@ -40,7 +40,13 @@ A modern, full-stack enterprise web application for managing employee performanc
    - Time-To-Live (TTL) visibility periods and automated archiving for ad-hoc reports, with countdown badges and administrative lifecycle renewal.
    - High-level executive KPI dashboards, monthly trend charts, and Excel report generators.
 
-5. **Administration & Dynamic Menu Management (`/admin`)**:
+5. **Tax Assessment Employee Performance Evaluation System (SRS v1.0 & Auditor Metrics) (`/admin/auditor-metrics`)**:
+   - **7 Tax Case Categories**: Corporate Income Tax (300 Major Cases), Other Corporate, VAT (300 Legal Cases), Other Legal VAT, Business Income (Individuals), Individual VAT, and Property Tax.
+   - **8 Performance Indicators (FR-01 to FR-08)**: Issued Tax Assessments, Finalized Tax Assessments, Taxpayer Acceptance (تمکین), Article 238 Agreements, Assessment Growth ($>700\%$ legal / $>500\%$ individual), Finalized Tax Adjustment Penalty ($>15\%$), Assessment Issuance Speed (from Step 2), and Finalization Speed (from Step 2).
+   - **Dynamic Modifiable Rules**: Interactive $8 \times 7$ scoring weight matrix editor, configurable growth/adjustment thresholds, category-specific allowed processing days (30/45/60 days), daily delay deduction rate ($0.25$ points/day), and one-click reset to official SRS v1.0 defaults.
+   - **Provincial Leaderboard & 360 Scorecards**: Real-time evaluation of all 230+ provincial auditors with model switcher (`SRS بخشنامه مصوب` vs `شاخص‌های ترکیبی سنیم`), performance tiers (A/B/C/D), positive vs penalty decomposition, and detailed $8 \times 7$ printable A4 scorecard modal.
+
+6. **Administration & Dynamic Menu Management (`/admin`)**:
    - Granular Role-Based Access Control (Admin, Manager, Employee, OfficeHead, Expert, Auditor).
    - Database-backed dynamic menu visibility management and collapsible RTL sidebar navigation.
    - Dynamic organizational branding, custom logo upload, system-wide title management, and dynamic portal footer customization with official identity badge (`[🛡️ سامانه رسمی]`), copyright text, version badge, and interactive links list (`/admin/branding`).

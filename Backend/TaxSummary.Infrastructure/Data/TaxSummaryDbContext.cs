@@ -51,6 +51,7 @@ public class TaxSummaryDbContext : DbContext
     public DbSet<ReportExecutionLog> ReportExecutionLogs => Set<ReportExecutionLog>();
     public DbSet<SanimAuditAssessment> SanimAuditAssessments => Set<SanimAuditAssessment>();
     public DbSet<AuditorPerformanceMetricDefinition> AuditorPerformanceMetricDefinitions => Set<AuditorPerformanceMetricDefinition>();
+    public DbSet<AuditorEvaluationRuleSet> AuditorEvaluationRuleSets => Set<AuditorEvaluationRuleSet>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

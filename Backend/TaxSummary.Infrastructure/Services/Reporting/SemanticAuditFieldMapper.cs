@@ -21,6 +21,7 @@ public class SemanticAuditFieldMapper
     public string? OfficeNameField { get; set; }
     public string? AuditStatusField { get; set; }
     public string? DeclarationIdField { get; set; }
+    public string? ImportanceTypeField { get; set; }
     public bool IsDecreeReport { get; set; }
 
     public bool HasAuditorData => !string.IsNullOrWhiteSpace(AuditorNameField);
@@ -148,6 +149,14 @@ public class SemanticAuditFieldMapper
                  header.Contains("شناسه اظهارنامه") || header.Contains("کد رهگیری") || header.Contains("کلاسه پرونده")))
             {
                 mapper.DeclarationIdField = field;
+            }
+
+            // 12. Case Importance / Type (300Parvande / 100Parvande)
+            if (mapper.ImportanceTypeField == null &&
+                (header == "type" || header.Contains("نوع پرونده مهم") || header.Contains("شاخص ۳۰۰") ||
+                 header.Contains("۳۰۰ پرونده") || header.Contains("300 پرونده") || header.Contains("اهمیت پرونده")))
+            {
+                mapper.ImportanceTypeField = field;
             }
         }
 
