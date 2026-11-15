@@ -11,6 +11,8 @@ import {
   SrsRuleSetConfig,
   SaveSrsRuleConfigRequest,
   SrsEmployeeScorecard,
+  ImportantCasesInspectionResult,
+  ImportantCasesUploadResult,
 } from '@/types/srsAuditorMetrics'
 
 const BASE_URL = '/reporting/auditors'
@@ -161,6 +163,30 @@ export const auditorMetricsApi = {
   async sync300Cases(): Promise<{ message: string; updatedCount: number }> {
     const res = await apiClient.post<{ message: string; updatedCount: number }>(
       `${BASE_URL}/srs/sync-300-cases`
+    )
+    return res.data
+  },
+
+  /**
+   * پیش‌نمایش و بررسی ساختار و رکوردهای فایل اکسل پرونده‌های مهم
+   */
+  async inspectImportantCases(formData: FormData): Promise<ImportantCasesInspectionResult> {
+    const res = await apiClient.post<ImportantCasesInspectionResult>(
+      `${BASE_URL}/srs/inspect-important-cases`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return res.data
+  },
+
+  /**
+   * بارگذاری، برچسب‌گذاری و همگام‌سازی پرونده‌های مهم با عناوین و تگ‌های دلخواه
+   */
+  async uploadImportantCases(formData: FormData): Promise<ImportantCasesUploadResult> {
+    const res = await apiClient.post<ImportantCasesUploadResult>(
+      `${BASE_URL}/srs/upload-important-cases`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     )
     return res.data
   },

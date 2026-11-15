@@ -41,9 +41,14 @@ A modern, full-stack enterprise web application for managing employee performanc
    - High-level executive KPI dashboards, monthly trend charts, and Excel report generators.
 
 5. **Tax Assessment Employee Performance Evaluation System (SRS v1.0 & Auditor Metrics) (`/admin/auditor-metrics`)**:
-   - **7 Tax Case Categories**: Corporate Income Tax (300 Major Cases), Other Corporate, VAT (300 Legal Cases), Other Legal VAT, Business Income (Individuals), Individual VAT, and Property Tax.
+   - **7 Tax Case Categories**: Corporate Income Tax (300 Major Cases / Configurable Major Cases), Other Corporate, VAT (300 Legal Cases), Other Legal VAT, Business Income (Individuals), Individual VAT, and Property Tax.
    - **8 Performance Indicators (FR-01 to FR-08)**: Issued Tax Assessments, Finalized Tax Assessments, Taxpayer Acceptance (تمکین), Article 238 Agreements, Assessment Growth ($>700\%$ legal / $>500\%$ individual), Finalized Tax Adjustment Penalty ($>15\%$), Assessment Issuance Speed (from Step 2), and Finalization Speed (from Step 2).
    - **Dynamic Modifiable Rules**: Interactive $8 \times 7$ scoring weight matrix editor, configurable growth/adjustment thresholds, category-specific allowed processing days (30/45/60 days), daily delay deduction rate ($0.25$ points/day), and one-click reset to official SRS v1.0 defaults.
+   - **Configurable Important Cases & Excel Ingestion Modal**:
+     - Flexible naming & dynamic category labels (e.g. "۱۰۰ پرونده مهم", "۳۰۰ پرونده کلیدی", "پرونده‌های کلیدی شرکت‌های بزرگ", etc.) without hardcoded limits.
+     - Multi-tier Sanim tagging (`300Parvande`, `100Parvande`, custom tags) with dynamic propagation across matrix headers, auditor scorecards, and official A4 printouts.
+     - Interactive upload & pre-import inspection dialog (`ImportantCasesUploadModal.tsx`) with automatic column detection (TIN, tracking, type), row counters, matching Sanim case counters, and sample record validation table.
+     - Flexible matching modes: selective tagging by `type` column or blanket marking ("all rows are important"), with append vs. replace-all options.
    - **Provincial Leaderboard & 360 Scorecards**: Real-time evaluation of all 230+ provincial auditors with model switcher (`SRS بخشنامه مصوب` vs `شاخص‌های ترکیبی سنیم`), performance tiers (A/B/C/D), positive vs penalty decomposition, and detailed $8 \times 7$ printable A4 scorecard modal.
 
 6. **Administration & Dynamic Menu Management (`/admin`)**:

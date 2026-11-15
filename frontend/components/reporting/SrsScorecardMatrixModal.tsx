@@ -3,7 +3,7 @@
 import React from 'react'
 import {
   SrsEmployeeScorecard,
-  SRS_CATEGORIES_META,
+  getSrsCategoriesMeta,
   SRS_INDICATORS_META,
 } from '@/types/srsAuditorMetrics'
 import { toPersianDigits } from '@/lib/jalali'
@@ -62,6 +62,7 @@ export function SrsScorecardMatrixModal({ scorecard, onClose }: SrsScorecardMatr
   }
 
   const tierMeta = getTierBadge(scorecard.performanceTier)
+  const categoriesMeta = getSrsCategoriesMeta(scorecard.majorCasesLabel)
 
   const handlePrint = () => {
     window.print()
@@ -201,7 +202,7 @@ export function SrsScorecardMatrixModal({ scorecard, onClose }: SrsScorecardMatr
                       <th className="py-3 px-4 min-w-[210px] text-right sticky right-0 bg-slate-50 z-10 border-l border-slate-200">
                         شاخص ارزیابی عملکرد
                       </th>
-                      {SRS_CATEGORIES_META.map((cat) => (
+                      {categoriesMeta.map((cat) => (
                         <th key={cat.key} className="py-3 px-2 text-center min-w-[110px] border-l border-slate-200 last:border-l-0">
                           <div className="font-bold text-slate-900 text-xs">{cat.shortTitle}</div>
                           <div className="text-[10px] text-slate-500 font-normal">
@@ -237,7 +238,7 @@ export function SrsScorecardMatrixModal({ scorecard, onClose }: SrsScorecardMatr
                           </td>
 
                           {/* 7 Category Cells */}
-                          {SRS_CATEGORIES_META.map((cat) => {
+                          {categoriesMeta.map((cat) => {
                             const detail = ind.categoryDetails[cat.key] || {
                               caseCount: 0,
                               weight: 0,
@@ -321,7 +322,7 @@ export function SrsScorecardMatrixModal({ scorecard, onClose }: SrsScorecardMatr
                       <td className="py-3 px-4 sticky right-0 bg-slate-100 z-10 border-l border-slate-200 text-right">
                         جمع کل امتیازات عملکرد حسابرس
                       </td>
-                      {SRS_CATEGORIES_META.map((cat) => {
+                      {categoriesMeta.map((cat) => {
                         const colTotal = scorecard.indicators.reduce((sum, ind) => {
                           const d = ind.categoryDetails[cat.key]
                           return sum + (d?.points || 0)

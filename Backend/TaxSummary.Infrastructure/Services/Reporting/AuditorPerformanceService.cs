@@ -1023,7 +1023,9 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 allowedDaysJson,
                 request.Top300TaxpayersCount,
                 request.AllowNegativeSpeedScore,
-                request.IsActive
+                request.IsActive,
+                request.MajorCasesLabel,
+                request.MajorCasesTag
             );
 
             await _db.SaveChangesAsync(ct);
@@ -1080,6 +1082,8 @@ public class AuditorPerformanceService : IAuditorPerformanceService
             AdjustmentThreshold = ruleSet.AdjustmentThreshold,
             DailyDelayPenalty = ruleSet.DailyDelayPenalty,
             Top300TaxpayersCount = ruleSet.Top300TaxpayersCount,
+            MajorCasesLabel = ruleSet.MajorCasesLabel ?? "۳۰۰ پرونده مهم",
+            MajorCasesTag = ruleSet.MajorCasesTag ?? "300Parvande, 100Parvande",
             AllowNegativeSpeedScore = ruleSet.AllowNegativeSpeedScore,
             IsActive = ruleSet.IsActive,
             WeightsMatrix = weights,
@@ -1109,12 +1113,23 @@ public class AuditorPerformanceService : IAuditorPerformanceService
             if (!rawCases.Any())
                 return Result.Success(new List<SrsEmployeeScorecardDto>());
 
-            // Identify Major Corporate Taxpayers (300Parvande and 100Parvande) from official Sanim tagging
+            // Identify Major Corporate Taxpayers based on rules.MajorCasesTag
+            var allowedTags = (rules.MajorCasesTag ?? "300Parvande, 100Parvande")
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.Trim())
+                .Where(t => !string.IsNullOrEmpty(t))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (!allowedTags.Any())
+            {
+                allowedTags.Add("300Parvande");
+                allowedTags.Add("100Parvande");
+            }
+
             var top300Tins = rawCases
                 .Where(c => !string.IsNullOrWhiteSpace(c.TaxpayerTin) && 
                             !string.IsNullOrWhiteSpace(c.ImportanceType) && 
-                            (c.ImportanceType.Equals("300Parvande", StringComparison.OrdinalIgnoreCase) || 
-                             c.ImportanceType.Equals("100Parvande", StringComparison.OrdinalIgnoreCase)))
+                            allowedTags.Contains(c.ImportanceType.Trim()))
                 .Select(c => c.TaxpayerTin!.Trim())
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -1122,14 +1137,16 @@ public class AuditorPerformanceService : IAuditorPerformanceService
             if (!top300Tins.Any())
             {
                 var dbMajorTins = await _db.SanimAuditAssessments
-                    .Where(s => s.ImportanceType != null && (s.ImportanceType == "300Parvande" || s.ImportanceType == "100Parvande"))
-                    .Select(s => s.TaxpayerTin)
-                    .Distinct()
+                    .Where(s => s.ImportanceType != null && !string.IsNullOrWhiteSpace(s.TaxpayerTin))
+                    .Select(s => new { s.TaxpayerTin, s.ImportanceType })
                     .ToListAsync(ct);
 
-                foreach (var tin in dbMajorTins)
+                foreach (var item in dbMajorTins)
                 {
-                    if (!string.IsNullOrWhiteSpace(tin)) top300Tins.Add(tin.Trim());
+                    if (item.ImportanceType != null && allowedTags.Contains(item.ImportanceType.Trim()))
+                    {
+                        top300Tins.Add(item.TaxpayerTin.Trim());
+                    }
                 }
             }
 
@@ -1170,7 +1187,7 @@ public class AuditorPerformanceService : IAuditorPerformanceService
 
                 foreach (var item in group)
                 {
-                    string cat = ClassifyTaxCase(item, top300Tins);
+                    string cat = ClassifyTaxCase(item, top300Tins, allowedTags);
                     categorizedCases.Add((item, cat));
                     categoryCounts[cat]++;
                 }
@@ -1243,6 +1260,7 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                     TotalScore = totalScore,
                     TotalPositivePoints = Math.Round(totalPositivePoints, 2),
                     TotalNegativeDeductions = Math.Round(totalNegativeDeductions, 2),
+                    MajorCasesLabel = rules.MajorCasesLabel ?? "۳۰۰ پرونده مهم",
                     CategorySummaries = categoryCounts,
                     Indicators = indicatorScores
                 });
@@ -1318,15 +1336,13 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         }
     }
 
-    private static string ClassifyTaxCase(AuditorCaseRecord rec, HashSet<string> top300Tins)
+    private static string ClassifyTaxCase(AuditorCaseRecord rec, HashSet<string> top300Tins, HashSet<string> allowedTags)
     {
         bool isLegal = (rec.CaseType != null && rec.CaseType.Contains("حقوقی")) || 
                        (!string.IsNullOrEmpty(rec.TaxpayerTin) && rec.TaxpayerTin.Trim().Length == 11);
 
         bool isTop300 = isLegal && (
-            (!string.IsNullOrEmpty(rec.ImportanceType) && 
-             (rec.ImportanceType.Equals("300Parvande", StringComparison.OrdinalIgnoreCase) ||
-              rec.ImportanceType.Equals("100Parvande", StringComparison.OrdinalIgnoreCase))) ||
+            (!string.IsNullOrEmpty(rec.ImportanceType) && allowedTags.Contains(rec.ImportanceType.Trim())) ||
             (!string.IsNullOrEmpty(rec.TaxpayerTin) && top300Tins.Contains(rec.TaxpayerTin.Trim()))
         );
         string source = rec.TaxSource ?? string.Empty;
@@ -1644,6 +1660,306 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         {
             _logger.LogError(ex, "Error syncing 300Parvande cases from Excel");
             return Result.Failure<int>($"خطا در همگام‌سازی ۳۰۰ پرونده از فایل اکسل: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<ImportantCasesInspectionResultDto>> InspectImportantCasesExcelAsync(
+        Stream fileStream, 
+        string fileName, 
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (fileStream == null || fileStream.Length == 0)
+                return Result.Failure<ImportantCasesInspectionResultDto>("فایل بارگذاری‌شده خالی است.");
+
+            using var ms = new MemoryStream();
+            await fileStream.CopyToAsync(ms, ct);
+            ms.Position = 0;
+
+            var rows = ms.Query(useHeaderRow: true).ToList();
+            if (!rows.Any())
+                return Result.Failure<ImportantCasesInspectionResultDto>("هیچ سطری در فایل اکسل یافت نشد.");
+
+            var firstRow = rows.First() as IDictionary<string, object>;
+            var columns = firstRow != null ? firstRow.Keys.ToList() : new List<string>();
+
+            // Detect TIN column
+            string? detectedTinCol = columns.FirstOrDefault(c => 
+                c.Contains("تین", StringComparison.OrdinalIgnoreCase) || 
+                c.Contains("شناسه", StringComparison.OrdinalIgnoreCase) || 
+                c.Contains("tin", StringComparison.OrdinalIgnoreCase) ||
+                (c.Contains("مودی", StringComparison.OrdinalIgnoreCase) && !c.Contains("نام", StringComparison.OrdinalIgnoreCase)));
+
+            // Detect Tracking column
+            string? detectedTrackingCol = columns.FirstOrDefault(c => 
+                c.Contains("رهگیری", StringComparison.OrdinalIgnoreCase) || 
+                c.Contains("tracking", StringComparison.OrdinalIgnoreCase));
+
+            // Detect Type column
+            string? detectedTypeCol = columns.FirstOrDefault(c => 
+                c.Equals("type", StringComparison.OrdinalIgnoreCase) || 
+                c.Contains("نوع", StringComparison.OrdinalIgnoreCase) || 
+                c.Contains("برچسب", StringComparison.OrdinalIgnoreCase) ||
+                c.Contains("اهمیت", StringComparison.OrdinalIgnoreCase));
+
+            // Detect Taxpayer Name column
+            string? detectedNameCol = columns.FirstOrDefault(c => 
+                c.Contains("نام", StringComparison.OrdinalIgnoreCase) || 
+                c.Contains("مودی", StringComparison.OrdinalIgnoreCase) ||
+                c.Contains("عنوان", StringComparison.OrdinalIgnoreCase));
+
+            var excelTins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var excelTrackings = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int taggedRowsCount = 0;
+
+            foreach (IDictionary<string, object> row in rows)
+            {
+                string? tin = null;
+                if (!string.IsNullOrEmpty(detectedTinCol) && row.TryGetValue(detectedTinCol, out var val1) && val1 != null)
+                    tin = val1.ToString()?.Trim();
+                
+                string? tracking = null;
+                if (!string.IsNullOrEmpty(detectedTrackingCol) && row.TryGetValue(detectedTrackingCol, out var val2) && val2 != null)
+                    tracking = val2.ToString()?.Trim();
+
+                string? typeVal = null;
+                if (!string.IsNullOrEmpty(detectedTypeCol) && row.TryGetValue(detectedTypeCol, out var val3) && val3 != null)
+                    typeVal = val3.ToString()?.Trim();
+
+                if (!string.IsNullOrEmpty(tin)) excelTins.Add(tin);
+                if (!string.IsNullOrEmpty(tracking)) excelTrackings.Add(tracking);
+
+                if (!string.IsNullOrEmpty(typeVal) && 
+                    (typeVal.Contains("300", StringComparison.OrdinalIgnoreCase) || 
+                     typeVal.Contains("100", StringComparison.OrdinalIgnoreCase) ||
+                     typeVal.Contains("مهم", StringComparison.OrdinalIgnoreCase) ||
+                     typeVal.Contains("parvande", StringComparison.OrdinalIgnoreCase)))
+                {
+                    taggedRowsCount++;
+                }
+            }
+
+            // Check how many match in SanimAuditAssessments in database
+            var matchingCount = await _db.SanimAuditAssessments
+                .AsNoTracking()
+                .Where(s => (!string.IsNullOrEmpty(s.TaxpayerTin) && excelTins.Contains(s.TaxpayerTin)) ||
+                            (!string.IsNullOrEmpty(s.TaxpayerTrackingCode) && excelTrackings.Contains(s.TaxpayerTrackingCode)))
+                .CountAsync(ct);
+
+            // Fetch top 10 sample rows
+            var sampleRows = new List<SampleImportantCaseRowDto>();
+            int rowIndex = 1;
+            foreach (IDictionary<string, object> row in rows.Take(10))
+            {
+                string? tin = !string.IsNullOrEmpty(detectedTinCol) && row.TryGetValue(detectedTinCol, out var v1) ? v1?.ToString()?.Trim() : null;
+                string? tracking = !string.IsNullOrEmpty(detectedTrackingCol) && row.TryGetValue(detectedTrackingCol, out var v2) ? v2?.ToString()?.Trim() : null;
+                string? name = !string.IsNullOrEmpty(detectedNameCol) && row.TryGetValue(detectedNameCol, out var v3) ? v3?.ToString()?.Trim() : null;
+                string? typeVal = !string.IsNullOrEmpty(detectedTypeCol) && row.TryGetValue(detectedTypeCol, out var v4) ? v4?.ToString()?.Trim() : null;
+
+                bool exists = (!string.IsNullOrEmpty(tin) && await _db.SanimAuditAssessments.AnyAsync(s => s.TaxpayerTin == tin, ct)) ||
+                              (!string.IsNullOrEmpty(tracking) && await _db.SanimAuditAssessments.AnyAsync(s => s.TaxpayerTrackingCode == tracking, ct));
+
+                sampleRows.Add(new SampleImportantCaseRowDto
+                {
+                    RowIndex = rowIndex++,
+                    TaxpayerTin = tin,
+                    TaxpayerName = name,
+                    TrackingCode = tracking,
+                    TypeValue = typeVal,
+                    ExistsInDatabase = exists
+                });
+            }
+
+            var result = new ImportantCasesInspectionResultDto
+            {
+                FileName = fileName,
+                TotalRows = rows.Count,
+                Columns = columns,
+                DetectedTinColumn = detectedTinCol,
+                DetectedTrackingColumn = detectedTrackingCol,
+                DetectedTypeColumn = detectedTypeCol,
+                DistinctTinCount = excelTins.Count,
+                MatchingDatabaseCasesCount = matchingCount,
+                TaggedRowsCount = taggedRowsCount,
+                SampleRows = sampleRows
+            };
+
+            return Result.Success(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inspecting important cases Excel file");
+            return Result.Failure<ImportantCasesInspectionResultDto>($"خطا در بررسی فایل اکسل: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<ImportantCasesUploadResultDto>> UploadImportantCasesExcelAsync(
+        Stream fileStream, 
+        string fileName, 
+        string? customLabel, 
+        string? customTag, 
+        string? tinColumn, 
+        bool allRowsAreImportant, 
+        bool replaceExisting, 
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (fileStream == null || fileStream.Length == 0)
+                return Result.Failure<ImportantCasesUploadResultDto>("فایل بارگذاری‌شده خالی است.");
+
+            using var ms = new MemoryStream();
+            await fileStream.CopyToAsync(ms, ct);
+            ms.Position = 0;
+
+            var rows = ms.Query(useHeaderRow: true).ToList();
+            if (!rows.Any())
+                return Result.Failure<ImportantCasesUploadResultDto>("هیچ سطری در فایل اکسل یافت نشد.");
+
+            var firstRow = rows.First() as IDictionary<string, object>;
+            var columns = firstRow != null ? firstRow.Keys.ToList() : new List<string>();
+
+            string? tinCol = !string.IsNullOrWhiteSpace(tinColumn) ? tinColumn.Trim() : 
+                columns.FirstOrDefault(c => 
+                    c.Contains("تین", StringComparison.OrdinalIgnoreCase) || 
+                    c.Contains("شناسه", StringComparison.OrdinalIgnoreCase) || 
+                    c.Contains("tin", StringComparison.OrdinalIgnoreCase) ||
+                    (c.Contains("مودی", StringComparison.OrdinalIgnoreCase) && !c.Contains("نام", StringComparison.OrdinalIgnoreCase)));
+
+            string? trackingCol = columns.FirstOrDefault(c => 
+                c.Contains("رهگیری", StringComparison.OrdinalIgnoreCase) || 
+                c.Contains("tracking", StringComparison.OrdinalIgnoreCase));
+
+            string? typeCol = columns.FirstOrDefault(c => 
+                c.Equals("type", StringComparison.OrdinalIgnoreCase) || 
+                c.Contains("نوع", StringComparison.OrdinalIgnoreCase) || 
+                c.Contains("برچسب", StringComparison.OrdinalIgnoreCase) ||
+                c.Contains("اهمیت", StringComparison.OrdinalIgnoreCase));
+
+            string finalTag = !string.IsNullOrWhiteSpace(customTag) ? customTag.Trim() : "300Parvande";
+            string finalLabel = !string.IsNullOrWhiteSpace(customLabel) ? customLabel.Trim() : "۳۰۰ پرونده مهم";
+
+            // Map each target TIN and tracking code to its designated tag
+            var targetTinToTag = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var targetTrackingToTag = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (IDictionary<string, object> row in rows)
+            {
+                string? tin = null;
+                if (!string.IsNullOrEmpty(tinCol) && row.TryGetValue(tinCol, out var v1) && v1 != null)
+                    tin = v1.ToString()?.Trim();
+
+                string? tracking = null;
+                if (!string.IsNullOrEmpty(trackingCol) && row.TryGetValue(trackingCol, out var v2) && v2 != null)
+                    tracking = v2.ToString()?.Trim();
+
+                string? rowType = null;
+                if (!string.IsNullOrEmpty(typeCol) && row.TryGetValue(typeCol, out var v3) && v3 != null)
+                    rowType = v3.ToString()?.Trim();
+
+                bool shouldTag = false;
+                string tagForThisRow = finalTag;
+
+                if (allRowsAreImportant)
+                {
+                    shouldTag = true;
+                    if (!string.IsNullOrEmpty(rowType)) tagForThisRow = rowType;
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(rowType))
+                    {
+                        shouldTag = true;
+                        tagForThisRow = rowType;
+                    }
+                }
+
+                if (shouldTag)
+                {
+                    if (!string.IsNullOrEmpty(tin)) targetTinToTag[tin] = tagForThisRow;
+                    if (!string.IsNullOrEmpty(tracking)) targetTrackingToTag[tracking] = tagForThisRow;
+                }
+            }
+
+            if (!targetTinToTag.Any() && !targetTrackingToTag.Any())
+            {
+                return Result.Failure<ImportantCasesUploadResultDto>("هیچ پرونده واجد شرایطی جهت برچسب‌گذاری در فایل اکسل یافت نشد. در صورت عدم وجود ستون نوع در فایل، گزینه 'همه سطرهای فایل به عنوان پرونده مهم تلقی شوند' را فعال نمایید.");
+            }
+
+            // Retrieve all cases from SanimAuditAssessments
+            var dbCases = await _db.SanimAuditAssessments.ToListAsync(ct);
+            int updatedCount = 0;
+
+            foreach (var item in dbCases)
+            {
+                string? tin = item.TaxpayerTin?.Trim();
+                string? tracking = item.TaxpayerTrackingCode?.Trim();
+                string? newTag = null;
+
+                if (!string.IsNullOrEmpty(tin) && targetTinToTag.TryGetValue(tin, out var t1))
+                {
+                    newTag = t1;
+                }
+                else if (!string.IsNullOrEmpty(tracking) && targetTrackingToTag.TryGetValue(tracking, out var t2))
+                {
+                    newTag = t2;
+                }
+
+                if (newTag != null)
+                {
+                    if (item.ImportanceType != newTag)
+                    {
+                        item.SetImportanceType(newTag);
+                        updatedCount++;
+                    }
+                }
+                else if (replaceExisting && item.ImportanceType != null)
+                {
+                    item.SetImportanceType(null);
+                    updatedCount++;
+                }
+            }
+
+            // Update AuditorEvaluationRuleSet metadata
+            var ruleSet = await _db.AuditorEvaluationRuleSets.FirstOrDefaultAsync(r => r.IsActive, ct);
+            if (ruleSet == null)
+            {
+                ruleSet = AuditorEvaluationRuleSet.CreateDefault();
+                await _db.AuditorEvaluationRuleSets.AddAsync(ruleSet, ct);
+            }
+
+            var currentTags = (ruleSet.MajorCasesTag ?? "300Parvande, 100Parvande")
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.Trim())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            currentTags.Add(finalTag);
+            foreach (var t in targetTinToTag.Values) currentTags.Add(t);
+            foreach (var t in targetTrackingToTag.Values) currentTags.Add(t);
+
+            string combinedTags = string.Join(", ", currentTags);
+            ruleSet.SetMajorCasesMetadata(finalLabel, combinedTags);
+
+            await _db.SaveChangesAsync(ct);
+
+            var result = new ImportantCasesUploadResultDto
+            {
+                Success = true,
+                Message = $"تعداد {updatedCount} پرونده در پایگاه داده با موفقیت به‌روزرسانی و برچسب‌گذاری شد.",
+                TotalExcelRows = rows.Count,
+                TaggedTinCount = targetTinToTag.Count,
+                UpdatedDatabaseCasesCount = updatedCount,
+                MajorCasesLabel = finalLabel,
+                MajorCasesTag = combinedTags
+            };
+
+            return Result.Success(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading and tagging important cases Excel file");
+            return Result.Failure<ImportantCasesUploadResultDto>($"خطا در بارگذاری و پردازش پرونده‌های مهم: {ex.Message}");
         }
     }
 

@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react'
 import {
   SrsRuleSetConfig,
   SaveSrsRuleConfigRequest,
-  SRS_CATEGORIES_META,
+  getSrsCategoriesMeta,
   SRS_INDICATORS_META,
   SrsTaxCategoryKey,
   SrsIndicatorKey,
 } from '@/types/srsAuditorMetrics'
 import { auditorMetricsApi } from '@/lib/api/auditorMetrics'
 import { toPersianDigits } from '@/lib/jalali'
+import { ImportantCasesUploadModal } from './ImportantCasesUploadModal'
 import {
   Save,
   RotateCcw,
@@ -27,6 +28,7 @@ import {
   Sparkles,
   HelpCircle,
   ShieldCheck,
+  UploadCloud,
 } from 'lucide-react'
 
 interface SrsScoringMatrixEditorProps {
@@ -39,6 +41,7 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
   const [saving, setSaving] = useState<boolean>(false)
   const [resetting, setResetting] = useState<boolean>(false)
   const [syncing300, setSyncing300] = useState<boolean>(false)
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isDirty, setIsDirty] = useState<boolean>(false)
@@ -51,6 +54,8 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
   const [adjThreshold, setAdjThreshold] = useState<number>(15)
   const [delayPenalty, setDelayPenalty] = useState<number>(0.25)
   const [top300Count, setTop300Count] = useState<number>(300)
+  const [majorCasesLabel, setMajorCasesLabel] = useState<string>('۳۰۰ پرونده مهم')
+  const [majorCasesTag, setMajorCasesTag] = useState<string>('300Parvande, 100Parvande')
   const [allowNegativeSpeed, setAllowNegativeSpeed] = useState<boolean>(false)
   const [weights, setWeights] = useState<Record<string, Record<string, number>>>({})
   const [allowedDays, setAllowedDays] = useState<Record<string, { issuanceAllowedDays: number; finalizationAllowedDays: number }>>({})
@@ -68,6 +73,8 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
       setAdjThreshold(data.adjustmentThreshold || 15)
       setDelayPenalty(data.dailyDelayPenalty || 0.25)
       setTop300Count(data.top300TaxpayersCount || 300)
+      setMajorCasesLabel(data.majorCasesLabel || '۳۰۰ پرونده مهم')
+      setMajorCasesTag(data.majorCasesTag || '300Parvande, 100Parvande')
       setAllowNegativeSpeed(data.allowNegativeSpeedScore || false)
       setWeights(data.weightsMatrix || {})
       setAllowedDays(data.allowedDays || {})
@@ -125,6 +132,8 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
         adjustmentThreshold: adjThreshold,
         dailyDelayPenalty: delayPenalty,
         top300TaxpayersCount: top300Count,
+        majorCasesLabel: majorCasesLabel.trim() || '۳۰۰ پرونده مهم',
+        majorCasesTag: majorCasesTag.trim() || '300Parvande, 100Parvande',
         allowNegativeSpeedScore: allowNegativeSpeed,
         isActive: true,
         weightsMatrix: weights,
@@ -161,6 +170,8 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
       setAdjThreshold(restored.adjustmentThreshold)
       setDelayPenalty(restored.dailyDelayPenalty)
       setTop300Count(restored.top300TaxpayersCount)
+      setMajorCasesLabel(restored.majorCasesLabel || '۳۰۰ پرونده مهم')
+      setMajorCasesTag(restored.majorCasesTag || '300Parvande, 100Parvande')
       setAllowNegativeSpeed(restored.allowNegativeSpeedScore)
       setWeights(restored.weightsMatrix)
       setAllowedDays(restored.allowedDays)
@@ -198,6 +209,8 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
     )
   }
 
+  const categoriesMeta = getSrsCategoriesMeta(majorCasesLabel)
+
   return (
     <div className="space-y-6" dir="rtl">
       {/* Alert Banners */}
@@ -234,7 +247,7 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
             </span>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              ۳۰۰ پرونده مهم سنیم: ۱۶۹ پرونده کلیدی فعال
+              پرونده‌های کلیدی: {majorCasesLabel}
             </span>
             {isDirty && (
               <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-medium flex items-center gap-1">
@@ -251,13 +264,23 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
 
         <div className="flex items-center gap-2.5">
           <button
+            onClick={() => setIsUploadModalOpen(true)}
+            disabled={saving || resetting}
+            className="px-3.5 py-2 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100/70 text-purple-800 text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
+            title="بارگذاری و تنظیم فایل اکسل مودیان یا پرونده‌های مهم"
+          >
+            <UploadCloud className="w-4 h-4 text-purple-600" />
+            بارگذاری پرونده‌های مهم
+          </button>
+
+          <button
             onClick={handleSync300Cases}
             disabled={syncing300 || saving || resetting}
             className="px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100/70 text-emerald-800 text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
-            title="همگام‌سازی فهرست ۳۰۰ پرونده مهم از فایل اکسل سنیم سال ۱۴۰۵"
+            title="همگام‌سازی فهرست پرونده‌های مهم از فایل اکسل سنیم سال ۱۴۰۵"
           >
             <RefreshCw className={`w-4 h-4 text-emerald-600 ${syncing300 ? 'animate-spin' : ''}`} />
-            {syncing300 ? 'در حال همگام‌سازی...' : 'همگام‌سازی ۳۰۰ پرونده'}
+            {syncing300 ? 'در حال همگام‌سازی...' : 'همگام‌سازی سریع'}
           </button>
 
           <button
@@ -304,7 +327,7 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
                 <th className="py-3.5 px-4 min-w-[240px] text-right sticky right-0 bg-slate-100 z-10 shadow-xs">
                   شاخص ارزیابی عملکرد (Performance Indicator)
                 </th>
-                {SRS_CATEGORIES_META.map((cat) => (
+                {categoriesMeta.map((cat) => (
                   <th key={cat.key} className="py-3 px-3 text-center min-w-[125px]">
                     <div className="font-bold text-slate-900 text-xs">{cat.shortTitle}</div>
                     <div className="text-[10px] text-slate-500 font-normal mt-0.5 truncate max-w-[130px]" title={cat.titleFa}>
@@ -348,7 +371,7 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
                     </td>
 
                     {/* Weight Inputs for 7 Categories */}
-                    {SRS_CATEGORIES_META.map((cat) => {
+                    {categoriesMeta.map((cat) => {
                       const currentVal = rowWeights[cat.key] !== undefined ? rowWeights[cat.key] : isNegative ? -1 : 1
 
                       return (
@@ -381,7 +404,7 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
       </div>
 
       {/* Thresholds & Rule Configuration Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Growth Threshold Legal */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
           <div className="flex items-center gap-2 mb-2">
@@ -497,6 +520,34 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
             به ازای هر روز تاخیر مازاد بر مهلت مجاز از نمره سرعت حسابرس کسر می‌گردد (پیش‌فرض ۰.۲۵).
           </p>
         </div>
+
+        {/* Configurable Major Cases Label Card */}
+        <div className="bg-white rounded-2xl border border-purple-200 p-4 shadow-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-900">عنوان پرونده‌های کلیدی</div>
+              <div className="text-[10px] text-purple-600 font-medium">قابل تنظیم و انعطاف‌پذیر</div>
+            </div>
+          </div>
+          <div className="mt-2">
+            <input
+              type="text"
+              value={majorCasesLabel}
+              onChange={(e) => {
+                setMajorCasesLabel(e.target.value)
+                setIsDirty(true)
+              }}
+              placeholder="۳۰۰ پرونده مهم"
+              className="w-full text-center font-bold text-xs py-1.5 px-2 rounded-lg border border-purple-200 bg-purple-50/40 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 text-purple-900"
+            />
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+            عنوان نمایشی در سرفصل ستون‌ها، کارنامه‌ها و گزارش‌ها (مثال: ۱۰۰ پرونده، ۳۰۰ پرونده).
+          </p>
+        </div>
       </div>
 
       {/* Allowed Processing Days Configuration Table */}
@@ -510,7 +561,7 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          {SRS_CATEGORIES_META.map((cat) => {
+          {categoriesMeta.map((cat) => {
             const daysObj = allowedDays[cat.key] || { issuanceAllowedDays: 45, finalizationAllowedDays: 45 }
 
             return (
@@ -589,6 +640,20 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
           </div>
         </div>
       </div>
+
+      {/* Important Cases Excel Upload & Inspection Modal */}
+      <ImportantCasesUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        currentLabel={majorCasesLabel}
+        currentTag={majorCasesTag}
+        onSuccess={(res) => {
+          setMajorCasesLabel(res.majorCasesLabel)
+          setMajorCasesTag(res.majorCasesTag)
+          loadRules()
+          if (onRulesSaved) onRulesSaved()
+        }}
+      />
     </div>
   )
 }

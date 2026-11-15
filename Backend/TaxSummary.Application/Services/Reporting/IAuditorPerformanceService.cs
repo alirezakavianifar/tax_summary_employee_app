@@ -74,4 +74,22 @@ public interface IAuditorPerformanceService
     /// همگام‌سازی پرونده‌های ۳۰۰ پرونده مهم و ۱۰۰ پرونده از فایل اکسل سنیم در پایگاه داده
     /// </summary>
     Task<Result<int>> Sync300CasesFromExcelAsync(string? customExcelPath = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// پیش‌نمایش و اعتبارسنجی فایل اکسل پرونده‌های مهم (بررسی ستون‌ها، تعداد رکوردها و تطابق با پایگاه داده)
+    /// </summary>
+    Task<Result<ImportantCasesInspectionResultDto>> InspectImportantCasesExcelAsync(Stream fileStream, string fileName, CancellationToken ct = default);
+
+    /// <summary>
+    /// بارگذاری و همگام‌سازی پرونده‌های مهم از فایل اکسل با قابلیت تنظیم عنوان و برچسب دلخواه
+    /// </summary>
+    Task<Result<ImportantCasesUploadResultDto>> UploadImportantCasesExcelAsync(
+        Stream fileStream, 
+        string fileName, 
+        string? customLabel, 
+        string? customTag, 
+        string? tinColumn, 
+        bool allRowsAreImportant, 
+        bool replaceExisting, 
+        CancellationToken ct = default);
 }

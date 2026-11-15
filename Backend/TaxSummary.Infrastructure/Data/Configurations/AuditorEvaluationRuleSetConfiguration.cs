@@ -27,6 +27,9 @@ public class AuditorEvaluationRuleSetConfiguration : IEntityTypeConfiguration<Au
         builder.Property(r => r.AdjustmentThreshold).HasColumnType("decimal(18,2)");
         builder.Property(r => r.DailyDelayPenalty).HasColumnType("decimal(18,4)");
 
+        builder.Property(r => r.MajorCasesLabel).HasMaxLength(128).HasDefaultValue("۳۰۰ پرونده مهم").IsRequired();
+        builder.Property(r => r.MajorCasesTag).HasMaxLength(128).HasDefaultValue("300Parvande, 100Parvande").IsRequired();
+
         builder.Property(r => r.IsActive).IsRequired();
     }
 }

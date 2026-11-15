@@ -245,9 +245,68 @@ public class AuditorPerformanceController : ReportingControllerBase
 
         return Ok(new { message = "همگام‌سازی ۳۰۰ پرونده مهم با موفقیت انجام شد", updatedCount = result.Value });
     }
+
+    /// <summary>
+    /// پیش‌نمایش و بررسی فایل اکسل پرونده‌های مهم پیش از ثبت نهایی
+    /// </summary>
+    [HttpPost("srs/inspect-important-cases")]
+    [Authorize(Roles = "Admin,DirectorGeneral,Manager")]
+    public async Task<ActionResult<ImportantCasesInspectionResultDto>> InspectImportantCases(
+        IFormFile file, 
+        CancellationToken ct = default)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = "فایل اکسل انتخاب نشده یا خالی است." });
+
+        using var stream = file.OpenReadStream();
+        var result = await _performanceService.InspectImportantCasesExcelAsync(stream, file.FileName, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// بارگذاری و برچسب‌گذاری پرونده‌های مهم از فایل اکسل به همراه تنظیم عنوان و برچسب دلخواه
+    /// </summary>
+    [HttpPost("srs/upload-important-cases")]
+    [Authorize(Roles = "Admin,DirectorGeneral")]
+    public async Task<ActionResult<ImportantCasesUploadResultDto>> UploadImportantCases(
+        [FromForm] UploadImportantCasesFormRequest form,
+        CancellationToken ct = default)
+    {
+        if (form.File == null || form.File.Length == 0)
+            return BadRequest(new { error = "فایل اکسل انتخاب نشده یا خالی است." });
+
+        using var stream = form.File.OpenReadStream();
+        var result = await _performanceService.UploadImportantCasesExcelAsync(
+            stream, 
+            form.File.FileName, 
+            form.CustomLabel, 
+            form.CustomTag, 
+            form.TinColumn, 
+            form.AllRowsAreImportant, 
+            form.ReplaceExisting, 
+            ct);
+
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
 }
 
 public class ToggleMetricStatusRequest
 {
     public bool IsActive { get; set; }
+}
+
+public class UploadImportantCasesFormRequest
+{
+    public IFormFile File { get; set; } = null!;
+    public string? CustomLabel { get; set; }
+    public string? CustomTag { get; set; }
+    public string? TinColumn { get; set; }
+    public bool AllRowsAreImportant { get; set; } = false;
+    public bool ReplaceExisting { get; set; } = false;
 }

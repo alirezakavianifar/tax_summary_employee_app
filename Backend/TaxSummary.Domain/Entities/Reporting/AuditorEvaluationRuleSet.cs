@@ -48,6 +48,16 @@ public class AuditorEvaluationRuleSet
     public int Top300TaxpayersCount { get; private set; } = 300;
 
     /// <summary>
+    /// عنوان نمایشی دسته‌بندی پرونده‌های مهم (پیش‌فرض: ۳۰۰ پرونده مهم)
+    /// </summary>
+    public string MajorCasesLabel { get; private set; } = "۳۰۰ پرونده مهم";
+
+    /// <summary>
+    /// برچسب‌ها یا کدهای شناسایی پرونده‌های مهم در سنیم به صورت کاما-جدا (پیش‌فرض: 300Parvande, 100Parvande)
+    /// </summary>
+    public string MajorCasesTag { get; private set; } = "300Parvande, 100Parvande";
+
+    /// <summary>
     /// آیا نمره شاخص‌های سرعت در صورت تاخیر زیاد می‌تواند منفی شود؟ (در غیر این صورت کف آن صفر است)
     /// </summary>
     public bool AllowNegativeSpeedScore { get; private set; } = false;
@@ -73,6 +83,8 @@ public class AuditorEvaluationRuleSet
             DailyDelayPenalty = 0.25m,
             AllowedDaysJson = GetDefaultAllowedDaysJson(),
             Top300TaxpayersCount = 300,
+            MajorCasesLabel = "۳۰۰ پرونده مهم",
+            MajorCasesTag = "300Parvande, 100Parvande",
             AllowNegativeSpeedScore = false,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -92,7 +104,9 @@ public class AuditorEvaluationRuleSet
         string allowedDaysJson,
         int top300TaxpayersCount,
         bool allowNegativeSpeedScore,
-        bool isActive)
+        bool isActive,
+        string? majorCasesLabel = null,
+        string? majorCasesTag = null)
     {
         Title = string.IsNullOrWhiteSpace(title) ? Title : title.Trim();
         Description = description?.Trim() ?? string.Empty;
@@ -108,8 +122,22 @@ public class AuditorEvaluationRuleSet
             AllowedDaysJson = allowedDaysJson;
 
         Top300TaxpayersCount = top300TaxpayersCount > 0 ? top300TaxpayersCount : 300;
+        if (!string.IsNullOrWhiteSpace(majorCasesLabel))
+            MajorCasesLabel = majorCasesLabel.Trim();
+        if (!string.IsNullOrWhiteSpace(majorCasesTag))
+            MajorCasesTag = majorCasesTag.Trim();
+
         AllowNegativeSpeedScore = allowNegativeSpeedScore;
         IsActive = isActive;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetMajorCasesMetadata(string label, string tag)
+    {
+        if (!string.IsNullOrWhiteSpace(label))
+            MajorCasesLabel = label.Trim();
+        if (!string.IsNullOrWhiteSpace(tag))
+            MajorCasesTag = tag.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -122,6 +150,8 @@ public class AuditorEvaluationRuleSet
         DailyDelayPenalty = 0.25m;
         AllowedDaysJson = GetDefaultAllowedDaysJson();
         Top300TaxpayersCount = 300;
+        MajorCasesLabel = "۳۰۰ پرونده مهم";
+        MajorCasesTag = "300Parvande, 100Parvande";
         AllowNegativeSpeedScore = false;
         UpdatedAt = DateTime.UtcNow;
     }

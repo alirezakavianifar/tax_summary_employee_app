@@ -11,6 +11,8 @@ public class SrsRuleSetConfigDto
     public decimal AdjustmentThreshold { get; set; }
     public decimal DailyDelayPenalty { get; set; }
     public int Top300TaxpayersCount { get; set; }
+    public string MajorCasesLabel { get; set; } = "۳۰۰ پرونده مهم";
+    public string MajorCasesTag { get; set; } = "300Parvande, 100Parvande";
     public bool AllowNegativeSpeedScore { get; set; }
     public bool IsActive { get; set; }
     public Dictionary<string, Dictionary<string, decimal>> WeightsMatrix { get; set; } = new();
@@ -26,6 +28,8 @@ public class SaveSrsRuleConfigRequestDto
     public decimal AdjustmentThreshold { get; set; } = 15m;
     public decimal DailyDelayPenalty { get; set; } = 0.25m;
     public int Top300TaxpayersCount { get; set; } = 300;
+    public string MajorCasesLabel { get; set; } = "۳۰۰ پرونده مهم";
+    public string MajorCasesTag { get; set; } = "300Parvande, 100Parvande";
     public bool AllowNegativeSpeedScore { get; set; } = false;
     public bool IsActive { get; set; } = true;
     public Dictionary<string, Dictionary<string, decimal>> WeightsMatrix { get; set; } = new();
@@ -51,6 +55,7 @@ public class SrsEmployeeScorecardDto
     public int ProvincialRank { get; set; }
     public string PerformanceTier { get; set; } = "B";
     public string TierTitleFa { get; set; } = "مطلوب";
+    public string MajorCasesLabel { get; set; } = "۳۰۰ پرونده مهم";
     public Dictionary<string, int> CategorySummaries { get; set; } = new();
     public List<SrsIndicatorScoreDto> Indicators { get; set; } = new();
 }
@@ -75,4 +80,40 @@ public class SrsIndicatorCategoryDetailDto
     public double? DelayDays { get; set; }
     public decimal? DeductionPoints { get; set; }
 }
+
+public class ImportantCasesInspectionResultDto
+{
+    public string FileName { get; set; } = string.Empty;
+    public int TotalRows { get; set; }
+    public List<string> Columns { get; set; } = new();
+    public string? DetectedTinColumn { get; set; }
+    public string? DetectedTrackingColumn { get; set; }
+    public string? DetectedTypeColumn { get; set; }
+    public int DistinctTinCount { get; set; }
+    public int MatchingDatabaseCasesCount { get; set; }
+    public int TaggedRowsCount { get; set; }
+    public List<SampleImportantCaseRowDto> SampleRows { get; set; } = new();
+}
+
+public class SampleImportantCaseRowDto
+{
+    public int RowIndex { get; set; }
+    public string? TaxpayerTin { get; set; }
+    public string? TaxpayerName { get; set; }
+    public string? TrackingCode { get; set; }
+    public string? TypeValue { get; set; }
+    public bool ExistsInDatabase { get; set; }
+}
+
+public class ImportantCasesUploadResultDto
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public int TotalExcelRows { get; set; }
+    public int TaggedTinCount { get; set; }
+    public int UpdatedDatabaseCasesCount { get; set; }
+    public string MajorCasesLabel { get; set; } = "۳۰۰ پرونده مهم";
+    public string MajorCasesTag { get; set; } = "300Parvande, 100Parvande";
+}
+
 

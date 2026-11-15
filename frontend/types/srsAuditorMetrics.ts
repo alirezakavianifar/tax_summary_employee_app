@@ -177,6 +177,8 @@ export interface SrsRuleSetConfig {
   adjustmentThreshold: number
   dailyDelayPenalty: number
   top300TaxpayersCount: number
+  majorCasesLabel?: string
+  majorCasesTag?: string
   allowNegativeSpeedScore: boolean
   isActive: boolean
   weightsMatrix: Record<string, Record<string, number>>
@@ -191,6 +193,8 @@ export interface SaveSrsRuleConfigRequest {
   adjustmentThreshold: number
   dailyDelayPenalty: number
   top300TaxpayersCount: number
+  majorCasesLabel?: string
+  majorCasesTag?: string
   allowNegativeSpeedScore: boolean
   isActive: boolean
   weightsMatrix: Record<string, Record<string, number>>
@@ -228,7 +232,95 @@ export interface SrsEmployeeScorecard {
   provincialRank: number
   performanceTier: 'A' | 'B' | 'C' | 'D'
   tierTitleFa: string
+  majorCasesLabel?: string
   categorySummaries: Record<string, number>
   indicators: SrsIndicatorScore[]
+}
+
+export function getSrsCategoriesMeta(majorCasesLabel?: string): SrsCategoryMeta[] {
+  const label = majorCasesLabel?.trim() || '۳۰۰ پرونده مهم'
+  return [
+    {
+      key: 'Corporate300',
+      titleFa: `اشخاص حقوقی - ${label}`,
+      shortTitle: label,
+      isLegal: true,
+      badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+    },
+    {
+      key: 'CorporateOther',
+      titleFa: 'سایر اشخاص حقوقی',
+      shortTitle: 'سایر حقوقی',
+      isLegal: true,
+      badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    },
+    {
+      key: 'Vat300',
+      titleFa: `ارزش افزوده ${label}`,
+      shortTitle: `ارزش افزوده ${label}`,
+      isLegal: true,
+      badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+    },
+    {
+      key: 'VatLegalOther',
+      titleFa: 'سایر ارزش افزوده حقوقی',
+      shortTitle: 'سایر ار.افزوده حقوقی',
+      isLegal: true,
+      badgeColor: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    },
+    {
+      key: 'BusinessIncome',
+      titleFa: 'مالیات بر درآمد مشاغل (اشخاص حقیقی)',
+      shortTitle: 'مشاغل (حقیقی)',
+      isLegal: false,
+      badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    },
+    {
+      key: 'VatIndividual',
+      titleFa: 'ارزش افزوده انفرادی (اشخاص حقیقی)',
+      shortTitle: 'ارزش افزوده انفرادی',
+      isLegal: false,
+      badgeColor: 'bg-teal-50 text-teal-700 border-teal-200',
+    },
+    {
+      key: 'PropertyTax',
+      titleFa: 'مالیات بر مستغلات و املاک',
+      shortTitle: 'مستغلات / املاک',
+      isLegal: false,
+      badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    },
+  ]
+}
+
+export interface SampleImportantCaseRow {
+  rowIndex: number
+  taxpayerTin?: string
+  taxpayerName?: string
+  trackingCode?: string
+  typeValue?: string
+  existsInDatabase: boolean
+}
+
+export interface ImportantCasesInspectionResult {
+  fileName: string
+  totalRows: number
+  columns: string[]
+  detectedTinColumn?: string
+  detectedTrackingColumn?: string
+  detectedTypeColumn?: string
+  distinctTinCount: number
+  matchingDatabaseCasesCount: number
+  taggedRowsCount: number
+  sampleRows: SampleImportantCaseRow[]
+}
+
+export interface ImportantCasesUploadResult {
+  success: boolean
+  message: string
+  totalExcelRows: number
+  taggedTinCount: number
+  updatedDatabaseCasesCount: number
+  majorCasesLabel: string
+  majorCasesTag: string
 }
 

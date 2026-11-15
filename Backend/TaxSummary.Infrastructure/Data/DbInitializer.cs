@@ -1114,12 +1114,37 @@ public static class DbInitializer
                     ""DailyDelayPenalty"" decimal(18,4) NOT NULL,
                     ""AllowedDaysJson"" TEXT NOT NULL,
                     ""Top300TaxpayersCount"" INTEGER NOT NULL,
+                    ""MajorCasesLabel"" TEXT NOT NULL DEFAULT '۳۰۰ پرونده مهم',
+                    ""MajorCasesTag"" TEXT NOT NULL DEFAULT '300Parvande, 100Parvande',
                     ""AllowNegativeSpeedScore"" INTEGER NOT NULL,
                     ""IsActive"" INTEGER NOT NULL,
                     ""CreatedAt"" TEXT NOT NULL,
                     ""UpdatedAt"" TEXT NULL
                 );";
             await command.ExecuteNonQueryAsync();
+
+            // Ensure MajorCasesLabel and MajorCasesTag exist if table was already created
+            command.CommandText = "PRAGMA table_info(AuditorEvaluationRuleSets);";
+            var ruleSetColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    ruleSetColumns.Add(reader.GetString(1));
+                }
+            }
+
+            if (!ruleSetColumns.Contains("MajorCasesLabel"))
+            {
+                command.CommandText = "ALTER TABLE AuditorEvaluationRuleSets ADD COLUMN MajorCasesLabel TEXT NOT NULL DEFAULT '۳۰۰ پرونده مهم';";
+                await command.ExecuteNonQueryAsync();
+            }
+
+            if (!ruleSetColumns.Contains("MajorCasesTag"))
+            {
+                command.CommandText = "ALTER TABLE AuditorEvaluationRuleSets ADD COLUMN MajorCasesTag TEXT NOT NULL DEFAULT '300Parvande, 100Parvande';";
+                await command.ExecuteNonQueryAsync();
+            }
 
             // 5. Ensure SanimAuditAssessments table exists
             command.CommandText = @"
