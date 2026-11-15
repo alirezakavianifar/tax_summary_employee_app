@@ -28,13 +28,17 @@ import {
   FileSpreadsheet,
   Scale,
   Users,
+  Layers,
+  Sliders,
 } from 'lucide-react'
 import { auditorMetricsApi } from '@/lib/api/auditorMetrics'
 import {
   AuditorPerformanceMetric,
   AuditorScorecard,
 } from '@/types/auditorMetrics'
+import { SrsEmployeeScorecard } from '@/types/srsAuditorMetrics'
 import { AuditorScorecardDrawer } from '@/components/reporting/AuditorScorecardDrawer'
+import { SrsScorecardMatrixModal } from '@/components/reporting/SrsScorecardMatrixModal'
 import { AuditorAvatar } from '@/components/reporting/AuditorAvatar'
 import { toPersianDigits } from '@/lib/jalali'
 
@@ -50,7 +54,10 @@ export function ReportAuditorPerformanceTab({
   onViewAuditorCases,
 }: ReportAuditorPerformanceTabProps) {
   const isDecree = reportActorType === 'decree' || (reportCode ? reportCode.toUpperCase().includes('REP_2') : false)
+  const [evaluationModel, setEvaluationModel] = useState<'srs' | 'legacy'>('srs')
   const [scorecards, setScorecards] = useState<AuditorScorecard[]>([])
+  const [srsScorecards, setSrsScorecards] = useState<SrsEmployeeScorecard[]>([])
+  const [selectedSrsScorecard, setSelectedSrsScorecard] = useState<SrsEmployeeScorecard | null>(null)
   const [metrics, setMetrics] = useState<AuditorPerformanceMetric[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -93,18 +100,23 @@ export function ReportAuditorPerformanceTab({
   // Reset to first page when filtering or page size changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, selectedOffice, pageSize])
+  }, [searchTerm, selectedOffice, pageSize, evaluationModel])
 
   const loadData = async () => {
     try {
       setLoading(true)
       setError(null)
-      const [cardsData, metricsData] = await Promise.all([
+      const [cardsData, metricsData, srsCardsData] = await Promise.all([
         auditorMetricsApi.evaluateAuditors({ reportCode }),
         auditorMetricsApi.getMetrics(false),
+        auditorMetricsApi.evaluateAuditorsSrs({ reportCode }).catch((err) => {
+          console.warn('SRS evaluation not available for this report:', err)
+          return []
+        }),
       ])
       setScorecards(cardsData || [])
       setMetrics(metricsData || [])
+      setSrsScorecards(srsCardsData || [])
     } catch (err: any) {
       console.error('Failed to load performance data for report:', err)
       setError(
@@ -131,8 +143,11 @@ export function ReportAuditorPerformanceTab({
     scorecards.forEach((s) => {
       if (s.officeName && s.officeName.trim()) set.add(s.officeName.trim())
     })
+    srsScorecards.forEach((s) => {
+      if (s.officeName && s.officeName.trim()) set.add(s.officeName.trim())
+    })
     return Array.from(set).sort()
-  }, [scorecards])
+  }, [scorecards, srsScorecards])
 
   // Filtered scorecards
   const filteredScorecards = useMemo(() => {
@@ -149,7 +164,57 @@ export function ReportAuditorPerformanceTab({
     })
   }, [scorecards, searchTerm, selectedOffice])
 
-  // Sorted scorecards
+  // Filtered & Sorted SRS scorecards
+  const filteredSrsScorecards = useMemo(() => {
+    return srsScorecards.filter((s) => {
+      const matchSearch =
+        !searchTerm.trim() ||
+        s.auditorName.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
+        (s.auditorNationalId && s.auditorNationalId.includes(searchTerm.trim()))
+
+      const matchOffice =
+        selectedOffice === 'all' || s.officeName?.trim() === selectedOffice
+
+      return matchSearch && matchOffice
+    })
+  }, [srsScorecards, searchTerm, selectedOffice])
+
+  const sortedSrsScorecards = useMemo(() => {
+    return [...filteredSrsScorecards].sort((a, b) => {
+      let valA: any = a.provincialRank
+      let valB: any = b.provincialRank
+
+      if (sortColumn === 'name') {
+        valA = a.auditorName || ''
+        valB = b.auditorName || ''
+        return sortDirection === 'asc'
+          ? valA.localeCompare(valB, 'fa')
+          : valB.localeCompare(valA, 'fa')
+      } else if (sortColumn === 'cases') {
+        valA = a.totalCases || 0
+        valB = b.totalCases || 0
+      } else if (sortColumn === 'positive') {
+        valA = a.totalPositivePoints || 0
+        valB = b.totalPositivePoints || 0
+      } else if (sortColumn === 'deductions') {
+        valA = a.totalNegativeDeductions || 0
+        valB = b.totalNegativeDeductions || 0
+      } else if (sortColumn === 'score') {
+        valA = a.totalScore || 0
+        valB = b.totalScore || 0
+      } else {
+        valA = a.provincialRank || 0
+        valB = b.provincialRank || 0
+      }
+
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortDirection === 'asc' ? valA - valB : valB - valA
+      }
+      return sortDirection === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1)
+    })
+  }, [filteredSrsScorecards, sortColumn, sortDirection])
+
+  // Sorted scorecards (Legacy model)
   const sortedScorecards = useMemo(() => {
     return [...filteredScorecards].sort((a, b) => {
       let valA: any = a.provincialRank
@@ -187,7 +252,7 @@ export function ReportAuditorPerformanceTab({
   }, [filteredScorecards, sortColumn, sortDirection])
 
   // Pagination calculations
-  const totalRowCount = sortedScorecards.length
+  const totalRowCount = evaluationModel === 'srs' ? sortedSrsScorecards.length : sortedScorecards.length
   const effectivePageSize = pageSize > 0 ? pageSize : totalRowCount || 1
   const totalPages = pageSize > 0 ? Math.max(1, Math.ceil(totalRowCount / pageSize)) : 1
   const safePage = Math.min(Math.max(1, currentPage), totalPages)
@@ -197,6 +262,12 @@ export function ReportAuditorPerformanceTab({
     const start = (safePage - 1) * pageSize
     return sortedScorecards.slice(start, start + pageSize)
   }, [sortedScorecards, safePage, pageSize])
+
+  const paginatedSrsScorecards = useMemo(() => {
+    if (pageSize <= 0) return sortedSrsScorecards
+    const start = (safePage - 1) * pageSize
+    return sortedSrsScorecards.slice(start, start + pageSize)
+  }, [sortedSrsScorecards, safePage, pageSize])
 
   const startRow = totalRowCount > 0 ? (safePage - 1) * effectivePageSize + 1 : 0
   const endRow = Math.min(safePage * effectivePageSize, totalRowCount)
@@ -226,7 +297,9 @@ export function ReportAuditorPerformanceTab({
     }
   }
 
-  const handleSort = (column: 'rank' | 'name' | 'cases' | 'assessed' | 'final' | 'score') => {
+  type SortColumnType = 'rank' | 'name' | 'cases' | 'assessed' | 'final' | 'score' | 'positive' | 'deductions'
+
+  const handleSort = (column: SortColumnType) => {
     if (sortColumn === column) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
     } else {
@@ -236,7 +309,7 @@ export function ReportAuditorPerformanceTab({
     setCurrentPage(1)
   }
 
-  const renderSortIcon = (column: 'rank' | 'name' | 'cases' | 'assessed' | 'final' | 'score') => {
+  const renderSortIcon = (column: SortColumnType) => {
     if (sortColumn !== column) {
       return (
         <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover/th:text-slate-500 transition-colors inline-block" />
@@ -694,7 +767,7 @@ export function ReportAuditorPerformanceTab({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 relative z-10">
-            {scorecards.slice(0, 3).map((top, idx) => {
+            {(evaluationModel === 'srs' && srsScorecards.length >= 3 ? srsScorecards : scorecards).slice(0, 3).map((top: any, idx) => {
               const rank = idx + 1
               const rankColor =
                 rank === 1
@@ -703,10 +776,20 @@ export function ReportAuditorPerformanceTab({
                   ? 'border-slate-400/40 bg-gradient-to-b from-slate-400/10 to-transparent'
                   : 'border-amber-700/40 bg-gradient-to-b from-amber-700/10 to-transparent'
 
+              const scoreDisplay = evaluationModel === 'srs'
+                ? `${toPersianDigits((top.totalScore || 0).toFixed(1))} امتیاز`
+                : toPersianDigits(top.compositeScore.toFixed(1))
+
               return (
                 <div
                   key={top.auditorName}
-                  onClick={() => setSelectedAuditorForDrawer(top.auditorName)}
+                  onClick={() => {
+                    if (evaluationModel === 'srs') {
+                      setSelectedSrsScorecard(top)
+                    } else {
+                      setSelectedAuditorForDrawer(top.auditorName)
+                    }
+                  }}
                   className={`p-3.5 rounded-2xl border ${rankColor} backdrop-blur-xs flex items-center gap-3.5 hover:bg-white/5 transition-all cursor-pointer group`}
                 >
                   <AuditorAvatar
@@ -725,20 +808,35 @@ export function ReportAuditorPerformanceTab({
                         {top.auditorName}
                       </span>
                       <span className="font-mono font-black text-xs text-amber-400">
-                        {toPersianDigits(top.compositeScore.toFixed(1))}
+                        {scoreDisplay}
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-300 truncate mt-0.5">
-                      {top.officeName}
+                      {top.officeName || 'اداره کل'}
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1 font-mono">
                       <span>
-                        {toPersianDigits(top.totalAssignedCases)} {isDecree ? 'قرار' : 'پرونده'}
+                        {toPersianDigits(evaluationModel === 'srs' ? top.totalCases : top.totalAssignedCases)} {isDecree ? 'قرار' : 'پرونده'}
                       </span>
-                      <span>•</span>
-                      <span className="text-emerald-400">
-                        {toPersianDigits(top.completedCases)} {isDecree ? 'ثبت گزارش' : 'مختومه'}
-                      </span>
+                      {evaluationModel === 'srs' ? (
+                        <>
+                          <span>•</span>
+                          <span className="text-emerald-400">
+                            +{toPersianDigits((top.totalPositivePoints || 0).toFixed(1))}
+                          </span>
+                          <span>•</span>
+                          <span className="text-rose-400">
+                            -{toPersianDigits((top.totalNegativeDeductions || 0).toFixed(1))}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span>•</span>
+                          <span className="text-emerald-400">
+                            {toPersianDigits(top.completedCases)} {isDecree ? 'ثبت گزارش' : 'مختومه'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -827,21 +925,74 @@ export function ReportAuditorPerformanceTab({
 
       {/* Leaderboard Section Header & Filters */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+        {/* Model Switcher Pill */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+          <div className="flex items-center gap-1.5 p-1 bg-white rounded-lg border border-slate-200 shadow-2xs w-fit">
+            <button
+              type="button"
+              onClick={() => {
+                setEvaluationModel('srs')
+                setCurrentPage(1)
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                evaluationModel === 'srs'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>دستورالعمل مصوب ارزیابی عملکرد (SRS)</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
+                ماتریس ۸×۷
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEvaluationModel('legacy')
+                setCurrentPage(1)
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                evaluationModel === 'legacy'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>الگوی شاخص‌های ترکیبی سنیم</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
+                تراز ۱۰۰
+              </span>
+            </button>
+          </div>
+
+          <div className="text-xs text-slate-500 font-medium px-1">
+            {evaluationModel === 'srs'
+              ? 'محاسبه کارنامه امتیازی بر مبنای ۸ شاخص مصوب و ۷ دسته‌بندی موضوعی پرونده‌ها'
+              : 'محاسبه نمره کل بر مبنای اوزان و نسبت‌های ۶ شاخص سنیم'}
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-amber-600" />
               <span>
-                {isDecree
+                {evaluationModel === 'srs'
+                  ? 'جدول رتبه‌بندی امتیازی حسابرسان بر اساس دستورالعمل مصوب (SRS)'
+                  : isDecree
                   ? 'جدول رتبه‌بندی عملکرد مجریان قرار دادرسی این مجموعه داده'
                   : 'جدول رتبه‌بندی عملکرد حسابرسان این مجموعه داده'}
               </span>
               <span className="text-xs font-bold text-slate-400">
-                ({toPersianDigits(filteredScorecards.length)} {isDecree ? 'مجری قرار' : 'حسابرس'})
+                ({toPersianDigits(evaluationModel === 'srs' ? filteredSrsScorecards.length : filteredScorecards.length)} {isDecree ? 'مجری قرار' : 'حسابرس'})
               </span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              {isDecree
+              {evaluationModel === 'srs'
+                ? 'ترتیب رتبه‌ها بر اساس مجموع امتیازات مکتسبه از ۸ شاخص و ۷ دسته‌بندی پرونده‌ها محاسبه شده است. جهت مشاهده ماتریس کارنامه روی نام حسابرس کلیک فرمایید.'
+                : isDecree
                 ? 'ترتیب رتبه‌ها بر اساس امتیاز وزنی کل از ۱۰۰ محاسبه شده است. جهت مشاهده جزئیات قرارها روی نام مجری کلیک فرمایید.'
                 : 'ترتیب رتبه‌ها بر اساس امتیاز وزنی کل از ۱۰۰ محاسبه شده است. جهت مشاهده جزئیات پرونده‌ها روی نام حسابرس کلیک فرمایید.'}
             </p>
@@ -880,6 +1031,185 @@ export function ReportAuditorPerformanceTab({
 
         {/* Leaderboard Table */}
         <div className="overflow-x-auto rounded-xl border border-slate-200">
+          {evaluationModel === 'srs' ? (
+            <table className="w-full text-right text-xs">
+              <thead className="bg-slate-900 text-white font-extrabold select-none">
+                <tr>
+                  <th
+                    onClick={() => handleSort('rank')}
+                    className="py-3 px-3 w-16 text-center cursor-pointer hover:bg-slate-800 transition-colors"
+                    title="مرتب‌سازی بر اساس رتبه"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>رتبه</span>
+                      {renderSortIcon('rank')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('name')}
+                    className="py-3 px-4 cursor-pointer hover:bg-slate-800 transition-colors"
+                    title="مرتب‌سازی بر اساس نام"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>نام و مشخصات حسابرس</span>
+                      {renderSortIcon('name')}
+                    </div>
+                  </th>
+                  <th className="py-3 px-4">اداره امور مالیاتی</th>
+                  <th
+                    onClick={() => handleSort('cases')}
+                    className="py-3 px-3 text-center cursor-pointer hover:bg-slate-800 transition-colors"
+                    title="مرتب‌سازی بر اساس تعداد"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>کل پرونده‌ها</span>
+                      {renderSortIcon('cases')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('positive')}
+                    className="py-3 px-3 text-center cursor-pointer hover:bg-slate-800 transition-colors text-emerald-400"
+                    title="مرتب‌سازی بر اساس امتیاز مثبت"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>+ امتیاز مثبت</span>
+                      {renderSortIcon('positive')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('deductions')}
+                    className="py-3 px-3 text-center cursor-pointer hover:bg-slate-800 transition-colors text-rose-400"
+                    title="مرتب‌سازی بر اساس کسورات"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>- کسورات و جریمه</span>
+                      {renderSortIcon('deductions')}
+                    </div>
+                  </th>
+                  <th className="py-3 px-3 text-center">گرید عملکرد</th>
+                  <th
+                    onClick={() => handleSort('score')}
+                    className="py-3 px-4 text-center cursor-pointer hover:bg-slate-800 transition-colors"
+                    title="مرتب‌سازی بر اساس امتیاز کل"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>امتیاز کل (SRS)</span>
+                      {renderSortIcon('score')}
+                    </div>
+                  </th>
+                  <th className="py-3 px-3 text-center">اقدام</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedSrsScorecards.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center text-slate-400">
+                      حسابرسی مطابق با فیلترها یافت نشد.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedSrsScorecards.map((row) => {
+                    const isTop = row.provincialRank <= 3
+
+                    return (
+                      <tr
+                        key={row.auditorName}
+                        className="hover:bg-indigo-50/40 transition-colors odd:bg-white even:bg-slate-50/50"
+                      >
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-xs">
+                          {isTop ? (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-slate-900 font-black shadow-xs">
+                              {toPersianDigits(row.provincialRank)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">#{toPersianDigits(row.provincialRank)}</span>
+                          )}
+                        </td>
+
+                        <td className="py-2.5 px-4 font-bold text-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSrsScorecard(row)}
+                            className="text-indigo-700 hover:text-indigo-900 hover:underline cursor-pointer flex items-center gap-2"
+                            title="مشاهده کارنامه ماتریسی و جزئیات ارزیابی"
+                          >
+                            <AuditorAvatar
+                              auditorName={row.auditorName}
+                              nationalId={row.auditorNationalId}
+                              photoUrl={row.photoUrl}
+                              size="sm"
+                              rank={row.provincialRank}
+                              tier={row.performanceTier}
+                              showLightbox={false}
+                            />
+                            <span>{row.auditorName}</span>
+                          </button>
+                        </td>
+
+                        <td className="py-2.5 px-4 text-slate-600 text-[11px]">{row.officeName || 'اداره کل'}</td>
+
+                        <td className="py-2.5 px-3 text-center font-mono text-slate-700 font-bold">
+                          {toPersianDigits(row.totalCases)}
+                        </td>
+
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-700 bg-emerald-50/40">
+                          +{toPersianDigits(row.totalPositivePoints.toFixed(1))}
+                        </td>
+
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-rose-700 bg-rose-50/40">
+                          -{toPersianDigits(row.totalNegativeDeductions.toFixed(1))}
+                        </td>
+
+                        <td className="py-2.5 px-3 text-center">
+                          <span
+                            className={`inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-lg border ${
+                              row.performanceTier === 'A'
+                                ? 'bg-amber-50 text-amber-700 border-amber-300'
+                                : row.performanceTier === 'B'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                : row.performanceTier === 'C'
+                                ? 'bg-sky-50 text-sky-700 border-sky-300'
+                                : 'bg-rose-50 text-rose-700 border-rose-300'
+                            }`}
+                          >
+                            {row.tierTitleFa}
+                          </span>
+                        </td>
+
+                        <td className="py-2.5 px-4 text-center">
+                          <span className="font-mono font-black text-xs text-indigo-900 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-md">
+                            {toPersianDigits(row.totalScore.toFixed(1))}
+                          </span>
+                        </td>
+
+                        <td className="py-2.5 px-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {onViewAuditorCases && (
+                              <button
+                                type="button"
+                                onClick={() => onViewAuditorCases(row.auditorName)}
+                                className="px-2 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 text-[11px] font-bold border border-sky-200 transition-colors cursor-pointer"
+                                title="مشاهده پرونده‌ها در جدول"
+                              >
+                                پرونده‌ها
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSrsScorecard(row)}
+                              className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold border border-indigo-200 transition-colors cursor-pointer"
+                            >
+                              کارنامه ۸×۷
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          ) : (
           <table className="w-full text-right text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold select-none">
               <tr>
@@ -1089,6 +1419,7 @@ export function ReportAuditorPerformanceTab({
               )}
             </tbody>
           </table>
+          )}
         </div>
 
         {/* Pagination Controls */}
@@ -1223,7 +1554,7 @@ export function ReportAuditorPerformanceTab({
         </div>
       </div>
 
-      {/* 360 Degree Profile Drawer */}
+      {/* 360 Degree Profile Drawer (Legacy Model) */}
       <AuditorScorecardDrawer
         auditorName={selectedAuditorForDrawer}
         reportCode={reportCode}
@@ -1234,6 +1565,14 @@ export function ReportAuditorPerformanceTab({
           onViewAuditorCases?.(name)
         }}
       />
+
+      {/* SRS Scorecard Matrix Modal (8x7 Matrix Model) */}
+      {selectedSrsScorecard && (
+        <SrsScorecardMatrixModal
+          scorecard={selectedSrsScorecard}
+          onClose={() => setSelectedSrsScorecard(null)}
+        />
+      )}
     </div>
   )
 }

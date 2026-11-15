@@ -405,18 +405,66 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 DeclaredTaxAmount = mapper.DeclaredTaxField != null ? ParseDecimal(reader[mapper.DeclaredTaxField]) : 0m,
                 AssessedTaxAmount = mapper.AssessedTaxField != null ? ParseDecimal(reader[mapper.AssessedTaxField]) : 0m,
                 FinalTaxAmount = mapper.FinalTaxField != null ? ParseDecimal(reader[mapper.FinalTaxField]) : 0m,
-                ImportanceType = mapper.ImportanceTypeField != null ? reader[mapper.ImportanceTypeField]?.ToString()?.Trim() : null
+                ImportanceType = mapper.ImportanceTypeField != null ? reader[mapper.ImportanceTypeField]?.ToString()?.Trim() : null,
+                TaxpayerTin = mapper.TaxpayerTinField != null ? reader[mapper.TaxpayerTinField]?.ToString()?.Trim() : null,
+                TaxSource = mapper.TaxSourceField != null ? reader[mapper.TaxSourceField]?.ToString()?.Trim() : null,
+                CaseType = mapper.CaseTypeField != null ? reader[mapper.CaseTypeField]?.ToString()?.Trim() : null,
+                CurrentStatus = mapper.CurrentStatusField != null ? reader[mapper.CurrentStatusField]?.ToString()?.Trim() : null,
+                FinalizationSource = mapper.FinalizationSourceField != null ? reader[mapper.FinalizationSourceField]?.ToString()?.Trim() : null,
+                AssessmentNoticeDateJalali = mapper.NoticeDateField != null ? reader[mapper.NoticeDateField]?.ToString()?.Trim() : null,
+                FinalNoticeDateJalali = mapper.FinalNoticeDateField != null ? reader[mapper.FinalNoticeDateField]?.ToString()?.Trim() : null,
+                AuditorAssignmentDateJalali = mapper.AssignmentDateField != null ? reader[mapper.AssignmentDateField]?.ToString()?.Trim() : null
             };
 
-            // Parse Dates
-            DateTime? assignDt = mapper.AssignmentDateField != null ? TryParsePersianDate(reader[mapper.AssignmentDateField]) : null;
-            DateTime? noticeDt = mapper.NoticeDateField != null ? TryParsePersianDate(reader[mapper.NoticeDateField]) : null;
-
-            if (assignDt.HasValue && noticeDt.HasValue)
+            // 1. Assignment to Notice Days (Direct from Sanim or calculate from dates)
+            if (mapper.DaysAssignmentToNoticeField != null && reader[mapper.DaysAssignmentToNoticeField] != DBNull.Value)
             {
-                var diff = (noticeDt.Value - assignDt.Value).TotalDays;
-                if (diff >= 0 && diff <= 1500)
-                    rec.DaysAssignmentToNotice = diff;
+                if (double.TryParse(reader[mapper.DaysAssignmentToNoticeField]?.ToString(), out double dNotice) && dNotice >= 0)
+                {
+                    rec.DaysAssignmentToNotice = dNotice;
+                }
+            }
+            if (!rec.DaysAssignmentToNotice.HasValue)
+            {
+                DateTime? assignDt = mapper.AssignmentDateField != null ? TryParsePersianDate(reader[mapper.AssignmentDateField]) : null;
+                DateTime? noticeDt = mapper.NoticeDateField != null ? TryParsePersianDate(reader[mapper.NoticeDateField]) : null;
+
+                if (assignDt.HasValue && noticeDt.HasValue)
+                {
+                    var diff = (noticeDt.Value - assignDt.Value).TotalDays;
+                    if (diff >= 0 && diff <= 1500)
+                        rec.DaysAssignmentToNotice = diff;
+                }
+            }
+
+            // 2. Assignment to Final Days (Direct from Sanim or calculate from dates)
+            if (mapper.DaysAssignmentToFinalField != null && reader[mapper.DaysAssignmentToFinalField] != DBNull.Value)
+            {
+                if (double.TryParse(reader[mapper.DaysAssignmentToFinalField]?.ToString(), out double dFinal) && dFinal >= 0)
+                {
+                    rec.DaysAssignmentToFinal = dFinal;
+                }
+            }
+            if (!rec.DaysAssignmentToFinal.HasValue)
+            {
+                DateTime? assignDt = mapper.AssignmentDateField != null ? TryParsePersianDate(reader[mapper.AssignmentDateField]) : null;
+                DateTime? finalDt = mapper.FinalNoticeDateField != null ? TryParsePersianDate(reader[mapper.FinalNoticeDateField]) : null;
+
+                if (assignDt.HasValue && finalDt.HasValue)
+                {
+                    var diff = (finalDt.Value - assignDt.Value).TotalDays;
+                    if (diff >= 0 && diff <= 1500)
+                        rec.DaysAssignmentToFinal = diff;
+                }
+            }
+
+            // 3. Notice to Final Days (Direct from Sanim or calculate from dates)
+            if (mapper.DaysNoticeToFinalField != null && reader[mapper.DaysNoticeToFinalField] != DBNull.Value)
+            {
+                if (double.TryParse(reader[mapper.DaysNoticeToFinalField]?.ToString(), out double dNtF) && dNtF >= 0)
+                {
+                    rec.DaysNoticeToFinal = dNtF;
+                }
             }
 
             results.Add(rec);
@@ -1339,7 +1387,8 @@ public class AuditorPerformanceService : IAuditorPerformanceService
     private static string ClassifyTaxCase(AuditorCaseRecord rec, HashSet<string> top300Tins, HashSet<string> allowedTags)
     {
         bool isLegal = (rec.CaseType != null && rec.CaseType.Contains("حقوقی")) || 
-                       (!string.IsNullOrEmpty(rec.TaxpayerTin) && rec.TaxpayerTin.Trim().Length == 11);
+                       (!string.IsNullOrEmpty(rec.TaxpayerTin) && rec.TaxpayerTin.Trim().Length == 11) ||
+                       (!string.IsNullOrEmpty(rec.TaxSource) && (rec.TaxSource.Contains("شرکت") || rec.TaxSource.Contains("حقوقی")));
 
         bool isTop300 = isLegal && (
             (!string.IsNullOrEmpty(rec.ImportanceType) && allowedTags.Contains(rec.ImportanceType.Trim())) ||
@@ -1415,7 +1464,7 @@ public class AuditorPerformanceService : IAuditorPerformanceService
             case "TaxpayerAcceptance": // FR-03 (Only finalized cases qualify)
                 int acceptedCount = cases.Count(c =>
                     (c.DaysNoticeToFinal.HasValue || !string.IsNullOrWhiteSpace(c.FinalNoticeDateJalali) || (!string.IsNullOrEmpty(c.CurrentStatus) && c.CurrentStatus.Contains("قطعی")) || c.FinalTaxAmount > 0) &&
-                    ((c.FinalizationSource != null && (c.FinalizationSource.Contains("اصلاح") || c.FinalizationSource.Contains("تمکین"))) ||
+                    ((c.FinalizationSource != null && (c.FinalizationSource.Contains("اصلاح") || c.FinalizationSource.Contains("تمکین") || c.FinalizationSource.Contains("حسابرسی سازمان"))) ||
                      (c.CurrentStatus != null && c.CurrentStatus.Contains("تمکین")) ||
                      (c.FinalizationSource == null && !string.IsNullOrEmpty(c.CurrentStatus) && c.CurrentStatus.Contains("قطعی") && !c.CurrentStatus.Contains("هیات") && !c.CurrentStatus.Contains("اعتراض"))));
 

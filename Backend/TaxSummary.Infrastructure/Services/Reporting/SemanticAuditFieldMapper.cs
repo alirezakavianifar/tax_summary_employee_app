@@ -20,8 +20,17 @@ public class SemanticAuditFieldMapper
     public string? RiskLevelField { get; set; }
     public string? OfficeNameField { get; set; }
     public string? AuditStatusField { get; set; }
+    public string? CurrentStatusField { get; set; }
     public string? DeclarationIdField { get; set; }
     public string? ImportanceTypeField { get; set; }
+    public string? TaxpayerTinField { get; set; }
+    public string? TaxSourceField { get; set; }
+    public string? CaseTypeField { get; set; }
+    public string? FinalizationSourceField { get; set; }
+    public string? FinalNoticeDateField { get; set; }
+    public string? DaysAssignmentToNoticeField { get; set; }
+    public string? DaysAssignmentToFinalField { get; set; }
+    public string? DaysNoticeToFinalField { get; set; }
     public bool IsDecreeReport { get; set; }
 
     public bool HasAuditorData => !string.IsNullOrWhiteSpace(AuditorNameField);
@@ -157,6 +166,73 @@ public class SemanticAuditFieldMapper
                  header.Contains("۳۰۰ پرونده") || header.Contains("300 پرونده") || header.Contains("اهمیت پرونده")))
             {
                 mapper.ImportanceTypeField = field;
+            }
+
+            // 13. Taxpayer TIN (11 digits for legal entity, 14 digits for individual)
+            if (mapper.TaxpayerTinField == null &&
+                !header.Contains("حسابرس") && !header.Contains("مجری") && !header.Contains("مدیر") &&
+                (header.Contains("تین سنیم مودی") || header.Contains("تین مودی") || header == "تین" || 
+                 header.Contains("شناسه ملی مودی") || header.Contains("شناسه ملی") || 
+                 (header.Contains("کد اقتصادی") && !header.Contains("قدیم")) || header == "tin"))
+            {
+                mapper.TaxpayerTinField = field;
+            }
+
+            // 14. Tax Source (Corporate, VAT, Business, Property)
+            if (mapper.TaxSourceField == null && !header.Contains("قطعیت") &&
+                (header == "منبع" || header.Contains("آخرین منبع اظهارنامه") || header.Contains("منبع اظهارنامه") || 
+                 header.Contains("منبع مالیاتی") || header.Contains("منبع مالیات")))
+            {
+                mapper.TaxSourceField = field;
+            }
+
+            // 15. Current Status (Notice Served, Finalized, Objection, etc.)
+            if (mapper.CurrentStatusField == null &&
+                (header.Contains("وضعیت فعلی") || header.Contains("وضعیت پرونده") || header == "وضعیت"))
+            {
+                mapper.CurrentStatusField = field;
+            }
+
+            // 16. Finalization Source (Tamkin/Audit, Art 238, Dispute Board)
+            if (mapper.FinalizationSourceField == null &&
+                (header.Contains("منبع قطعیت") || header.Contains("شیوه قطعیت") || header.Contains("نحوه قطعیت") || header.Contains("روش قطعیت")))
+            {
+                mapper.FinalizationSourceField = field;
+            }
+
+            // 17. Final Notice Date
+            if (mapper.FinalNoticeDateField == null &&
+                (header.Contains("تاریخ ابلاغ قطعی") || header.Contains("تاریخ صدور قطعی") || 
+                 header.Contains("تاریخ ابلاغ برگ قطعی") || header.Contains("تاریخ صدور برگ قطعی") || 
+                 (header.Contains("برگ قطعی") && header.Contains("تاریخ"))))
+            {
+                mapper.FinalNoticeDateField = field;
+            }
+
+            // 18. Pre-calculated Sanim Day Differences
+            if (mapper.DaysAssignmentToNoticeField == null &&
+                (header.Contains("فاصله تخصیص به حسابرس تا تشخیص") || header.Contains("فاصله تخصیص تا تشخیص") || header.Contains("تخصیص تا تشخیص")))
+            {
+                mapper.DaysAssignmentToNoticeField = field;
+            }
+
+            if (mapper.DaysAssignmentToFinalField == null &&
+                (header.Contains("فاصله تخصیص به حسابرس تا قطعی") || header.Contains("فاصله تخصیص تا قطعی") || header.Contains("تخصیص تا قطعی")))
+            {
+                mapper.DaysAssignmentToFinalField = field;
+            }
+
+            if (mapper.DaysNoticeToFinalField == null &&
+                (header.Contains("فاصله تشخیص تا قطعی") || header.Contains("تشخیص تا قطعی")))
+            {
+                mapper.DaysNoticeToFinalField = field;
+            }
+
+            // 19. Case Type (Legal vs Individual)
+            if (mapper.CaseTypeField == null &&
+                (header.Contains("نوع مودی") || header.Contains("شخصیت مودی") || header.Contains("نوع پرونده") || header == "شخصیت"))
+            {
+                mapper.CaseTypeField = field;
             }
         }
 

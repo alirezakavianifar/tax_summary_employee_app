@@ -598,7 +598,69 @@ public static class DbInitializer
 
         if (hasModified)
         {
-            await context.SaveChangesAsync();
+            try
+            {
+                await context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                Console.WriteLine($"[DbInitializer] Concurrency notice during SeedMenuSettingsAsync: {ex.Message}. Applying direct database sync fallback.");
+
+                foreach (var entry in context.ChangeTracker.Entries<MenuSetting>().ToList())
+                {
+                    entry.State = EntityState.Detached;
+                }
+
+                var conn = context.Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open)
+                {
+                    await conn.OpenAsync();
+                }
+
+                using var fallbackCmd = conn.CreateCommand();
+                fallbackCmd.CommandText = @"
+                    UPDATE MenuSettings SET AllowedRoles = @allRoles 
+                    WHERE AdminOnly = 0 AND (AllowedRoles = 'Admin,Manager,Employee' OR AllowedRoles = 'Admin,Employee');
+
+                    UPDATE MenuSettings SET AllowedRoles = 'Admin' 
+                    WHERE AdminOnly = 1 AND AllowedRoles != 'Admin';
+
+                    UPDATE MenuSettings SET Id = UPPER(Id) WHERE Id GLOB '*[a-z]*';
+                ";
+                var pRoles = fallbackCmd.CreateParameter();
+                pRoles.ParameterName = "@allRoles";
+                pRoles.Value = TaxSummary.Domain.Common.DefaultMenuSettings.AllGeneralRoles;
+                fallbackCmd.Parameters.Add(pRoles);
+
+                await fallbackCmd.ExecuteNonQueryAsync();
+
+                foreach (var def in defaultMenus.Where(d => d.ParentKey == null))
+                {
+                    using var themeCmd = conn.CreateCommand();
+                    themeCmd.CommandText = @"
+                        UPDATE MenuSettings 
+                        SET ColorTheme = COALESCE(ColorTheme, @theme),
+                            BadgeText = COALESCE(BadgeText, @badge)
+                        WHERE LOWER(MenuKey) = @key AND (ColorTheme IS NULL OR BadgeText IS NULL);
+                    ";
+                    var pKey = themeCmd.CreateParameter();
+                    pKey.ParameterName = "@key";
+                    pKey.Value = def.MenuKey.ToLowerInvariant();
+                    themeCmd.Parameters.Add(pKey);
+
+                    var pTheme = themeCmd.CreateParameter();
+                    pTheme.ParameterName = "@theme";
+                    pTheme.Value = (object?)def.ColorTheme ?? DBNull.Value;
+                    themeCmd.Parameters.Add(pTheme);
+
+                    var pBadge = themeCmd.CreateParameter();
+                    pBadge.ParameterName = "@badge";
+                    pBadge.Value = (object?)def.BadgeText ?? DBNull.Value;
+                    themeCmd.Parameters.Add(pBadge);
+
+                    await themeCmd.ExecuteNonQueryAsync();
+                }
+            }
         }
     }
 
@@ -725,6 +787,7 @@ public static class DbInitializer
             (Name: "Employee", Title: "کارمند", Description: "پرسنل و کاربران عمومی سازمان", Order: 9),
         };
 
+        bool hasRoleModified = false;
         foreach (var def in defaultRoles)
         {
             var existing = await context.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == def.Name.ToLower());
@@ -737,14 +800,30 @@ public static class DbInitializer
                     isSystemRole: true,
                     isActive: true,
                     displayOrder: def.Order));
+                hasRoleModified = true;
             }
-            else
+            else if (existing.Title != def.Title || existing.Description != def.Description || existing.DisplayOrder != def.Order)
             {
                 existing.Update(def.Title, def.Description, existing.IsActive, def.Order);
+                hasRoleModified = true;
             }
         }
 
-        await context.SaveChangesAsync();
+        if (hasRoleModified)
+        {
+            try
+            {
+                await context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                Console.WriteLine($"[DbInitializer] Concurrency notice during SeedRolesAsync: {ex.Message}");
+                foreach (var entry in context.ChangeTracker.Entries<Role>().ToList())
+                {
+                    entry.State = EntityState.Detached;
+                }
+            }
+        }
     }
 
     private static async Task SeedTaxSourcesAsync(TaxSummaryDbContext context)
@@ -1278,6 +1357,48 @@ public static class DbInitializer
                     command.CommandText = "ALTER TABLE ReportDefinitions ADD COLUMN ExpiresAt TEXT NULL;";
                     await command.ExecuteNonQueryAsync();
                 }
+            }
+
+            // 8. Normalize SQLite GUID strings to UPPERCASE across all tables so EF Core SQLite provider Guid comparisons/updates never fail due to case mismatches
+            try
+            {
+                command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__EF%';";
+                var tablesToInspect = new List<string>();
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        tablesToInspect.Add(reader.GetString(0));
+                    }
+                }
+
+                foreach (var tableName in tablesToInspect)
+                {
+                    command.CommandText = $"PRAGMA table_info(\"{tableName}\");";
+                    var textCols = new List<string>();
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var colName = reader.GetString(1);
+                            var colType = reader.GetString(2);
+                            if (string.Equals(colType, "TEXT", StringComparison.OrdinalIgnoreCase))
+                            {
+                                textCols.Add(colName);
+                            }
+                        }
+                    }
+
+                    foreach (var col in textCols)
+                    {
+                        command.CommandText = $"UPDATE \"{tableName}\" SET \"{col}\" = UPPER(\"{col}\") WHERE \"{col}\" GLOB '*[a-z]*' AND length(\"{col}\") = 36 AND \"{col}\" LIKE '%-%-%-%-%';";
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DbInitializer] Notice during SQLite GUID uppercase normalization: {ex.Message}");
             }
 
             // Record migrations as applied in __EFMigrationsHistory

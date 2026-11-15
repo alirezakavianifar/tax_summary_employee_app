@@ -93,7 +93,8 @@ public class TaxRefundCaseConfiguration : IEntityTypeConfiguration<TaxRefundCase
 
         builder.Property(c => c.ActivityType)
             .HasConversion<int>()
-            .HasDefaultValue(ActivityType.Services);
+            .HasDefaultValue(ActivityType.Services)
+            .HasSentinel((ActivityType)0);
 
         builder.Property(c => c.Status)
             .HasConversion<int>()
@@ -106,7 +107,11 @@ public class TaxRefundCaseConfiguration : IEntityTypeConfiguration<TaxRefundCase
             a.Property(p => p.ReturnNumber).HasColumnName("Assessment_ReturnNumber").HasMaxLength(50);
             a.Property(p => p.ReturnDateJalali).HasColumnName("Assessment_ReturnDateJalali").HasMaxLength(15);
             a.Property(p => p.FinalizationMethod).HasColumnName("Assessment_FinalizationMethod").HasConversion<int>();
-            a.Property(p => p.FinalityStage).HasColumnName("Assessment_FinalityStage").HasConversion<int>().HasDefaultValue(FinalityStage.Tamkin);
+            a.Property(p => p.FinalityStage)
+                .HasColumnName("Assessment_FinalityStage")
+                .HasConversion<int>()
+                .HasDefaultValue(FinalityStage.Tamkin)
+                .HasSentinel((FinalityStage)0);
             a.Property(p => p.FinalNoticeNumber).HasColumnName("Assessment_FinalNoticeNumber").HasMaxLength(50);
             a.Property(p => p.FinalNoticeDateJalali).HasColumnName("Assessment_FinalNoticeDateJalali").HasMaxLength(15);
             a.Property(p => p.AssessedIncome).HasColumnName("Assessment_AssessedIncome").HasPrecision(18, 0);
