@@ -35,7 +35,9 @@ A modern, full-stack enterprise web application for managing employee performanc
 
 4. **Executive Reporting & Business Intelligence (`/reporting`)**:
    - 360-degree performance evaluation and auditor scorecards across historical tax dispute resolution decrees.
-   - Dynamic 5-step report builder with pivot grouping, parametric filters, and aggregation.
+   - Dynamic custom Excel dataset ingestion into isolated SQLite schemas (`cd_...`) with column customization via Tweak Studio.
+   - Persian (Jalali) creation date stamping and sorting across catalog cards, report execution views, and official A4 landscape letterheads.
+   - Time-To-Live (TTL) visibility periods and automated archiving for ad-hoc reports, with countdown badges and administrative lifecycle renewal.
    - High-level executive KPI dashboards, monthly trend charts, and Excel report generators.
 
 5. **Administration & Dynamic Menu Management (`/admin`)**:

@@ -24,6 +24,7 @@ public interface IExecutiveReportingService
         string reportCode, 
         ReportFilterParametersDto parameters, 
         List<Guid>? userAssignedOfficeIds,
+        string? userRole = null,
         CancellationToken ct = default);
 
     /// <summary>

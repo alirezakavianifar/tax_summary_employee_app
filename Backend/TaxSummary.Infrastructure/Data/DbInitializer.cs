@@ -1194,6 +1194,26 @@ public static class DbInitializer
                 }
             }
 
+            // 7. Ensure ReportDefinitions columns exist (ExpiresAt)
+            command.CommandText = "PRAGMA table_info(ReportDefinitions);";
+            var reportDefColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    reportDefColumns.Add(reader.GetString(1));
+                }
+            }
+
+            if (reportDefColumns.Count > 0)
+            {
+                if (!reportDefColumns.Contains("ExpiresAt"))
+                {
+                    command.CommandText = "ALTER TABLE ReportDefinitions ADD COLUMN ExpiresAt TEXT NULL;";
+                    await command.ExecuteNonQueryAsync();
+                }
+            }
+
             // Record migrations as applied in __EFMigrationsHistory
             command.CommandText = @"
                 INSERT OR IGNORE INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")

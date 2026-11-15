@@ -9,6 +9,7 @@ public interface IReportingRepository
     Task<ReportDefinition?> GetReportDefinitionByIdAsync(Guid id, CancellationToken ct = default);
     Task<ReportDefinition?> GetReportDefinitionByCodeAsync(string code, CancellationToken ct = default);
     Task<List<ReportDefinition>> GetAvailableReportsAsync(string? userRole, ReportDomainSource? source = null, bool includeInactive = false, CancellationToken ct = default);
+    Task<int> ArchiveExpiredReportsAsync(CancellationToken ct = default);
     Task AddReportDefinitionAsync(ReportDefinition report, CancellationToken ct = default);
     Task UpdateReportDefinitionAsync(ReportDefinition report, CancellationToken ct = default);
     Task DeleteReportDefinitionAsync(Guid id, CancellationToken ct = default);

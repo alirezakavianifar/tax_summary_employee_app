@@ -21,6 +21,7 @@ import {
   Search,
   ListOrdered,
   Sparkles,
+  Clock,
 } from 'lucide-react'
 import { customDatasetApi } from '@/lib/api/customDataset'
 import {
@@ -62,6 +63,7 @@ export function ExcelReportUploadModal({
   const [columns, setColumns] = useState<CustomDatasetColumn[]>([])
   const [quickFilterColumns, setQuickFilterColumns] = useState<string[]>([])
   const [defaultSortField, setDefaultSortField] = useState<string>('')
+  const [validityDays, setValidityDays] = useState<number | null>(null)
 
   // Success state
   const [createdReport, setCreatedReport] = useState<ReportDefinition | null>(null)
@@ -228,6 +230,7 @@ export function ExcelReportUploadModal({
       quickFilterColumns,
       defaultSortField,
       defaultSortDescending: true,
+      validityDays: validityDays || undefined,
       requiredRole: 'Admin,DirectorGeneral,Manager',
     }
 
@@ -497,6 +500,27 @@ export function ExcelReportUploadModal({
                         placeholder="توضیح مختصر درباره محتوا و مخاطبان گزارش..."
                         className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
                       />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>دوره اعتبار و مهلت نمایش گزارش (Time-To-Live - TTL)</span>
+                      </label>
+                      <select
+                        value={validityDays ?? ''}
+                        onChange={(e) => setValidityDays(e.target.value ? Number(e.target.value) : null)}
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-medium text-slate-800 bg-white focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                      >
+                        <option value="">نامحدود / بدون انقضا (همیشه در دسترس)</option>
+                        <option value="7">۷ روز (۱ هفته)</option>
+                        <option value="30">۳۰ روز (۱ ماه)</option>
+                        <option value="90">۹۰ روز (۳ ماه)</option>
+                        <option value="180">۱۸۰ روز (۶ ماه)</option>
+                        <option value="365">۳۶۵ روز (۱ سال)</option>
+                      </select>
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        پس از پایان این دوره، گزارش به‌صورت خودکار بایگانی شده و از دید کاربران عادی خارج می‌گردد.
+                      </span>
                     </div>
                   </div>
 

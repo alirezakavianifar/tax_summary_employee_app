@@ -102,6 +102,10 @@ export interface ReportDefinition {
   isSystemReport: boolean
   isActive: boolean
   requiredRole?: string | null
+  createdAt: string
+  updatedAt?: string | null
+  expiresAt?: string | null
+  isExpired?: boolean
   columns: ReportColumnMetadata[]
 }
 

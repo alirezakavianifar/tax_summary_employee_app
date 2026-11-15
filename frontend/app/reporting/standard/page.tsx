@@ -15,12 +15,30 @@ import {
   Trash2,
   Archive,
   RotateCcw,
+  Calendar,
+  Clock,
 } from 'lucide-react'
 import { ExcelReportUploadModal } from '@/components/reporting/ExcelReportUploadModal'
 import { ReportTweakDrawer } from '@/components/reporting/ReportTweakDrawer'
 import { DeleteReportModal } from '@/components/reporting/DeleteReportModal'
-import { toPersianDigits } from '@/lib/jalali'
+import { toPersianDigits, formatIsoToJalali } from '@/lib/jalali'
 import { useAuth } from '@/contexts/AuthContext'
+
+function isExpiringSoon(expiresAt?: string | null): boolean {
+  if (!expiresAt) return false
+  const diffMs = new Date(expiresAt).getTime() - Date.now()
+  const diffDays = diffMs / (1000 * 60 * 60 * 24)
+  return diffDays > 0 && diffDays <= 3
+}
+
+function formatRemainingTtl(expiresAt?: string | null): string {
+  if (!expiresAt) return ''
+  const diffMs = new Date(expiresAt).getTime() - Date.now()
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  if (diffDays <= 0) return 'منقضی شده'
+  if (diffDays === 1) return 'امروز پایان مهلت'
+  return `${toPersianDigits(diffDays)} روز تا بایگانی`
+}
 
 export default function StandardReportsCatalogPage() {
   const { user } = useAuth()
@@ -29,6 +47,7 @@ export default function StandardReportsCatalogPage() {
   const [reports, setReports] = useState<ReportDefinition[]>([])
   const [selectedSource, setSelectedSource] = useState<number | undefined>(undefined)
   const [searchTerm, setSearchTerm] = useState<string>('')
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest')
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
   // Modals & Drawers
@@ -76,6 +95,20 @@ export default function StandardReportsCatalogPage() {
     )
   })
 
+  const sortedReports = [...filteredReports].sort((a, b) => {
+    if (sortBy === 'newest') {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return dateB - dateA
+    }
+    if (sortBy === 'oldest') {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return dateA - dateB
+    }
+    return a.title.localeCompare(b.title, 'fa')
+  })
+
   const sourceTabs = [
     { label: 'تمام حوزه‌ها', source: undefined },
     { label: 'داده‌های بارگذاری شده از اکسل', source: 6 },
@@ -118,6 +151,20 @@ export default function StandardReportsCatalogPage() {
             <UploadCloud className="h-4 w-4" />
             <span>ایجاد گزارش جدید از اکسل</span>
           </button>
+
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 shadow-2xs">
+            <span className="font-bold text-[11px] text-slate-500">مرتب‌سازی:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'title')}
+              aria-label="مرتب‌سازی گزارش‌ها"
+              className="bg-transparent font-bold text-slate-700 text-xs focus:outline-hidden cursor-pointer"
+            >
+              <option value="newest">جدیدترین (تاریخ ایجاد)</option>
+              <option value="oldest">قدیمی‌ترین</option>
+              <option value="title">عنوان (الفبا)</option>
+            </select>
+          </div>
 
           <div className="relative w-full sm:w-64">
             <input
@@ -164,13 +211,13 @@ export default function StandardReportsCatalogPage() {
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping mr-2" />
           در حال بارگذاری کاتالوگ گزارش‌ها...
         </div>
-      ) : filteredReports.length === 0 ? (
+      ) : sortedReports.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 text-xs">
           گزارشی منطبق با جستجو یافت نشد
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredReports.map((report) => {
+          {sortedReports.map((report) => {
             const domainName = DOMAIN_SOURCE_NAMES_FA[report.domainSource] || 'سازمانی'
             const categoryName = CATEGORY_NAMES_FA[report.category] || 'تحلیلی'
             const isCustom = report.domainSource === 6 || report.code.startsWith('REP_CUSTOM_')
@@ -194,10 +241,30 @@ export default function StandardReportsCatalogPage() {
                       {report.code}
                     </span>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {isInactive && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-300">
-                          بایگانی شده
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            report.isExpired
+                              ? 'bg-rose-50 text-rose-700 border-rose-300'
+                              : 'bg-slate-200 text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          {report.isExpired ? 'بایگانی (انقضای مهلت)' : 'بایگانی شده'}
+                        </span>
+                      )}
+
+                      {!isInactive && report.expiresAt && (
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                            isExpiringSoon(report.expiresAt)
+                              ? 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'
+                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                          }`}
+                          title={`مهلت اعتبار گزارش تا: ${formatIsoToJalali(report.expiresAt, true)}`}
+                        >
+                          <Clock className="w-3 h-3 shrink-0" />
+                          <span>{formatRemainingTtl(report.expiresAt)}</span>
                         </span>
                       )}
 
@@ -225,7 +292,16 @@ export default function StandardReportsCatalogPage() {
 
                 {/* Footer details & Actions */}
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto gap-2">
-                  <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                  <div className="flex items-center gap-2.5 text-[11px] text-slate-400 flex-wrap">
+                    {report.createdAt && (
+                      <span
+                        className="flex items-center gap-1 text-slate-600 font-medium"
+                        title={`تاریخ ایجاد گزارش: ${formatIsoToJalali(report.createdAt, true)}`}
+                      >
+                        <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>{formatIsoToJalali(report.createdAt, true)}</span>
+                      </span>
+                    )}
                     <span className="flex items-center gap-1">
                       <Columns className="w-3.5 h-3.5" />
                       {toPersianDigits(report.columns?.length || 0)} ستون

@@ -42,6 +42,8 @@ public class CreateCustomDatasetRequestDto
     public string? DefaultSortField { get; set; }
     public bool DefaultSortDescending { get; set; }
     public string? RequiredRole { get; set; }
+    public int? ValidityDays { get; set; }
+    public DateTime? ExpiresAt { get; set; }
 }
 
 public class TweakCustomReportRequestDto
@@ -49,6 +51,8 @@ public class TweakCustomReportRequestDto
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? RequiredRole { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public int? ValidityDays { get; set; }
     public string? DefaultSortField { get; set; }
     public bool DefaultSortDescending { get; set; }
     public List<string> QuickFilterColumns { get; set; } = new();

@@ -229,4 +229,68 @@ public class ExecutiveReportingServiceTests
         Assert.Equal("departmentName", result.Value[0].Columns[0].FieldName);
         Assert.Equal("اداره", result.Value[0].Columns[0].PersianLabel);
     }
+
+    [Fact]
+    public async Task GetCatalogAsync_AutomaticallyTriggersArchiveExpiredReportsAsync()
+    {
+        // Arrange
+        _reportingRepoMock
+            .Setup(r => r.GetAvailableReportsAsync("User", null, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ReportDefinition>());
+
+        var service = new ExecutiveReportingService(
+            _dbContext,
+            _analyticsRepoMock.Object,
+            _reportingRepoMock.Object,
+            _exportServiceMock.Object,
+            _cache,
+            _mapper,
+            _customDatasetServiceMock.Object);
+
+        // Act
+        var result = await service.GetCatalogAsync("User");
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        _reportingRepoMock.Verify(r => r.ArchiveExpiredReportsAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteStandardReportAsync_BlocksExecution_WhenReportIsExpiredForNonAdmin()
+    {
+        // Arrange
+        var expiredReport = ReportDefinition.Create(
+            "REP_EXPIRED",
+            "گزارش منقضی شده",
+            "توضیح",
+            ReportDomainSource.CustomUploadedDataset,
+            ReportCategory.Operational,
+            ReportType.Tabular,
+            "{\"columns\":[]}",
+            expiresAt: DateTime.UtcNow.AddDays(-1));
+
+        _reportingRepoMock
+            .Setup(r => r.GetReportDefinitionByCodeAsync("REP_EXPIRED", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expiredReport);
+
+        var service = new ExecutiveReportingService(
+            _dbContext,
+            _analyticsRepoMock.Object,
+            _reportingRepoMock.Object,
+            _exportServiceMock.Object,
+            _cache,
+            _mapper,
+            _customDatasetServiceMock.Object);
+
+        // Act
+        var result = await service.ExecuteStandardReportAsync(
+            "REP_EXPIRED",
+            new ReportFilterParametersDto(),
+            null,
+            userRole: "Employee");
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Contains("مهلت اعتبار", result.Error);
+    }
 }

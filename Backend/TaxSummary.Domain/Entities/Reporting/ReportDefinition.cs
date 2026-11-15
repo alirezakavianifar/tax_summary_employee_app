@@ -57,6 +57,13 @@ public class ReportDefinition
     /// </summary>
     public string? RequiredRole { get; private set; }
 
+    /// <summary>
+    /// تاریخ و زمان انقضا و پایان مهلت اعتبار گزارش (TTL)
+    /// </summary>
+    public DateTime? ExpiresAt { get; private set; }
+
+    public bool IsExpired => ExpiresAt.HasValue && ExpiresAt.Value <= DateTime.UtcNow;
+
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public Guid? CreatedByUserId { get; private set; }
@@ -74,7 +81,8 @@ public class ReportDefinition
         string configurationJson,
         bool isSystemReport = false,
         string? requiredRole = null,
-        Guid? createdByUserId = null)
+        Guid? createdByUserId = null,
+        DateTime? expiresAt = null)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new ArgumentException("کد سیستمی گزارش نمی‌تواند خالی باشد.", nameof(code));
@@ -103,11 +111,12 @@ public class ReportDefinition
             IsActive = true,
             RequiredRole = string.IsNullOrWhiteSpace(requiredRole) ? null : requiredRole.Trim(),
             CreatedAt = DateTime.UtcNow,
-            CreatedByUserId = createdByUserId
+            CreatedByUserId = createdByUserId,
+            ExpiresAt = expiresAt
         };
     }
 
-    public void Update(string title, string description, string configurationJson, string? requiredRole)
+    public void Update(string title, string description, string configurationJson, string? requiredRole, DateTime? expiresAt = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("عنوان گزارش نمی‌تواند خالی باشد.", nameof(title));
@@ -119,7 +128,23 @@ public class ReportDefinition
         Description = description?.Trim() ?? string.Empty;
         ConfigurationJson = configurationJson.Trim();
         RequiredRole = string.IsNullOrWhiteSpace(requiredRole) ? null : requiredRole.Trim();
+        ExpiresAt = expiresAt;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetExpiration(DateTime? expiresAt)
+    {
+        ExpiresAt = expiresAt;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ArchiveIfExpired()
+    {
+        if (IsExpired && IsActive)
+        {
+            IsActive = false;
+            UpdatedAt = DateTime.UtcNow;
+        }
     }
 
     public void SetActive(bool isActive, bool byAdmin = false)

@@ -14,5 +14,9 @@ public class ReportDefinitionDto
     public bool IsSystemReport { get; set; }
     public bool IsActive { get; set; }
     public string? RequiredRole { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public bool IsExpired { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
     public List<ReportColumnMetadataDto> Columns { get; set; } = new();
 }

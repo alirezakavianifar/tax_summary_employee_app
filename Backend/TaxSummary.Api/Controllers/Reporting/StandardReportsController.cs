@@ -107,8 +107,9 @@ public class StandardReportsController : ReportingControllerBase
     {
         var stopwatch = Stopwatch.StartNew();
         var userAssignedOffices = GetUserAssignedOfficeIds();
+        var role = GetCurrentUserRole();
 
-        var result = await _reportingService.ExecuteStandardReportAsync(code, parameters, userAssignedOffices, ct);
+        var result = await _reportingService.ExecuteStandardReportAsync(code, parameters, userAssignedOffices, role, ct);
         stopwatch.Stop();
 
         if (result.IsFailure)

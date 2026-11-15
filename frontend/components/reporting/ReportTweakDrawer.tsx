@@ -19,6 +19,7 @@ import {
   FileSpreadsheet,
   Filter,
   Check,
+  Clock,
 } from 'lucide-react'
 import { customDatasetApi } from '@/lib/api/customDataset'
 import {
@@ -27,7 +28,7 @@ import {
   CustomDatasetDataType,
   TweakCustomReportRequest,
 } from '@/types/customDataset'
-import { toPersianDigits } from '@/lib/jalali'
+import { toPersianDigits, formatIsoToJalali } from '@/lib/jalali'
 
 interface ReportTweakDrawerProps {
   isOpen: boolean
@@ -54,6 +55,7 @@ export function ReportTweakDrawer({
   const [quickFilters, setQuickFilters] = useState<string[]>([])
   const [defaultSortField, setDefaultSortField] = useState<string>('')
   const [defaultSortDescending, setDefaultSortDescending] = useState(true)
+  const [validityExtensionDays, setValidityExtensionDays] = useState<number | null | 'remove'>(null)
 
   // Column search filter
   const [searchQuery, setSearchQuery] = useState('')
@@ -62,9 +64,11 @@ export function ReportTweakDrawer({
   useEffect(() => {
     if (isOpen && reportCode) {
       loadConfig(reportCode)
+      setValidityExtensionDays(null)
     } else {
       setConfig(null)
       setColumns([])
+      setValidityExtensionDays(null)
       setErrorMessage(null)
       setSuccessMessage(null)
     }
@@ -183,6 +187,7 @@ export function ReportTweakDrawer({
       defaultSortDescending,
       quickFilterColumns: quickFilters,
       columns,
+      validityDays: validityExtensionDays === 'remove' ? -1 : (validityExtensionDays ?? undefined),
     }
 
     try {
@@ -584,6 +589,62 @@ export function ReportTweakDrawer({
                     <span className="font-bold text-slate-700 truncate block">
                       {config?.originalFileName || '-'}
                     </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* TTL and Expiration Lifecycle */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  <h4 className="text-sm font-bold text-slate-800">
+                    دوره اعتبار و مهلت نمایش گزارش (Time-To-Live - TTL)
+                  </h4>
+                </div>
+                <p className="text-xs text-slate-500 mb-4">
+                  تعیین بازه زمانی مجاز برای نمایش گزارش به کاربران عادی و بایگانی خودکار پس از پایان مهلت
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="rounded-lg bg-slate-50 p-3">
+                    <span className="text-slate-400 block mb-1">وضعیت فعلی اعتبار:</span>
+                    <span className="font-bold text-slate-800">
+                      {config?.expiresAt ? (
+                        config.isExpired ? (
+                          <span className="text-rose-600 font-extrabold">منقضی و بایگانی شده</span>
+                        ) : (
+                          <span className="text-emerald-700 font-extrabold">
+                            فعال تا {formatIsoToJalali(config.expiresAt, true)}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-slate-600 font-bold">دائمی / بدون انقضا</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      تمدید یا تغییر مهلت اعتبار:
+                    </label>
+                    <select
+                      value={validityExtensionDays === 'remove' ? 'remove' : validityExtensionDays ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === 'remove') setValidityExtensionDays('remove')
+                        else if (val) setValidityExtensionDays(Number(val))
+                        else setValidityExtensionDays(null)
+                      }}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700 focus:border-purple-500 focus:outline-hidden"
+                    >
+                      <option value="">بدون تغییر در مهلت فعلی</option>
+                      <option value="7">تمدید ۷ روزه از اکنون</option>
+                      <option value="30">تمدید ۳۰ روزه (۱ ماه) از اکنون</option>
+                      <option value="90">تمدید ۹۰ روزه (۳ ماه) از اکنون</option>
+                      <option value="180">تمدید ۱۸۰ روزه (۶ ماه) از اکنون</option>
+                      <option value="365">تمدید ۳۶۵ روزه (۱ سال) از اکنون</option>
+                      <option value="remove">حذف انقضا (تبدیل به گزارش دائمی)</option>
+                    </select>
                   </div>
                 </div>
               </div>

@@ -254,6 +254,12 @@ public class CustomDatasetService : ICustomDatasetService
 
             var configJson = JsonSerializer.Serialize(configDto, JsonOptions);
 
+            DateTime? calculatedExpiresAt = request.ExpiresAt;
+            if (request.ValidityDays.HasValue && request.ValidityDays.Value > 0)
+            {
+                calculatedExpiresAt = DateTime.UtcNow.AddDays(request.ValidityDays.Value);
+            }
+
             // 5. Create and Register ReportDefinition
             var report = ReportDefinition.Create(
                 code: cleanCode,
@@ -267,7 +273,8 @@ public class CustomDatasetService : ICustomDatasetService
                 configurationJson: configJson,
                 isSystemReport: false,
                 requiredRole: request.RequiredRole,
-                createdByUserId: createdByUserId);
+                createdByUserId: createdByUserId,
+                expiresAt: calculatedExpiresAt);
 
             await _reportingRepository.AddReportDefinitionAsync(report, ct);
 
@@ -285,6 +292,10 @@ public class CustomDatasetService : ICustomDatasetService
                 IsSystemReport = report.IsSystemReport,
                 IsActive = report.IsActive,
                 RequiredRole = report.RequiredRole,
+                ExpiresAt = report.ExpiresAt,
+                IsExpired = report.IsExpired,
+                CreatedAt = report.CreatedAt,
+                UpdatedAt = report.UpdatedAt,
                 Columns = request.Columns.Select(c => new ReportColumnMetadataDto
                 {
                     FieldName = c.FieldName,
@@ -333,11 +344,24 @@ public class CustomDatasetService : ICustomDatasetService
 
             var updatedConfigJson = JsonSerializer.Serialize(existingConfig, JsonOptions);
 
+            DateTime? newExpiresAt = report.ExpiresAt;
+            if (request.ValidityDays.HasValue)
+            {
+                newExpiresAt = request.ValidityDays.Value > 0
+                    ? DateTime.UtcNow.AddDays(request.ValidityDays.Value)
+                    : null;
+            }
+            else if (request.ExpiresAt != null)
+            {
+                newExpiresAt = request.ExpiresAt;
+            }
+
             report.Update(
                 request.Title,
                 request.Description ?? report.Description,
                 updatedConfigJson,
-                request.RequiredRole);
+                request.RequiredRole,
+                newExpiresAt);
 
             await _reportingRepository.UpdateReportDefinitionAsync(report, ct);
 
@@ -353,6 +377,10 @@ public class CustomDatasetService : ICustomDatasetService
                 IsSystemReport = report.IsSystemReport,
                 IsActive = report.IsActive,
                 RequiredRole = report.RequiredRole,
+                ExpiresAt = report.ExpiresAt,
+                IsExpired = report.IsExpired,
+                CreatedAt = report.CreatedAt,
+                UpdatedAt = report.UpdatedAt,
                 Columns = existingConfig.Columns.Select(c => new ReportColumnMetadataDto
                 {
                     FieldName = c.FieldName,

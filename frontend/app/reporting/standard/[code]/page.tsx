@@ -25,13 +25,15 @@ import {
   X,
   TrendingUp,
   Building2,
+  Calendar,
+  Clock,
 } from 'lucide-react'
 import { ReportTweakDrawer } from '@/components/reporting/ReportTweakDrawer'
 import { DeleteReportModal } from '@/components/reporting/DeleteReportModal'
 import { ReportAuditorPerformanceTab } from '@/components/reporting/ReportAuditorPerformanceTab'
 import { ReportExecutiveKpiTab } from '@/components/reporting/ReportExecutiveKpiTab'
 import { AuditorAvatar } from '@/components/reporting/AuditorAvatar'
-import { toPersianDigits } from '@/lib/jalali'
+import { toPersianDigits, formatIsoToJalali } from '@/lib/jalali'
 
 export default function StandardReportDetailPage() {
   const router = useRouter()
@@ -259,6 +261,12 @@ export default function StandardReportDetailPage() {
             <div className="text-[11px] font-mono text-slate-500 mt-0.5">کد گزارش: {reportDef?.code || code}</div>
           </div>
           <div className="text-left text-[11px] text-slate-600 space-y-0.5">
+            {reportDef?.createdAt && (
+              <div>تاریخ ایجاد گزارش: {formatIsoToJalali(reportDef.createdAt, true)}</div>
+            )}
+            {reportDef?.expiresAt && (
+              <div>مهلت اعتبار گزارش: {formatIsoToJalali(reportDef.expiresAt, true)}</div>
+            )}
             <div>تاریخ چاپ: {toPersianDigits(new Date().toLocaleDateString('fa-IR'))}</div>
             <div>زمان چاپ: {toPersianDigits(new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }))}</div>
             {filters.department && <div>اداره: {filters.department}</div>}
@@ -284,6 +292,28 @@ export default function StandardReportDetailPage() {
               {reportDef?.code || code}
             </span>
             <span className="text-[11px] text-slate-400">گزارش استاندارد مصوب</span>
+            {reportDef?.createdAt && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                <Calendar className="w-3 h-3 text-amber-600 shrink-0" />
+                <span>تاریخ ایجاد: {formatIsoToJalali(reportDef.createdAt, true)}</span>
+              </span>
+            )}
+            {reportDef?.expiresAt && (
+              <span
+                className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+                  reportDef.isExpired
+                    ? 'text-rose-700 bg-rose-50 border-rose-200'
+                    : 'text-blue-700 bg-blue-50 border-blue-200'
+                }`}
+              >
+                <Clock className="w-3 h-3 shrink-0" />
+                <span>
+                  {reportDef.isExpired
+                    ? `منقضی شده (${formatIsoToJalali(reportDef.expiresAt, true)})`
+                    : `مهلت اعتبار: تا ${formatIsoToJalali(reportDef.expiresAt, true)}`}
+                </span>
+              </span>
+            )}
           </div>
 
           {/* Title & Description */}

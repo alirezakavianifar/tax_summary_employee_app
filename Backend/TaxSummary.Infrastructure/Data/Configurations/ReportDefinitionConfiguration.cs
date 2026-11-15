@@ -53,9 +53,13 @@ public class ReportDefinitionConfiguration : IEntityTypeConfiguration<ReportDefi
         builder.Property(r => r.CreatedAt)
             .IsRequired();
 
+        builder.Property(r => r.ExpiresAt)
+            .IsRequired(false);
+
         builder.HasIndex(r => r.DomainSource).HasDatabaseName("IX_ReportDefinitions_DomainSource");
         builder.HasIndex(r => r.Category).HasDatabaseName("IX_ReportDefinitions_Category");
         builder.HasIndex(r => r.IsActive).HasDatabaseName("IX_ReportDefinitions_IsActive");
+        builder.HasIndex(r => r.ExpiresAt).HasDatabaseName("IX_ReportDefinitions_ExpiresAt");
 
         builder.HasOne(r => r.CreatedByUser)
             .WithMany()

@@ -127,6 +127,7 @@ public class ReportingControllersTests
                 "REP_01",
                 It.IsAny<ReportFilterParametersDto>(),
                 null,
+                It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(execResult));
 

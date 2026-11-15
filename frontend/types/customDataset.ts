@@ -37,12 +37,16 @@ export interface CreateCustomDatasetRequest {
   defaultSortField?: string
   defaultSortDescending: boolean
   requiredRole?: string
+  validityDays?: number | null
+  expiresAt?: string | null
 }
 
 export interface TweakCustomReportRequest {
   title: string
   description?: string
   requiredRole?: string
+  validityDays?: number | null
+  expiresAt?: string | null
   defaultSortField?: string
   defaultSortDescending: boolean
   quickFilterColumns: string[]
@@ -54,6 +58,8 @@ export interface CustomDatasetConfig {
   originalFileName: string
   uploadedSheetName: string
   totalRowCount: number
+  expiresAt?: string | null
+  isExpired?: boolean
   defaultSortField?: string
   defaultSortDescending: boolean
   quickFilterColumns: string[]

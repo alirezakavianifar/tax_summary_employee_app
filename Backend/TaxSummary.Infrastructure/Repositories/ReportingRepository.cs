@@ -47,7 +47,8 @@ public class ReportingRepository : IReportingRepository
 
         if (!includeInactive || !isAdmin)
         {
-            query = query.Where(r => r.IsActive);
+            var now = DateTime.UtcNow;
+            query = query.Where(r => r.IsActive && (r.ExpiresAt == null || r.ExpiresAt > now));
         }
 
         if (source.HasValue)
@@ -62,6 +63,26 @@ public class ReportingRepository : IReportingRepository
             .OrderBy(r => r.DomainSource)
             .ThenBy(r => r.Title)
             .ToListAsync(ct);
+    }
+
+    public async Task<int> ArchiveExpiredReportsAsync(CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        var expiredReports = await _db.ReportDefinitions
+            .Where(r => r.IsActive && r.ExpiresAt != null && r.ExpiresAt <= now)
+            .ToListAsync(ct);
+
+        foreach (var report in expiredReports)
+        {
+            report.ArchiveIfExpired();
+        }
+
+        if (expiredReports.Count > 0)
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return expiredReports.Count;
     }
 
     public async Task AddReportDefinitionAsync(ReportDefinition report, CancellationToken ct = default)

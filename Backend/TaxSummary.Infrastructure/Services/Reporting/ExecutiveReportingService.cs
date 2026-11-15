@@ -161,6 +161,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
         string reportCode, 
         ReportFilterParametersDto parameters, 
         List<Guid>? userAssignedOfficeIds, 
+        string? userRole = null,
         CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
@@ -173,6 +174,12 @@ public class ExecutiveReportingService : IExecutiveReportingService
             if (report == null)
             {
                 return Result.Failure<ReportExecutionResultDto>($"گزارش استاندارد با کد '{reportCode}' یافت نشد.");
+            }
+
+            var isAdmin = string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase);
+            if (!isAdmin && (!report.IsActive || report.IsExpired))
+            {
+                return Result.Failure<ReportExecutionResultDto>("دسترسی به این گزارش به دلیل پایان مهلت اعتبار (TTL) یا بایگانی شدن امکان‌پذیر نمی‌باشد.");
             }
 
             // Resolve effective offices
@@ -286,7 +293,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
                 PageSize = Math.Max(parameters.PageSize > 0 ? parameters.PageSize : 100000, 100000)
             };
 
-            var executionResult = await ExecuteStandardReportAsync(reportCode, exportParams, userAssignedOfficeIds, ct);
+            var executionResult = await ExecuteStandardReportAsync(reportCode, exportParams, userAssignedOfficeIds, userRole: null, ct: ct);
             if (!executionResult.IsSuccess || executionResult.Value == null)
             {
                 return Result.Failure<byte[]>(executionResult.Error ?? "خطا در استخراج اطلاعات گزارش جهت خروجی");
@@ -330,6 +337,7 @@ public class ExecutiveReportingService : IExecutiveReportingService
     {
         try
         {
+            await _reportingRepository.ArchiveExpiredReportsAsync(ct);
             var reports = await _reportingRepository.GetAvailableReportsAsync(userRole, source, includeInactive, ct);
             var dtos = _mapper.Map<List<ReportDefinitionDto>>(reports);
 
