@@ -120,7 +120,14 @@ The output `deployment_update.zip` contains modified binaries and the Next.js st
 - **Master System Documentation:** Consult [`DOCUMENTATION.md`](./DOCUMENTATION.md) for the complete reference on data models, REST endpoints, and architectural layers.
 - **Security Guide:** Consult [`security.md`](./security.md) for threat modeling, password reset flows, and audit protocols.
 - **Offline Deployment:** Consult [`deployment/install_guide.md`](./deployment/install_guide.md) for server installation steps.
-- **Agent Skills:** Agent runbooks are stored in `.agents/skills/`:
-  - `tax-clean-architecture`: Layer-by-layer C# development standards.
-  - `tax-frontend-architecture`: Next.js 14 App Router, ProtectedRoute, and API client rules.
-  - `tax-persian-rtl-print`: Jalali calendar algorithms and physical A4 print styling.
+- **Agent Skills:** Comprehensive agent runbooks and domain guidelines stored in `.agents/skills/`:
+  - `tax-clean-architecture`: Layer-by-layer C# development standards and Clean Architecture discipline.
+  - `tax-frontend-architecture`: Next.js 14 App Router, ProtectedRoute, component hierarchy, and API client rules.
+  - `tax-persian-rtl-print`: Jalali calendar algorithms, Persian formatting, and exact physical A4 print styling.
+  - `tax-reporting-analytics`: Dynamic SQLite datasets (`cd_` tables), executive dashboards, and A4 reporting.
+  - `tax-service-ops`: Dual-service management, port monitoring (5000/3000), and health verification via `scripts/manage-app.ps1`.
+  - `tax-refund-workflow`: Articles 242/243 mechanization, 8-stage state machine, 1.5%/month statutory delay interest engine, and justification reports.
+  - `tax-payroll-engine`: Collaborative payroll cycles, 120-hour labor limit validations, office budget caps, and EPPlus 7 RTL live formula Excel generation.
+  - `tax-auditor-metrics`: SRS v1.0 circular rules, 8x7 scoring weight matrix, FR-01 to FR-08 indicators, Sanim data sync, and provincial scorecards.
+  - `tax-security-rbac`: Dual-token JWT & HttpOnly cookie rotation, 6-role permission matrix, dynamic database-backed menu navigation, and audit trails.
+  - `tax-deployment-packaging`: Offline server hosting, minimal update packaging (`build_deployment.ps1 -UpdateOnly`), and production database/asset safety.
