@@ -260,6 +260,11 @@ public class CustomDatasetService : ICustomDatasetService
                 calculatedExpiresAt = DateTime.UtcNow.AddDays(request.ValidityDays.Value);
             }
 
+            if (request.DomainSource <= 0 || !await _db.ReportCategories.AnyAsync(c => c.Id == request.DomainSource && c.IsActive, ct))
+            {
+                return Result.Failure<ReportDefinitionDto>("انتخاب دسته‌بندی موضوعی معتبر و فعال برای گزارش الزامی است.");
+            }
+
             // 5. Create and Register ReportDefinition
             var report = ReportDefinition.Create(
                 code: cleanCode,
@@ -267,7 +272,7 @@ public class CustomDatasetService : ICustomDatasetService
                 description: string.IsNullOrWhiteSpace(request.Description)
                     ? $"گزارش داده‌های بارگذاری شده از {fileName} (تعداد رکورد: {totalInserted:N0})"
                     : request.Description,
-                source: ReportDomainSource.CustomUploadedDataset,
+                source: (ReportDomainSource)request.DomainSource,
                 category: ReportCategory.Operational,
                 type: ReportType.Tabular,
                 configurationJson: configJson,
@@ -362,6 +367,16 @@ public class CustomDatasetService : ICustomDatasetService
                 updatedConfigJson,
                 request.RequiredRole,
                 newExpiresAt);
+
+            if (request.DomainSource.HasValue && request.DomainSource.Value > 0)
+            {
+                var isValidCategory = await _db.ReportCategories.AnyAsync(c => c.Id == request.DomainSource.Value && c.IsActive, ct);
+                if (!isValidCategory)
+                {
+                    return Result.Failure<ReportDefinitionDto>("دسته‌بندی انتخاب شده معتبر یا فعال نمی‌باشد.");
+                }
+                report.UpdateDomainSource((ReportDomainSource)request.DomainSource.Value);
+            }
 
             await _reportingRepository.UpdateReportDefinitionAsync(report, ct);
 
@@ -809,6 +824,8 @@ public class CustomDatasetService : ICustomDatasetService
             var config = JsonSerializer.Deserialize<CustomDatasetConfigJsonDto>(report.ConfigurationJson, JsonOptions);
             if (config == null)
                 return Result.Failure<CustomDatasetConfigJsonDto>("پیکربندی این گزارش خالی است.");
+
+            config.DomainSource = (int)report.DomainSource;
 
             return Result.Success(config);
         }

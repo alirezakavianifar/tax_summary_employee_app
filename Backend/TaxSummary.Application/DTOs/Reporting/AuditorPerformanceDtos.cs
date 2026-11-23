@@ -130,3 +130,30 @@ public class AuditDataSourceDto
     public string? LastUpdatedDate { get; set; }
 }
 
+public class AuditorCaseRecord
+{
+    public string AuditorName { get; set; } = string.Empty;
+    public string? AuditorNationalId { get; set; }
+    public string? FinalOfficeName { get; set; }
+    public string? AuditStatus { get; set; }
+    public string? RiskLevel { get; set; }
+    public string? TaxpayerTin { get; set; }
+    public string? TaxpayerName { get; set; }
+    public string? DeclarationId { get; set; }
+    public string? CaseType { get; set; }
+    public string? TaxSource { get; set; }
+    public string? CurrentStatus { get; set; }
+    public string? FinalizationSource { get; set; }
+    public string? AssessmentNoticeDateJalali { get; set; }
+    public string? FinalNoticeDateJalali { get; set; }
+    public string? AuditorAssignmentDateJalali { get; set; }
+    public decimal DeclaredTaxAmount { get; set; }
+    public decimal AssessedTaxAmount { get; set; }
+    public decimal FinalTaxAmount { get; set; }
+    public double? DaysAssignmentToNotice { get; set; }
+    public double? DaysNoticeToFinal { get; set; }
+    public double? DaysAssignmentToFinal { get; set; }
+    public int? FiscalYear { get; set; }
+    public string? ImportanceType { get; set; }
+}
+

@@ -22,6 +22,7 @@ import {
   Clock,
 } from 'lucide-react'
 import { customDatasetApi } from '@/lib/api/customDataset'
+import { reportCategoriesApi, ReportCategoryItem } from '@/lib/api/reportCategories'
 import {
   CustomDatasetConfig,
   CustomDatasetColumn,
@@ -56,6 +57,8 @@ export function ReportTweakDrawer({
   const [defaultSortField, setDefaultSortField] = useState<string>('')
   const [defaultSortDescending, setDefaultSortDescending] = useState(true)
   const [validityExtensionDays, setValidityExtensionDays] = useState<number | null | 'remove'>(null)
+  const [categories, setCategories] = useState<ReportCategoryItem[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
 
   // Column search filter
   const [searchQuery, setSearchQuery] = useState('')
@@ -79,8 +82,13 @@ export function ReportTweakDrawer({
     setErrorMessage(null)
     setSuccessMessage(null)
     try {
-      const data = await customDatasetApi.getConfig(code)
+      const [data, cats] = await Promise.all([
+        customDatasetApi.getConfig(code),
+        reportCategoriesApi.getActive().catch(() => [] as ReportCategoryItem[]),
+      ])
       setConfig(data)
+      setCategories(cats || [])
+      setSelectedCategory(data.domainSource || 6)
       setColumns(data.columns)
       setQuickFilters(data.quickFilterColumns || [])
       setDefaultSortField(data.defaultSortField || '')
@@ -183,6 +191,7 @@ export function ReportTweakDrawer({
 
     const payload: TweakCustomReportRequest = {
       title: reportTitle.trim() || reportCode,
+      domainSource: selectedCategory || undefined,
       defaultSortField,
       defaultSortDescending,
       quickFilterColumns: quickFilters,
@@ -528,6 +537,26 @@ export function ReportTweakDrawer({
                       <option value="asc">صعودی (کمترین به بیشترین)</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    حوزه و دسته‌بندی موضوعی گزارش:
+                  </label>
+                  <select
+                    value={selectedCategory ?? ''}
+                    onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full sm:w-1/2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800 focus:border-purple-500 focus:outline-hidden"
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    تغییر دسته‌بندی باعث انتقال گزارش به زبانه مربوطه در کاتالوگ خواهد شد.
+                  </span>
                 </div>
               </div>
 

@@ -12,6 +12,9 @@ public static class ReportingDataSeeder
 {
     public static async Task SeedReportingAsync(TaxSummaryDbContext context)
     {
+        // 0. Seed Report Domain Categories
+        await SeedReportCategoriesAsync(context);
+
         // 1. REP_PAYROLL_BUDGET_UTIL
         await UpsertReportAsync(context, ReportDefinition.Create(
             code: "REP_PAYROLL_BUDGET_UTIL",
@@ -277,6 +280,71 @@ public static class ReportingDataSeeder
         };
 
         await context.AuditorPerformanceMetricDefinitions.AddRangeAsync(metrics);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedReportCategoriesAsync(TaxSummaryDbContext context)
+    {
+        var defaultCategories = new[]
+        {
+            ReportDomainCategory.Create(
+                id: 6,
+                code: "CUSTOM_DATASET",
+                title: "داده‌های بارگذاری شده از اکسل",
+                description: "مجموعه‌داده‌های بارگذاری شده از اکسل و گزارش‌های اختصاصی و پویا",
+                isActive: true,
+                displayOrder: 1,
+                isSystem: true),
+            ReportDomainCategory.Create(
+                id: 5,
+                code: "TAX_AUDIT",
+                title: "رسیدگی سنیم (اکسل)",
+                description: "رسیدگی و حسابرسی مالیاتی سنیم (برگ تشخیص، قطعی، فواصل و شاخص‌ها)",
+                isActive: true,
+                displayOrder: 2,
+                isSystem: true),
+            ReportDomainCategory.Create(
+                id: 2,
+                code: "PAYROLL",
+                title: "حقوق و اضافه کار",
+                description: "گزارش‌های حقوق و اضافه کار، سرانه رفاهی، سقف ۱۲۰ ساعت و بودجه ادارات",
+                isActive: true,
+                displayOrder: 3,
+                isSystem: true),
+            ReportDomainCategory.Create(
+                id: 3,
+                code: "REFUNDS",
+                title: "استرداد مالیات (۲۴۲/۲۴۳)",
+                description: "پرونده‌های استرداد مواد ۲۴۲ و ۲۴۳ ق.م.م، قبوض پرداختی و خسارت تاخیر",
+                isActive: true,
+                displayOrder: 4,
+                isSystem: true),
+            ReportDomainCategory.Create(
+                id: 1,
+                code: "HR",
+                title: "منابع انسانی و ارزیابی",
+                description: "گزارش‌های پرسنلی، ارزیابی شایستگی، سوابق اداری و کشف فرار مالیاتی",
+                isActive: true,
+                displayOrder: 5,
+                isSystem: true),
+            ReportDomainCategory.Create(
+                id: 4,
+                code: "CROSS_SYSTEM",
+                title: "تلفیقی و فرابخشی",
+                description: "تحلیل مقایسه‌ای بهره‌وری، اضافه کار و عملکرد شعب",
+                isActive: true,
+                displayOrder: 6,
+                isSystem: true)
+        };
+
+        foreach (var category in defaultCategories)
+        {
+            var existing = await context.ReportCategories.FirstOrDefaultAsync(c => c.Id == category.Id);
+            if (existing == null)
+            {
+                await context.ReportCategories.AddAsync(category);
+            }
+        }
         await context.SaveChangesAsync();
     }
 

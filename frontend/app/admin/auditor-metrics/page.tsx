@@ -16,6 +16,7 @@ import {
 import { AuditorScorecardDrawer } from '@/components/reporting/AuditorScorecardDrawer'
 import { SrsScoringMatrixEditor } from '@/components/reporting/SrsScoringMatrixEditor'
 import { SrsScorecardMatrixModal } from '@/components/reporting/SrsScorecardMatrixModal'
+import { AuditorVerificationUploadModal } from '@/components/reporting/AuditorVerificationUploadModal'
 import { SrsEmployeeScorecard } from '@/types/srsAuditorMetrics'
 import { toPersianDigits } from '@/lib/jalali'
 import {
@@ -43,6 +44,9 @@ import {
   HelpCircle,
   Percent,
   Database,
+  FileSpreadsheet,
+  Download,
+  UploadCloud,
 } from 'lucide-react'
 
 export default function AuditorMetricsManagementPage() {
@@ -78,6 +82,36 @@ export default function AuditorMetricsManagementPage() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOfficeFilter, setSelectedOfficeFilter] = useState('all')
+
+  // Verification Excel Export & Upload Modal State
+  const [showVerificationUploadModal, setShowVerificationUploadModal] = useState(false)
+  const [isExportingVerification, setIsExportingVerification] = useState(false)
+
+  const handleExportVerificationExcel = async () => {
+    try {
+      setIsExportingVerification(true)
+      await auditorMetricsApi.exportSrsVerificationExcel({
+        reportCode: selectedSourceId === 'SYSTEM' ? undefined : selectedSourceId,
+        officeName: selectedOfficeFilter === 'all' ? undefined : selectedOfficeFilter,
+      })
+      setSuccessMessage('فایل اکسل راستی‌آزمایی با موفقیت ایجاد و دانلود شد.')
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err: any) {
+      let errorMsg = err?.message || 'خطا در دریافت خروجی اکسل راستی‌آزمایی'
+      if (err?.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text()
+          const json = JSON.parse(text)
+          if (json.error) errorMsg = json.error
+        } catch {}
+      } else if (err?.response?.data?.error) {
+        errorMsg = err.response.data.error
+      }
+      setError(errorMsg)
+    } finally {
+      setIsExportingVerification(false)
+    }
+  }
 
   // Edit / Create Modal State
   const [showModal, setShowModal] = useState(false)
@@ -475,28 +509,52 @@ export default function AuditorMetricsManagementPage() {
                 </div>
               </div>
 
-              {/* Action Buttons (for custom metrics tab) */}
-              {activeTab === 'metrics' && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={handleAutoRebalance}
-                    disabled={loading || totalWeight === 100}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-                    title="تعدیل متناسب اوزان به مجموع ۱۰۰٪"
-                  >
-                    <Percent className="w-3.5 h-3.5 text-amber-600" />
-                    <span>تراز خودکار اوزان</span>
-                  </button>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Always available SRS Verification Excel Buttons */}
+                <button
+                  type="button"
+                  onClick={handleExportVerificationExcel}
+                  disabled={isExportingVerification}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+                  title="دانلود فایل اکسل دوبرگه‌ای (داده‌های خام سنیم + رتبه‌بندی با فرمول‌های زنده اکسل)"
+                >
+                  <FileSpreadsheet className={`w-3.5 h-3.5 text-emerald-600 ${isExportingVerification ? 'animate-bounce' : ''}`} />
+                  <span>{isExportingVerification ? 'در حال آماده‌سازی...' : 'خروجی اکسل با فرمول‌ها'}</span>
+                </button>
 
-                  <button
-                    onClick={handleOpenCreate}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-md shadow-amber-600/20 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>تعریف شاخص جدید</span>
-                  </button>
-                </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setShowVerificationUploadModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 transition-colors cursor-pointer shadow-2xs"
+                  title="بارگذاری فایل اکسل سنیم و دریافت بلافاصله خروجی راستی‌آزمایی"
+                >
+                  <UploadCloud className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>بارگذاری اکسل و راستی‌آزمایی</span>
+                </button>
+
+                {activeTab === 'metrics' && (
+                  <>
+                    <button
+                      onClick={handleAutoRebalance}
+                      disabled={loading || totalWeight === 100}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                      title="تعدیل متناسب اوزان به مجموع ۱۰۰٪"
+                    >
+                      <Percent className="w-3.5 h-3.5 text-amber-600" />
+                      <span>تراز خودکار اوزان</span>
+                    </button>
+
+                    <button
+                      onClick={handleOpenCreate}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-md shadow-amber-600/20 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>تعریف شاخص جدید</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Navigation Tabs */}
@@ -865,6 +923,18 @@ export default function AuditorMetricsManagementPage() {
                       </option>
                     ))}
                   </select>
+
+                  <button
+                    onClick={handleExportVerificationExcel}
+                    disabled={isExportingVerification}
+                    className="p-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 rounded-xl text-emerald-800 transition-colors cursor-pointer flex items-center gap-1.5 px-3 shadow-2xs disabled:opacity-50"
+                    title="دانلود فایل اکسل دوبرگه‌ای راستی‌آزمایی (داده‌های خام سنیم + فرمول‌های رتبه‌بندی)"
+                  >
+                    <FileSpreadsheet className={`w-4 h-4 text-emerald-600 ${isExportingVerification ? 'animate-bounce' : ''}`} />
+                    <span className="text-xs font-bold hidden md:inline">
+                      {isExportingVerification ? 'در حال آماده‌سازی...' : 'خروجی اکسل با فرمول‌ها'}
+                    </span>
+                  </button>
 
                   <button
                     onClick={() => {
@@ -1444,6 +1514,12 @@ export default function AuditorMetricsManagementPage() {
         <SrsScorecardMatrixModal
           scorecard={selectedSrsScorecard}
           onClose={() => setSelectedSrsScorecard(null)}
+        />
+
+        {/* Auditor Verification Upload Modal */}
+        <AuditorVerificationUploadModal
+          isOpen={showVerificationUploadModal}
+          onClose={() => setShowVerificationUploadModal(false)}
         />
       </div>
     </ProtectedRoute>

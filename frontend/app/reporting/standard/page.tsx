@@ -23,7 +23,9 @@ import {
   X,
   Check,
   AlertTriangle,
+  FolderKanban,
 } from 'lucide-react'
+import { reportCategoriesApi, ReportCategoryItem } from '@/lib/api/reportCategories'
 import { ExcelReportUploadModal } from '@/components/reporting/ExcelReportUploadModal'
 import { ReportTweakDrawer } from '@/components/reporting/ReportTweakDrawer'
 import { DeleteReportModal } from '@/components/reporting/DeleteReportModal'
@@ -53,6 +55,7 @@ export default function StandardReportsCatalogPage() {
   const isAdmin = user?.role === 'Admin'
 
   const [reports, setReports] = useState<ReportDefinition[]>([])
+  const [categories, setCategories] = useState<ReportCategoryItem[]>([])
   const [selectedSource, setSelectedSource] = useState<number | undefined>(undefined)
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest')
@@ -126,8 +129,12 @@ export default function StandardReportsCatalogPage() {
       const isArchivedTab = selectedSource === -1
       const querySource = isArchivedTab ? undefined : selectedSource
       // Admins load all including inactive to allow archiving management
-      const data = await reportingApi.getCatalog(querySource, isAdmin)
+      const [data, cats] = await Promise.all([
+        reportingApi.getCatalog(querySource, isAdmin),
+        reportCategoriesApi.getActive().catch(() => [] as ReportCategoryItem[]),
+      ])
       setReports(data)
+      setCategories(cats || [])
     } catch (err) {
       console.error('Failed to load standard catalog:', err)
     } finally {
@@ -174,23 +181,29 @@ export default function StandardReportsCatalogPage() {
     return a.title.localeCompare(b.title, 'fa')
   })
 
-  const sourceTabs = [
-    { label: 'تمام حوزه‌ها', source: undefined },
-    { label: 'داده‌های بارگذاری شده از اکسل', source: 6 },
-    { label: 'رسیدگی سنیم (اکسل)', source: 5 },
-    { label: 'حقوق و اضافه کار', source: 2 },
-    { label: 'استرداد مالیات (۲۴۲/۲۴۳)', source: 3 },
-    { label: 'منابع انسانی و ارزیابی', source: 1 },
-    { label: 'تلفیقی و فرابخشی', source: 4 },
-    ...(isAdmin
-      ? [
-          {
-            label: `بایگانی / غیرفعال (${toPersianDigits(inactiveCount)})`,
-            source: -1,
-          },
-        ]
-      : []),
-  ]
+  const categoriesMap = React.useMemo(() => {
+    return Object.fromEntries(categories.map((c) => [c.id, c]))
+  }, [categories])
+
+  const sourceTabs = React.useMemo(() => {
+    const tabs: { label: string; source: number | undefined }[] = [
+      { label: 'تمام حوزه‌ها', source: undefined },
+    ]
+
+    const sortedCats = [...categories].sort((a, b) => a.displayOrder - b.displayOrder || a.id - b.id)
+    sortedCats.forEach((cat) => {
+      tabs.push({ label: cat.title, source: cat.id })
+    })
+
+    if (isAdmin) {
+      tabs.push({
+        label: `بایگانی / غیرفعال (${toPersianDigits(inactiveCount)})`,
+        source: -1,
+      })
+    }
+
+    return tabs
+  }, [categories, isAdmin, inactiveCount])
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -216,6 +229,17 @@ export default function StandardReportsCatalogPage() {
             <UploadCloud className="h-4 w-4" />
             <span>ایجاد گزارش جدید از اکسل</span>
           </button>
+
+          {isAdmin && (
+            <Link
+              href="/admin/report-categories"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+              title="مدیریت و ویرایش حوزه‌ها و دسته‌بندی‌های کاتالوگ گزارش‌ها"
+            >
+              <FolderKanban className="w-4 h-4 text-amber-600" />
+              <span>مدیریت دسته‌بندی‌ها</span>
+            </Link>
+          )}
 
           <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 shadow-2xs">
             <span className="font-bold text-[11px] text-slate-500">مرتب‌سازی:</span>
@@ -283,7 +307,7 @@ export default function StandardReportsCatalogPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {sortedReports.map((report) => {
-            const domainName = DOMAIN_SOURCE_NAMES_FA[report.domainSource] || 'سازمانی'
+            const domainName = categoriesMap[report.domainSource]?.title || DOMAIN_SOURCE_NAMES_FA[report.domainSource] || 'سازمانی'
             const categoryName = CATEGORY_NAMES_FA[report.category] || 'تحلیلی'
             const isCustom = report.domainSource === 6 || report.code.startsWith('REP_CUSTOM_')
             const isInactive = !report.isActive

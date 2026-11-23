@@ -17,6 +17,7 @@ import {
   Sliders,
   BookmarkCheck,
   Award,
+  FolderKanban,
 } from 'lucide-react'
 import { BasePortalModule, PortalAction } from '@/types/portal'
 
@@ -262,6 +263,15 @@ export class ExecutiveReportingModule extends BasePortalModule {
       icon: Award,
       variant: 'outline',
       minRole: 'Manager',
+    },
+    {
+      id: 'report-categories',
+      title: 'مدیریت دسته‌بندی‌های گزارش‌ها',
+      href: '/admin/report-categories',
+      description: 'تعریف و مدیریت حوزه‌ها و زبانه‌های موضوعی کاتالوگ گزارش‌ها',
+      icon: FolderKanban,
+      variant: 'outline',
+      minRole: 'Admin',
     },
   ]
 

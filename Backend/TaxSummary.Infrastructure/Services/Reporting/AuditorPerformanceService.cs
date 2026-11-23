@@ -308,11 +308,11 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         }
     }
 
-    private async Task<Result<List<AuditorCaseRecord>>> LoadAuditCasesAsync(
+    public async Task<Result<List<AuditorCaseRecord>>> LoadAuditCasesAsync(
         string? reportCode,
         int? fiscalYear,
         string? officeName,
-        CancellationToken ct)
+        CancellationToken ct = default)
     {
         // 1. If no report code or SYSTEM, query standard database
         if (string.IsNullOrWhiteSpace(reportCode) || reportCode.Equals("SYSTEM", StringComparison.OrdinalIgnoreCase))
@@ -912,31 +912,6 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         return null;
     }
 
-    public class AuditorCaseRecord
-    {
-        public string AuditorName { get; set; } = string.Empty;
-        public string? AuditorNationalId { get; set; }
-        public string? FinalOfficeName { get; set; }
-        public string? AuditStatus { get; set; }
-        public string? RiskLevel { get; set; }
-        public string? TaxpayerTin { get; set; }
-        public string? CaseType { get; set; }
-        public string? TaxSource { get; set; }
-        public string? CurrentStatus { get; set; }
-        public string? FinalizationSource { get; set; }
-        public string? AssessmentNoticeDateJalali { get; set; }
-        public string? FinalNoticeDateJalali { get; set; }
-        public string? AuditorAssignmentDateJalali { get; set; }
-        public decimal DeclaredTaxAmount { get; set; }
-        public decimal AssessedTaxAmount { get; set; }
-        public decimal FinalTaxAmount { get; set; }
-        public double? DaysAssignmentToNotice { get; set; }
-        public double? DaysNoticeToFinal { get; set; }
-        public double? DaysAssignmentToFinal { get; set; }
-        public int? FiscalYear { get; set; }
-        public string? ImportanceType { get; set; }
-    }
-
     private static decimal CalculateNormalizedScore(AuditorPerformanceMetricDefinition metric, decimal rawValue)
     {
         if (metric.HigherIsBetter)
@@ -1395,7 +1370,7 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         }
     }
 
-    private static string ClassifyTaxCase(AuditorCaseRecord rec, HashSet<string> top300Tins, HashSet<string> allowedTags)
+    public static string ClassifyTaxCase(AuditorCaseRecord rec, HashSet<string> top300Tins, HashSet<string> allowedTags)
     {
         bool isLegal = (rec.CaseType != null && rec.CaseType.Contains("حقوقی")) || 
                        (!string.IsNullOrEmpty(rec.TaxpayerTin) && rec.TaxpayerTin.Trim().Length == 11) ||
@@ -1435,7 +1410,7 @@ public class AuditorPerformanceService : IAuditorPerformanceService
         }
     }
 
-    private static SrsIndicatorCategoryDetailDto CalculateIndicatorCategoryDetail(
+    public static SrsIndicatorCategoryDetailDto CalculateIndicatorCategoryDetail(
         string indicatorCode,
         string category,
         List<AuditorCaseRecord> cases,

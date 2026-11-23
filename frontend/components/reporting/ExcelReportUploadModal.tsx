@@ -24,6 +24,7 @@ import {
   Clock,
 } from 'lucide-react'
 import { customDatasetApi } from '@/lib/api/customDataset'
+import { reportCategoriesApi, ReportCategoryItem } from '@/lib/api/reportCategories'
 import {
   ExcelInspectionResult,
   CustomDatasetColumn,
@@ -64,11 +65,25 @@ export function ExcelReportUploadModal({
   const [quickFilterColumns, setQuickFilterColumns] = useState<string[]>([])
   const [defaultSortField, setDefaultSortField] = useState<string>('')
   const [validityDays, setValidityDays] = useState<number | null>(null)
+  const [categories, setCategories] = useState<ReportCategoryItem[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(6)
 
   // Success state
   const [createdReport, setCreatedReport] = useState<ReportDefinition | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  React.useEffect(() => {
+    if (isOpen) {
+      reportCategoriesApi.getActive().then((cats) => {
+        setCategories(cats || [])
+        if (cats && cats.length > 0) {
+          const def = cats.find((c) => c.id === 6) || cats[0]
+          setSelectedCategory(def.id)
+        }
+      }).catch(() => {})
+    }
+  }, [isOpen])
 
   const handleMoveColumn = (index: number, direction: 'up' | 'down') => {
     const targetIndex = direction === 'up' ? index - 1 : index + 1
@@ -217,6 +232,10 @@ export function ExcelReportUploadModal({
       setErrorMessage('کد یکتای گزارش نمی‌تواند خالی باشد.')
       return
     }
+    if (!selectedCategory) {
+      setErrorMessage('انتخاب حوزه و دسته‌بندی موضوعی برای گزارش الزامی است.')
+      return
+    }
 
     setIsSubmitting(true)
     setErrorMessage(null)
@@ -225,6 +244,7 @@ export function ExcelReportUploadModal({
       reportCode: reportCode.trim().toUpperCase(),
       title: reportTitle.trim(),
       description: reportDescription.trim() || undefined,
+      domainSource: selectedCategory,
       sheetName: selectedSheet,
       columns,
       quickFilterColumns,
@@ -501,7 +521,28 @@ export function ExcelReportUploadModal({
                         className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
-                    <div className="sm:col-span-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                        حوزه و دسته‌بندی موضوعی گزارش <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={selectedCategory ?? ''}
+                        onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-bold text-slate-800 bg-white focus:border-emerald-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                        required
+                      >
+                        <option value="" disabled>-- انتخاب دسته‌بندی الزامی است --</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.title}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        هر گزارش باید عضو یکی از دسته‌بندی‌های مصوب سازمانی باشد.
+                      </span>
+                    </div>
+                    <div>
                       <label className="mb-1.5 block text-xs font-bold text-slate-700 flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-amber-600" />
                         <span>دوره اعتبار و مهلت نمایش گزارش (Time-To-Live - TTL)</span>
@@ -519,7 +560,7 @@ export function ExcelReportUploadModal({
                         <option value="365">۳۶۵ روز (۱ سال)</option>
                       </select>
                       <span className="text-[10px] text-slate-400 mt-1 block">
-                        پس از پایان این دوره، گزارش به‌صورت خودکار بایگانی شده و از دید کاربران عادی خارج می‌گردد.
+                        پس از پایان این دوره، گزارش به‌صورت خودکار بایگانی خواهد شد.
                       </span>
                     </div>
                   </div>

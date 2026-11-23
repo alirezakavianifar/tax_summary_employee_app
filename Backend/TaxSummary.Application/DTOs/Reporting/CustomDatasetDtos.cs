@@ -35,6 +35,7 @@ public class CreateCustomDatasetRequestDto
     public string ReportCode { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public int DomainSource { get; set; } // Enforced category ID
     public string? SheetName { get; set; }
     public int HeaderRowIndex { get; set; } = 1;
     public List<CustomDatasetColumnDto> Columns { get; set; } = new();
@@ -50,6 +51,7 @@ public class TweakCustomReportRequestDto
 {
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public int? DomainSource { get; set; }
     public string? RequiredRole { get; set; }
     public DateTime? ExpiresAt { get; set; }
     public int? ValidityDays { get; set; }
@@ -65,6 +67,7 @@ public class CustomDatasetConfigJsonDto
     public string OriginalFileName { get; set; } = string.Empty;
     public string UploadedSheetName { get; set; } = string.Empty;
     public int TotalRowCount { get; set; }
+    public int DomainSource { get; set; }
     public string? DefaultSortField { get; set; }
     public bool DefaultSortDescending { get; set; }
     public List<string> QuickFilterColumns { get; set; } = new();

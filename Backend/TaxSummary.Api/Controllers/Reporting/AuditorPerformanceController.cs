@@ -12,13 +12,16 @@ namespace TaxSummary.Api.Controllers.Reporting;
 public class AuditorPerformanceController : ReportingControllerBase
 {
     private readonly IAuditorPerformanceService _performanceService;
+    private readonly IAuditorVerificationExcelService _verificationExcelService;
     private readonly ILogger<AuditorPerformanceController> _logger;
 
     public AuditorPerformanceController(
         IAuditorPerformanceService performanceService,
+        IAuditorVerificationExcelService verificationExcelService,
         ILogger<AuditorPerformanceController> logger)
     {
         _performanceService = performanceService ?? throw new ArgumentNullException(nameof(performanceService));
+        _verificationExcelService = verificationExcelService ?? throw new ArgumentNullException(nameof(verificationExcelService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -293,6 +296,50 @@ public class AuditorPerformanceController : ReportingControllerBase
             return BadRequest(new { error = result.Error });
 
         return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// دانلود فایل اکسل دوبرگه‌ای راستی‌آزمایی رتبه‌بندی عملکرد حسابرسان (داده‌های خام + فرمول‌های زنده رتبه‌بندی)
+    /// </summary>
+    [HttpGet("srs/export-verification-excel")]
+    [Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ExportVerificationExcel(
+        [FromQuery] int? fiscalYear = null,
+        [FromQuery] string? officeName = null,
+        [FromQuery] string? reportCode = null,
+        CancellationToken ct = default)
+    {
+        var result = await _verificationExcelService.ExportVerificationExcelAsync(fiscalYear, officeName, reportCode, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        string fileName = $"Auditor_SRS_Verification_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+        return File(result.Value, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
+
+    /// <summary>
+    /// بارگذاری مستقیم فایل اکسل خام سنیم و دریافت بلافاصله فایل اکسل راستی‌آزمایی (داده‌های خام + فرمول‌های رتبه‌بندی)
+    /// </summary>
+    [HttpPost("srs/upload-and-export-verification")]
+    [Authorize(Roles = "Admin,DirectorGeneral,Manager")]
+    [Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UploadAndExportVerification(
+        IFormFile file,
+        CancellationToken ct = default)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = "فایل اکسل انتخاب نشده یا خالی است." });
+
+        using var stream = file.OpenReadStream();
+        var result = await _verificationExcelService.GenerateVerificationExcelFromStreamAsync(stream, file.FileName, ct);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        string safeName = Path.GetFileNameWithoutExtension(file.FileName);
+        string fileName = $"Sanim_Verification_{safeName}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+        return File(result.Value, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 }
 

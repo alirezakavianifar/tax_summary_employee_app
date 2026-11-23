@@ -116,7 +116,7 @@ public class ReportDefinition
         };
     }
 
-    public void Update(string title, string description, string configurationJson, string? requiredRole, DateTime? expiresAt = null)
+    public void Update(string title, string description, string configurationJson, string? requiredRole, DateTime? expiresAt = null, ReportDomainSource? newSource = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("عنوان گزارش نمی‌تواند خالی باشد.", nameof(title));
@@ -129,6 +129,16 @@ public class ReportDefinition
         ConfigurationJson = configurationJson.Trim();
         RequiredRole = string.IsNullOrWhiteSpace(requiredRole) ? null : requiredRole.Trim();
         ExpiresAt = expiresAt;
+        if (newSource.HasValue)
+        {
+            DomainSource = newSource.Value;
+        }
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateDomainSource(ReportDomainSource newSource)
+    {
+        DomainSource = newSource;
         UpdatedAt = DateTime.UtcNow;
     }
 

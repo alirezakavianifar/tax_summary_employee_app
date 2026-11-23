@@ -51,11 +51,17 @@ A modern, full-stack enterprise web application for managing employee performanc
      - Interactive upload & pre-import inspection dialog (`ImportantCasesUploadModal.tsx`) with automatic column detection (TIN, tracking, type), row counters, matching Sanim case counters, and sample record validation table.
      - Flexible matching modes: selective tagging by `type` column or blanket marking ("all rows are important"), with append vs. replace-all options.
    - **Provincial Leaderboard & 360 Scorecards**: Real-time evaluation of all 230+ provincial auditors with dynamic model switcher (`SRS بخشنامه مصوب` vs `شاخص‌های ترکیبی سنیم`), performance tiers (A/B/C/D), positive vs penalty decomposition, and detailed $8 \times 7$ printable A4 scorecard modal.
+   - **Dual-Sheet Formula-Driven Verification Excel Export & Raw Ingestion**:
+     - Generates an authentic two-sheet RTL Excel verification workbook directly from /admin/auditor-metrics and report evaluation tabs.
+     - **Sheet 1 (داده‌های خام رسیدگی)**: All raw audit case records, classified into the 7 tax categories, with turnaround days and indicator verification flags (FR-01 to FR-08).
+     - **Sheet 2 (رتبه‌بندی و محاسبات فرمولی)**: Complete employee performance ranking table powered by native **Excel formulas** (COUNTIFS, SUM, RANK, IF) dynamically linked to Sheet 1 and an embedded  \times 7$ scoring parameter matrix. Any adjustment to raw data or weights dynamically recalculates rankings natively inside Microsoft Excel.
+     - **Direct Raw Excel Ingestion Modal (AuditorVerificationUploadModal.tsx)**: Drag-and-drop raw Sanim audit Excel files for immediate automated processing and instant verification workbook download.
    - **Dynamic Evaluation Model Visibility & Default Control**: Full administrative control in `/admin/auditor-metrics` to show, hide, or set the default active evaluation model (SRS $8 \times 7$ vs Sanim Combined $100$-point scale) across user reports with automatic guardrails preventing simultaneous deactivation.
 
 6. **Administration & Dynamic Menu Management (`/admin`)**:
    - Granular Role-Based Access Control (Admin, Manager, Employee, OfficeHead, Expert, Auditor).
    - Database-backed dynamic menu visibility management and collapsible RTL sidebar navigation.
+   - **Report Domain Category Management (`/admin/report-categories`)**: Complete administrative control to create, edit, sort, and toggle active status of report categories. Enforces strict zero-orphan report policy where every report must belong to a valid category, and blocks category deletion if reports are attached.
    - Dynamic organizational branding, custom logo upload, system-wide title management, and dynamic portal footer customization with official identity badge (`[🛡️ سامانه رسمی]`), copyright text, version badge, and interactive links list (`/admin/branding`).
    - Dynamic Portal Operational Cards & Home Page Management (`/admin/menu-settings`): Administrators can customize module titles, descriptions, color themes (8 distinct corporate palettes), group badge tags, icons, and display ordering directly for both built-in and custom modules.
    - Dynamic Report Assignment & Submenu Configuration: Administrators can add custom menu items under the Reports module and link them directly to standard reports or uploaded Excel datasets (`REP_...`) with searchable report catalog selection and automatic route generation.

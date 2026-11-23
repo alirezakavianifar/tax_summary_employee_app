@@ -71,6 +71,11 @@ public interface IAuditorPerformanceService
     Task<Result<SrsEmployeeScorecardDto>> GetAuditorSrsScorecardAsync(string auditorName, int? fiscalYear = null, string? reportCode = null, CancellationToken ct = default);
 
     /// <summary>
+    /// بارگذاری فهرست رکوردهای تفصیلی پرونده‌های رسیدگی مالیاتی (پایگاه داده اصلی یا گزارش اکسل سفارشی)
+    /// </summary>
+    Task<Result<List<AuditorCaseRecord>>> LoadAuditCasesAsync(string? reportCode, int? fiscalYear, string? officeName, CancellationToken ct = default);
+
+    /// <summary>
     /// همگام‌سازی پرونده‌های ۳۰۰ پرونده مهم و ۱۰۰ پرونده از فایل اکسل سنیم در پایگاه داده
     /// </summary>
     Task<Result<int>> Sync300CasesFromExcelAsync(string? customExcelPath = null, CancellationToken ct = default);

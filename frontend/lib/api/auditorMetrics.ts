@@ -190,4 +190,52 @@ export const auditorMetricsApi = {
     )
     return res.data
   },
+
+  /**
+   * دریافت و دانلود مستقیم فایل اکسل دوبرگه‌ای راستی‌آزمایی رتبه‌بندی عملکرد (داده‌های خام + فرمول‌های رتبه‌بندی)
+   */
+  async exportSrsVerificationExcel(params?: {
+    fiscalYear?: number
+    officeName?: string
+    reportCode?: string
+  }): Promise<void> {
+    const res = await apiClient.get(`${BASE_URL}/srs/export-verification-excel`, {
+      params,
+      responseType: 'blob',
+      timeout: 180000, // 3 minutes timeout for large verification workbooks
+    })
+    const fileName = `Auditor_SRS_Verification_${Date.now()}.xlsx`
+    downloadBlob(res.data, fileName)
+  },
+
+  /**
+   * بارگذاری مستقیم فایل اکسل خام سنیم و دریافت بلافاصله خروجی راستی‌آزمایی دوبرگه‌ای
+   */
+  async uploadAndExportVerification(file: File): Promise<void> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await apiClient.post(`${BASE_URL}/srs/upload-and-export-verification`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      responseType: 'blob',
+      timeout: 180000, // 3 minutes timeout for processing & generating verification workbook
+    })
+    const safeName = file.name.replace(/\.[^/.]+$/, '')
+    const fileName = `Sanim_Verification_${safeName}_${Date.now()}.xlsx`
+    downloadBlob(res.data, fileName)
+  },
+}
+
+function downloadBlob(data: BlobPart, filename: string) {
+  const url = window.URL.createObjectURL(
+    new Blob([data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+  )
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
 }

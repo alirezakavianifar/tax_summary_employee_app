@@ -1428,6 +1428,25 @@ public static class DbInitializer
                 Console.WriteLine($"[DbInitializer] Notice during SQLite GUID uppercase normalization: {ex.Message}");
             }
 
+            // Ensure ReportCategories table exists
+            command.CommandText = @"
+                CREATE TABLE IF NOT EXISTS ""ReportCategories"" (
+                    ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_ReportCategories"" PRIMARY KEY,
+                    ""Code"" TEXT NOT NULL,
+                    ""Title"" TEXT NOT NULL,
+                    ""Description"" TEXT NULL,
+                    ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+                    ""DisplayOrder"" INTEGER NOT NULL DEFAULT 0,
+                    ""IsSystem"" INTEGER NOT NULL DEFAULT 0,
+                    ""CreatedAt"" TEXT NOT NULL,
+                    ""UpdatedAt"" TEXT NULL
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_ReportCategories_Code"" ON ""ReportCategories"" (""Code"");
+                CREATE INDEX IF NOT EXISTS ""IX_ReportCategories_DisplayOrder"" ON ""ReportCategories"" (""DisplayOrder"");
+                CREATE INDEX IF NOT EXISTS ""IX_ReportCategories_IsActive"" ON ""ReportCategories"" (""IsActive"");
+            ";
+            await command.ExecuteNonQueryAsync();
+
             // Record migrations as applied in __EFMigrationsHistory
             command.CommandText = @"
                 INSERT OR IGNORE INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")

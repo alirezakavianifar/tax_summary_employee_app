@@ -74,6 +74,31 @@ export function ReportAuditorPerformanceTab({
   const [selectedOffice, setSelectedOffice] = useState('all')
   const [selectedAuditorForDrawer, setSelectedAuditorForDrawer] = useState<string | null>(null)
   const [isInsightsExpanded, setIsInsightsExpanded] = useState<boolean>(false)
+  const [isExportingVerification, setIsExportingVerification] = useState(false)
+
+  const handleExportVerificationExcel = async () => {
+    try {
+      setIsExportingVerification(true)
+      await auditorMetricsApi.exportSrsVerificationExcel({
+        reportCode: reportCode,
+        officeName: selectedOffice === 'all' ? undefined : selectedOffice,
+      })
+    } catch (err: any) {
+      let errorMsg = err?.message || 'خطا در دریافت فایل اکسل راستی‌آزمایی'
+      if (err?.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text()
+          const json = JSON.parse(text)
+          if (json.error) errorMsg = json.error
+        } catch {}
+      } else if (err?.response?.data?.error) {
+        errorMsg = err.response.data.error
+      }
+      alert(errorMsg)
+    } finally {
+      setIsExportingVerification(false)
+    }
+  }
 
   // Restore user's insights panel preference from storage
   useEffect(() => {
@@ -1072,6 +1097,18 @@ export function ReportAuditorPerformanceTab({
                 ))}
               </select>
             )}
+
+            {/* Export Verification Excel Button */}
+            <button
+              type="button"
+              onClick={handleExportVerificationExcel}
+              disabled={isExportingVerification}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+              title="دانلود فایل اکسل دوبرگه‌ای راستی‌آزمایی (داده‌های خام سنیم + فرمول‌های رتبه‌بندی)"
+            >
+              <FileSpreadsheet className={`w-3.5 h-3.5 text-emerald-600 ${isExportingVerification ? 'animate-bounce' : ''}`} />
+              <span>{isExportingVerification ? 'در حال آماده‌سازی...' : 'خروجی اکسل با فرمول‌ها'}</span>
+            </button>
           </div>
         </div>
 

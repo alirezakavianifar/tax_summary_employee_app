@@ -30,6 +30,7 @@ export interface CreateCustomDatasetRequest {
   reportCode: string
   title: string
   description?: string
+  domainSource: number
   sheetName?: string
   headerRowIndex?: number
   columns: CustomDatasetColumn[]
@@ -44,6 +45,7 @@ export interface CreateCustomDatasetRequest {
 export interface TweakCustomReportRequest {
   title: string
   description?: string
+  domainSource?: number
   requiredRole?: string
   validityDays?: number | null
   expiresAt?: string | null
@@ -58,6 +60,7 @@ export interface CustomDatasetConfig {
   originalFileName: string
   uploadedSheetName: string
   totalRowCount: number
+  domainSource?: number
   expiresAt?: string | null
   isExpired?: boolean
   defaultSortField?: string

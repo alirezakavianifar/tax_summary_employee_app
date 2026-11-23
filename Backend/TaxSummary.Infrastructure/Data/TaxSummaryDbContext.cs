@@ -46,6 +46,7 @@ public class TaxSummaryDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     // Reporting & BI Subsystem DbSets
+    public DbSet<ReportDomainCategory> ReportCategories => Set<ReportDomainCategory>();
     public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
     public DbSet<SavedReportPreset> SavedReportPresets => Set<SavedReportPreset>();
     public DbSet<ReportExecutionLog> ReportExecutionLogs => Set<ReportExecutionLog>();

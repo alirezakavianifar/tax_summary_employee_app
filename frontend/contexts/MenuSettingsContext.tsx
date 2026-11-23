@@ -68,6 +68,8 @@ const ACTION_ROUTE_MAP: Record<string, string> = {
   'action_admin_tax_sources': 'action_admin_tax_sources',
   '/admin/finality-stages': 'action_admin_finality_stages',
   'action_admin_finality_stages': 'action_admin_finality_stages',
+  '/admin/report-categories': 'action_admin_report_categories',
+  'action_admin_report_categories': 'action_admin_report_categories',
   '/admin/auditor-metrics': 'action_reporting_auditor_metrics',
   'action_reporting_auditor_metrics': 'action_reporting_auditor_metrics',
   'action_admin_auditor_metrics': 'action_admin_auditor_metrics',
