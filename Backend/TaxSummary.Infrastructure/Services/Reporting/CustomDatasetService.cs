@@ -277,7 +277,7 @@ public class CustomDatasetService : ICustomDatasetService
                 type: ReportType.Tabular,
                 configurationJson: configJson,
                 isSystemReport: false,
-                requiredRole: request.RequiredRole,
+                requiredRole: string.IsNullOrWhiteSpace(request.RequiredRole) || string.Equals(request.RequiredRole, "ALL", StringComparison.OrdinalIgnoreCase) ? null : request.RequiredRole.Trim(),
                 createdByUserId: createdByUserId,
                 expiresAt: calculatedExpiresAt);
 
@@ -361,11 +361,19 @@ public class CustomDatasetService : ICustomDatasetService
                 newExpiresAt = request.ExpiresAt;
             }
 
+            string? roleToSet = report.RequiredRole;
+            if (request.RequiredRole != null)
+            {
+                roleToSet = string.IsNullOrWhiteSpace(request.RequiredRole) || string.Equals(request.RequiredRole, "ALL", StringComparison.OrdinalIgnoreCase)
+                    ? null
+                    : request.RequiredRole.Trim();
+            }
+
             report.Update(
                 request.Title,
                 request.Description ?? report.Description,
                 updatedConfigJson,
-                request.RequiredRole,
+                roleToSet,
                 newExpiresAt);
 
             if (request.DomainSource.HasValue && request.DomainSource.Value > 0)
@@ -826,6 +834,7 @@ public class CustomDatasetService : ICustomDatasetService
                 return Result.Failure<CustomDatasetConfigJsonDto>("پیکربندی این گزارش خالی است.");
 
             config.DomainSource = (int)report.DomainSource;
+            config.RequiredRole = report.RequiredRole;
 
             return Result.Success(config);
         }

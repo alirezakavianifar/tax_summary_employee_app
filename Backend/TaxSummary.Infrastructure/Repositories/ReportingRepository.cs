@@ -54,15 +54,17 @@ public class ReportingRepository : IReportingRepository
         if (source.HasValue)
             query = query.Where(r => r.DomainSource == source.Value);
 
-        if (!isAdmin)
-        {
-            query = query.Where(r => r.RequiredRole == null || r.RequiredRole == "" || r.RequiredRole == userRole);
-        }
-
-        return await query
+        var list = await query
             .OrderBy(r => r.DomainSource)
             .ThenBy(r => r.Title)
             .ToListAsync(ct);
+
+        if (!isAdmin)
+        {
+            list = list.Where(r => r.IsRoleAllowed(userRole)).ToList();
+        }
+
+        return list;
     }
 
     public async Task<int> ArchiveExpiredReportsAsync(CancellationToken ct = default)

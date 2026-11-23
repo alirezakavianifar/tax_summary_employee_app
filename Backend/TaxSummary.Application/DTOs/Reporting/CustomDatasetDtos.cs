@@ -68,6 +68,7 @@ public class CustomDatasetConfigJsonDto
     public string UploadedSheetName { get; set; } = string.Empty;
     public int TotalRowCount { get; set; }
     public int DomainSource { get; set; }
+    public string? RequiredRole { get; set; }
     public string? DefaultSortField { get; set; }
     public bool DefaultSortDescending { get; set; }
     public List<string> QuickFilterColumns { get; set; } = new();

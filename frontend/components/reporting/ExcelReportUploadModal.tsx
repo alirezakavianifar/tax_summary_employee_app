@@ -22,9 +22,11 @@ import {
   ListOrdered,
   Sparkles,
   Clock,
+  Shield,
 } from 'lucide-react'
 import { customDatasetApi } from '@/lib/api/customDataset'
 import { reportCategoriesApi, ReportCategoryItem } from '@/lib/api/reportCategories'
+import { ORGANIZATIONAL_ROLES, toggleRoleSelection } from '@/lib/constants/menuRoles'
 import {
   ExcelInspectionResult,
   CustomDatasetColumn,
@@ -67,6 +69,8 @@ export function ExcelReportUploadModal({
   const [validityDays, setValidityDays] = useState<number | null>(null)
   const [categories, setCategories] = useState<ReportCategoryItem[]>([])
   const [selectedCategory, setSelectedCategory] = useState<number | null>(6)
+  const [isRoleRestricted, setIsRoleRestricted] = useState(false)
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(['Admin', 'DirectorGeneral', 'Manager', 'Expert'])
 
   // Success state
   const [createdReport, setCreatedReport] = useState<ReportDefinition | null>(null)
@@ -251,7 +255,7 @@ export function ExcelReportUploadModal({
       defaultSortField,
       defaultSortDescending: true,
       validityDays: validityDays || undefined,
-      requiredRole: 'Admin,DirectorGeneral,Manager',
+      requiredRole: isRoleRestricted && selectedRoles.length > 0 ? selectedRoles.join(',') : undefined,
     }
 
     try {
@@ -562,6 +566,65 @@ export function ExcelReportUploadModal({
                       <span className="text-[10px] text-slate-400 mt-1 block">
                         پس از پایان این دوره، گزارش به‌صورت خودکار بایگانی خواهد شد.
                       </span>
+                    </div>
+
+                    {/* Role Access Restriction */}
+                    <div className="col-span-1 sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Shield className="w-4 h-4 text-amber-600" />
+                          <span>سطح دسترسی و نقش‌های مجاز</span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <label className="text-[11px] text-slate-700 flex items-center gap-1.5 cursor-pointer font-medium">
+                            <input
+                              type="radio"
+                              name="modalRoleRestriction"
+                              checked={!isRoleRestricted}
+                              onChange={() => setIsRoleRestricted(false)}
+                              className="text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <span>عمومی (همه کاربران مجاز کاتالوگ)</span>
+                          </label>
+                          <label className="text-[11px] text-slate-700 flex items-center gap-1.5 cursor-pointer font-medium">
+                            <input
+                              type="radio"
+                              name="modalRoleRestriction"
+                              checked={isRoleRestricted}
+                              onChange={() => setIsRoleRestricted(true)}
+                              className="text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <span>محدود به نقش‌های منتخب</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {isRoleRestricted && (
+                        <div className="pt-2 border-t border-slate-200/80 space-y-2 animate-in fade-in duration-150">
+                          <span className="text-[10px] text-slate-500 block">
+                            نقش‌های مجاز برای مشاهده و اجرای این گزارش را انتخاب کنید:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {ORGANIZATIONAL_ROLES.map((r) => {
+                              const isSelected = selectedRoles.includes(r.key)
+                              return (
+                                <button
+                                  key={r.key}
+                                  type="button"
+                                  onClick={() => setSelectedRoles((prev) => toggleRoleSelection(prev, r.key))}
+                                  className={`rounded-lg px-2.5 py-1 text-[11px] font-bold border transition-all ${
+                                    isSelected
+                                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {r.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

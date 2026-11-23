@@ -59,6 +59,13 @@ export const ORGANIZATIONAL_ROLES: MenuRoleDef[] = [
     colorClass: 'bg-teal-50 text-teal-700 border-teal-200',
     activeClass: 'bg-teal-50 text-teal-700 border-teal-300 shadow-xs hover:bg-teal-100',
   },
+  {
+    key: 'Auditor',
+    label: 'حسابرس',
+    shortLabel: 'حسابرس',
+    colorClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    activeClass: 'bg-amber-50 text-amber-700 border-amber-300 shadow-xs hover:bg-amber-100',
+  },
 ]
 
 export type RolePreset = 'all' | 'managers' | 'experts' | 'admin'
@@ -112,6 +119,8 @@ export function getRoleLabel(role: string): string {
       return 'معاونت / مدیر'
     case 'employee':
       return 'کارمند'
+    case 'auditor':
+      return 'حسابرس'
     default:
       return role
   }

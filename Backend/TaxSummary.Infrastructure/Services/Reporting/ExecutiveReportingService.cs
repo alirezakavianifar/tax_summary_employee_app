@@ -182,6 +182,11 @@ public class ExecutiveReportingService : IExecutiveReportingService
                 return Result.Failure<ReportExecutionResultDto>("دسترسی به این گزارش به دلیل پایان مهلت اعتبار (TTL) یا بایگانی شدن امکان‌پذیر نمی‌باشد.");
             }
 
+            if (!isAdmin && !report.IsRoleAllowed(userRole))
+            {
+                return Result.Failure<ReportExecutionResultDto>("شما مجوز دسترسی به این گزارش را ندارید.");
+            }
+
             // Resolve effective offices
             List<Guid>? effectiveOfficeIds = userAssignedOfficeIds;
             if (parameters.OfficeId.HasValue)

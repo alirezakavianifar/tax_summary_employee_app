@@ -20,9 +20,11 @@ import {
   Filter,
   Check,
   Clock,
+  Shield,
 } from 'lucide-react'
 import { customDatasetApi } from '@/lib/api/customDataset'
 import { reportCategoriesApi, ReportCategoryItem } from '@/lib/api/reportCategories'
+import { ORGANIZATIONAL_ROLES, toggleRoleSelection } from '@/lib/constants/menuRoles'
 import {
   CustomDatasetConfig,
   CustomDatasetColumn,
@@ -62,7 +64,9 @@ export function ReportTweakDrawer({
 
   // Column search filter
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<'columns' | 'filters' | 'maintenance'>('columns')
+  const [activeTab, setActiveTab] = useState<'columns' | 'filters' | 'roles' | 'maintenance'>('columns')
+  const [isRoleRestricted, setIsRoleRestricted] = useState(false)
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
 
   useEffect(() => {
     if (isOpen && reportCode) {
@@ -93,6 +97,13 @@ export function ReportTweakDrawer({
       setQuickFilters(data.quickFilterColumns || [])
       setDefaultSortField(data.defaultSortField || '')
       setDefaultSortDescending(data.defaultSortDescending ?? true)
+      if (data.requiredRole && data.requiredRole.trim()) {
+        setIsRoleRestricted(true)
+        setSelectedRoles(data.requiredRole.split(',').map((r: string) => r.trim()).filter(Boolean))
+      } else {
+        setIsRoleRestricted(false)
+        setSelectedRoles(['Admin', 'DirectorGeneral', 'Manager', 'Expert'])
+      }
     } catch (err: any) {
       setErrorMessage(err.response?.data?.error || err.message || 'خطا در بارگذاری تنظیمات گزارش')
     } finally {
@@ -196,6 +207,7 @@ export function ReportTweakDrawer({
       defaultSortDescending,
       quickFilterColumns: quickFilters,
       columns,
+      requiredRole: isRoleRestricted && selectedRoles.length > 0 ? selectedRoles.join(',') : '',
       validityDays: validityExtensionDays === 'remove' ? -1 : (validityExtensionDays ?? undefined),
     }
 
@@ -294,6 +306,22 @@ export function ReportTweakDrawer({
           >
             <Filter className="h-4 w-4" />
             <span>فیلترهای سریع و مرتب‌سازی</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('roles')}
+            className={`flex items-center gap-2 border-b-2 py-3 px-4 font-bold transition-colors ${
+              activeTab === 'roles'
+                ? 'border-purple-600 text-purple-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Shield className="h-4 w-4" />
+            <span>سطوح دسترسی و نقش‌ها</span>
+            {isRoleRestricted && (
+              <span className="rounded-full bg-amber-100 text-amber-800 px-1.5 py-0.2 text-[10px] font-bold">
+                محدود ({toPersianDigits(selectedRoles.length)})
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('maintenance')}
@@ -692,6 +720,90 @@ export function ReportTweakDrawer({
                   <Trash2 className="h-4 w-4" />
                   <span>حذف دائمی این گزارش و داده‌های آن</span>
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: Role Permissions Management */}
+          {!isLoading && activeTab === 'roles' && (
+            <div className="space-y-6 max-w-2xl">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-amber-600" />
+                    <span>پیکربندی نقش‌ها و کاربران مجاز برای مشاهده و اجرای این گزارش</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    می‌توانید مشخص کنید چه نقش‌های سازمانی امکان مشاهده کارت این گزارش در کاتالوگ و اجرای کوئری‌های آن را دارند.
+                  </p>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div className="flex flex-col sm:flex-row items-stretch gap-3">
+                    <label className={`text-xs text-slate-700 font-bold flex items-start gap-2.5 cursor-pointer p-3.5 rounded-xl border transition-all flex-1 ${
+                      !isRoleRestricted ? 'border-purple-500 bg-purple-50/30 ring-1 ring-purple-500/20' : 'border-slate-200 hover:bg-slate-50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="drawerRoleRestriction"
+                        checked={!isRoleRestricted}
+                        onChange={() => setIsRoleRestricted(false)}
+                        className="text-purple-600 focus:ring-purple-500 mt-0.5"
+                      />
+                      <div>
+                        <span className="block font-bold text-slate-800">عمومی (همه کاربران مجاز کاتالوگ)</span>
+                        <span className="block text-[11px] text-slate-500 font-normal mt-0.5">تمام کاربرانی که به صفحه کاتالوگ گزارش‌ها دسترسی دارند این گزارش را مشاهده و اجرا خواهند کرد.</span>
+                      </div>
+                    </label>
+
+                    <label className={`text-xs text-slate-700 font-bold flex items-start gap-2.5 cursor-pointer p-3.5 rounded-xl border transition-all flex-1 ${
+                      isRoleRestricted ? 'border-purple-500 bg-purple-50/30 ring-1 ring-purple-500/20' : 'border-slate-200 hover:bg-slate-50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="drawerRoleRestriction"
+                        checked={isRoleRestricted}
+                        onChange={() => setIsRoleRestricted(true)}
+                        className="text-purple-600 focus:ring-purple-500 mt-0.5"
+                      />
+                      <div>
+                        <span className="block font-bold text-slate-800">محدود به نقش‌های منتخب</span>
+                        <span className="block text-[11px] text-slate-500 font-normal mt-0.5">صرفاً نقش‌های علامت‌گذاری شده زیر مجاز به مشاهده کارت گزارش و استخراج داده‌ها خواهند بود.</span>
+                      </div>
+                    </label>
+                  </div>
+
+                  {isRoleRestricted && (
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 animate-in fade-in duration-200">
+                      <span className="text-xs font-bold text-slate-700 block">
+                        نقش‌های مجاز را انتخاب نمایید:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {ORGANIZATIONAL_ROLES.map((r) => {
+                          const isSelected = selectedRoles.includes(r.key)
+                          return (
+                            <button
+                              key={r.key}
+                              type="button"
+                              onClick={() => setSelectedRoles((prev) => toggleRoleSelection(prev, r.key))}
+                              className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold border transition-all ${
+                                isSelected
+                                  ? 'bg-purple-600 text-white border-purple-700 shadow-xs'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span>{r.label}</span>
+                              {isSelected && <Check className="w-3.5 h-3.5" />}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <p className="text-[11px] text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200/80">
+                        توجه: مدیر ارشد سامانه (Admin) همواره دسترسی نامحدود دارد. نقش «کارشناس» دسترسی‌های سطح «کارمند» را نیز در بر می‌گیرد.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

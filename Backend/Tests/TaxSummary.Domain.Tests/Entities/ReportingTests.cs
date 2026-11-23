@@ -173,6 +173,44 @@ public class ReportingTests
         Assert.True(report.IsActive);
     }
 
+    [Theory]
+    [InlineData(null, "Expert", true)]
+    [InlineData("", "Expert", true)]
+    [InlineData("Admin,DirectorGeneral,Manager", "Admin", true)]
+    [InlineData("Admin,DirectorGeneral,Manager", "Manager", true)]
+    [InlineData("Admin,DirectorGeneral,Manager", "DirectorGeneral", true)]
+    [InlineData("Admin,DirectorGeneral,Manager", "Expert", false)]
+    [InlineData("Admin,DirectorGeneral,Manager,Expert", "Expert", true)]
+    [InlineData("Employee", "Expert", true)]
+    [InlineData("Manager", "OfficeHead", true)]
+    [InlineData("Admin", "Expert", false)]
+    [InlineData("Manager", "Employee", false)]
+    public void ReportDefinition_IsRoleAllowed_EvaluatesCorrectly(string? requiredRole, string userRole, bool expected)
+    {
+        var report = ReportDefinition.Create(
+            "REP_TEST", "عنوان", "شرح",
+            ReportDomainSource.PayrollAndWelfare, ReportCategory.Financial,
+            ReportType.Tabular, "{}", requiredRole: requiredRole);
+
+        Assert.Equal(expected, report.IsRoleAllowed(userRole));
+    }
+
+    [Fact]
+    public void ReportDefinition_UpdateRequiredRole_SetsAndUpdatesTimestamp()
+    {
+        var report = ReportDefinition.Create(
+            "REP_TEST", "عنوان", "شرح",
+            ReportDomainSource.PayrollAndWelfare, ReportCategory.Financial,
+            ReportType.Tabular, "{}", requiredRole: "Admin");
+
+        report.UpdateRequiredRole("Admin,Expert");
+        Assert.Equal("Admin,Expert", report.RequiredRole);
+        Assert.NotNull(report.UpdatedAt);
+
+        report.UpdateRequiredRole("");
+        Assert.Null(report.RequiredRole);
+    }
+
     [Fact]
     public void ReportDefinition_SetActive_SucceedsForNonSystemReport()
     {

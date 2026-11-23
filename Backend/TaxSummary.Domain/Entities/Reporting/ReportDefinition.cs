@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.RegularExpressions;
 using TaxSummary.Domain.Enums;
 
@@ -164,6 +165,31 @@ public class ReportDefinition
             throw new InvalidOperationException("امکان غیرفعال‌سازی گزارش‌های پایه سیستمی وجود ندارد.");
 
         IsActive = isActive;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public bool IsRoleAllowed(string? role)
+    {
+        if (string.IsNullOrWhiteSpace(RequiredRole))
+            return true; // No restriction: accessible to all with catalog access
+
+        if (string.IsNullOrWhiteSpace(role))
+            return false;
+
+        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var roles = RequiredRole.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return roles.Any(r =>
+            string.Equals(r, role, StringComparison.OrdinalIgnoreCase) ||
+            (string.Equals(role, "Expert", StringComparison.OrdinalIgnoreCase) && string.Equals(r, "Employee", StringComparison.OrdinalIgnoreCase)) ||
+            (string.Equals(role, "OfficeHead", StringComparison.OrdinalIgnoreCase) && string.Equals(r, "Manager", StringComparison.OrdinalIgnoreCase))
+        );
+    }
+
+    public void UpdateRequiredRole(string? requiredRole)
+    {
+        RequiredRole = string.IsNullOrWhiteSpace(requiredRole) ? null : requiredRole.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 }

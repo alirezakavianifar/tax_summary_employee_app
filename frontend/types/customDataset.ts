@@ -61,6 +61,7 @@ export interface CustomDatasetConfig {
   uploadedSheetName: string
   totalRowCount: number
   domainSource?: number
+  requiredRole?: string | null
   expiresAt?: string | null
   isExpired?: boolean
   defaultSortField?: string
