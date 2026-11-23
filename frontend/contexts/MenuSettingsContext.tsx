@@ -56,6 +56,8 @@ const ACTION_ROUTE_MAP: Record<string, string> = {
   '/reporting/standard': 'action_reporting_standard_reports',
   '/reporting/builder': 'action_reporting_builder',
   '/reporting/saved': 'action_reporting_saved',
+  '/reporting/standard?modal=upload': 'action_reporting_create_custom_dataset',
+  'action_reporting_create_custom_dataset': 'action_reporting_create_custom_dataset',
   'action_reporting_view_dashboard': 'action_reporting_view_dashboard',
   'action_reporting_standard_reports': 'action_reporting_standard_reports',
   'action_reporting_builder': 'action_reporting_builder',

@@ -18,6 +18,7 @@ import {
   BookmarkCheck,
   Award,
   FolderKanban,
+  UploadCloud,
 } from 'lucide-react'
 import { BasePortalModule, PortalAction } from '@/types/portal'
 
@@ -244,6 +245,15 @@ export class ExecutiveReportingModule extends BasePortalModule {
       href: '/reporting/builder',
       description: 'انتخاب فیلدها، فیلترهای سفارشی و تجمیع داده‌ها',
       icon: Sliders,
+      variant: 'outline',
+      minRole: 'Manager',
+    },
+    {
+      id: 'create-custom-dataset',
+      title: 'ایجاد گزارش جدید از اکسل',
+      href: '/reporting/standard?modal=upload',
+      description: 'بارگذاری فایل اکسل، استنتاج خودکار ستون‌ها و ساخت گزارش پویا',
+      icon: UploadCloud,
       variant: 'outline',
       minRole: 'Manager',
     },

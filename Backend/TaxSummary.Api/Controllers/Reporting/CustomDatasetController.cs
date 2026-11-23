@@ -43,6 +43,7 @@ public class CustomDatasetController : ReportingControllerBase
     /// بررسی ساختار فایل اکسل، استخراج نام برگه‌ها و شناسایی خودکار نوع ستون‌ها جهت پیش‌نمایش
     /// </summary>
     [HttpPost("inspect")]
+    [RequireModuleAccess("action_reporting_create_custom_dataset")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ExcelInspectionResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -73,6 +74,7 @@ public class CustomDatasetController : ReportingControllerBase
     /// بارگذاری کامل فایل اکسل، ساخت جدول پایگاه داده اختصاصی، ثبت رکوردها و ایجاد گزارش
     /// </summary>
     [HttpPost("create")]
+    [RequireModuleAccess("action_reporting_create_custom_dataset")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ReportDefinitionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

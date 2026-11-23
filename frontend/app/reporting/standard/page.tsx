@@ -67,7 +67,8 @@ export default function StandardReportsCatalogPage() {
   const [deleteTargetReport, setDeleteTargetReport] = useState<ReportDefinition | null>(null)
 
   // Menu Settings Integration for Report Assignment
-  const { settings, refreshSettings } = useMenuSettings()
+  const { settings, refreshSettings, isActionVisible } = useMenuSettings()
+  const canCreateReport = isActionVisible('action_reporting_create_custom_dataset', 'module_reporting')
   const [pinTargetReport, setPinTargetReport] = useState<ReportDefinition | null>(null)
   const [pinTitle, setPinTitle] = useState('')
   const [pinSubmitting, setPinSubmitting] = useState(false)
@@ -146,6 +147,15 @@ export default function StandardReportsCatalogPage() {
     loadCatalog()
   }, [selectedSource, isAdmin])
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && canCreateReport) {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('modal') === 'upload') {
+        setIsUploadModalOpen(true)
+      }
+    }
+  }, [canCreateReport])
+
   const inactiveCount = reports.filter((r) => !r.isActive).length
 
   const filteredReports = reports.filter((r) => {
@@ -221,14 +231,16 @@ export default function StandardReportsCatalogPage() {
 
         {/* Action Button & Search */}
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setIsUploadModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:from-emerald-700 hover:to-teal-700 transition-all cursor-pointer"
-          >
-            <UploadCloud className="h-4 w-4" />
-            <span>ایجاد گزارش جدید از اکسل</span>
-          </button>
+          {canCreateReport && (
+            <button
+              type="button"
+              onClick={() => setIsUploadModalOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:from-emerald-700 hover:to-teal-700 transition-all cursor-pointer"
+            >
+              <UploadCloud className="h-4 w-4" />
+              <span>ایجاد گزارش جدید از اکسل</span>
+            </button>
+          )}
 
           {isAdmin && (
             <Link
@@ -488,7 +500,7 @@ export default function StandardReportsCatalogPage() {
 
       {/* Upload Wizard Modal */}
       <ExcelReportUploadModal
-        isOpen={isUploadModalOpen}
+        isOpen={isUploadModalOpen && canCreateReport}
         onClose={() => setIsUploadModalOpen(false)}
         onReportCreated={() => {
           loadCatalog()

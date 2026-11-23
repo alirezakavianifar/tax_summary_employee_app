@@ -61,6 +61,7 @@ A modern, full-stack enterprise web application for managing employee performanc
 6. **Administration & Dynamic Menu Management (`/admin`)**:
    - Granular Role-Based Access Control (Admin, Manager, Employee, OfficeHead, Expert, Auditor).
    - Database-backed dynamic menu visibility management and collapsible RTL sidebar navigation.
+   - **Excel Report Creation Permission Control**: Administrators can configure role-based access for the «ایجاد گزارش جدید از اکسل» action (`action_reporting_create_custom_dataset`) in `/admin/menu-settings`, restricting dataset generation to designated organizational roles or marking it Admin-Only.
    - **Report Domain Category Management (`/admin/report-categories`)**: Complete administrative control to create, edit, sort, and toggle active status of report categories. Enforces strict zero-orphan report policy where every report must belong to a valid category, and blocks category deletion if reports are attached.
    - Dynamic organizational branding, custom logo upload, system-wide title management, and dynamic portal footer customization with official identity badge (`[🛡️ سامانه رسمی]`), copyright text, version badge, and interactive links list (`/admin/branding`).
    - Dynamic Portal Operational Cards & Home Page Management (`/admin/menu-settings`): Administrators can customize module titles, descriptions, color themes (8 distinct corporate palettes), group badge tags, icons, and display ordering directly for both built-in and custom modules.

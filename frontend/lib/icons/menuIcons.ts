@@ -34,6 +34,7 @@ import {
   Briefcase,
   ClipboardList,
   Palette,
+  UploadCloud,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -52,6 +53,7 @@ export const MENU_ICON_OPTIONS: MenuIconOption[] = [
   { name: 'FileText', label: 'فرم / سند', icon: FileText },
   { name: 'ClipboardList', label: 'فهرست کار', icon: ClipboardList },
   { name: 'FileSpreadsheet', label: 'گزارش / جدول', icon: FileSpreadsheet },
+  { name: 'UploadCloud', label: 'بارگذاری اکسل', icon: UploadCloud },
   { name: 'BarChart3', label: 'آمار و نمودار', icon: BarChart3 },
   { name: 'TrendingUp', label: 'روند شاخص', icon: TrendingUp },
   { name: 'LayoutDashboard', label: 'داشبورد', icon: LayoutDashboard },
