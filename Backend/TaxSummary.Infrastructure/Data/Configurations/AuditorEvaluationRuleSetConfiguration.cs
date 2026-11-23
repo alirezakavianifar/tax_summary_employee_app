@@ -30,6 +30,10 @@ public class AuditorEvaluationRuleSetConfiguration : IEntityTypeConfiguration<Au
         builder.Property(r => r.MajorCasesLabel).HasMaxLength(128).HasDefaultValue("۳۰۰ پرونده مهم").IsRequired();
         builder.Property(r => r.MajorCasesTag).HasMaxLength(128).HasDefaultValue("300Parvande, 100Parvande").IsRequired();
 
+        builder.Property(r => r.EnableSrsModel).HasDefaultValue(true).IsRequired();
+        builder.Property(r => r.EnableLegacySanimModel).HasDefaultValue(true).IsRequired();
+        builder.Property(r => r.DefaultEvaluationModel).HasMaxLength(32).HasDefaultValue("srs").IsRequired();
+
         builder.Property(r => r.IsActive).IsRequired();
     }
 }

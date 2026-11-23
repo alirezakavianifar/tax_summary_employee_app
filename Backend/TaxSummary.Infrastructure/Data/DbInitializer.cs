@@ -1196,6 +1196,9 @@ public static class DbInitializer
                     ""MajorCasesLabel"" TEXT NOT NULL DEFAULT '۳۰۰ پرونده مهم',
                     ""MajorCasesTag"" TEXT NOT NULL DEFAULT '300Parvande, 100Parvande',
                     ""AllowNegativeSpeedScore"" INTEGER NOT NULL,
+                    ""EnableSrsModel"" INTEGER NOT NULL DEFAULT 1,
+                    ""EnableLegacySanimModel"" INTEGER NOT NULL DEFAULT 1,
+                    ""DefaultEvaluationModel"" TEXT NOT NULL DEFAULT 'srs',
                     ""IsActive"" INTEGER NOT NULL,
                     ""CreatedAt"" TEXT NOT NULL,
                     ""UpdatedAt"" TEXT NULL
@@ -1222,6 +1225,24 @@ public static class DbInitializer
             if (!ruleSetColumns.Contains("MajorCasesTag"))
             {
                 command.CommandText = "ALTER TABLE AuditorEvaluationRuleSets ADD COLUMN MajorCasesTag TEXT NOT NULL DEFAULT '300Parvande, 100Parvande';";
+                await command.ExecuteNonQueryAsync();
+            }
+
+            if (!ruleSetColumns.Contains("EnableSrsModel"))
+            {
+                command.CommandText = "ALTER TABLE AuditorEvaluationRuleSets ADD COLUMN EnableSrsModel INTEGER NOT NULL DEFAULT 1;";
+                await command.ExecuteNonQueryAsync();
+            }
+
+            if (!ruleSetColumns.Contains("EnableLegacySanimModel"))
+            {
+                command.CommandText = "ALTER TABLE AuditorEvaluationRuleSets ADD COLUMN EnableLegacySanimModel INTEGER NOT NULL DEFAULT 1;";
+                await command.ExecuteNonQueryAsync();
+            }
+
+            if (!ruleSetColumns.Contains("DefaultEvaluationModel"))
+            {
+                command.CommandText = "ALTER TABLE AuditorEvaluationRuleSets ADD COLUMN DefaultEvaluationModel TEXT NOT NULL DEFAULT 'srs';";
                 await command.ExecuteNonQueryAsync();
             }
 

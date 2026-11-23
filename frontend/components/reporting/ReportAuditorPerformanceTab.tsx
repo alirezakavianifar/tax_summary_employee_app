@@ -55,6 +55,15 @@ export function ReportAuditorPerformanceTab({
 }: ReportAuditorPerformanceTabProps) {
   const isDecree = reportActorType === 'decree' || (reportCode ? reportCode.toUpperCase().includes('REP_2') : false)
   const [evaluationModel, setEvaluationModel] = useState<'srs' | 'legacy'>('srs')
+  const [modelConfig, setModelConfig] = useState<{
+    enableSrs: boolean
+    enableLegacy: boolean
+    defaultModel: 'srs' | 'legacy'
+  }>({
+    enableSrs: true,
+    enableLegacy: true,
+    defaultModel: 'srs',
+  })
   const [scorecards, setScorecards] = useState<AuditorScorecard[]>([])
   const [srsScorecards, setSrsScorecards] = useState<SrsEmployeeScorecard[]>([])
   const [selectedSrsScorecard, setSelectedSrsScorecard] = useState<SrsEmployeeScorecard | null>(null)
@@ -106,17 +115,35 @@ export function ReportAuditorPerformanceTab({
     try {
       setLoading(true)
       setError(null)
-      const [cardsData, metricsData, srsCardsData] = await Promise.all([
+      const [cardsData, metricsData, srsCardsData, rulesData] = await Promise.all([
         auditorMetricsApi.evaluateAuditors({ reportCode }),
         auditorMetricsApi.getMetrics(false),
         auditorMetricsApi.evaluateAuditorsSrs({ reportCode }).catch((err) => {
           console.warn('SRS evaluation not available for this report:', err)
           return []
         }),
+        auditorMetricsApi.getSrsRules().catch((err) => {
+          console.warn('Failed to load SRS rule configuration:', err)
+          return null
+        }),
       ])
       setScorecards(cardsData || [])
       setMetrics(metricsData || [])
       setSrsScorecards(srsCardsData || [])
+
+      if (rulesData) {
+        const enableSrs = rulesData.enableSrsModel !== false
+        const enableLegacy = rulesData.enableLegacySanimModel !== false
+        const configuredDefault = (rulesData.defaultEvaluationModel as 'srs' | 'legacy') || 'srs'
+        const effectiveDefault = enableSrs && enableLegacy ? configuredDefault : enableSrs ? 'srs' : 'legacy'
+
+        setModelConfig({
+          enableSrs,
+          enableLegacy,
+          defaultModel: effectiveDefault,
+        })
+        setEvaluationModel(effectiveDefault)
+      }
     } catch (err: any) {
       console.error('Failed to load performance data for report:', err)
       setError(
@@ -925,54 +952,73 @@ export function ReportAuditorPerformanceTab({
 
       {/* Leaderboard Section Header & Filters */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-        {/* Model Switcher Pill */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-          <div className="flex items-center gap-1.5 p-1 bg-white rounded-lg border border-slate-200 shadow-2xs w-fit">
-            <button
-              type="button"
-              onClick={() => {
-                setEvaluationModel('srs')
-                setCurrentPage(1)
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                evaluationModel === 'srs'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>دستورالعمل مصوب ارزیابی عملکرد (SRS)</span>
-              <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
-                ماتریس ۸×۷
-              </span>
-            </button>
+        {/* Model Indicator / Switcher */}
+        {modelConfig.enableSrs && modelConfig.enableLegacy ? (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+            <div className="flex items-center gap-1.5 p-1 bg-white rounded-lg border border-slate-200 shadow-2xs w-fit">
+              <button
+                type="button"
+                onClick={() => {
+                  setEvaluationModel('srs')
+                  setCurrentPage(1)
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  evaluationModel === 'srs'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>دستورالعمل مصوب ارزیابی عملکرد (SRS)</span>
+                <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
+                  ماتریس ۸×۷
+                </span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setEvaluationModel('legacy')
-                setCurrentPage(1)
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                evaluationModel === 'legacy'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>الگوی شاخص‌های ترکیبی سنیم</span>
-              <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
-                تراز ۱۰۰
-              </span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEvaluationModel('legacy')
+                  setCurrentPage(1)
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  evaluationModel === 'legacy'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>الگوی شاخص‌های ترکیبی سنیم</span>
+                <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
+                  تراز ۱۰۰
+                </span>
+              </button>
+            </div>
 
-          <div className="text-xs text-slate-500 font-medium px-1">
-            {evaluationModel === 'srs'
-              ? 'محاسبه کارنامه امتیازی بر مبنای ۸ شاخص مصوب و ۷ دسته‌بندی موضوعی پرونده‌ها'
-              : 'محاسبه نمره کل بر مبنای اوزان و نسبت‌های ۶ شاخص سنیم'}
+            <div className="text-xs text-slate-500 font-medium px-1">
+              {evaluationModel === 'srs'
+                ? 'محاسبه کارنامه امتیازی بر مبنای ۸ شاخص مصوب و ۷ دسته‌بندی موضوعی پرونده‌ها'
+                : 'محاسبه نمره کل بر مبنای اوزان و نسبت‌های ۶ شاخص سنیم'}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-700 px-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+              <span>الگوی ارزیابی فعال:</span>
+              <span className="text-indigo-900 font-extrabold">
+                {evaluationModel === 'srs'
+                  ? 'دستورالعمل مصوب ارزیابی عملکرد (SRS) - ماتریس ۸×۷'
+                  : 'الگوی شاخص‌های ترکیبی سنیم - تراز ۱۰۰'}
+              </span>
+            </div>
+            <div className="text-xs text-slate-500 font-medium px-1">
+              {evaluationModel === 'srs'
+                ? 'محاسبه کارنامه امتیازی بر مبنای ۸ شاخص مصوب و ۷ دسته‌بندی موضوعی پرونده‌ها'
+                : 'محاسبه نمره کل بر مبنای اوزان و نسبت‌های ۶ شاخص سنیم'}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>

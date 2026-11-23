@@ -180,6 +180,9 @@ export interface SrsRuleSetConfig {
   majorCasesLabel?: string
   majorCasesTag?: string
   allowNegativeSpeedScore: boolean
+  enableSrsModel?: boolean
+  enableLegacySanimModel?: boolean
+  defaultEvaluationModel?: string
   isActive: boolean
   weightsMatrix: Record<string, Record<string, number>>
   allowedDays: Record<string, SrsAllowedDaysLimit>
@@ -196,6 +199,9 @@ export interface SaveSrsRuleConfigRequest {
   majorCasesLabel?: string
   majorCasesTag?: string
   allowNegativeSpeedScore: boolean
+  enableSrsModel?: boolean
+  enableLegacySanimModel?: boolean
+  defaultEvaluationModel?: string
   isActive: boolean
   weightsMatrix: Record<string, Record<string, number>>
   allowedDays: Record<string, SrsAllowedDaysLimit>

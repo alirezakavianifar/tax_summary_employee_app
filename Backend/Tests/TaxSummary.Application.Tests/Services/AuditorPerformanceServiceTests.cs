@@ -142,5 +142,53 @@ public class AuditorPerformanceServiceTests
         Assert.Equal("c_52", mapper.RiskLevelField);
         Assert.Equal("c_72", mapper.AuditStatusField);
     }
+
+    [Fact]
+    public void AuditorEvaluationRuleSet_DefaultValues_HaveBothModelsEnabledAndSrsAsDefault()
+    {
+        // Act
+        var ruleSet = TaxSummary.Domain.Entities.Reporting.AuditorEvaluationRuleSet.CreateDefault();
+
+        // Assert
+        Assert.True(ruleSet.EnableSrsModel);
+        Assert.True(ruleSet.EnableLegacySanimModel);
+        Assert.Equal("srs", ruleSet.DefaultEvaluationModel);
+    }
+
+    [Fact]
+    public void AuditorEvaluationRuleSet_Update_UpdatesModelVisibilityAndDefaultModel()
+    {
+        // Arrange
+        var ruleSet = TaxSummary.Domain.Entities.Reporting.AuditorEvaluationRuleSet.CreateDefault();
+
+        // Act - Disable SRS and set legacy as default
+        ruleSet.Update(
+            title: "قواعد ارزیابی",
+            description: "توضیحات",
+            weightsMatrixJson: ruleSet.WeightsMatrixJson,
+            growthThresholdLegalEntity: 700m,
+            growthThresholdIndividual: 500m,
+            adjustmentThreshold: 15m,
+            dailyDelayPenalty: 0.25m,
+            allowedDaysJson: ruleSet.AllowedDaysJson,
+            top300TaxpayersCount: 300,
+            allowNegativeSpeedScore: false,
+            isActive: true,
+            enableSrsModel: false,
+            enableLegacySanimModel: true,
+            defaultEvaluationModel: "LEGACY"
+        );
+
+        // Assert
+        Assert.False(ruleSet.EnableSrsModel);
+        Assert.True(ruleSet.EnableLegacySanimModel);
+        Assert.Equal("legacy", ruleSet.DefaultEvaluationModel);
+
+        // Act - Reset
+        ruleSet.ResetToDefaults();
+        Assert.True(ruleSet.EnableSrsModel);
+        Assert.True(ruleSet.EnableLegacySanimModel);
+        Assert.Equal("srs", ruleSet.DefaultEvaluationModel);
+    }
 }
 

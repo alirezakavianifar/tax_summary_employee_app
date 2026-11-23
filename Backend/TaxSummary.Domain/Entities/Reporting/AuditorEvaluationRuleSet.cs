@@ -62,6 +62,21 @@ public class AuditorEvaluationRuleSet
     /// </summary>
     public bool AllowNegativeSpeedScore { get; private set; } = false;
 
+    /// <summary>
+    /// فعال بودن نمایش الگوی ارزیابی مصوب بخشنامه (SRS) در تب عملکرد حسابرسان
+    /// </summary>
+    public bool EnableSrsModel { get; private set; } = true;
+
+    /// <summary>
+    /// فعال بودن نمایش الگوی سنتی/ترکیبی سنیم (تراز ۱۰۰) در تب عملکرد حسابرسان
+    /// </summary>
+    public bool EnableLegacySanimModel { get; private set; } = true;
+
+    /// <summary>
+    /// الگوی ارزیابی پیش‌فرض انتخاب‌شده هنگام بارگذاری صفحه ("srs" یا "legacy")
+    /// </summary>
+    public string DefaultEvaluationModel { get; private set; } = "srs";
+
     public bool IsActive { get; private set; } = true;
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; private set; }
@@ -86,6 +101,9 @@ public class AuditorEvaluationRuleSet
             MajorCasesLabel = "۳۰۰ پرونده مهم",
             MajorCasesTag = "300Parvande, 100Parvande",
             AllowNegativeSpeedScore = false,
+            EnableSrsModel = true,
+            EnableLegacySanimModel = true,
+            DefaultEvaluationModel = "srs",
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -106,7 +124,10 @@ public class AuditorEvaluationRuleSet
         bool allowNegativeSpeedScore,
         bool isActive,
         string? majorCasesLabel = null,
-        string? majorCasesTag = null)
+        string? majorCasesTag = null,
+        bool enableSrsModel = true,
+        bool enableLegacySanimModel = true,
+        string? defaultEvaluationModel = "srs")
     {
         Title = string.IsNullOrWhiteSpace(title) ? Title : title.Trim();
         Description = description?.Trim() ?? string.Empty;
@@ -128,6 +149,9 @@ public class AuditorEvaluationRuleSet
             MajorCasesTag = majorCasesTag.Trim();
 
         AllowNegativeSpeedScore = allowNegativeSpeedScore;
+        EnableSrsModel = enableSrsModel;
+        EnableLegacySanimModel = enableLegacySanimModel;
+        DefaultEvaluationModel = !string.IsNullOrWhiteSpace(defaultEvaluationModel) ? defaultEvaluationModel.Trim().ToLowerInvariant() : "srs";
         IsActive = isActive;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -153,6 +177,9 @@ public class AuditorEvaluationRuleSet
         MajorCasesLabel = "۳۰۰ پرونده مهم";
         MajorCasesTag = "300Parvande, 100Parvande";
         AllowNegativeSpeedScore = false;
+        EnableSrsModel = true;
+        EnableLegacySanimModel = true;
+        DefaultEvaluationModel = "srs";
         UpdatedAt = DateTime.UtcNow;
     }
 

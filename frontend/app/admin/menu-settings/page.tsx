@@ -929,7 +929,7 @@ function MenuSettingsAdminContent() {
                               <div
                                 key={child.id}
                                 id={`menu-item-${child.menuKey.toLowerCase()}`}
-                                className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                                className={`p-3.5 rounded-xl border transition-all flex flex-col gap-2.5 ${
                                   isHighlighted
                                     ? 'ring-2 ring-primary-500 bg-primary-50/30 border-primary-400 shadow-md'
                                     : isChildInactive
@@ -939,73 +939,109 @@ function MenuSettingsAdminContent() {
                                     : 'bg-white border-gray-200 shadow-xs'
                                 }`}
                               >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div
-                                    className={`p-2 rounded-lg flex-shrink-0 ${
-                                      isHighlighted
-                                        ? 'bg-primary-600 text-white shadow-xs'
-                                        : isChildInactive
-                                        ? 'bg-gray-200 text-gray-400'
-                                        : child.adminOnly
-                                        ? 'bg-purple-50 text-purple-600'
-                                        : 'bg-primary-50 text-primary-600'
-                                    }`}
-                                  >
-                                    <ChildIcon className="w-4 h-4" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="text-xs font-bold text-gray-900 truncate block">
-                                        {child.title}
-                                      </span>
-                                      {child.isCustom && (
-                                        <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-full">
-                                          سفارشی
-                                        </span>
-                                      )}
-                                      {isHighlighted && (
-                                        <span className="text-[9px] font-black text-white bg-primary-600 px-2 py-0.5 rounded-full shadow-xs animate-pulse">
-                                          تنظیم انتخابی
-                                        </span>
-                                      )}
-                                      {child.adminOnly ? (
-                                        <span className="text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
-                                          فقط مدیر
-                                        </span>
-                                      ) : (
-                                        <div className="flex items-center gap-1 flex-wrap">
-                                          {(child.allowedRoles || [])
-                                            .filter((r) => !['manager', 'employee'].includes(r.toLowerCase()))
-                                            .map((r) => (
-                                              <span
-                                                key={r}
-                                                className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-gray-100 text-gray-700 border border-gray-200"
-                                              >
-                                                {getRoleLabel(r)}
-                                              </span>
-                                            ))}
-                                        </div>
-                                      )}
+                                {/* Top Tier: Icon, Title, Path, Edit, and Switch */}
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div
+                                      className={`p-2 rounded-lg flex-shrink-0 ${
+                                        isHighlighted
+                                          ? 'bg-primary-600 text-white shadow-xs'
+                                          : isChildInactive
+                                          ? 'bg-gray-200 text-gray-400'
+                                          : child.adminOnly
+                                          ? 'bg-purple-50 text-purple-600'
+                                          : 'bg-primary-50 text-primary-600'
+                                      }`}
+                                    >
+                                      <ChildIcon className="w-4 h-4" />
                                     </div>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                      <span className="text-[10px] text-gray-400 font-mono block truncate">
-                                        {child.route}
-                                      </span>
-                                      {child.description && (
-                                        <>
-                                          <span className="text-gray-300 text-[10px]">•</span>
-                                          <span className="text-[10px] text-gray-500 truncate block" title={child.description}>
-                                            {child.description}
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-xs font-bold text-gray-900 truncate block">
+                                          {child.title}
+                                        </span>
+                                        {child.isCustom && (
+                                          <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-full">
+                                            سفارشی
                                           </span>
-                                        </>
+                                        )}
+                                        {isHighlighted && (
+                                          <span className="text-[9px] font-black text-white bg-primary-600 px-2 py-0.5 rounded-full shadow-xs animate-pulse">
+                                            تنظیم انتخابی
+                                          </span>
+                                        )}
+                                        {child.adminOnly && (
+                                          <span className="text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
+                                            فقط مدیر
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-[10px] text-gray-400 font-mono block truncate">
+                                          {child.route}
+                                        </span>
+                                        {child.description && (
+                                          <>
+                                            <span className="text-gray-300 text-[10px]">•</span>
+                                            <span className="text-[10px] text-gray-500 truncate block" title={child.description}>
+                                              {child.description}
+                                            </span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <div className="flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-gray-50/70">
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditModal(child)}
+                                        disabled={mutatingCustom}
+                                        className="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-50"
+                                        title={child.isCustom ? "ویرایش زیرمنوی سفارشی" : "ویرایش عنوان، آیکون و اولویت زیرمنو"}
+                                      >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </button>
+                                      {child.isCustom && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setDeleteTarget(child)}
+                                          disabled={mutatingCustom}
+                                          className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors disabled:opacity-50"
+                                          title="حذف زیرمنوی سفارشی"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
                                       )}
                                     </div>
+
+                                    {/* Submenu Visibility Switch */}
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleVisibility(child.menuKey)}
+                                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                        child.isVisible ? 'bg-emerald-600' : 'bg-gray-300'
+                                      }`}
+                                      title={child.isVisible ? 'پنهان‌سازی' : 'فعال‌سازی'}
+                                    >
+                                      <span
+                                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                          child.isVisible ? 'translate-x-0' : '-translate-x-4'
+                                        }`}
+                                      />
+                                    </button>
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  {/* Child Role Selector Pills */}
-                                  <div className="flex items-center gap-1 bg-gray-50 p-0.5 rounded-lg border border-gray-200 flex-wrap">
+                                {/* Bottom Tier: Interactive Role Access Pills */}
+                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 flex-wrap">
+                                  <span className="text-[10px] font-semibold text-gray-500 flex items-center gap-1 shrink-0">
+                                    <Users className="w-3 h-3 text-gray-400" />
+                                    نقش‌های مجاز:
+                                  </span>
+
+                                  <div className="flex items-center gap-1 bg-gray-50/90 p-0.5 rounded-lg border border-gray-200 flex-wrap">
                                     {ORGANIZATIONAL_ROLES.map((roleDef) => {
                                       const roles = child.allowedRoles && child.allowedRoles.length > 0
                                         ? child.allowedRoles
@@ -1020,7 +1056,7 @@ function MenuSettingsAdminContent() {
                                           className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all ${
                                             isActive
                                               ? roleDef.activeClass
-                                              : 'bg-white text-gray-400 border-gray-200 line-through'
+                                              : 'bg-white text-gray-400 border-gray-200 line-through opacity-70 hover:opacity-100'
                                           }`}
                                           title={isActive ? `لغو دسترسی ${roleDef.label}` : `اعطای دسترسی به ${roleDef.label}`}
                                         >
@@ -1029,45 +1065,6 @@ function MenuSettingsAdminContent() {
                                       )
                                     })}
                                   </div>
-
-                                  <div className="flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-gray-50/70">
-                                    <button
-                                      type="button"
-                                      onClick={() => openEditModal(child)}
-                                      disabled={mutatingCustom}
-                                      className="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-50"
-                                      title={child.isCustom ? "ویرایش زیرمنوی سفارشی" : "ویرایش عنوان، آیکون و اولویت زیرمنو"}
-                                    >
-                                      <Pencil className="w-3.5 h-3.5" />
-                                    </button>
-                                    {child.isCustom && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setDeleteTarget(child)}
-                                        disabled={mutatingCustom}
-                                        className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors disabled:opacity-50"
-                                        title="حذف زیرمنوی سفارشی"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
-                                  </div>
-
-                                  {/* Submenu Visibility Switch */}
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleVisibility(child.menuKey)}
-                                    className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                      child.isVisible ? 'bg-emerald-600' : 'bg-gray-300'
-                                    }`}
-                                    title={child.isVisible ? 'پنهان‌سازی' : 'فعال‌سازی'}
-                                  >
-                                    <span
-                                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                        child.isVisible ? 'translate-x-0' : '-translate-x-4'
-                                      }`}
-                                    />
-                                  </button>
                                 </div>
                               </div>
                             )

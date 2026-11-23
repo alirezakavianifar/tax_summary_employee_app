@@ -29,6 +29,8 @@ import {
   HelpCircle,
   ShieldCheck,
   UploadCloud,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 
 interface SrsScoringMatrixEditorProps {
@@ -57,6 +59,9 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
   const [majorCasesLabel, setMajorCasesLabel] = useState<string>('۳۰۰ پرونده مهم')
   const [majorCasesTag, setMajorCasesTag] = useState<string>('300Parvande, 100Parvande')
   const [allowNegativeSpeed, setAllowNegativeSpeed] = useState<boolean>(false)
+  const [enableSrsModel, setEnableSrsModel] = useState<boolean>(true)
+  const [enableLegacySanimModel, setEnableLegacySanimModel] = useState<boolean>(true)
+  const [defaultEvaluationModel, setDefaultEvaluationModel] = useState<'srs' | 'legacy'>('srs')
   const [weights, setWeights] = useState<Record<string, Record<string, number>>>({})
   const [allowedDays, setAllowedDays] = useState<Record<string, { issuanceAllowedDays: number; finalizationAllowedDays: number }>>({})
 
@@ -76,6 +81,9 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
       setMajorCasesLabel(data.majorCasesLabel || '۳۰۰ پرونده مهم')
       setMajorCasesTag(data.majorCasesTag || '300Parvande, 100Parvande')
       setAllowNegativeSpeed(data.allowNegativeSpeedScore || false)
+      setEnableSrsModel(data.enableSrsModel ?? true)
+      setEnableLegacySanimModel(data.enableLegacySanimModel ?? true)
+      setDefaultEvaluationModel((data.defaultEvaluationModel as 'srs' | 'legacy') || 'srs')
       setWeights(data.weightsMatrix || {})
       setAllowedDays(data.allowedDays || {})
       setIsDirty(false)
@@ -124,6 +132,12 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
       setError(null)
       setSuccessMessage(null)
 
+      if (!enableSrsModel && !enableLegacySanimModel) {
+        setError('حداقل یکی از الگوهای ارزیابی عملکرد (بخشنامه مصوب یا سنیم) باید فعال باشد.')
+        setSaving(false)
+        return
+      }
+
       const payload: SaveSrsRuleConfigRequest = {
         title,
         description,
@@ -135,6 +149,9 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
         majorCasesLabel: majorCasesLabel.trim() || '۳۰۰ پرونده مهم',
         majorCasesTag: majorCasesTag.trim() || '300Parvande, 100Parvande',
         allowNegativeSpeedScore: allowNegativeSpeed,
+        enableSrsModel,
+        enableLegacySanimModel,
+        defaultEvaluationModel,
         isActive: true,
         weightsMatrix: weights,
         allowedDays: allowedDays,
@@ -173,6 +190,9 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
       setMajorCasesLabel(restored.majorCasesLabel || '۳۰۰ پرونده مهم')
       setMajorCasesTag(restored.majorCasesTag || '300Parvande, 100Parvande')
       setAllowNegativeSpeed(restored.allowNegativeSpeedScore)
+      setEnableSrsModel(true)
+      setEnableLegacySanimModel(true)
+      setDefaultEvaluationModel('srs')
       setWeights(restored.weightsMatrix)
       setAllowedDays(restored.allowedDays)
       setIsDirty(false)
@@ -400,6 +420,183 @@ export function SrsScoringMatrixEditor({ onRulesSaved }: SrsScoringMatrixEditorP
               })}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Evaluation Model Visibility & Default Settings */}
+      <div className="bg-white rounded-2xl border border-indigo-100 p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <Eye className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                مدیریت نمایش الگوهای ارزیابی عملکرد (SRS و سنیم)
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                تعیین قابلیت مشاهده الگوها برای کاربران در تب عملکرد حسابرسان و انتخاب الگوی پیش‌فرض بارگذاری صفحه
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+            <span>الگوی پیش‌فرض انتخابی:</span>
+            <span className="font-bold text-indigo-700">
+              {defaultEvaluationModel === 'srs' ? 'دستورالعمل مصوب (SRS)' : 'الگوی سنیم (تراز ۱۰۰)'}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* SRS Model Toggle Card */}
+          <div
+            className={`p-4 rounded-xl border transition-all ${
+              enableSrsModel
+                ? 'bg-indigo-50/40 border-indigo-200 shadow-2xs'
+                : 'bg-slate-50 border-slate-200 opacity-70'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                    enableSrsModel ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'
+                  }`}
+                >
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span>دستورالعمل مصوب ارزیابی عملکرد (SRS)</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700">
+                      ماتریس ۸×۷
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    نظام جامع مصوب سازمان امور مالیاتی مبتنی بر ۸ شاخص عملکردی و ۷ منبع پرونده
+                  </div>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enableSrsModel}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    if (!checked && !enableLegacySanimModel) {
+                      alert('حداقل یکی از دو الگوی ارزیابی باید فعال باقی بماند.')
+                      return
+                    }
+                    setEnableSrsModel(checked)
+                    if (!checked && defaultEvaluationModel === 'srs') {
+                      setDefaultEvaluationModel('legacy')
+                    }
+                    setIsDirty(true)
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs">
+              <span className="text-[11px] font-medium text-slate-500">
+                وضعیت: {enableSrsModel ? <span className="text-emerald-600 font-bold">فعال و قابل مشاهده</span> : <span className="text-rose-500 font-bold">مخفی‌شده</span>}
+              </span>
+              {enableSrsModel && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDefaultEvaluationModel('srs')
+                    setIsDirty(true)
+                  }}
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded cursor-pointer transition-all ${
+                    defaultEvaluationModel === 'srs'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white border border-slate-300 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {defaultEvaluationModel === 'srs' ? 'الگوی پیش‌فرض ✓' : 'انتخاب به عنوان پیش‌فرض'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Legacy Sanim Model Toggle Card */}
+          <div
+            className={`p-4 rounded-xl border transition-all ${
+              enableLegacySanimModel
+                ? 'bg-slate-900/5 border-slate-300 shadow-2xs'
+                : 'bg-slate-50 border-slate-200 opacity-70'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                    enableLegacySanimModel ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-500'
+                  }`}
+                >
+                  <Sliders className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span>الگوی شاخص‌های ترکیبی سنیم</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-200 text-slate-800">
+                      تراز ۱۰۰
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    الگوی ۶ شاخص کیفی، مالی، سرعت و بهره‌وری سنیم بر مبنای تراز وزنی ۱۰۰
+                  </div>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enableLegacySanimModel}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    if (!checked && !enableSrsModel) {
+                      alert('حداقل یکی از دو الگوی ارزیابی باید فعال باقی بماند.')
+                      return
+                    }
+                    setEnableLegacySanimModel(checked)
+                    if (!checked && defaultEvaluationModel === 'legacy') {
+                      setDefaultEvaluationModel('srs')
+                    }
+                    setIsDirty(true)
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-900"></div>
+              </label>
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs">
+              <span className="text-[11px] font-medium text-slate-500">
+                وضعیت: {enableLegacySanimModel ? <span className="text-emerald-600 font-bold">فعال و قابل مشاهده</span> : <span className="text-rose-500 font-bold">مخفی‌شده</span>}
+              </span>
+              {enableLegacySanimModel && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDefaultEvaluationModel('legacy')
+                    setIsDirty(true)
+                  }}
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded cursor-pointer transition-all ${
+                    defaultEvaluationModel === 'legacy'
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-white border border-slate-300 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {defaultEvaluationModel === 'legacy' ? 'الگوی پیش‌فرض ✓' : 'انتخاب به عنوان پیش‌فرض'}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

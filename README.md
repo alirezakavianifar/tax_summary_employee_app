@@ -49,7 +49,8 @@ A modern, full-stack enterprise web application for managing employee performanc
      - Multi-tier Sanim tagging (`300Parvande`, `100Parvande`, custom tags) with dynamic propagation across matrix headers, auditor scorecards, and official A4 printouts.
      - Interactive upload & pre-import inspection dialog (`ImportantCasesUploadModal.tsx`) with automatic column detection (TIN, tracking, type), row counters, matching Sanim case counters, and sample record validation table.
      - Flexible matching modes: selective tagging by `type` column or blanket marking ("all rows are important"), with append vs. replace-all options.
-   - **Provincial Leaderboard & 360 Scorecards**: Real-time evaluation of all 230+ provincial auditors with model switcher (`SRS بخشنامه مصوب` vs `شاخص‌های ترکیبی سنیم`), performance tiers (A/B/C/D), positive vs penalty decomposition, and detailed $8 \times 7$ printable A4 scorecard modal.
+   - **Provincial Leaderboard & 360 Scorecards**: Real-time evaluation of all 230+ provincial auditors with dynamic model switcher (`SRS بخشنامه مصوب` vs `شاخص‌های ترکیبی سنیم`), performance tiers (A/B/C/D), positive vs penalty decomposition, and detailed $8 \times 7$ printable A4 scorecard modal.
+   - **Dynamic Evaluation Model Visibility & Default Control**: Full administrative control in `/admin/auditor-metrics` to show, hide, or set the default active evaluation model (SRS $8 \times 7$ vs Sanim Combined $100$-point scale) across user reports with automatic guardrails preventing simultaneous deactivation.
 
 6. **Administration & Dynamic Menu Management (`/admin`)**:
    - Granular Role-Based Access Control (Admin, Manager, Employee, OfficeHead, Expert, Auditor).

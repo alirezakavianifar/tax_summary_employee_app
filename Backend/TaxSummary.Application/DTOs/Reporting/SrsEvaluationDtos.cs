@@ -14,6 +14,9 @@ public class SrsRuleSetConfigDto
     public string MajorCasesLabel { get; set; } = "۳۰۰ پرونده مهم";
     public string MajorCasesTag { get; set; } = "300Parvande, 100Parvande";
     public bool AllowNegativeSpeedScore { get; set; }
+    public bool EnableSrsModel { get; set; } = true;
+    public bool EnableLegacySanimModel { get; set; } = true;
+    public string DefaultEvaluationModel { get; set; } = "srs";
     public bool IsActive { get; set; }
     public Dictionary<string, Dictionary<string, decimal>> WeightsMatrix { get; set; } = new();
     public Dictionary<string, AllowedDaysLimitDto> AllowedDays { get; set; } = new();
@@ -31,6 +34,9 @@ public class SaveSrsRuleConfigRequestDto
     public string MajorCasesLabel { get; set; } = "۳۰۰ پرونده مهم";
     public string MajorCasesTag { get; set; } = "300Parvande, 100Parvande";
     public bool AllowNegativeSpeedScore { get; set; } = false;
+    public bool EnableSrsModel { get; set; } = true;
+    public bool EnableLegacySanimModel { get; set; } = true;
+    public string DefaultEvaluationModel { get; set; } = "srs";
     public bool IsActive { get; set; } = true;
     public Dictionary<string, Dictionary<string, decimal>> WeightsMatrix { get; set; } = new();
     public Dictionary<string, AllowedDaysLimitDto> AllowedDays { get; set; } = new();

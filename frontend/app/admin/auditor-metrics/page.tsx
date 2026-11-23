@@ -52,6 +52,15 @@ export default function AuditorMetricsManagementPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'srs-matrix' | 'leaderboard' | 'metrics' | 'simulation'>('srs-matrix')
   const [evaluationModel, setEvaluationModel] = useState<'srs' | 'legacy'>('srs')
+  const [modelConfig, setModelConfig] = useState<{
+    enableSrs: boolean
+    enableLegacy: boolean
+    defaultModel: 'srs' | 'legacy'
+  }>({
+    enableSrs: true,
+    enableLegacy: true,
+    defaultModel: 'srs',
+  })
 
   // Data Sources State (Built-in Sanim DB vs Uploaded Excel Reports)
   const [dataSources, setDataSources] = useState<AuditDataSource[]>([])
@@ -153,10 +162,31 @@ export default function AuditorMetricsManagementPage() {
     }
   }
 
+  const loadRuleConfig = async () => {
+    try {
+      const data = await auditorMetricsApi.getSrsRules()
+      if (data) {
+        const enableSrs = data.enableSrsModel !== false
+        const enableLegacy = data.enableLegacySanimModel !== false
+        const configuredDefault = (data.defaultEvaluationModel as 'srs' | 'legacy') || 'srs'
+        const effectiveDefault = enableSrs && enableLegacy ? configuredDefault : enableSrs ? 'srs' : 'legacy'
+        setModelConfig({
+          enableSrs,
+          enableLegacy,
+          defaultModel: effectiveDefault,
+        })
+        setEvaluationModel(effectiveDefault)
+      }
+    } catch (err) {
+      console.warn('Failed to load SRS rule configuration in admin portal:', err)
+    }
+  }
+
   useEffect(() => {
     loadMetrics()
     loadDataSources()
     loadSrsScorecards()
+    loadRuleConfig()
   }, [])
 
   useEffect(() => {
@@ -564,6 +594,7 @@ export default function AuditorMetricsManagementPage() {
           {activeTab === 'srs-matrix' && (
             <SrsScoringMatrixEditor
               onRulesSaved={() => {
+                loadRuleConfig()
                 loadSrsScorecards(selectedSourceId)
                 loadScorecards(selectedSourceId)
               }}
@@ -734,6 +765,16 @@ export default function AuditorMetricsManagementPage() {
                     <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
                       ماتریس ۸×۷
                     </span>
+                    {!modelConfig.enableSrs && (
+                      <span className="px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 text-[9px] font-sans">
+                        مخفی در گزارش‌ها
+                      </span>
+                    )}
+                    {modelConfig.defaultModel === 'srs' && (
+                      <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-sans">
+                        پیش‌فرض
+                      </span>
+                    )}
                   </button>
 
                   <button
@@ -753,6 +794,16 @@ export default function AuditorMetricsManagementPage() {
                     <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
                       تراز ۱۰۰
                     </span>
+                    {!modelConfig.enableLegacy && (
+                      <span className="px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 text-[9px] font-sans">
+                        مخفی در گزارش‌ها
+                      </span>
+                    )}
+                    {modelConfig.defaultModel === 'legacy' && (
+                      <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-sans">
+                        پیش‌فرض
+                      </span>
+                    )}
                   </button>
                 </div>
 

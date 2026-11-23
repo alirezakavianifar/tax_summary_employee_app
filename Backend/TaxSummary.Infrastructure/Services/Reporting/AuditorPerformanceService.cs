@@ -1057,6 +1057,11 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 await _db.AuditorEvaluationRuleSets.AddAsync(ruleSet, ct);
             }
 
+            if (!request.EnableSrsModel && !request.EnableLegacySanimModel)
+            {
+                return Result.Failure<SrsRuleSetConfigDto>("حداقل یکی از الگوهای ارزیابی عملکرد (SRS یا سنیم) باید فعال باشد.");
+            }
+
             var weightsJson = JsonSerializer.Serialize(request.WeightsMatrix);
             var allowedDaysJson = JsonSerializer.Serialize(request.AllowedDays);
 
@@ -1073,7 +1078,10 @@ public class AuditorPerformanceService : IAuditorPerformanceService
                 request.AllowNegativeSpeedScore,
                 request.IsActive,
                 request.MajorCasesLabel,
-                request.MajorCasesTag
+                request.MajorCasesTag,
+                request.EnableSrsModel,
+                request.EnableLegacySanimModel,
+                request.DefaultEvaluationModel
             );
 
             await _db.SaveChangesAsync(ct);
@@ -1133,6 +1141,9 @@ public class AuditorPerformanceService : IAuditorPerformanceService
             MajorCasesLabel = ruleSet.MajorCasesLabel ?? "۳۰۰ پرونده مهم",
             MajorCasesTag = ruleSet.MajorCasesTag ?? "300Parvande, 100Parvande",
             AllowNegativeSpeedScore = ruleSet.AllowNegativeSpeedScore,
+            EnableSrsModel = ruleSet.EnableSrsModel,
+            EnableLegacySanimModel = ruleSet.EnableLegacySanimModel,
+            DefaultEvaluationModel = string.IsNullOrWhiteSpace(ruleSet.DefaultEvaluationModel) ? "srs" : ruleSet.DefaultEvaluationModel,
             IsActive = ruleSet.IsActive,
             WeightsMatrix = weights,
             AllowedDays = allowedDays
