@@ -27,6 +27,8 @@ import {
   Building2,
   Calendar,
   Clock,
+  CheckCircle2,
+  Plus,
 } from 'lucide-react'
 import { ReportTweakDrawer } from '@/components/reporting/ReportTweakDrawer'
 import { DeleteReportModal } from '@/components/reporting/DeleteReportModal'
@@ -34,6 +36,9 @@ import { ReportAuditorPerformanceTab } from '@/components/reporting/ReportAudito
 import { ReportExecutiveKpiTab } from '@/components/reporting/ReportExecutiveKpiTab'
 import { AuditorAvatar } from '@/components/reporting/AuditorAvatar'
 import { toPersianDigits, formatIsoToJalali } from '@/lib/jalali'
+import { useAuth } from '@/contexts/AuthContext'
+import { useMenuSettings } from '@/contexts/MenuSettingsContext'
+import { menuSettingsApi } from '@/lib/api/menuSettings'
 
 export default function StandardReportDetailPage() {
   const router = useRouter()
@@ -52,6 +57,46 @@ export default function StandardReportDetailPage() {
   const [isTweakOpen, setIsTweakOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [activeView, setActiveView] = useState<'table' | 'performance' | 'kpi'>(initialView || 'table')
+
+  // Menu Settings Integration for Report Assignment
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'Admin'
+  const { settings, refreshSettings } = useMenuSettings()
+  const [pinSubmitting, setPinSubmitting] = useState(false)
+
+  const isCurrentReportInMenu = React.useMemo(() => {
+    if (!code) return false
+    const norm = code.toLowerCase()
+    return settings.some(
+      (s) =>
+        (s.reportCode && s.reportCode.toLowerCase() === norm) ||
+        (s.route && s.route.toLowerCase().replace(/\/+$/, '') === `/reporting/standard/${norm}`)
+    )
+  }, [code, settings])
+
+  const handleQuickPinCurrentReport = async () => {
+    const reportTitle = reportDef?.title || executionResult?.reportTitle || code
+    try {
+      setPinSubmitting(true)
+      await menuSettingsApi.createMenuSetting({
+        parentKey: 'module_reporting',
+        title: reportTitle,
+        route: `/reporting/standard/${code}`,
+        reportCode: code,
+        iconName: 'FileSpreadsheet',
+        description: reportDef?.description || null,
+        isVisible: true,
+        adminOnly: false,
+      })
+      await refreshSettings()
+      setSaveSuccess(`گزارش «${reportTitle}» با موفقیت به منوی گزارش‌ها افزوده شد.`)
+      setTimeout(() => setSaveSuccess(null), 3000)
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'خطا در افزودن گزارش به منو')
+    } finally {
+      setPinSubmitting(false)
+    }
+  }
 
   const reportActorType = React.useMemo(() => {
     const cUpper = code.toUpperCase()
@@ -335,6 +380,34 @@ export default function StandardReportDetailPage() {
         {/* Unified Actions Bar (Export, Tweak, Delete, Refresh) */}
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           <ExportActionMenu onExportExcel={handleExportExcel} disabled={isLoading || !executionResult} />
+
+          {/* Admin Add to Menu action */}
+          {isAdmin && (
+            isCurrentReportInMenu ? (
+              <span
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs"
+                title="این گزارش در حال حاضر در منوی گزارش‌ها موجود است"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">موجود در منوی گزارش‌ها</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={pinSubmitting}
+                onClick={handleQuickPinCurrentReport}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-amber-50 text-amber-800 hover:bg-amber-600 hover:text-white border border-amber-200 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
+                title="افزودن و تخصیص مستقیم این گزارش به منوی سامانه گزارش‌ها"
+              >
+                {pinSubmitting ? (
+                  <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Plus className="w-3.5 h-3.5" />
+                )}
+                <span className="hidden sm:inline">افزودن به منوی گزارش‌ها</span>
+              </button>
+            )
+          )}
 
           {/* Custom Report Actions: Tweak & Delete */}
           {isCustom && (

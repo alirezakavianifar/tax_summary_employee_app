@@ -18,6 +18,7 @@ public class MenuSettingDto
     public string? Description { get; set; }
     public string? ColorTheme { get; set; }
     public string? BadgeText { get; set; }
+    public string? ReportCode { get; set; }
     public bool IsCustom { get; set; }
     public List<MenuSettingDto> Children { get; set; } = new();
 }
@@ -34,6 +35,7 @@ public class CreateMenuSettingRequestDto
     public string? IconName { get; set; }
     public string? ColorTheme { get; set; }
     public string? BadgeText { get; set; }
+    public string? ReportCode { get; set; }
     public string? Description { get; set; }
     public bool IsVisible { get; set; } = true;
     public bool AdminOnly { get; set; }
@@ -52,6 +54,7 @@ public class UpdateMenuSettingMetadataDto
     public string? IconName { get; set; }
     public string? ColorTheme { get; set; }
     public string? BadgeText { get; set; }
+    public string? ReportCode { get; set; }
     public string? Description { get; set; }
     public bool IsVisible { get; set; } = true;
     public bool AdminOnly { get; set; }

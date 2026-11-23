@@ -306,4 +306,63 @@ public class MenuSettingsServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _service.DeleteSettingAsync("module_tax_refund", Guid.NewGuid()));
     }
+
+    [Fact]
+    public async Task CreateSettingAsync_WithReportCode_AutoPopulatesRouteAndSetsReportCode()
+    {
+        var existing = DefaultMenuSettings.GetDefaults();
+        _mockRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+        _mockRepo.Setup(r => r.GetByKeyAsync("custom_rep_menu", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MenuSetting?)null);
+
+        MenuSetting? addedEntity = null;
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<MenuSetting>(), It.IsAny<CancellationToken>()))
+            .Callback<MenuSetting, CancellationToken>((m, _) => addedEntity = m)
+            .Returns(Task.CompletedTask);
+
+        var request = new CreateMenuSettingRequestDto
+        {
+            MenuKey = "custom_rep_menu",
+            Title = "گزارش رسیدگی سنیم",
+            ParentKey = "module_reporting",
+            ReportCode = "REP_2",
+            Route = "" // Empty route -> should be auto-derived from ReportCode
+        };
+
+        var result = await _service.CreateSettingAsync(request, Guid.NewGuid());
+
+        Assert.NotNull(result);
+        Assert.NotNull(addedEntity);
+        Assert.Equal("REP_2", addedEntity.ReportCode);
+        Assert.Equal("/reporting/standard/REP_2", addedEntity.Route);
+        Assert.Equal("module_reporting", addedEntity.ParentKey);
+    }
+
+    [Fact]
+    public async Task UpdateSettingMetadataAsync_WithReportCode_UpdatesAssignedReport()
+    {
+        var custom = MenuSetting.Create("custom_report_item", "گزارش قبلی", "/reporting/standard/REP_1", parentKey: "module_reporting", reportCode: "REP_1");
+        var all = DefaultMenuSettings.GetDefaults().Concat(new[] { custom }).ToList();
+        _mockRepo.Setup(r => r.GetByKeyAsync("custom_report_item", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(custom);
+        _mockRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(all);
+
+        var request = new UpdateMenuSettingMetadataDto
+        {
+            Title = "گزارش به‌روزرسانی شده سنیم",
+            Route = "/reporting/standard/REP_2",
+            ParentKey = "module_reporting",
+            ReportCode = "REP_2",
+            IsVisible = true
+        };
+
+        var result = await _service.UpdateSettingMetadataAsync("custom_report_item", request, Guid.NewGuid());
+
+        Assert.NotNull(result);
+        Assert.Equal("REP_2", custom.ReportCode);
+        Assert.Equal("/reporting/standard/REP_2", custom.Route);
+        Assert.Equal("گزارش به‌روزرسانی شده سنیم", custom.Title);
+    }
 }

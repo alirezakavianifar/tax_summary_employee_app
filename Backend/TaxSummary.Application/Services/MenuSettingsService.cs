@@ -94,7 +94,11 @@ public class MenuSettingsService : IMenuSettingsService
             throw new ArgumentException("اطلاعات گزینه منو ارسال نشده است.");
 
         var title = ValidateTitle(request.Title);
-        var route = ValidateAndNormalizeRoute(request.Route);
+        var cleanReportCode = string.IsNullOrWhiteSpace(request.ReportCode) ? null : request.ReportCode.Trim().ToUpperInvariant();
+        var routeInput = string.IsNullOrWhiteSpace(request.Route) && cleanReportCode != null
+            ? $"/reporting/standard/{cleanReportCode}"
+            : request.Route;
+        var route = ValidateAndNormalizeRoute(routeInput);
         var normalizedKey = string.IsNullOrWhiteSpace(request.MenuKey)
             ? $"custom_{Guid.NewGuid().ToString("N")[..10]}"
             : request.MenuKey.Trim().ToLowerInvariant();
@@ -138,7 +142,8 @@ public class MenuSettingsService : IMenuSettingsService
             updatedByUserId: currentUserId,
             allowedRoles: allowedRolesCsv,
             colorTheme: request.ColorTheme,
-            badgeText: request.BadgeText);
+            badgeText: request.BadgeText,
+            reportCode: cleanReportCode);
 
         await _repository.AddAsync(entity, cancellationToken);
         _logger.LogInformation("Created custom menu setting '{MenuKey}' by user {UserId}.", normalizedKey, currentUserId);
@@ -173,7 +178,7 @@ public class MenuSettingsService : IMenuSettingsService
             existing.UpdateParentKey(parentKey, currentUserId);
         }
 
-        existing.UpdateMetadata(title, route, request.Description, currentUserId, request.IconName, request.ColorTheme, request.BadgeText);
+        existing.UpdateMetadata(title, route, request.Description, currentUserId, request.IconName, request.ColorTheme, request.BadgeText, request.ReportCode);
 
         var roles = SanitizeAllowedRoles(request.AllowedRoles);
         existing.UpdateVisibility(
@@ -307,6 +312,7 @@ public class MenuSettingsService : IMenuSettingsService
             IconName = e.IconName,
             ColorTheme = e.ColorTheme,
             BadgeText = e.BadgeText,
+            ReportCode = e.ReportCode,
             IsVisible = e.IsVisible,
             AdminOnly = e.AdminOnly,
             AllowedRoles = e.AllowedRoles

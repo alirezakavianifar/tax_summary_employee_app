@@ -1,7 +1,22 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { X, Plus, Save, Shield, CheckCircle2, AlertTriangle, Users, Palette, Info } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from 'react'
+import {
+  X,
+  Plus,
+  Save,
+  Shield,
+  CheckCircle2,
+  AlertTriangle,
+  Users,
+  Palette,
+  Info,
+  FileSpreadsheet,
+  Link2,
+  Search,
+  Check,
+  RotateCcw,
+} from 'lucide-react'
 import type {
   MenuSettingItem,
   CreateMenuSettingPayload,
@@ -9,6 +24,8 @@ import type {
 } from '@/types/menuSettings'
 import { MENU_ICON_OPTIONS } from '@/lib/icons/menuIcons'
 import { PORTAL_COLOR_THEMES } from '@/lib/constants/cardThemes'
+import { reportingApi } from '@/lib/api/reporting'
+import { ReportDefinition, DOMAIN_SOURCE_NAMES_FA } from '@/types/reporting'
 import {
   ALL_GENERAL_ROLES,
   ORGANIZATIONAL_ROLES,
@@ -22,6 +39,7 @@ interface MenuItemFormModalProps {
   isOpen: boolean
   editingItem: MenuSettingItem | null
   initialParentKey?: string | null
+  initialReportCode?: string | null
   rootModules: MenuSettingItem[]
   hasChildren?: boolean
   submitting: boolean
@@ -34,6 +52,7 @@ export default function MenuItemFormModal({
   isOpen,
   editingItem,
   initialParentKey = null,
+  initialReportCode = null,
   rootModules,
   hasChildren = false,
   submitting,
@@ -46,6 +65,11 @@ export default function MenuItemFormModal({
 
   const [itemType, setItemType] = useState<'root' | 'child'>('root')
   const [parentKey, setParentKey] = useState<string>('')
+  const [linkTargetType, setLinkTargetType] = useState<'custom' | 'report'>('custom')
+  const [reportCode, setReportCode] = useState<string>('')
+  const [availableReports, setAvailableReports] = useState<ReportDefinition[]>([])
+  const [loadingReports, setLoadingReports] = useState(false)
+  const [reportSearch, setReportSearch] = useState('')
   const [title, setTitle] = useState('')
   const [route, setRoute] = useState('/')
   const [menuKey, setMenuKey] = useState('')
@@ -64,8 +88,27 @@ export default function MenuItemFormModal({
 
   useEffect(() => {
     if (!isOpen) return
+    let isMounted = true
+    setLoadingReports(true)
+    reportingApi
+      .getCatalog(undefined, true)
+      .then((data) => {
+        if (isMounted) setAvailableReports(data)
+      })
+      .catch((err) => console.error('Failed to load reports for menu assignment:', err))
+      .finally(() => {
+        if (isMounted) setLoadingReports(false)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
 
     setFormError(null)
+    setReportSearch('')
     if (editingItem) {
       const isChild = Boolean(editingItem.parentKey)
       setItemType(isChild ? 'child' : 'root')
@@ -79,6 +122,9 @@ export default function MenuItemFormModal({
       setBadgeText(editingItem.badgeText || '')
       setDisplayOrder(editingItem.displayOrder)
       setIsVisible(editingItem.isVisible)
+      const existingRepCode = editingItem.reportCode || ''
+      setReportCode(existingRepCode)
+      setLinkTargetType(existingRepCode ? 'report' : 'custom')
       setAllowedRoles(
         sanitizeRolesSelection(
           editingItem.allowedRoles?.length
@@ -89,22 +135,54 @@ export default function MenuItemFormModal({
         )
       )
     } else {
-      const isChild = Boolean(initialParentKey)
+      const isChild = Boolean(initialParentKey || initialReportCode)
       setItemType(isChild ? 'child' : 'root')
-      setParentKey(initialParentKey || availableParents[0]?.menuKey || '')
+      const targetParent =
+        initialParentKey ||
+        (initialReportCode ? 'module_reporting' : availableParents[0]?.menuKey || '')
+      setParentKey(targetParent)
       setTitle('')
       setRoute('')
       setMenuKey('')
       setDescription('')
-      setIconName(isChild ? 'Link2' : 'LayoutGrid')
+      setIconName(isChild ? (initialReportCode ? 'FileSpreadsheet' : 'Link2') : 'LayoutGrid')
       setColorTheme('blue')
       setBadgeText('')
       setDisplayOrder(rootModules.length + 1)
       setIsVisible(true)
       setAllowedRoles([...ALL_GENERAL_ROLES])
+      const repCode = initialReportCode || ''
+      setReportCode(repCode)
+      setLinkTargetType(repCode || initialParentKey === 'module_reporting' ? 'report' : 'custom')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, editingItem, initialParentKey])
+  }, [isOpen, editingItem, initialParentKey, initialReportCode])
+
+  const filteredReports = useMemo(() => {
+    if (!reportSearch.trim()) return availableReports
+    const q = reportSearch.trim().toLowerCase()
+    return availableReports.filter(
+      (r) =>
+        r.title.toLowerCase().includes(q) ||
+        r.code.toLowerCase().includes(q) ||
+        (r.description && r.description.toLowerCase().includes(q))
+    )
+  }, [availableReports, reportSearch])
+
+  const handleSelectReport = (r: ReportDefinition) => {
+    setReportCode(r.code)
+    setRoute(`/reporting/standard/${r.code}`)
+    setTitle(r.title)
+    if (r.description) setDescription(r.description)
+    setIconName('FileSpreadsheet')
+    if (itemType !== 'child') {
+      setItemType('child')
+    }
+    const reportingModule = availableParents.find((p) => p.menuKey === 'module_reporting')
+    if (reportingModule) {
+      setParentKey('module_reporting')
+    }
+  }
 
   if (!isOpen) return null
 
@@ -126,6 +204,11 @@ export default function MenuItemFormModal({
     }
 
     if (!isBuiltIn) {
+      if (itemType === 'child' && linkTargetType === 'report' && !reportCode) {
+        setFormError('لطفاً گزارش مورد نظر را از فهرست گزارش‌ها انتخاب نمایید یا گزینه مسیر دلخواه را فعال کنید.')
+        return
+      }
+
       const isInternal = trimmedRoute.startsWith('/') && !trimmedRoute.startsWith('//')
       const isExternal = /^https?:\/\/.+/i.test(trimmedRoute)
       if (!isInternal && !isExternal) {
@@ -156,6 +239,7 @@ export default function MenuItemFormModal({
           iconName,
           colorTheme: itemType === 'root' ? colorTheme : null,
           badgeText: itemType === 'root' ? (badgeText.trim() || null) : null,
+          reportCode: itemType === 'child' && linkTargetType === 'report' ? reportCode : null,
           description: description.trim() || null,
           isVisible,
           adminOnly,
@@ -171,6 +255,7 @@ export default function MenuItemFormModal({
           iconName,
           colorTheme: itemType === 'root' ? colorTheme : null,
           badgeText: itemType === 'root' ? (badgeText.trim() || null) : null,
+          reportCode: itemType === 'child' && linkTargetType === 'report' ? reportCode : null,
           description: description.trim() || null,
           isVisible,
           adminOnly,
@@ -310,6 +395,138 @@ export default function MenuItemFormModal({
             </div>
           )}
 
+          {/* Link Target Type Selector (Report Assignment vs Custom Route) */}
+          {itemType === 'child' && !isBuiltIn && (
+            <div className="space-y-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+              <label className="block text-xs font-bold text-gray-800">
+                نوع پیوند و مقصد زیرمنو
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLinkTargetType('report')}
+                  className={`p-2.5 rounded-xl border text-right transition-all flex items-center gap-2.5 ${
+                    linkTargetType === 'report'
+                      ? 'border-amber-500 bg-amber-50 text-amber-900 ring-2 ring-amber-500/15 font-bold'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
+                  }`}
+                >
+                  <div className="p-1.5 rounded-lg bg-amber-100 text-amber-700 flex-shrink-0">
+                    <FileSpreadsheet className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs block">تخصیص گزارش سازمانی</span>
+                    <span className="text-[10px] text-gray-500 block font-normal">
+                      انتخاب از کاتالوگ گزارش‌ها یا اکسل
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLinkTargetType('custom')
+                    setReportCode('')
+                  }}
+                  className={`p-2.5 rounded-xl border text-right transition-all flex items-center gap-2.5 ${
+                    linkTargetType === 'custom'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/15 font-bold'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
+                  }`}
+                >
+                  <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700 flex-shrink-0">
+                    <Link2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs block">مسیر دلخواه یا خارجی</span>
+                    <span className="text-[10px] text-gray-500 block font-normal">
+                      ورود دستی آدرس صفحه داخلی یا URL
+                    </span>
+                  </div>
+                </button>
+              </div>
+
+              {linkTargetType === 'report' && (
+                <div className="space-y-2 pt-2 border-t border-slate-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600" />
+                      انتخاب گزارش برای تخصیص به منو *
+                    </label>
+                    {reportCode && (
+                      <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-mono font-bold">
+                        گزارش انتخابی: {reportCode}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Search box for reports */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={reportSearch}
+                      onChange={(e) => setReportSearch(e.target.value)}
+                      placeholder="جستجو در نام گزارش، کد یا حوزه موضوعی..."
+                      className="w-full pr-8 pl-3 py-1.5 text-xs rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    />
+                  </div>
+
+                  {/* Scrollable Report List */}
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 p-1 border border-gray-200 rounded-xl bg-white">
+                    {loadingReports ? (
+                      <div className="py-6 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                        در حال بارگذاری فهرست گزارش‌ها...
+                      </div>
+                    ) : filteredReports.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-gray-400">
+                        گزارشی مطابق جستجو یافت نشد.
+                      </div>
+                    ) : (
+                      filteredReports.map((rep) => {
+                        const isSelected = reportCode.toUpperCase() === rep.code.toUpperCase()
+                        return (
+                          <button
+                            key={rep.code}
+                            type="button"
+                            onClick={() => handleSelectReport(rep)}
+                            className={`w-full text-right p-2 rounded-lg border transition-all flex items-center justify-between text-xs ${
+                              isSelected
+                                ? 'bg-amber-50/80 border-amber-500 ring-1 ring-amber-500/20 text-amber-950 font-bold'
+                                : 'bg-slate-50/50 hover:bg-slate-100/70 border-gray-100 text-gray-700'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold truncate">{rep.title}</span>
+                                <span className="font-mono text-[10px] bg-slate-200/80 text-slate-700 px-1.5 py-0.5 rounded flex-shrink-0">
+                                  {rep.code}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-0.5 truncate flex items-center gap-2">
+                                <span>{DOMAIN_SOURCE_NAMES_FA[rep.domainSource] || 'عمومی'}</span>
+                                {rep.description && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="truncate">{rep.description}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <CheckCircle2 className="w-4 h-4 text-amber-600 flex-shrink-0 mr-2" />
+                            )}
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Title & Route */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -320,7 +537,7 @@ export default function MenuItemFormModal({
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="مثلاً: سامانه هوش تجاری و نظارت"
+                placeholder="مثلاً: کارنامه تحلیلی رسیدگی سنیم"
                 maxLength={150}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
@@ -328,12 +545,12 @@ export default function MenuItemFormModal({
 
             <div>
               <label className="block text-xs font-bold text-gray-800 mb-1.5">
-                مسیر صفحه یا لینک مقصد {isBuiltIn ? '(ثابت سیستمی)' : '*'}
+                مسیر صفحه یا لینک مقصد {isBuiltIn ? '(ثابت سیستمی)' : linkTargetType === 'report' ? '(خودکار بر اساس گزارش)' : '*'}
               </label>
               <input
                 type="text"
                 dir="ltr"
-                disabled={isBuiltIn}
+                disabled={isBuiltIn || linkTargetType === 'report'}
                 value={route}
                 onChange={(e) => setRoute(e.target.value)}
                 placeholder="/about یا https://intamedia.ir"

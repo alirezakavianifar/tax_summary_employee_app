@@ -85,4 +85,38 @@ public class MenuSettingTests
         Assert.True(setting.IsRoleAllowed("Manager"));
         Assert.False(setting.IsRoleAllowed("Employee"));
     }
+
+    [Fact]
+    public void Create_WithReportCode_NormalizesAndAssignsReportCode()
+    {
+        var setting = MenuSetting.Create(
+            menuKey: "custom_rep_item",
+            title: "کارنامه رسیدگی سنیم",
+            route: "/reporting/standard/REP_2",
+            parentKey: "module_reporting",
+            reportCode: "rep_2"
+        );
+
+        Assert.Equal("REP_2", setting.ReportCode);
+        Assert.Equal("module_reporting", setting.ParentKey);
+        Assert.Equal("/reporting/standard/REP_2", setting.Route);
+    }
+
+    [Fact]
+    public void AssignReport_UpdatesReportCodeAndTimestamp()
+    {
+        var setting = MenuSetting.Create(
+            menuKey: "custom_item",
+            title: "لینک دلخواه",
+            route: "/reporting/standard"
+        );
+
+        Assert.Null(setting.ReportCode);
+
+        setting.AssignReport("REP_1405");
+        Assert.Equal("REP_1405", setting.ReportCode);
+
+        setting.AssignReport(null);
+        Assert.Null(setting.ReportCode);
+    }
 }

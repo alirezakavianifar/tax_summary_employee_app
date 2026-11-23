@@ -36,6 +36,7 @@ import {
   ChevronUp,
   Users,
   FileText,
+  FileSpreadsheet,
   Plus,
   Pencil,
   Trash2,
@@ -70,6 +71,7 @@ function MenuSettingsAdminContent() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<MenuSettingItem | null>(null)
   const [initialParentKey, setInitialParentKey] = useState<string | null>(null)
+  const [initialReportCode, setInitialReportCode] = useState<string | null>(null)
   const [mutatingCustom, setMutatingCustom] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<MenuSettingItem | null>(null)
 
@@ -327,12 +329,21 @@ function MenuSettingsAdminContent() {
   const openCreateModal = (parentKey: string | null = null) => {
     setEditingItem(null)
     setInitialParentKey(parentKey)
+    setInitialReportCode(null)
+    setIsFormModalOpen(true)
+  }
+
+  const openCreateReportModal = (parentKey: string = 'module_reporting', repCode: string | null = null) => {
+    setEditingItem(null)
+    setInitialParentKey(parentKey)
+    setInitialReportCode(repCode)
     setIsFormModalOpen(true)
   }
 
   const openEditModal = (item: MenuSettingItem) => {
     setEditingItem(item)
     setInitialParentKey(item.parentKey)
+    setInitialReportCode(item.reportCode || null)
     setIsFormModalOpen(true)
   }
 
@@ -837,6 +848,19 @@ function MenuSettingsAdminContent() {
                             </button>
                           )}
 
+                          {module.menuKey === 'module_reporting' && (
+                            <button
+                              type="button"
+                              onClick={() => openCreateReportModal('module_reporting')}
+                              disabled={mutatingCustom}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors disabled:opacity-50"
+                              title="تخصیص و افزودن مستقیم یک گزارش از کاتالوگ یا پایگاه‌های اکسل به این منو"
+                            >
+                              <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600" />
+                              افزودن گزارش به منو
+                            </button>
+                          )}
+
                           <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5 bg-gray-50/70">
                             <button
                               type="button"
@@ -963,6 +987,12 @@ function MenuSettingsAdminContent() {
                                         {child.isCustom && (
                                           <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-full">
                                             سفارشی
+                                          </span>
+                                        )}
+                                        {child.reportCode && (
+                                          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                                            <FileSpreadsheet className="w-3 h-3 text-amber-600" />
+                                            گزارش: {child.reportCode}
                                           </span>
                                         )}
                                         {isHighlighted && (
@@ -1158,12 +1188,14 @@ function MenuSettingsAdminContent() {
             isOpen={isFormModalOpen}
             editingItem={editingItem}
             initialParentKey={initialParentKey}
+            initialReportCode={initialReportCode}
             rootModules={rootModules}
             hasChildren={Boolean(editingItem && (childrenByParent[editingItem.menuKey]?.length || 0) > 0)}
             submitting={mutatingCustom}
             onClose={() => {
               setIsFormModalOpen(false)
               setEditingItem(null)
+              setInitialReportCode(null)
             }}
             onSubmitCreate={handleCreateCustomItem}
             onSubmitUpdate={handleUpdateCustomItem}

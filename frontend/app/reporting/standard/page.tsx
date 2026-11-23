@@ -17,12 +17,20 @@ import {
   RotateCcw,
   Calendar,
   Clock,
+  CheckCircle2,
+  Plus,
+  BookmarkCheck,
+  X,
+  Check,
+  AlertTriangle,
 } from 'lucide-react'
 import { ExcelReportUploadModal } from '@/components/reporting/ExcelReportUploadModal'
 import { ReportTweakDrawer } from '@/components/reporting/ReportTweakDrawer'
 import { DeleteReportModal } from '@/components/reporting/DeleteReportModal'
 import { toPersianDigits, formatIsoToJalali } from '@/lib/jalali'
 import { useAuth } from '@/contexts/AuthContext'
+import { useMenuSettings } from '@/contexts/MenuSettingsContext'
+import { menuSettingsApi } from '@/lib/api/menuSettings'
 
 function isExpiringSoon(expiresAt?: string | null): boolean {
   if (!expiresAt) return false
@@ -54,6 +62,63 @@ export default function StandardReportsCatalogPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [tweakReportCode, setTweakReportCode] = useState<string | null>(null)
   const [deleteTargetReport, setDeleteTargetReport] = useState<ReportDefinition | null>(null)
+
+  // Menu Settings Integration for Report Assignment
+  const { settings, refreshSettings } = useMenuSettings()
+  const [pinTargetReport, setPinTargetReport] = useState<ReportDefinition | null>(null)
+  const [pinTitle, setPinTitle] = useState('')
+  const [pinSubmitting, setPinSubmitting] = useState(false)
+  const [pinFeedback, setPinFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  const isReportInMenu = (code: string) => {
+    const norm = code.toLowerCase()
+    return settings.some(
+      (s) =>
+        (s.reportCode && s.reportCode.toLowerCase() === norm) ||
+        (s.route && s.route.toLowerCase().replace(/\/+$/, '') === `/reporting/standard/${norm}`)
+    )
+  }
+
+  const handleOpenPinModal = (r: ReportDefinition) => {
+    setPinTargetReport(r)
+    setPinTitle(r.title)
+    setPinFeedback(null)
+  }
+
+  const handleConfirmPin = async () => {
+    if (!pinTargetReport) return
+    const trimmed = pinTitle.trim()
+    if (!trimmed) return
+    try {
+      setPinSubmitting(true)
+      await menuSettingsApi.createMenuSetting({
+        parentKey: 'module_reporting',
+        title: trimmed,
+        route: `/reporting/standard/${pinTargetReport.code}`,
+        reportCode: pinTargetReport.code,
+        iconName: 'FileSpreadsheet',
+        description: pinTargetReport.description || null,
+        isVisible: true,
+        adminOnly: false,
+      })
+      await refreshSettings()
+      setPinFeedback({
+        type: 'success',
+        message: `گزارش «${trimmed}» با موفقیت به منوی گزارش‌ها افزوده شد.`,
+      })
+      setTimeout(() => {
+        setPinTargetReport(null)
+        setPinFeedback(null)
+      }, 1500)
+    } catch (err: any) {
+      setPinFeedback({
+        type: 'error',
+        message: err?.response?.data?.error || 'خطا در افزودن گزارش به منو',
+      })
+    } finally {
+      setPinSubmitting(false)
+    }
+  }
 
   const loadCatalog = async () => {
     try {
@@ -359,6 +424,29 @@ export default function StandardReportsCatalogPage() {
                       )
                     )}
 
+                    {/* Admin Add to Menu action */}
+                    {isAdmin && (
+                      isReportInMenu(report.code) ? (
+                        <span
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 shadow-2xs"
+                          title="این گزارش در حال حاضر در منوی گزارش‌ها موجود است"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="hidden sm:inline">در منو</span>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPinModal(report)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white transition-all shadow-2xs"
+                          title="افزودن و تخصیص مستقیم این گزارش به منوی سامانه گزارش‌ها"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>افزودن به منو</span>
+                        </button>
+                      )
+                    )}
+
                     <Link
                       href={`/reporting/standard/${report.code}`}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 group-hover:bg-amber-600 group-hover:text-white transition-all shadow-xs"
@@ -412,6 +500,98 @@ export default function StandardReportsCatalogPage() {
           loadCatalog()
         }}
       />
+
+      {/* Quick Add to Menu Dialog */}
+      {pinTargetReport && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl max-w-md w-full p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+                  <FileSpreadsheet className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">افزودن گزارش به منوی ناوبری</h3>
+                  <span className="text-[10px] text-gray-400 font-mono">{pinTargetReport.code}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPinTargetReport(null)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {pinFeedback && (
+              <div
+                className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                  pinFeedback.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}
+              >
+                {pinFeedback.type === 'success' ? (
+                  <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                )}
+                <span>{pinFeedback.message}</span>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-800 mb-1">
+                  عنوان نمایشی در منوی گزارش‌ها *
+                </label>
+                <input
+                  type="text"
+                  value={pinTitle}
+                  onChange={(e) => setPinTitle(e.target.value)}
+                  placeholder="عنوان گزارش در منو..."
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                />
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">سامانه والد:</span>
+                  <span className="font-bold text-slate-800">هوش تجاری و نظارت (module_reporting)</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">مسیر مقصد:</span>
+                  <span className="font-mono text-slate-700" dir="ltr">/reporting/standard/{pinTargetReport.code}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setPinTargetReport(null)}
+                className="px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                انصراف
+              </button>
+              <button
+                type="button"
+                disabled={pinSubmitting || !pinTitle.trim()}
+                onClick={handleConfirmPin}
+                className="px-4 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-colors shadow flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {pinSubmitting ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Plus className="w-3.5 h-3.5" />
+                )}
+                <span>تایید و افزودن به منو</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

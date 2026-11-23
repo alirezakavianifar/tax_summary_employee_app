@@ -74,7 +74,7 @@ export default function ReportingLayout({ children }: { children: React.ReactNod
               </div>
             </div>
 
-            <nav className="flex items-center gap-1 sm:gap-2">
+            <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1 max-w-[65vw]">
               {accessibleTabs.map((tab) => {
                 const isActive =
                   pathname === tab.href ||

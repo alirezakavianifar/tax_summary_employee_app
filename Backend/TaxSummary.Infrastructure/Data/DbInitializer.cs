@@ -1151,6 +1151,12 @@ public static class DbInitializer
                     command.CommandText = "ALTER TABLE MenuSettings ADD COLUMN BadgeText TEXT NULL;";
                     await command.ExecuteNonQueryAsync();
                 }
+
+                if (!menuColumns.Contains("ReportCode"))
+                {
+                    command.CommandText = "ALTER TABLE MenuSettings ADD COLUMN ReportCode TEXT NULL;";
+                    await command.ExecuteNonQueryAsync();
+                }
             }
 
             // 4. Ensure AuditorPerformanceMetricDefinitions table exists

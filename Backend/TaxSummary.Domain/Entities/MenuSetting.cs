@@ -68,6 +68,11 @@ public class MenuSetting
     public string? BadgeText { get; private set; }
 
     /// <summary>
+    /// Optional code of the assigned report if this menu item links to a standard report or custom dataset (e.g. "REP_2", "REP_1405").
+    /// </summary>
+    public string? ReportCode { get; private set; }
+
+    /// <summary>
     /// Timestamp when this setting was created.
     /// </summary>
     public DateTime CreatedAt { get; private set; }
@@ -98,7 +103,8 @@ public class MenuSetting
         Guid? updatedByUserId = null,
         string? allowedRoles = null,
         string? colorTheme = null,
-        string? badgeText = null)
+        string? badgeText = null,
+        string? reportCode = null)
     {
         if (string.IsNullOrWhiteSpace(menuKey))
             throw new ArgumentException("شناسه یکتای منو الزامی است", nameof(menuKey));
@@ -138,6 +144,7 @@ public class MenuSetting
             AllowedRoles = resolvedRoles,
             DisplayOrder = displayOrder,
             Description = description?.Trim(),
+            ReportCode = string.IsNullOrWhiteSpace(reportCode) ? null : reportCode.Trim().ToUpperInvariant(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             UpdatedByUserId = updatedByUserId
@@ -214,7 +221,8 @@ public class MenuSetting
         Guid? updatedByUserId = null,
         string? iconName = null,
         string? colorTheme = null,
-        string? badgeText = null)
+        string? badgeText = null,
+        string? reportCode = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("عنوان منو الزامی است", nameof(title));
@@ -225,6 +233,14 @@ public class MenuSetting
         IconName = string.IsNullOrWhiteSpace(iconName) ? null : iconName.Trim();
         ColorTheme = string.IsNullOrWhiteSpace(colorTheme) ? null : colorTheme.Trim().ToLowerInvariant();
         BadgeText = string.IsNullOrWhiteSpace(badgeText) ? null : badgeText.Trim();
+        ReportCode = string.IsNullOrWhiteSpace(reportCode) ? null : reportCode.Trim().ToUpperInvariant();
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedByUserId = updatedByUserId;
+    }
+
+    public void AssignReport(string? reportCode, Guid? updatedByUserId = null)
+    {
+        ReportCode = string.IsNullOrWhiteSpace(reportCode) ? null : reportCode.Trim().ToUpperInvariant();
         UpdatedAt = DateTime.UtcNow;
         UpdatedByUserId = updatedByUserId;
     }

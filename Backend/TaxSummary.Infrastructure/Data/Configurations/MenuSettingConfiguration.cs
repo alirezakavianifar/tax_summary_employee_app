@@ -42,6 +42,9 @@ public class MenuSettingConfiguration : IEntityTypeConfiguration<MenuSetting>
         builder.Property(m => m.BadgeText)
             .HasMaxLength(100);
 
+        builder.Property(m => m.ReportCode)
+            .HasMaxLength(64);
+
         builder.Property(m => m.IsVisible)
             .IsRequired();
 
@@ -58,5 +61,6 @@ public class MenuSettingConfiguration : IEntityTypeConfiguration<MenuSetting>
 
         builder.HasIndex(m => m.ParentKey);
         builder.HasIndex(m => m.DisplayOrder);
+        builder.HasIndex(m => m.ReportCode);
     }
 }

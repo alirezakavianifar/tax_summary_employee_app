@@ -36,6 +36,7 @@ A modern, full-stack enterprise web application for managing employee performanc
 4. **Executive Reporting & Business Intelligence (`/reporting`)**:
    - 360-degree performance evaluation and auditor scorecards across historical tax dispute resolution decrees.
    - Dynamic custom Excel dataset ingestion into isolated SQLite schemas (`cd_...`) with column customization via Tweak Studio.
+   - Dynamic Report Menu Assignment: One-click report pinning from catalog cards and report views directly into the primary reports navigation tree.
    - Persian (Jalali) creation date stamping and sorting across catalog cards, report execution views, and official A4 landscape letterheads.
    - Time-To-Live (TTL) visibility periods and automated archiving for ad-hoc reports, with countdown badges and administrative lifecycle renewal.
    - High-level executive KPI dashboards, monthly trend charts, and Excel report generators.
@@ -57,6 +58,7 @@ A modern, full-stack enterprise web application for managing employee performanc
    - Database-backed dynamic menu visibility management and collapsible RTL sidebar navigation.
    - Dynamic organizational branding, custom logo upload, system-wide title management, and dynamic portal footer customization with official identity badge (`[🛡️ سامانه رسمی]`), copyright text, version badge, and interactive links list (`/admin/branding`).
    - Dynamic Portal Operational Cards & Home Page Management (`/admin/menu-settings`): Administrators can customize module titles, descriptions, color themes (8 distinct corporate palettes), group badge tags, icons, and display ordering directly for both built-in and custom modules.
+   - Dynamic Report Assignment & Submenu Configuration: Administrators can add custom menu items under the Reports module and link them directly to standard reports or uploaded Excel datasets (`REP_...`) with searchable report catalog selection and automatic route generation.
    - System audit trail and security logging.
 
 ---
@@ -132,3 +134,4 @@ The output `deployment_update.zip` contains modified binaries and the Next.js st
   - `tax-auditor-metrics`: SRS v1.0 circular rules, 8x7 scoring weight matrix, FR-01 to FR-08 indicators, Sanim data sync, and provincial scorecards.
   - `tax-security-rbac`: Dual-token JWT & HttpOnly cookie rotation, 6-role permission matrix, dynamic database-backed menu navigation, and audit trails.
   - `tax-deployment-packaging`: Offline server hosting, minimal update packaging (`build_deployment.ps1 -UpdateOnly`), and production database/asset safety.
+  - `tax-browser-verification`: End-to-end browser automation, DevTools bridge setup, and live UI verification protocol using the Antigravity browser subagent and Chrome DevTools Protocol.
