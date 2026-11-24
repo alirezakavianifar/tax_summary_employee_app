@@ -34,6 +34,10 @@ public class UpdateSystemSettingsDtoValidator : AbstractValidator<UpdateSystemSe
 
         RuleFor(x => x.FooterLinksJson)
             .MaximumLength(4000).WithMessage("داده‌های پیوندهای فوتر بیش از حد مجاز است");
+
+        RuleFor(x => x.CollapsedMenuExpandMode)
+            .Must(x => string.IsNullOrEmpty(x) || x.ToLower() == "click" || x.ToLower() == "hover")
+            .WithMessage("نحوه باز شدن منو در حالت جمع‌شده باید 'click' یا 'hover' باشد");
     }
 }
 

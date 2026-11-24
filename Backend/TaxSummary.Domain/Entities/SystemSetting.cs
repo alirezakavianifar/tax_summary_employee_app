@@ -15,6 +15,7 @@ public class SystemSetting
     public const string DefaultFooterVersionText = "v2.0";
     public const string DefaultFooterBadgeText = "سامانه رسمی";
     public const string DefaultFooterLinksJson = "[{\"id\":\"link-about\",\"title\":\"راهنمای سامانه\",\"url\":\"/about\",\"isExternal\":false,\"isVisible\":true,\"order\":1},{\"id\":\"link-intamedia\",\"title\":\"پرتال سازمان امور مالیاتی\",\"url\":\"https://www.intamedia.ir\",\"isExternal\":true,\"isVisible\":true,\"order\":2},{\"id\":\"link-mytax\",\"title\":\"درگاه ملی خدمات مالیاتی\",\"url\":\"https://my.tax.gov.ir\",\"isExternal\":true,\"isVisible\":true,\"order\":3}]";
+    public const string DefaultCollapsedMenuExpandMode = "click";
 
     public Guid Id { get; private set; }
     public string SettingKey { get; private set; } = DefaultSettingKey;
@@ -27,6 +28,7 @@ public class SystemSetting
     public string FooterVersionText { get; private set; } = DefaultFooterVersionText;
     public string FooterBadgeText { get; private set; } = DefaultFooterBadgeText;
     public string FooterLinksJson { get; private set; } = DefaultFooterLinksJson;
+    public string CollapsedMenuExpandMode { get; private set; } = DefaultCollapsedMenuExpandMode;
     public DateTime UpdatedAt { get; private set; } = DateTime.UtcNow;
     public string? UpdatedBy { get; private set; }
 
@@ -47,6 +49,7 @@ public class SystemSetting
             FooterVersionText = DefaultFooterVersionText,
             FooterBadgeText = DefaultFooterBadgeText,
             FooterLinksJson = DefaultFooterLinksJson,
+            CollapsedMenuExpandMode = DefaultCollapsedMenuExpandMode,
             UpdatedAt = DateTime.UtcNow
         };
     }
@@ -61,7 +64,8 @@ public class SystemSetting
         string? footerVersionText,
         string? footerBadgeText,
         string? footerLinksJson,
-        string? updatedBy)
+        string? updatedBy,
+        string? collapsedMenuExpandMode = null)
     {
         OrganizationName = string.IsNullOrWhiteSpace(organizationName) ? DefaultOrganizationName : organizationName.Trim();
         SystemTitle = string.IsNullOrWhiteSpace(systemTitle) ? DefaultSystemTitle : systemTitle.Trim();
@@ -78,6 +82,17 @@ public class SystemSetting
         {
             FooterLinksJson = footerLinksJson.Trim();
         }
+        if (!string.IsNullOrWhiteSpace(collapsedMenuExpandMode))
+        {
+            CollapsedMenuExpandMode = string.Equals(collapsedMenuExpandMode, "hover", StringComparison.OrdinalIgnoreCase) ? "hover" : "click";
+        }
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void UpdateCollapsedMenuExpandMode(string? mode, string? updatedBy)
+    {
+        CollapsedMenuExpandMode = string.Equals(mode, "hover", StringComparison.OrdinalIgnoreCase) ? "hover" : "click";
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = updatedBy;
     }
@@ -103,6 +118,7 @@ public class SystemSetting
         FooterVersionText = DefaultFooterVersionText;
         FooterBadgeText = DefaultFooterBadgeText;
         FooterLinksJson = DefaultFooterLinksJson;
+        CollapsedMenuExpandMode = DefaultCollapsedMenuExpandMode;
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = updatedBy;
     }

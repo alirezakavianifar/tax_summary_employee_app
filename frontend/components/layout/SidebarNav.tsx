@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import {
   Home,
@@ -11,6 +11,7 @@ import {
   PanelRightOpen,
   ExternalLink,
 } from 'lucide-react'
+import { useBranding } from '@/contexts/BrandingContext'
 import {
   usePortalNavigation,
   type NavSection,
@@ -147,6 +148,7 @@ export default function SidebarNav({
   onToggleCollapse,
   onNavigate,
 }: SidebarNavProps) {
+  const { collapsedMenuExpandMode } = useBranding()
   const {
     pathname,
     showHome,
@@ -162,6 +164,18 @@ export default function SidebarNav({
   const [flyout, setFlyout] = useState<FlyoutPosition | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const flyoutRef = useRef<HTMLDivElement>(null)
+  const closeTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => clearCloseTimer()
+  }, [clearCloseTimer])
 
   // Automatically expand the active module section(s) on navigation
   useEffect(() => {
@@ -244,22 +258,56 @@ export default function SidebarNav({
     setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  const handleOpenFlyout = (
-    sectionId: string,
-    event: React.MouseEvent<HTMLButtonElement>
-  ) => {
-    if (flyout?.sectionId === sectionId) {
-      setFlyout(null)
-      return
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect()
+  const openFlyoutForElement = useCallback((sectionId: string, element: HTMLElement) => {
+    clearCloseTimer()
+    const rect = element.getBoundingClientRect()
     const maxTop = Math.max(72, window.innerHeight - 360)
     setFlyout({
       sectionId,
       top: Math.min(rect.top, maxTop),
       right: Math.max(80, window.innerWidth - rect.left + 8),
     })
+  }, [clearCloseTimer])
+
+  const handleOpenFlyout = (
+    sectionId: string,
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    clearCloseTimer()
+    if (flyout?.sectionId === sectionId) {
+      setFlyout(null)
+      return
+    }
+    openFlyoutForElement(sectionId, event.currentTarget)
+  }
+
+  const handleMouseEnterSection = (
+    sectionId: string,
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    if (collapsedMenuExpandMode !== 'hover') return
+    openFlyoutForElement(sectionId, event.currentTarget)
+  }
+
+  const handleMouseLeaveSection = () => {
+    if (collapsedMenuExpandMode !== 'hover') return
+    clearCloseTimer()
+    closeTimerRef.current = setTimeout(() => {
+      setFlyout(null)
+    }, 150)
+  }
+
+  const handleFlyoutMouseEnter = () => {
+    if (collapsedMenuExpandMode !== 'hover') return
+    clearCloseTimer()
+  }
+
+  const handleFlyoutMouseLeave = () => {
+    if (collapsedMenuExpandMode !== 'hover') return
+    clearCloseTimer()
+    closeTimerRef.current = setTimeout(() => {
+      setFlyout(null)
+    }, 150)
   }
 
   const activeFlyoutSection = useMemo(
@@ -271,7 +319,10 @@ export default function SidebarNav({
     return (
       <div ref={containerRef} className="flex flex-col h-full py-3 items-center">
         <div
-          onScroll={() => setFlyout(null)}
+          onScroll={() => {
+            clearCloseTimer()
+            setFlyout(null)
+          }}
           className="flex-1 w-full overflow-y-auto flex flex-col items-center gap-2 px-2"
         >
           {showHome && (
@@ -306,6 +357,7 @@ export default function SidebarNav({
                   title={section.navTitle}
                   ariaLabel={section.navTitle}
                   onClick={() => {
+                    clearCloseTimer()
                     setFlyout(null)
                     onNavigate?.()
                   }}
@@ -330,6 +382,8 @@ export default function SidebarNav({
                 aria-label={section.navTitle}
                 aria-expanded={isFlyoutOpen}
                 onClick={(e) => handleOpenFlyout(section.id, e)}
+                onMouseEnter={(e) => handleMouseEnterSection(section.id, e)}
+                onMouseLeave={handleMouseLeaveSection}
                 className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
                   active
                     ? `${section.iconBgColor} ring-1 ring-inset ring-current/25 shadow-2xs`
@@ -362,6 +416,8 @@ export default function SidebarNav({
         {flyout && activeFlyoutSection && (
           <div
             ref={flyoutRef}
+            onMouseEnter={handleFlyoutMouseEnter}
+            onMouseLeave={handleFlyoutMouseLeave}
             style={{
               top: `${flyout.top}px`,
               right: `${flyout.right}px`,
@@ -387,6 +443,7 @@ export default function SidebarNav({
                   isAdmin={activeFlyoutSection.isAdmin}
                   showDescription
                   onClick={() => {
+                    clearCloseTimer()
                     setFlyout(null)
                     onNavigate?.()
                   }}

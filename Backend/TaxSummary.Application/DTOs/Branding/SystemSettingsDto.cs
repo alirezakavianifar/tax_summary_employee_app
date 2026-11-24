@@ -24,6 +24,7 @@ public class SystemSettingsDto
     public string FooterBadgeText { get; set; } = string.Empty;
     public string FooterLinksJson { get; set; } = string.Empty;
     public List<FooterLinkDto> FooterLinks { get; set; } = new();
+    public string CollapsedMenuExpandMode { get; set; } = "click";
     public DateTime UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
 }
@@ -39,5 +40,11 @@ public class UpdateSystemSettingsDto
     public string? FooterVersionText { get; set; }
     public string? FooterBadgeText { get; set; }
     public string? FooterLinksJson { get; set; }
+    public string? CollapsedMenuExpandMode { get; set; }
+}
+
+public class UpdateMenuExpandModeRequestDto
+{
+    public string Mode { get; set; } = "click";
 }
 

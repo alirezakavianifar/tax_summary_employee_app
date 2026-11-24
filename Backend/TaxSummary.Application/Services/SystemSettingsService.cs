@@ -73,7 +73,8 @@ public class SystemSettingsService : ISystemSettingsService
                 request.FooterVersionText,
                 request.FooterBadgeText,
                 request.FooterLinksJson,
-                updatedBy);
+                updatedBy,
+                request.CollapsedMenuExpandMode);
 
             await _repository.UpdateAsync(setting, cancellationToken);
             _logger.LogInformation("System branding updated by {UpdatedBy}: Org={OrgName}, Title={Title}",
@@ -86,6 +87,31 @@ public class SystemSettingsService : ISystemSettingsService
         {
             _logger.LogError(ex, "خطا در بروزرسانی تنظیمات برندینگ سامانه");
             return Result.Failure<SystemSettingsDto>("خطا در ذخیره‌سازی تغییرات برندینگ سامانه");
+        }
+    }
+
+    public async Task<Result<SystemSettingsDto>> UpdateMenuExpandModeAsync(
+        string mode,
+        string? updatedBy,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var normalizedMode = string.Equals(mode, "hover", StringComparison.OrdinalIgnoreCase) ? "hover" : "click";
+            var setting = await _repository.GetOrCreateDefaultAsync(cancellationToken);
+            setting.UpdateCollapsedMenuExpandMode(normalizedMode, updatedBy);
+
+            await _repository.UpdateAsync(setting, cancellationToken);
+            _logger.LogInformation("Collapsed menu expand mode updated by {UpdatedBy} to {Mode}",
+                updatedBy ?? "Unknown", setting.CollapsedMenuExpandMode);
+
+            var dto = MapToDto(setting);
+            return Result.Success(dto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطا در بروزرسانی نحوه باز شدن منوی کناری");
+            return Result.Failure<SystemSettingsDto>("خطا در بروزرسانی تنظیمات نحوه باز شدن منوی کناری");
         }
     }
 

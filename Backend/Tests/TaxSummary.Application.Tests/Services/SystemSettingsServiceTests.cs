@@ -98,6 +98,24 @@ public class SystemSettingsServiceTests
     }
 
     [Fact]
+    public async Task UpdateMenuExpandModeAsync_ShouldUpdateToHoverAndReturnDto()
+    {
+        // Arrange
+        var setting = SystemSetting.CreateDefault();
+        _mockRepo.Setup(r => r.GetOrCreateDefaultAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(setting);
+
+        // Act
+        var result = await _service.UpdateMenuExpandModeAsync("hover", "admin");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value!.CollapsedMenuExpandMode.Should().Be("hover");
+        _mockRepo.Verify(r => r.UpdateAsync(It.IsAny<SystemSetting>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateBrandingSettingsAsync_WithEmptyOrgName_ShouldReturnValidationError()
     {
         // Arrange

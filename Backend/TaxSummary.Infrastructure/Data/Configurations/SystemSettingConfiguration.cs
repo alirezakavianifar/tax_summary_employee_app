@@ -54,6 +54,11 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             .IsRequired()
             .HasMaxLength(4000);
 
+        builder.Property(x => x.CollapsedMenuExpandMode)
+            .IsRequired()
+            .HasMaxLength(20)
+            .HasDefaultValue(SystemSetting.DefaultCollapsedMenuExpandMode);
+
         builder.Property(x => x.UpdatedBy)
             .HasMaxLength(150);
     }

@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import MenuItemFormModal from '@/components/admin/MenuItemFormModal'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
+import { useBranding } from '@/contexts/BrandingContext'
 import { menuSettingsApi } from '@/lib/api/menuSettings'
 import { resolveMenuIcon } from '@/lib/icons/menuIcons'
 import {
@@ -40,6 +41,9 @@ import {
   Plus,
   Pencil,
   Trash2,
+  MousePointerClick,
+  Sparkles,
+  Check,
 } from 'lucide-react'
 
 function sanitizeMenuItemRoles(data: MenuSettingItem[]): MenuSettingItem[] {
@@ -59,11 +63,13 @@ function MenuSettingsAdminContent() {
   const searchParams = useSearchParams()
   const highlightKey = searchParams?.get('highlight') || null
   const { refreshSettings } = useMenuSettings()
+  const { collapsedMenuExpandMode, setCollapsedMenuExpandMode } = useBranding()
   const [items, setItems] = useState<MenuSettingItem[]>([])
   const [originalItems, setOriginalItems] = useState<MenuSettingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [savingMode, setSavingMode] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [collapsedParents, setCollapsedParents] = useState<Record<string, boolean>>({})
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -74,6 +80,27 @@ function MenuSettingsAdminContent() {
   const [initialReportCode, setInitialReportCode] = useState<string | null>(null)
   const [mutatingCustom, setMutatingCustom] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<MenuSettingItem | null>(null)
+
+  const handleUpdateMode = async (mode: 'click' | 'hover') => {
+    if (mode === collapsedMenuExpandMode) return
+    try {
+      setSavingMode(true)
+      await setCollapsedMenuExpandMode(mode)
+      setStatusMessage({
+        type: 'success',
+        text: `حالت باز شدن منو در وضعیت آیکونی با موفقیت روی «${
+          mode === 'hover' ? 'اشاره ماوس (Hover)' : 'کلیک (Click)'
+        }» تنظیم شد.`,
+      })
+    } catch (err: any) {
+      setStatusMessage({
+        type: 'error',
+        text: err?.message || 'خطا در ذخیره حالت باز شدن منو',
+      })
+    } finally {
+      setSavingMode(false)
+    }
+  }
 
   const syncWithServerList = (data: MenuSettingItem[]) => {
     const sanitized = sanitizeMenuItemRoles(data)
@@ -596,6 +623,62 @@ function MenuSettingsAdminContent() {
               <div>
                 <span className="text-[11px] text-gray-500 block">پنهان و غیرفعال</span>
                 <span className="text-xl font-black text-gray-600">{stats.hidden}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Collapsed Rail Menu Expand Mode Configuration Card */}
+          <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-4 sm:p-5">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2 rounded-xl bg-purple-50 text-purple-700 border border-purple-100/80 shadow-2xs">
+                    <MousePointerClick className="w-4 h-4" />
+                  </span>
+                  <h2 className="text-sm font-black text-gray-900">
+                    نحوه باز شدن منوها در حالت نوار کناری جمع‌شده (آیکونی)
+                  </h2>
+                </div>
+                <p className="text-xs text-gray-500 pr-9">
+                  مشخص کنید زمانی که نوار ناوبری کناری در حالت ستون کوچک (آیکونی) قرار دارد، زیرمنوها با کلیک روی آیکون باز شوند یا به صورت خودکار با بردن نشانگر ماوس (Hover).
+                </p>
+              </div>
+
+              {/* Toggle Buttons */}
+              <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-200/80 self-start lg:self-auto flex-shrink-0">
+                <button
+                  type="button"
+                  disabled={savingMode}
+                  onClick={() => handleUpdateMode('click')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                    collapsedMenuExpandMode === 'click'
+                      ? 'bg-white text-gray-900 shadow-xs border border-gray-200/90 ring-1 ring-primary-500/20'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <MousePointerClick className="w-3.5 h-3.5 text-primary-600" />
+                  <span>باز شدن با کلیک (Click)</span>
+                  {collapsedMenuExpandMode === 'click' && (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 mr-0.5" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={savingMode}
+                  onClick={() => handleUpdateMode('hover')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                    collapsedMenuExpandMode === 'hover'
+                      ? 'bg-white text-gray-900 shadow-xs border border-gray-200/90 ring-1 ring-primary-500/20'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>باز شدن با اشاره ماوس (Hover)</span>
+                  {collapsedMenuExpandMode === 'hover' && (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 mr-0.5" />
+                  )}
+                </button>
               </div>
             </div>
           </div>

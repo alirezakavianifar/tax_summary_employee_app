@@ -64,6 +64,31 @@ public class SystemSettingsController : ControllerBase
     }
 
     /// <summary>
+    /// Updates whether collapsed sidebar menus expand by click or hover.
+    /// Restricted to administrators.
+    /// </summary>
+    [HttpPut("menu-expand-mode")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(SystemSettingsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<SystemSettingsDto>> UpdateMenuExpandMode(
+        [FromBody] UpdateMenuExpandModeRequestDto request,
+        CancellationToken ct = default)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Mode))
+        {
+            return BadRequest(new { error = "حالت انتخاب شده نامعتبر است" });
+        }
+
+        var updatedBy = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst("username")?.Value;
+        var result = await _systemSettingsService.UpdateMenuExpandModeAsync(request.Mode, updatedBy, ct);
+        if (result.IsFailure)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+        return Ok(result.Value);
+    }
+
+    /// <summary>
     /// Uploads a new organization logo image and updates system branding.
     /// Restricted to administrators.
     /// </summary>

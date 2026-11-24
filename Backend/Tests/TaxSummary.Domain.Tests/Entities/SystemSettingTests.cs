@@ -24,6 +24,7 @@ public class SystemSettingTests
         setting.FooterVersionText.Should().Be("v2.0");
         setting.FooterBadgeText.Should().Be("سامانه رسمی");
         setting.FooterLinksJson.Should().NotBeNullOrWhiteSpace();
+        setting.CollapsedMenuExpandMode.Should().Be(SystemSetting.DefaultCollapsedMenuExpandMode);
     }
 
     [Fact]
@@ -90,6 +91,26 @@ public class SystemSettingTests
         setting.FooterVersionText.Should().Be("v2.0");
         setting.FooterBadgeText.Should().Be("سامانه رسمی");
         setting.UpdatedBy.Should().Be("admin_reset");
+        setting.CollapsedMenuExpandMode.Should().Be("click");
+    }
+
+    [Theory]
+    [InlineData("hover", "hover")]
+    [InlineData("HOVER", "hover")]
+    [InlineData("click", "click")]
+    [InlineData("other", "click")]
+    [InlineData(null, "click")]
+    public void UpdateCollapsedMenuExpandMode_ShouldSetExpectedMode(string? inputMode, string expectedMode)
+    {
+        // Arrange
+        var setting = SystemSetting.CreateDefault();
+
+        // Act
+        setting.UpdateCollapsedMenuExpandMode(inputMode, "test_admin");
+
+        // Assert
+        setting.CollapsedMenuExpandMode.Should().Be(expectedMode);
+        setting.UpdatedBy.Should().Be("test_admin");
     }
 }
 

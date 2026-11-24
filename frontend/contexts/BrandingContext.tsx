@@ -7,11 +7,13 @@ import type { SystemSettingsDto, UpdateSystemSettingsPayload } from '@/types/sys
 
 interface BrandingContextType {
   branding: SystemSettingsDto
+  collapsedMenuExpandMode: 'click' | 'hover'
   loading: boolean
   error: string | null
   resolvedLogoUrl: string
   refreshBranding: () => Promise<void>
   updateBranding: (payload: UpdateSystemSettingsPayload) => Promise<void>
+  setCollapsedMenuExpandMode: (mode: 'click' | 'hover') => Promise<void>
   uploadLogo: (file: File) => Promise<void>
   resetBranding: () => Promise<void>
 }
@@ -33,6 +35,7 @@ const DEFAULT_BRANDING: SystemSettingsDto = {
     { id: 'link-intamedia', title: 'پرتال سازمان امور مالیاتی', url: 'https://www.intamedia.ir', isExternal: true, isVisible: true, order: 2 },
     { id: 'link-mytax', title: 'درگاه ملی خدمات مالیاتی', url: 'https://my.tax.gov.ir', isExternal: true, isVisible: true, order: 3 },
   ],
+  collapsedMenuExpandMode: 'click',
   updatedAt: new Date().toISOString(),
   updatedBy: null,
 }
@@ -64,6 +67,7 @@ function normalizeBranding(data: SystemSettingsDto): SystemSettingsDto {
     footerVersionText: data.footerVersionText ?? DEFAULT_BRANDING.footerVersionText,
     footerBadgeText: data.footerBadgeText ?? DEFAULT_BRANDING.footerBadgeText,
     footerLinks: links ?? DEFAULT_BRANDING.footerLinks,
+    collapsedMenuExpandMode: data.collapsedMenuExpandMode === 'hover' ? 'hover' : 'click',
   }
 }
 
@@ -107,6 +111,21 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const setCollapsedMenuExpandMode = useCallback(async (mode: 'click' | 'hover') => {
+    try {
+      setLoading(true)
+      setError(null)
+      const updated = await systemSettingsApi.updateMenuExpandMode(mode)
+      setBranding(normalizeBranding(updated))
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'خطا در ذخیره حالت باز شدن منو'
+      setError(msg)
+      throw new Error(msg)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   const uploadLogo = useCallback(async (file: File) => {
     try {
       setLoading(true)
@@ -143,11 +162,13 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     <BrandingContext.Provider
       value={{
         branding,
+        collapsedMenuExpandMode: branding.collapsedMenuExpandMode ?? 'click',
         loading,
         error,
         resolvedLogoUrl,
         refreshBranding,
         updateBranding,
+        setCollapsedMenuExpandMode,
         uploadLogo,
         resetBranding,
       }}
@@ -162,11 +183,13 @@ export function useBranding(): BrandingContextType {
   if (!context) {
     return {
       branding: DEFAULT_BRANDING,
+      collapsedMenuExpandMode: 'click',
       loading: false,
       error: null,
       resolvedLogoUrl: '/images/Intamedia_Logo.png',
       refreshBranding: async () => {},
       updateBranding: async () => {},
+      setCollapsedMenuExpandMode: async () => {},
       uploadLogo: async () => {},
       resetBranding: async () => {},
     }

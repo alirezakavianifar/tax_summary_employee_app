@@ -21,6 +21,15 @@ export const systemSettingsApi = {
   },
 
   /**
+   * Updates whether collapsed sidebar menus expand by click or hover.
+   * Requires Admin role.
+   */
+  async updateMenuExpandMode(mode: 'click' | 'hover'): Promise<SystemSettingsDto> {
+    const response = await apiClient.put<SystemSettingsDto>('/system-settings/menu-expand-mode', { mode })
+    return response.data
+  },
+
+  /**
    * Uploads a new logo image file.
    * Requires Admin role.
    */

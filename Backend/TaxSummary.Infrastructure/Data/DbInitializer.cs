@@ -1325,6 +1325,7 @@ public static class DbInitializer
                     ""FooterVersionText"" TEXT NOT NULL DEFAULT 'v2.0',
                     ""FooterBadgeText"" TEXT NOT NULL DEFAULT 'سامانه رسمی',
                     ""FooterLinksJson"" TEXT NOT NULL DEFAULT '[]',
+                    ""CollapsedMenuExpandMode"" TEXT NOT NULL DEFAULT 'click',
                     ""UpdatedAt"" TEXT NOT NULL,
                     ""UpdatedBy"" TEXT NULL
                 );
@@ -1362,6 +1363,11 @@ public static class DbInitializer
                 {
                     var defaultLinks = SystemSetting.DefaultFooterLinksJson.Replace("'", "''");
                     command.CommandText = $"ALTER TABLE SystemSettings ADD COLUMN FooterLinksJson TEXT NOT NULL DEFAULT '{defaultLinks}';";
+                    await command.ExecuteNonQueryAsync();
+                }
+                if (!systemSettingColumns.Contains("CollapsedMenuExpandMode"))
+                {
+                    command.CommandText = "ALTER TABLE SystemSettings ADD COLUMN CollapsedMenuExpandMode TEXT NOT NULL DEFAULT 'click';";
                     await command.ExecuteNonQueryAsync();
                 }
             }

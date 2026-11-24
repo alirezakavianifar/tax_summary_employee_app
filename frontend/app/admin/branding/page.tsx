@@ -175,6 +175,7 @@ export default function BrandingManagementPage() {
         footerVersionText: footerVersion.trim(),
         footerBadgeText: footerBadge.trim(),
         footerLinksJson: JSON.stringify(footerLinks),
+        collapsedMenuExpandMode: branding.collapsedMenuExpandMode ?? 'click',
       })
       setStatusMessage({ type: 'success', text: 'تنظیمات برندینگ، هویت و فوتر سازمان با موفقیت ذخیره شد.' })
     } catch (err: any) {

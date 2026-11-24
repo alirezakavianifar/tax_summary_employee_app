@@ -20,6 +20,7 @@ export interface SystemSettingsDto {
   footerBadgeText: string
   footerLinksJson: string
   footerLinks?: FooterLinkDto[]
+  collapsedMenuExpandMode?: 'click' | 'hover'
   updatedAt: string
   updatedBy: string | null
 }
@@ -34,5 +35,10 @@ export interface UpdateSystemSettingsPayload {
   footerVersionText?: string
   footerBadgeText?: string
   footerLinksJson?: string
+  collapsedMenuExpandMode?: 'click' | 'hover'
+}
+
+export interface UpdateMenuExpandModePayload {
+  mode: 'click' | 'hover'
 }
 
