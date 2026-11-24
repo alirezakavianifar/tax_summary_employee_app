@@ -407,7 +407,17 @@ public class ExecutiveReportingService : IExecutiveReportingService
 
             var isAdmin = string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase);
             if (!isAdmin)
-                return Result.Failure<bool>("تنها مدیر ارشد سامانه (Admin) مجاز به حذف گزارش‌ها می‌باشد.");
+            {
+                var deleteSetting = await _db.MenuSettings
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.MenuKey == "action_reporting_delete_custom_dataset", ct);
+
+                var isAllowed = deleteSetting != null && deleteSetting.IsRoleAllowed(userRole);
+                if (!isAllowed)
+                {
+                    return Result.Failure<bool>("شما دسترسی لازم جهت حذف گزارش‌ها را ندارید.");
+                }
+            }
 
             var cleanCode = reportCode.Trim().ToUpperInvariant();
             var report = await _reportingRepository.GetReportDefinitionByCodeAsync(cleanCode, ct);

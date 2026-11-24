@@ -134,6 +134,7 @@ public class CustomDatasetController : ReportingControllerBase
     /// ویرایش و سفارشی‌سازی مشخصات گزارش (عناوین فارسی ستون‌ها، نمایش/عدم نمایش، نوع داده، تجمیع و فیلترها)
     /// </summary>
     [HttpPut("{reportCode}/tweak")]
+    [RequireModuleAccess("action_reporting_edit_custom_dataset")]
     [ProducesResponseType(typeof(ReportDefinitionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ReportDefinitionDto>> TweakReport(
@@ -152,6 +153,7 @@ public class CustomDatasetController : ReportingControllerBase
     /// افزودن رکوردهای تکمیلی از فایل اکسل جدید به مجموعه داده گزارش موجود
     /// </summary>
     [HttpPost("{reportCode}/append")]
+    [RequireModuleAccess("action_reporting_edit_custom_dataset")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -177,6 +179,7 @@ public class CustomDatasetController : ReportingControllerBase
     /// جایگزینی کلیه رکوردهای گزارش موجود با داده‌های فایل اکسل جدید
     /// </summary>
     [HttpPost("{reportCode}/replace")]
+    [RequireModuleAccess("action_reporting_edit_custom_dataset")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -202,6 +205,7 @@ public class CustomDatasetController : ReportingControllerBase
     /// حذف کامل گزارش و حذف فیزیکی جدول داده مربوطه از پایگاه داده
     /// </summary>
     [HttpDelete("{reportCode}")]
+    [RequireModuleAccess("action_reporting_delete_custom_dataset")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> DeleteReport(

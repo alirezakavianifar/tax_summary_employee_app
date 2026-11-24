@@ -61,7 +61,10 @@ A modern, full-stack enterprise web application for managing employee performanc
 6. **Administration & Dynamic Menu Management (`/admin`)**:
    - Granular Role-Based Access Control (Admin, Manager, Employee, OfficeHead, Expert, Auditor).
    - Database-backed dynamic menu visibility management and collapsible RTL sidebar navigation.
-   - **Excel Report Creation Permission Control**: Administrators can configure role-based access for the «ایجاد گزارش جدید از اکسل» action (`action_reporting_create_custom_dataset`) in `/admin/menu-settings`, restricting dataset generation to designated organizational roles or marking it Admin-Only.
+   - **Excel Report Creation, Editing & Deletion RBAC Controls**: Administrators can configure role-based access for custom reports in `/admin/menu-settings`:
+     - Creation (`action_reporting_create_custom_dataset`): Restricts new dataset generation from Excel to designated organizational roles.
+     - Editing / Tweaking (`action_reporting_edit_custom_dataset`): Restricts column customization, Persian header changes, aggregations, quick filters, and TTL extensions.
+     - Deletion (`action_reporting_delete_custom_dataset`): Restricts physical deletion of custom reports and dropping of underlying SQLite tables.
    - **Report-Level Multi-Role Access Control**: Full multi-role permission management for standard and custom reports. Reports without explicit restrictions inherit general catalog access, while sensitive reports can be restricted to specific organizational roles (DirectorGeneral, Manager, Expert, Auditor, etc.) directly in the Excel Upload Wizard and the Report Tweak Studio.
    - **Report Domain Category Management (`/admin/report-categories`)**: Complete administrative control to create, edit, sort, and toggle active status of report categories. Enforces strict zero-orphan report policy where every report must belong to a valid category, and blocks category deletion if reports are attached.
    - Dynamic organizational branding, custom logo upload, system-wide title management, and dynamic portal footer customization with official identity badge (`[🛡️ سامانه رسمی]`), copyright text, version badge, and interactive links list (`/admin/branding`).

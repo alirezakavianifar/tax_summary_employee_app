@@ -50,6 +50,8 @@ public static class DefaultMenuSettings
             MenuSetting.Create("action_reporting_export", "خروجی اکسل و مستندات", "/reporting", "module_reporting", "Download", true, false, 5, "صدور داده‌ها در قالب فایل اکسل استاندارد با فرمول", null, "Admin,Manager,Auditor,DirectorGeneral"),
             MenuSetting.Create("action_reporting_auditor_metrics", "شاخص‌های عملکرد حسابرسان", "/admin/auditor-metrics", "module_reporting", "Award", true, false, 6, "پیکربندی فرمول‌ها، اوزان و کارنامه ۳۶۰ درجه عملکرد حسابرسان", null, "Admin,Manager,DirectorGeneral"),
             MenuSetting.Create("action_reporting_create_custom_dataset", "ایجاد گزارش جدید از اکسل", "/reporting/standard?modal=upload", "module_reporting", "UploadCloud", true, false, 7, "بارگذاری فایل اکسل، استنتاج خودکار ساختار ستون‌ها و ساخت گزارش پویا", null, "Admin,DirectorGeneral,Manager"),
+            MenuSetting.Create("action_reporting_edit_custom_dataset", "ویرایش و سفارشی‌سازی گزارش‌های پویا", "/reporting/standard", "module_reporting", "SlidersHorizontal", true, false, 8, "امکان ویرایش ستون‌ها، عناوین، فیلترها و مشخصات گزارش‌های بارگذاری شده از اکسل", null, "Admin,DirectorGeneral,Manager"),
+            MenuSetting.Create("action_reporting_delete_custom_dataset", "حذف گزارش‌ها و پایگاه‌های داده سفارشی", "/reporting/standard", "module_reporting", "Trash2", true, false, 9, "امکان حذف فیزیکی گزارش‌ها و پاک‌سازی جداول داده مربوطه از پایگاه داده", null, "Admin"),
 
             // 6. Admin System Management
             MenuSetting.Create("module_admin", "مدیریت سیستم", "/admin/users", null, "ShieldCheck", true, true, 6, "پنل راهبری و مدیریت سامانه (مخصوص مدیران)", null, AdminOnlyRoles, "slate", "مدیریت و امنیت"),

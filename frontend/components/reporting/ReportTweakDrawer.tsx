@@ -32,6 +32,7 @@ import {
   TweakCustomReportRequest,
 } from '@/types/customDataset'
 import { toPersianDigits, formatIsoToJalali } from '@/lib/jalali'
+import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 
 interface ReportTweakDrawerProps {
   isOpen: boolean
@@ -46,6 +47,8 @@ export function ReportTweakDrawer({
   onClose,
   onSaved,
 }: ReportTweakDrawerProps) {
+  const { isActionVisible } = useMenuSettings()
+  const canDeleteReport = isActionVisible('action_reporting_delete_custom_dataset', 'module_reporting')
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -707,20 +710,22 @@ export function ReportTweakDrawer({
               </div>
 
               {/* Danger Zone */}
-              <div className="rounded-xl border border-red-200 bg-red-50/30 p-5">
-                <h4 className="mb-1 text-sm font-bold text-red-800">عملیات حساس و حذف گزارش</h4>
-                <p className="mb-4 text-xs text-red-600">
-                  حذف این گزارش سبب پاک شدن کلیه رکوردهای جدول مربوطه و حذف گزارش از فهرست گزارش‌های استاندارد می‌گردد.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleDeleteReport}
-                  className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 transition-colors shadow-xs"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span>حذف دائمی این گزارش و داده‌های آن</span>
-                </button>
-              </div>
+              {canDeleteReport && (
+                <div className="rounded-xl border border-red-200 bg-red-50/30 p-5">
+                  <h4 className="mb-1 text-sm font-bold text-red-800">عملیات حساس و حذف گزارش</h4>
+                  <p className="mb-4 text-xs text-red-600">
+                    حذف این گزارش سبب پاک شدن کلیه رکوردهای جدول مربوطه و حذف گزارش از فهرست گزارش‌های استاندارد می‌گردد.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteReport}
+                    className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 transition-colors shadow-xs"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>حذف دائمی این گزارش و داده‌های آن</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

@@ -78,7 +78,7 @@ public class StandardReportsController : ReportingControllerBase
     /// حذف کامل گزارش و جداول پایگاه داده مرتبط (مخصوص گزارش‌های سفارشی اکسل و گزارش‌های ساخته شده)
     /// </summary>
     [HttpDelete("{code}")]
-    [Authorize(Roles = "Admin")]
+    [RequireModuleAccess("action_reporting_delete_custom_dataset")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> DeleteReport(

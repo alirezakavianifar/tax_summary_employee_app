@@ -69,6 +69,8 @@ export default function StandardReportsCatalogPage() {
   // Menu Settings Integration for Report Assignment
   const { settings, refreshSettings, isActionVisible } = useMenuSettings()
   const canCreateReport = isActionVisible('action_reporting_create_custom_dataset', 'module_reporting')
+  const canEditReport = isActionVisible('action_reporting_edit_custom_dataset', 'module_reporting')
+  const canDeleteReport = isActionVisible('action_reporting_delete_custom_dataset', 'module_reporting')
   const [pinTargetReport, setPinTargetReport] = useState<ReportDefinition | null>(null)
   const [pinTitle, setPinTitle] = useState('')
   const [pinSubmitting, setPinSubmitting] = useState(false)
@@ -417,25 +419,29 @@ export default function StandardReportsCatalogPage() {
                     {/* Custom Report Actions: Direct Delete & Tweak */}
                     {isCustom ? (
                       <>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTargetReport(report)}
-                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all shadow-2xs"
-                          title="حذف گزارش و پاک‌سازی جدول داده"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>حذف</span>
-                        </button>
+                        {canDeleteReport && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTargetReport(report)}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all shadow-2xs"
+                            title="حذف گزارش و پاک‌سازی جدول داده"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>حذف</span>
+                          </button>
+                        )}
 
-                        <button
-                          type="button"
-                          onClick={() => setTweakReportCode(report.code)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-600 hover:text-white transition-all shadow-2xs"
-                          title="ویرایش و سفارشی‌سازی ستون‌ها"
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5" />
-                          <span>ویرایش</span>
-                        </button>
+                        {canEditReport && (
+                          <button
+                            type="button"
+                            onClick={() => setTweakReportCode(report.code)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-600 hover:text-white transition-all shadow-2xs"
+                            title="ویرایش و سفارشی‌سازی ستون‌ها"
+                          >
+                            <SlidersHorizontal className="w-3.5 h-3.5" />
+                            <span>ویرایش</span>
+                          </button>
+                        )}
                       </>
                     ) : (
                       /* Standard Report Administrative Action: Archive / Reactivate */
