@@ -9,6 +9,7 @@ public interface ISystemSettingsService
     Task<Result<SystemSettingsDto>> GetBrandingSettingsAsync(CancellationToken cancellationToken = default);
     Task<Result<SystemSettingsDto>> UpdateBrandingSettingsAsync(UpdateSystemSettingsDto request, string? updatedBy, CancellationToken cancellationToken = default);
     Task<Result<SystemSettingsDto>> UpdateMenuExpandModeAsync(string mode, string? updatedBy, CancellationToken cancellationToken = default);
+    Task<Result<SystemSettingsDto>> UpdateReportingSubNavAsync(bool isVisible, string? updatedBy, CancellationToken cancellationToken = default);
     Task<Result<SystemSettingsDto>> UpdateLogoAsync(IFormFile logoFile, string? updatedBy, CancellationToken cancellationToken = default);
     Task<Result<SystemSettingsDto>> ResetToDefaultsAsync(string? updatedBy, CancellationToken cancellationToken = default);
 }

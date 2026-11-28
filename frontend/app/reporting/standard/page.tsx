@@ -329,7 +329,7 @@ export default function StandardReportsCatalogPage() {
             return (
               <div
                 key={report.code}
-                className={`group relative rounded-2xl p-5 border shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between ${
+                className={`min-w-0 group relative rounded-2xl p-5 border shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between ${
                   isInactive
                     ? 'border-slate-300 bg-slate-50/70 opacity-80'
                     : isCustom
@@ -394,28 +394,28 @@ export default function StandardReportsCatalogPage() {
                 </div>
 
                 {/* Footer details & Actions */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto gap-2">
-                  <div className="flex items-center gap-2.5 text-[11px] text-slate-400 flex-wrap">
+                <div className="pt-3 border-t border-slate-100 flex flex-col gap-3 mt-auto">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-400">
                     {report.createdAt && (
                       <span
-                        className="flex items-center gap-1 text-slate-600 font-medium"
+                        className="flex items-center gap-1 text-slate-600 font-medium whitespace-nowrap"
                         title={`تاریخ ایجاد گزارش: ${formatIsoToJalali(report.createdAt, true)}`}
                       >
                         <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                         <span>{formatIsoToJalali(report.createdAt, true)}</span>
                       </span>
                     )}
-                    <span className="flex items-center gap-1">
-                      <Columns className="w-3.5 h-3.5" />
+                    <span className="flex items-center gap-1 whitespace-nowrap">
+                      <Columns className="w-3.5 h-3.5 shrink-0" />
                       {toPersianDigits(report.columns?.length || 0)} ستون
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Layers className="w-3.5 h-3.5" />
+                    <span className="flex items-center gap-1 whitespace-nowrap">
+                      <Layers className="w-3.5 h-3.5 shrink-0" />
                       {categoryName}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {/* Custom Report Actions: Direct Delete & Tweak */}
                     {isCustom ? (
                       <>
@@ -423,7 +423,7 @@ export default function StandardReportsCatalogPage() {
                           <button
                             type="button"
                             onClick={() => setDeleteTargetReport(report)}
-                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all shadow-2xs"
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all shadow-2xs whitespace-nowrap shrink-0"
                             title="حذف گزارش و پاک‌سازی جدول داده"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -435,7 +435,7 @@ export default function StandardReportsCatalogPage() {
                           <button
                             type="button"
                             onClick={() => setTweakReportCode(report.code)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-600 hover:text-white transition-all shadow-2xs"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-600 hover:text-white transition-all shadow-2xs whitespace-nowrap shrink-0"
                             title="ویرایش و سفارشی‌سازی ستون‌ها"
                           >
                             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -449,7 +449,7 @@ export default function StandardReportsCatalogPage() {
                         <button
                           type="button"
                           onClick={() => setDeleteTargetReport(report)}
-                          className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-2xs ${
+                          className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-2xs whitespace-nowrap shrink-0 ${
                             report.isActive
                               ? 'text-slate-600 bg-slate-100 hover:bg-amber-100 hover:text-amber-800'
                               : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white'
@@ -470,7 +470,7 @@ export default function StandardReportsCatalogPage() {
                     {isAdmin && (
                       isReportInMenu(report.code) ? (
                         <span
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 shadow-2xs"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 shadow-2xs whitespace-nowrap shrink-0"
                           title="این گزارش در حال حاضر در منوی گزارش‌ها موجود است"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -480,7 +480,7 @@ export default function StandardReportsCatalogPage() {
                         <button
                           type="button"
                           onClick={() => handleOpenPinModal(report)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white transition-all shadow-2xs"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white transition-all shadow-2xs whitespace-nowrap shrink-0"
                           title="افزودن و تخصیص مستقیم این گزارش به منوی سامانه گزارش‌ها"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -491,7 +491,7 @@ export default function StandardReportsCatalogPage() {
 
                     <Link
                       href={`/reporting/standard/${report.code}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 group-hover:bg-amber-600 group-hover:text-white transition-all shadow-xs"
+                      className="ms-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 group-hover:bg-amber-600 group-hover:text-white transition-all shadow-xs whitespace-nowrap shrink-0"
                     >
                       <span>اجرا</span>
                       <ArrowLeft className="w-3.5 h-3.5" />

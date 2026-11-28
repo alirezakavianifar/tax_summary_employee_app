@@ -30,6 +30,17 @@ export const systemSettingsApi = {
   },
 
   /**
+   * Updates whether the sticky reporting sub-navigation bar is visible.
+   * Requires Admin role.
+   */
+  async updateReportingSubNav(showReportingSubNav: boolean): Promise<SystemSettingsDto> {
+    const response = await apiClient.put<SystemSettingsDto>('/system-settings/reporting-subnav', {
+      showReportingSubNav,
+    })
+    return response.data
+  },
+
+  /**
    * Uploads a new logo image file.
    * Requires Admin role.
    */

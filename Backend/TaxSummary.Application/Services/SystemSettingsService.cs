@@ -74,7 +74,8 @@ public class SystemSettingsService : ISystemSettingsService
                 request.FooterBadgeText,
                 request.FooterLinksJson,
                 updatedBy,
-                request.CollapsedMenuExpandMode);
+                request.CollapsedMenuExpandMode,
+                request.ShowReportingSubNav);
 
             await _repository.UpdateAsync(setting, cancellationToken);
             _logger.LogInformation("System branding updated by {UpdatedBy}: Org={OrgName}, Title={Title}",
@@ -112,6 +113,30 @@ public class SystemSettingsService : ISystemSettingsService
         {
             _logger.LogError(ex, "خطا در بروزرسانی نحوه باز شدن منوی کناری");
             return Result.Failure<SystemSettingsDto>("خطا در بروزرسانی تنظیمات نحوه باز شدن منوی کناری");
+        }
+    }
+
+    public async Task<Result<SystemSettingsDto>> UpdateReportingSubNavAsync(
+        bool isVisible,
+        string? updatedBy,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var setting = await _repository.GetOrCreateDefaultAsync(cancellationToken);
+            setting.UpdateReportingSubNavVisibility(isVisible, updatedBy);
+
+            await _repository.UpdateAsync(setting, cancellationToken);
+            _logger.LogInformation("Reporting sub-nav visibility updated by {UpdatedBy} to {IsVisible}",
+                updatedBy ?? "Unknown", setting.ShowReportingSubNav);
+
+            var dto = MapToDto(setting);
+            return Result.Success(dto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطا در بروزرسانی وضعیت نمایش نوار ناوبری ماژول گزارش‌ها");
+            return Result.Failure<SystemSettingsDto>("خطا در بروزرسانی تنظیمات نمایش نوار ناوبری ماژول گزارش‌ها");
         }
     }
 

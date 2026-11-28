@@ -25,6 +25,7 @@ public class SystemSettingTests
         setting.FooterBadgeText.Should().Be("سامانه رسمی");
         setting.FooterLinksJson.Should().NotBeNullOrWhiteSpace();
         setting.CollapsedMenuExpandMode.Should().Be(SystemSetting.DefaultCollapsedMenuExpandMode);
+        setting.ShowReportingSubNav.Should().BeTrue();
     }
 
     [Fact]
@@ -92,6 +93,7 @@ public class SystemSettingTests
         setting.FooterBadgeText.Should().Be("سامانه رسمی");
         setting.UpdatedBy.Should().Be("admin_reset");
         setting.CollapsedMenuExpandMode.Should().Be("click");
+        setting.ShowReportingSubNav.Should().BeTrue();
     }
 
     [Theory]
@@ -110,6 +112,22 @@ public class SystemSettingTests
 
         // Assert
         setting.CollapsedMenuExpandMode.Should().Be(expectedMode);
+        setting.UpdatedBy.Should().Be("test_admin");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UpdateReportingSubNavVisibility_ShouldSetExpectedVisibility(bool isVisible)
+    {
+        // Arrange
+        var setting = SystemSetting.CreateDefault();
+
+        // Act
+        setting.UpdateReportingSubNavVisibility(isVisible, "test_admin");
+
+        // Assert
+        setting.ShowReportingSubNav.Should().Be(isVisible);
         setting.UpdatedBy.Should().Be("test_admin");
     }
 }

@@ -8,12 +8,14 @@ import type { SystemSettingsDto, UpdateSystemSettingsPayload } from '@/types/sys
 interface BrandingContextType {
   branding: SystemSettingsDto
   collapsedMenuExpandMode: 'click' | 'hover'
+  showReportingSubNav: boolean
   loading: boolean
   error: string | null
   resolvedLogoUrl: string
   refreshBranding: () => Promise<void>
   updateBranding: (payload: UpdateSystemSettingsPayload) => Promise<void>
   setCollapsedMenuExpandMode: (mode: 'click' | 'hover') => Promise<void>
+  setShowReportingSubNav: (visible: boolean) => Promise<void>
   uploadLogo: (file: File) => Promise<void>
   resetBranding: () => Promise<void>
 }
@@ -36,6 +38,7 @@ const DEFAULT_BRANDING: SystemSettingsDto = {
     { id: 'link-mytax', title: 'درگاه ملی خدمات مالیاتی', url: 'https://my.tax.gov.ir', isExternal: true, isVisible: true, order: 3 },
   ],
   collapsedMenuExpandMode: 'click',
+  showReportingSubNav: true,
   updatedAt: new Date().toISOString(),
   updatedBy: null,
 }
@@ -68,6 +71,7 @@ function normalizeBranding(data: SystemSettingsDto): SystemSettingsDto {
     footerBadgeText: data.footerBadgeText ?? DEFAULT_BRANDING.footerBadgeText,
     footerLinks: links ?? DEFAULT_BRANDING.footerLinks,
     collapsedMenuExpandMode: data.collapsedMenuExpandMode === 'hover' ? 'hover' : 'click',
+    showReportingSubNav: data.showReportingSubNav !== false,
   }
 }
 
@@ -126,6 +130,21 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const setShowReportingSubNav = useCallback(async (visible: boolean) => {
+    try {
+      setLoading(true)
+      setError(null)
+      const updated = await systemSettingsApi.updateReportingSubNav(visible)
+      setBranding(normalizeBranding(updated))
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'خطا در ذخیره وضعیت نمایش نوار ناوبری گزارش‌ها'
+      setError(msg)
+      throw new Error(msg)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   const uploadLogo = useCallback(async (file: File) => {
     try {
       setLoading(true)
@@ -163,12 +182,14 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       value={{
         branding,
         collapsedMenuExpandMode: branding.collapsedMenuExpandMode ?? 'click',
+        showReportingSubNav: branding.showReportingSubNav !== false,
         loading,
         error,
         resolvedLogoUrl,
         refreshBranding,
         updateBranding,
         setCollapsedMenuExpandMode,
+        setShowReportingSubNav,
         uploadLogo,
         resetBranding,
       }}
@@ -184,12 +205,14 @@ export function useBranding(): BrandingContextType {
     return {
       branding: DEFAULT_BRANDING,
       collapsedMenuExpandMode: 'click',
+      showReportingSubNav: true,
       loading: false,
       error: null,
       resolvedLogoUrl: '/images/Intamedia_Logo.png',
       refreshBranding: async () => {},
       updateBranding: async () => {},
       setCollapsedMenuExpandMode: async () => {},
+      setShowReportingSubNav: async () => {},
       uploadLogo: async () => {},
       resetBranding: async () => {},
     }

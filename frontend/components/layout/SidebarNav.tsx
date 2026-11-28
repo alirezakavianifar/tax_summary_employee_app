@@ -354,7 +354,7 @@ export default function SidebarNav({
   onOpenDeleteModal,
 }: SidebarNavProps) {
   const { user } = useAuth()
-  const { collapsedMenuExpandMode } = useBranding()
+  const { collapsedMenuExpandMode, showReportingSubNav, setShowReportingSubNav } = useBranding()
   const {
     mutating,
     isEditMode,
@@ -381,6 +381,7 @@ export default function SidebarNav({
   const [searchQuery, setSearchQuery] = useState('')
   const [flyout, setFlyout] = useState<FlyoutPosition | null>(null)
   const [inlineError, setInlineError] = useState<string | null>(null)
+  const [togglingSubNav, setTogglingSubNav] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const flyoutRef = useRef<HTMLDivElement>(null)
   const closeTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -391,6 +392,18 @@ export default function SidebarNav({
       await toggleItemVisibility(menuKey)
     } catch (err: any) {
       setInlineError(err?.response?.data?.error || err?.message || 'خطا در تغییر وضعیت نمایش منو')
+    }
+  }
+
+  const handleToggleReportingSubNav = async () => {
+    setInlineError(null)
+    setTogglingSubNav(true)
+    try {
+      await setShowReportingSubNav(!showReportingSubNav)
+    } catch (err: any) {
+      setInlineError(err?.message || 'خطا در تغییر وضعیت نمایش نوار بالای گزارش‌ها')
+    } finally {
+      setTogglingSubNav(false)
     }
   }
 
@@ -1053,32 +1066,55 @@ export default function SidebarNav({
               )}
 
               {showInlineEditor && section.menuSetting && (
-                <div className="px-1.5 pb-1 pt-0.5 flex items-center justify-between gap-1 border-b border-gray-100/90">
-                  <span className="text-[10px] font-medium text-gray-400">
-                    {section.isCustom ? 'سفارشی' : 'سیستمی'}
-                  </span>
-                  <InlineItemActions
-                    isCustom={Boolean(section.isCustom)}
-                    isVisible={section.isVisible}
-                    canAddChild={section.menuKey !== 'nav_home'}
-                    canMoveUp={canReorderSections && keyIdx > 0}
-                    canMoveDown={canReorderSections && keyIdx >= 0 && keyIdx < rootSectionKeys.length - 1}
-                    disabled={mutating}
-                    onMoveUp={() =>
-                      handleReorderKeys(rootSectionKeys, keyIdx, keyIdx - 1, rootStartOrder)
-                    }
-                    onMoveDown={() =>
-                      handleReorderKeys(rootSectionKeys, keyIdx, keyIdx + 1, rootStartOrder)
-                    }
-                    onAddChild={() => {
-                      setExpandedIds((prev) => ({ ...prev, [section.id]: true }))
-                      onOpenCreateModal?.(section.menuKey)
-                    }}
-                    onEdit={() => onOpenEditModal?.(section.menuSetting!)}
-                    onToggleVisibility={() => handleToggleVisibility(section.menuSetting!.menuKey)}
-                    onDelete={() => onOpenDeleteModal?.(section.menuSetting!)}
-                  />
-                </div>
+                <>
+                  <div className="px-1.5 pb-1 pt-0.5 flex items-center justify-between gap-1 border-b border-gray-100/90">
+                    <span className="text-[10px] font-medium text-gray-400">
+                      {section.isCustom ? 'سفارشی' : 'سیستمی'}
+                    </span>
+                    <InlineItemActions
+                      isCustom={Boolean(section.isCustom)}
+                      isVisible={section.isVisible}
+                      canAddChild={section.menuKey !== 'nav_home'}
+                      canMoveUp={canReorderSections && keyIdx > 0}
+                      canMoveDown={canReorderSections && keyIdx >= 0 && keyIdx < rootSectionKeys.length - 1}
+                      disabled={mutating}
+                      onMoveUp={() =>
+                        handleReorderKeys(rootSectionKeys, keyIdx, keyIdx - 1, rootStartOrder)
+                      }
+                      onMoveDown={() =>
+                        handleReorderKeys(rootSectionKeys, keyIdx, keyIdx + 1, rootStartOrder)
+                      }
+                      onAddChild={() => {
+                        setExpandedIds((prev) => ({ ...prev, [section.id]: true }))
+                        onOpenCreateModal?.(section.menuKey)
+                      }}
+                      onEdit={() => onOpenEditModal?.(section.menuSetting!)}
+                      onToggleVisibility={() => handleToggleVisibility(section.menuSetting!.menuKey)}
+                      onDelete={() => onOpenDeleteModal?.(section.menuSetting!)}
+                    />
+                  </div>
+                  {section.menuKey === 'module_reporting' && (
+                    <div className="px-1.5 pb-1.5 pt-1 flex items-center justify-between gap-2 border-b border-gray-100/90">
+                      <span className="text-[10px] font-bold text-slate-600 truncate">
+                        نوار افقی بالای گزارش‌ها
+                      </span>
+                      <button
+                        type="button"
+                        disabled={mutating || togglingSubNav}
+                        onClick={handleToggleReportingSubNav}
+                        title={showReportingSubNav ? 'مخفی‌سازی نوار بالای گزارش‌ها' : 'نمایش نوار بالای گزارش‌ها'}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border transition-colors disabled:opacity-40 flex-shrink-0 ${
+                          showReportingSubNav
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                            : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-amber-50 hover:text-amber-700'
+                        }`}
+                      >
+                        {showReportingSubNav ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                        <span>{showReportingSubNav ? 'نمایش' : 'مخفی'}</span>
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
 
               {isExpanded && (!section.directHref || showInlineEditor) && (

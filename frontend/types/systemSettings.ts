@@ -21,6 +21,7 @@ export interface SystemSettingsDto {
   footerLinksJson: string
   footerLinks?: FooterLinkDto[]
   collapsedMenuExpandMode?: 'click' | 'hover'
+  showReportingSubNav?: boolean
   updatedAt: string
   updatedBy: string | null
 }
@@ -36,9 +37,14 @@ export interface UpdateSystemSettingsPayload {
   footerBadgeText?: string
   footerLinksJson?: string
   collapsedMenuExpandMode?: 'click' | 'hover'
+  showReportingSubNav?: boolean
 }
 
 export interface UpdateMenuExpandModePayload {
   mode: 'click' | 'hover'
+}
+
+export interface UpdateReportingSubNavPayload {
+  showReportingSubNav: boolean
 }
 

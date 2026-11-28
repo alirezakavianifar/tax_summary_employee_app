@@ -89,6 +89,31 @@ public class SystemSettingsController : ControllerBase
     }
 
     /// <summary>
+    /// Updates whether the sticky module sub-navigation bar inside /reporting/* is displayed.
+    /// Restricted to administrators.
+    /// </summary>
+    [HttpPut("reporting-subnav")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(SystemSettingsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<SystemSettingsDto>> UpdateReportingSubNav(
+        [FromBody] UpdateReportingSubNavRequestDto request,
+        CancellationToken ct = default)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { error = "درخواست نامعتبر است" });
+        }
+
+        var updatedBy = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst("username")?.Value;
+        var result = await _systemSettingsService.UpdateReportingSubNavAsync(request.ShowReportingSubNav, updatedBy, ct);
+        if (result.IsFailure)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+        return Ok(result.Value);
+    }
+
+    /// <summary>
     /// Uploads a new organization logo image and updates system branding.
     /// Restricted to administrators.
     /// </summary>

@@ -45,6 +45,7 @@ import {
   MousePointerClick,
   Sparkles,
   Check,
+  BarChart3,
 } from 'lucide-react'
 
 function sanitizeMenuItemRoles(data: MenuSettingItem[]): MenuSettingItem[] {
@@ -70,13 +71,19 @@ function MenuSettingsAdminContent() {
     updateSettings,
     resetSettings,
   } = useMenuSettings()
-  const { collapsedMenuExpandMode, setCollapsedMenuExpandMode } = useBranding()
+  const {
+    collapsedMenuExpandMode,
+    setCollapsedMenuExpandMode,
+    showReportingSubNav,
+    setShowReportingSubNav,
+  } = useBranding()
   const [items, setItems] = useState<MenuSettingItem[]>([])
   const [originalItems, setOriginalItems] = useState<MenuSettingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [savingMode, setSavingMode] = useState(false)
+  const [savingSubNav, setSavingSubNav] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [collapsedParents, setCollapsedParents] = useState<Record<string, boolean>>({})
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -106,6 +113,27 @@ function MenuSettingsAdminContent() {
       })
     } finally {
       setSavingMode(false)
+    }
+  }
+
+  const handleToggleReportingSubNav = async (visible: boolean) => {
+    if (visible === showReportingSubNav) return
+    try {
+      setSavingSubNav(true)
+      await setShowReportingSubNav(visible)
+      setStatusMessage({
+        type: 'success',
+        text: visible
+          ? 'نوار ناوبری افقی بالای ماژول گزارش‌ها و هوش تجاری فعال و نمایش داده شد.'
+          : 'نوار ناوبری افقی بالای ماژول گزارش‌ها و هوش تجاری مخفی شد (دسترسی از منوی کناری همچنان برقرار است).',
+      })
+    } catch (err: any) {
+      setStatusMessage({
+        type: 'error',
+        text: err?.message || 'خطا در تغییر وضعیت نمایش نوار ناوبری ماژول گزارش‌ها',
+      })
+    } finally {
+      setSavingSubNav(false)
     }
   }
 
@@ -677,6 +705,59 @@ function MenuSettingsAdminContent() {
                   <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   <span>باز شدن با اشاره ماوس (Hover)</span>
                   {collapsedMenuExpandMode === 'hover' && (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 mr-0.5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Reporting Module Top Sub-Nav Visibility Toggle */}
+            <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-100/80 shadow-2xs">
+                    <BarChart3 className="w-4 h-4" />
+                  </span>
+                  <h2 className="text-sm font-black text-gray-900">
+                    نمایش نوار ناوبری افقی بالای ماژول هوش تجاری و گزارش‌ها
+                  </h2>
+                </div>
+                <p className="text-xs text-gray-500 pr-9">
+                  مشخص کنید در صفحات ماژول گزارش‌ها و هوش تجاری، نوار دسترسی سریع افقی در بالای صفحه نمایش داده شود یا برای جلوگیری از تکرار منوی کناری مخفی گردد.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-xl border border-gray-200/80 self-start lg:self-auto flex-shrink-0">
+                <button
+                  type="button"
+                  disabled={savingSubNav}
+                  onClick={() => handleToggleReportingSubNav(true)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                    showReportingSubNav
+                      ? 'bg-white text-gray-900 shadow-xs border border-gray-200/90 ring-1 ring-emerald-500/25'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>نمایش نوار بالا (فعال)</span>
+                  {showReportingSubNav && (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 mr-0.5" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={savingSubNav}
+                  onClick={() => handleToggleReportingSubNav(false)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                    !showReportingSubNav
+                      ? 'bg-white text-gray-900 shadow-xs border border-gray-200/90 ring-1 ring-amber-500/25'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <EyeOff className="w-3.5 h-3.5 text-gray-500" />
+                  <span>مخفی (فقط منوی کناری)</span>
+                  {!showReportingSubNav && (
                     <Check className="w-3.5 h-3.5 text-emerald-600 mr-0.5" />
                   )}
                 </button>

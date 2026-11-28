@@ -16,6 +16,7 @@ import {
   Loader2,
   Building2,
   Eye,
+  EyeOff,
   ImageIcon,
   Sparkles,
   ArrowRight,
@@ -34,7 +35,16 @@ import {
 } from 'lucide-react'
 
 export default function BrandingManagementPage() {
-  const { branding, resolvedLogoUrl, loading, updateBranding, uploadLogo, resetBranding } = useBranding()
+  const {
+    branding,
+    resolvedLogoUrl,
+    showReportingSubNav,
+    setShowReportingSubNav,
+    loading,
+    updateBranding,
+    uploadLogo,
+    resetBranding,
+  } = useBranding()
 
   const [orgName, setOrgName] = useState(branding.organizationName)
   const [sysTitle, setSysTitle] = useState(branding.systemTitle)
@@ -55,6 +65,7 @@ export default function BrandingManagementPage() {
   const [linkModalError, setLinkModalError] = useState<string | null>(null)
 
   const [saving, setSaving] = useState(false)
+  const [savingSubNav, setSavingSubNav] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -176,6 +187,7 @@ export default function BrandingManagementPage() {
         footerBadgeText: footerBadge.trim(),
         footerLinksJson: JSON.stringify(footerLinks),
         collapsedMenuExpandMode: branding.collapsedMenuExpandMode ?? 'click',
+        showReportingSubNav: branding.showReportingSubNav ?? true,
       })
       setStatusMessage({ type: 'success', text: 'تنظیمات برندینگ، هویت و فوتر سازمان با موفقیت ذخیره شد.' })
     } catch (err: any) {
@@ -210,6 +222,28 @@ export default function BrandingManagementPage() {
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleToggleReportingSubNav = async () => {
+    try {
+      setSavingSubNav(true)
+      setStatusMessage(null)
+      const next = !showReportingSubNav
+      await setShowReportingSubNav(next)
+      setStatusMessage({
+        type: 'success',
+        text: next
+          ? 'نوار ناوبری افقی بالای ماژول گزارش‌ها و هوش تجاری فعال شد.'
+          : 'نوار ناوبری افقی بالای ماژول گزارش‌ها و هوش تجاری مخفی شد.',
+      })
+    } catch (err: any) {
+      setStatusMessage({
+        type: 'error',
+        text: err?.message || 'خطا در تغییر وضعیت نمایش نوار ناوبری ماژول گزارش‌ها',
+      })
+    } finally {
+      setSavingSubNav(false)
     }
   }
 
@@ -676,17 +710,47 @@ export default function BrandingManagementPage() {
 
               {/* Reporting Sub-Nav Live Preview */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-xs p-5">
-                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+                <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-gray-100">
                   <div className="flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-amber-600" />
+                    {showReportingSubNav ? (
+                      <Eye className="w-4 h-4 text-amber-600" />
+                    ) : (
+                      <EyeOff className="w-4 h-4 text-gray-400" />
+                    )}
                     <h3 className="text-xs font-bold text-gray-800">پیش‌نمایش سربرگ گزارش‌ها و BI</h3>
                   </div>
-                  <span className="text-[10px] bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-md border border-amber-200">
-                    هوش تجاری
-                  </span>
+                  <button
+                    type="button"
+                    disabled={savingSubNav}
+                    onClick={handleToggleReportingSubNav}
+                    className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors disabled:opacity-50 ${
+                      showReportingSubNav
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                        : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                    }`}
+                    title="کلیک جهت فعال یا مخفی کردن نوار ناوبری افقی در صفحات گزارش‌ها"
+                  >
+                    {showReportingSubNav ? (
+                      <>
+                        <Eye className="w-3 h-3" />
+                        <span>نمایش در گزارش‌ها (فعال)</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="w-3 h-3" />
+                        <span>مخفی شده (کلیک برای نمایش)</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
-                <div className="bg-slate-100 p-3 rounded-xl border border-slate-200">
+                {!showReportingSubNav && (
+                  <div className="mb-3 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-800">
+                    این نوار افقی در حال حاضر در صفحات <span className="font-mono" dir="ltr">/reporting</span> مخفی است و کاربران از منوی کناری استفاده می‌کنند.
+                  </div>
+                )}
+
+                <div className={`bg-slate-100 p-3 rounded-xl border border-slate-200 transition-opacity ${showReportingSubNav ? '' : 'opacity-50'}`}>
                   <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-xs space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
