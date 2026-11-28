@@ -13,21 +13,37 @@ import { menuSettingsApi } from '@/lib/api/menuSettings'
 import type {
   MenuSettingItem,
   UpdateMenuSettingsPayload,
+  CreateMenuSettingPayload,
+  UpdateMenuSettingMetadataPayload,
 } from '@/types/menuSettings'
 
 interface MenuSettingsContextType {
   settings: MenuSettingItem[]
   loading: boolean
+  mutating: boolean
   error: string | null
-  refreshSettings: () => Promise<void>
+  isEditMode: boolean
+  setIsEditMode: React.Dispatch<React.SetStateAction<boolean>>
+  refreshSettings: (options?: { silent?: boolean }) => Promise<void>
   isModuleVisible: (moduleIdOrKey: string) => boolean
   isActionVisible: (actionHrefOrKey: string, parentModuleIdOrKey?: string) => boolean
   getModuleSetting: (moduleIdOrKey: string) => MenuSettingItem | undefined
-  updateSettings: (payload: UpdateMenuSettingsPayload) => Promise<void>
-  resetSettings: () => Promise<void>
+  updateSettings: (payload: UpdateMenuSettingsPayload) => Promise<MenuSettingItem[]>
+  resetSettings: () => Promise<MenuSettingItem[]>
+  createSetting: (payload: CreateMenuSettingPayload) => Promise<MenuSettingItem[]>
+  updateSettingMetadata: (
+    menuKey: string,
+    payload: UpdateMenuSettingMetadataPayload
+  ) => Promise<MenuSettingItem[]>
+  deleteSetting: (menuKey: string) => Promise<MenuSettingItem[]>
+  toggleItemVisibility: (menuKey: string) => Promise<MenuSettingItem[]>
+  reorderSiblings: (
+    orderedMenuKeys: string[],
+    startOrder?: number
+  ) => Promise<MenuSettingItem[]>
 }
 
-const MODULE_KEY_MAP: Record<string, string> = {
+export const MODULE_KEY_MAP: Record<string, string> = {
   'employee-evaluation': 'module_evaluation',
   'collaborative-payroll': 'module_payroll',
   'tax-refund': 'module_tax_refund',
@@ -37,7 +53,7 @@ const MODULE_KEY_MAP: Record<string, string> = {
   'nav_home': 'nav_home',
 }
 
-const ACTION_ROUTE_MAP: Record<string, string> = {
+export const ACTION_ROUTE_MAP: Record<string, string> = {
   '/reports': 'action_evaluation_list',
   '/reports/create': 'action_evaluation_create',
   '/reports/search': 'action_evaluation_search',
@@ -85,13 +101,24 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
   const { user, isAuthenticated } = useAuth()
   const [settings, setSettings] = useState<MenuSettingItem[]>([])
   const [loading, setLoading] = useState<boolean>(true)
+  const [mutating, setMutating] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const [isEditMode, setIsEditMode] = useState<boolean>(false)
 
   const isAdmin = user?.role === 'Admin'
 
-  const fetchSettings = useCallback(async () => {
+  useEffect(() => {
+    if (!isAuthenticated || !isAdmin) {
+      setIsEditMode(false)
+    }
+  }, [isAuthenticated, isAdmin])
+
+  const fetchSettings = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false
     try {
-      setLoading(true)
+      if (!silent) {
+        setLoading(true)
+      }
       setError(null)
       // If admin, fetch all settings so the admin dashboard can show disabled items with toggles
       const data = await menuSettingsApi.getMenuSettings(isAdmin)
@@ -100,7 +127,9 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
       console.warn('Could not fetch dynamic menu settings, using defaults.', err)
       setError('خطا در دریافت تنظیمات منو')
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }, [isAdmin])
 
@@ -226,47 +255,140 @@ export function MenuSettingsProvider({ children }: { children: React.ReactNode }
     [settingsByKey]
   )
 
-  const updateSettings = useCallback(
-    async (payload: UpdateMenuSettingsPayload) => {
-      setLoading(true)
+  const runMutation = useCallback(
+    async (
+      operation: () => Promise<MenuSettingItem[]>,
+      fallbackError: string
+    ): Promise<MenuSettingItem[]> => {
+      setMutating(true)
+      setError(null)
       try {
-        const updated = await menuSettingsApi.updateMenuSettings(payload)
+        const updated = await operation()
         setSettings(updated)
+        return updated
       } catch (err: any) {
-        setError(err?.response?.data?.error || 'خطا در ذخیره‌سازی تنظیمات')
+        setError(err?.response?.data?.error || fallbackError)
         throw err
       } finally {
-        setLoading(false)
+        setMutating(false)
       }
     },
     []
   )
 
-  const resetSettings = useCallback(async () => {
-    setLoading(true)
-    try {
-      const reset = await menuSettingsApi.resetMenuSettings()
-      setSettings(reset)
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'خطا در بازنشانی تنظیمات')
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const updateSettings = useCallback(
+    (payload: UpdateMenuSettingsPayload) =>
+      runMutation(
+        () => menuSettingsApi.updateMenuSettings(payload),
+        'خطا در ذخیره‌سازی تنظیمات'
+      ),
+    [runMutation]
+  )
+
+  const resetSettings = useCallback(
+    () =>
+      runMutation(
+        () => menuSettingsApi.resetMenuSettings(),
+        'خطا در بازنشانی تنظیمات'
+      ),
+    [runMutation]
+  )
+
+  const createSetting = useCallback(
+    (payload: CreateMenuSettingPayload) =>
+      runMutation(
+        () => menuSettingsApi.createMenuSetting(payload),
+        'خطا در ایجاد گزینه منو'
+      ),
+    [runMutation]
+  )
+
+  const updateSettingMetadata = useCallback(
+    (menuKey: string, payload: UpdateMenuSettingMetadataPayload) =>
+      runMutation(
+        () => menuSettingsApi.updateMenuSettingMetadata(menuKey, payload),
+        'خطا در ویرایش گزینه منو'
+      ),
+    [runMutation]
+  )
+
+  const deleteSetting = useCallback(
+    (menuKey: string) =>
+      runMutation(
+        () => menuSettingsApi.deleteMenuSetting(menuKey),
+        'خطا در حذف گزینه منو'
+      ),
+    [runMutation]
+  )
+
+  const toggleItemVisibility = useCallback(
+    async (menuKey: string): Promise<MenuSettingItem[]> => {
+      const target = settingsByKey[menuKey.toLowerCase()]
+      if (!target) {
+        throw new Error('گزینه منوی مورد نظر یافت نشد.')
+      }
+
+      return updateSettings({
+        settings: [
+          {
+            menuKey: target.menuKey,
+            isVisible: !target.isVisible,
+            adminOnly: target.adminOnly,
+            // Omit allowedRoles for non-adminOnly items so custom role lists are preserved verbatim
+            allowedRoles: target.adminOnly ? ['Admin'] : undefined,
+            displayOrder: target.displayOrder,
+          },
+        ],
+      })
+    },
+    [settingsByKey, updateSettings]
+  )
+
+  const reorderSiblings = useCallback(
+    async (
+      orderedMenuKeys: string[],
+      startOrder: number = 1
+    ): Promise<MenuSettingItem[]> => {
+      const itemsToUpdate = orderedMenuKeys
+        .map((key, index) => {
+          const item = settingsByKey[key.toLowerCase()]
+          if (!item) return null
+          return {
+            menuKey: item.menuKey,
+            isVisible: item.isVisible,
+            adminOnly: item.adminOnly,
+            allowedRoles: item.adminOnly ? ['Admin'] : undefined,
+            displayOrder: startOrder + index,
+          }
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null)
+
+      if (itemsToUpdate.length === 0) return settings
+      return updateSettings({ settings: itemsToUpdate })
+    },
+    [settingsByKey, settings, updateSettings]
+  )
 
   return (
     <MenuSettingsContext.Provider
       value={{
         settings,
         loading,
+        mutating,
         error,
+        isEditMode: isAdmin ? isEditMode : false,
+        setIsEditMode,
         refreshSettings: fetchSettings,
         isModuleVisible,
         isActionVisible,
         getModuleSetting,
         updateSettings,
         resetSettings,
+        createSetting,
+        updateSettingMetadata,
+        deleteSetting,
+        toggleItemVisibility,
+        reorderSiblings,
       }}
     >
       {children}

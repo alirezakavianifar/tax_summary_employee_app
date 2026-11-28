@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
   X,
   Plus,
@@ -13,6 +14,7 @@ import {
   Info,
   FileSpreadsheet,
   Link2,
+  Folder,
   Search,
   Check,
   RotateCcw,
@@ -65,7 +67,7 @@ export default function MenuItemFormModal({
 
   const [itemType, setItemType] = useState<'root' | 'child'>('root')
   const [parentKey, setParentKey] = useState<string>('')
-  const [linkTargetType, setLinkTargetType] = useState<'custom' | 'report'>('custom')
+  const [linkTargetType, setLinkTargetType] = useState<'custom' | 'report' | 'folder'>('custom')
   const [reportCode, setReportCode] = useState<string>('')
   const [availableReports, setAvailableReports] = useState<ReportDefinition[]>([])
   const [loadingReports, setLoadingReports] = useState(false)
@@ -124,7 +126,13 @@ export default function MenuItemFormModal({
       setIsVisible(editingItem.isVisible)
       const existingRepCode = editingItem.reportCode || ''
       setReportCode(existingRepCode)
-      setLinkTargetType(existingRepCode ? 'report' : 'custom')
+      if (existingRepCode) {
+        setLinkTargetType('report')
+      } else if (!isChild && editingItem.route === '/' && hasChildren) {
+        setLinkTargetType('folder')
+      } else {
+        setLinkTargetType('custom')
+      }
       setAllowedRoles(
         sanitizeRolesSelection(
           editingItem.allowedRoles?.length
@@ -169,20 +177,42 @@ export default function MenuItemFormModal({
     )
   }, [availableReports, reportSearch])
 
+  const handleItemTypeChange = (nextType: 'root' | 'child') => {
+    setItemType(nextType)
+    setFormError(null)
+    if (nextType === 'root') {
+      if (linkTargetType === 'report' && !reportCode) {
+        setLinkTargetType('custom')
+      }
+    } else {
+      if (linkTargetType === 'folder') {
+        setLinkTargetType('custom')
+        if (route === '/') setRoute('')
+      }
+      if (!parentKey && availableParents[0]?.menuKey) {
+        setParentKey(availableParents[0].menuKey)
+      }
+    }
+  }
+
   const handleSelectReport = (r: ReportDefinition) => {
     setReportCode(r.code)
     setRoute(`/reporting/standard/${r.code}`)
     setTitle(r.title)
     if (r.description) setDescription(r.description)
     setIconName('FileSpreadsheet')
-    if (itemType !== 'child') {
-      setItemType('child')
-    }
-    const reportingModule = availableParents.find((p) => p.menuKey === 'module_reporting')
-    if (reportingModule) {
-      setParentKey('module_reporting')
-    }
   }
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !submitting) {
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, submitting, onClose])
 
   if (!isOpen) return null
 
@@ -203,14 +233,18 @@ export default function MenuItemFormModal({
       return
     }
 
+    const isFolderTarget = !isBuiltIn && itemType === 'root' && linkTargetType === 'folder'
+    const isReportTarget = !isBuiltIn && linkTargetType === 'report'
+    const effectiveRoute = isFolderTarget ? '/' : trimmedRoute
+
     if (!isBuiltIn) {
-      if (itemType === 'child' && linkTargetType === 'report' && !reportCode) {
-        setFormError('لطفاً گزارش مورد نظر را از فهرست گزارش‌ها انتخاب نمایید یا گزینه مسیر دلخواه را فعال کنید.')
+      if (isReportTarget && !reportCode) {
+        setFormError('لطفاً گزارش مورد نظر را از فهرست گزارش‌ها انتخاب نمایید یا نوع پیوند را تغییر دهید.')
         return
       }
 
-      const isInternal = trimmedRoute.startsWith('/') && !trimmedRoute.startsWith('//')
-      const isExternal = /^https?:\/\/.+/i.test(trimmedRoute)
+      const isInternal = effectiveRoute.startsWith('/') && !effectiveRoute.startsWith('//')
+      const isExternal = /^https?:\/\/.+/i.test(effectiveRoute)
       if (!isInternal && !isExternal) {
         setFormError("مسیر باید با '/' شروع شود (مسیر داخلی) یا یک آدرس معتبر http/https باشد.")
         return
@@ -235,11 +269,11 @@ export default function MenuItemFormModal({
         await onSubmitUpdate(editingItem.menuKey, {
           parentKey: isBuiltIn ? editingItem.parentKey : itemType === 'child' ? parentKey : null,
           title: trimmedTitle,
-          route: isBuiltIn ? editingItem.route : trimmedRoute,
+          route: isBuiltIn ? editingItem.route : effectiveRoute,
           iconName,
           colorTheme: itemType === 'root' ? colorTheme : null,
           badgeText: itemType === 'root' ? (badgeText.trim() || null) : null,
-          reportCode: itemType === 'child' && linkTargetType === 'report' ? reportCode : null,
+          reportCode: isReportTarget ? reportCode : null,
           description: description.trim() || null,
           isVisible,
           adminOnly,
@@ -251,11 +285,11 @@ export default function MenuItemFormModal({
           menuKey: trimmedKey || undefined,
           parentKey: itemType === 'child' ? parentKey : null,
           title: trimmedTitle,
-          route: trimmedRoute,
+          route: effectiveRoute,
           iconName,
           colorTheme: itemType === 'root' ? colorTheme : null,
           badgeText: itemType === 'root' ? (badgeText.trim() || null) : null,
-          reportCode: itemType === 'child' && linkTargetType === 'report' ? reportCode : null,
+          reportCode: isReportTarget ? reportCode : null,
           description: description.trim() || null,
           isVisible,
           adminOnly,
@@ -271,9 +305,9 @@ export default function MenuItemFormModal({
     }
   }
 
-  return (
+  const modalMarkup = (
     <div
-      className="fixed inset-0 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4 z-[60]"
       role="dialog"
       aria-modal="true"
       aria-label={
@@ -342,7 +376,7 @@ export default function MenuItemFormModal({
               <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setItemType('root')}
+                  onClick={() => handleItemTypeChange('root')}
                   className={`p-3 rounded-xl border text-right transition-all ${
                     itemType === 'root'
                       ? 'border-indigo-500 bg-indigo-50/70 text-indigo-900 ring-2 ring-indigo-500/15'
@@ -358,7 +392,7 @@ export default function MenuItemFormModal({
                 <button
                   type="button"
                   disabled={hasChildren || availableParents.length === 0}
-                  onClick={() => setItemType('child')}
+                  onClick={() => handleItemTypeChange('child')}
                   className={`p-3 rounded-xl border text-right transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                     itemType === 'child'
                       ? 'border-indigo-500 bg-indigo-50/70 text-indigo-900 ring-2 ring-indigo-500/15'
@@ -395,13 +429,17 @@ export default function MenuItemFormModal({
             </div>
           )}
 
-          {/* Link Target Type Selector (Report Assignment vs Custom Route) */}
-          {itemType === 'child' && !isBuiltIn && (
+          {/* Link Target Type Selector (Report Assignment vs Custom Route vs Root Folder) */}
+          {!isBuiltIn && (
             <div className="space-y-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
               <label className="block text-xs font-bold text-gray-800">
-                نوع پیوند و مقصد زیرمنو
+                {itemType === 'root' ? 'نوع پیوند و عملکرد گزینه اصلی' : 'نوع پیوند و مقصد زیرمنو'}
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div
+                className={`grid grid-cols-1 gap-2 ${
+                  itemType === 'root' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+                }`}
+              >
                 <button
                   type="button"
                   onClick={() => setLinkTargetType('report')}
@@ -427,6 +465,7 @@ export default function MenuItemFormModal({
                   onClick={() => {
                     setLinkTargetType('custom')
                     setReportCode('')
+                    if (route === '/' && !isEditing) setRoute('')
                   }}
                   className={`p-2.5 rounded-xl border text-right transition-all flex items-center gap-2.5 ${
                     linkTargetType === 'custom'
@@ -444,6 +483,35 @@ export default function MenuItemFormModal({
                     </span>
                   </div>
                 </button>
+
+                {itemType === 'root' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLinkTargetType('folder')
+                      setReportCode('')
+                      setRoute('/')
+                      if (!isEditing && (iconName === 'Link2' || iconName === 'LayoutGrid')) {
+                        setIconName('Folder')
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-right transition-all flex items-center gap-2.5 ${
+                      linkTargetType === 'folder'
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-500/15 font-bold'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
+                    }`}
+                  >
+                    <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 flex-shrink-0">
+                      <Folder className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs block">سرگروه / پوشه منو</span>
+                      <span className="text-[10px] text-gray-500 block font-normal">
+                        گروه مستقل جهت افزودن زیرمنوها
+                      </span>
+                    </div>
+                  </button>
+                )}
               </div>
 
               {linkTargetType === 'report' && (
@@ -545,13 +613,24 @@ export default function MenuItemFormModal({
 
             <div>
               <label className="block text-xs font-bold text-gray-800 mb-1.5">
-                مسیر صفحه یا لینک مقصد {isBuiltIn ? '(ثابت سیستمی)' : linkTargetType === 'report' ? '(خودکار بر اساس گزارش)' : '*'}
+                مسیر صفحه یا لینک مقصد{' '}
+                {isBuiltIn
+                  ? '(ثابت سیستمی)'
+                  : linkTargetType === 'report'
+                  ? '(خودکار بر اساس گزارش)'
+                  : itemType === 'root' && linkTargetType === 'folder'
+                  ? '(سرگروه پوشه - پیش‌فرض /)'
+                  : '*'}
               </label>
               <input
                 type="text"
                 dir="ltr"
-                disabled={isBuiltIn || linkTargetType === 'report'}
-                value={route}
+                disabled={
+                  isBuiltIn ||
+                  linkTargetType === 'report' ||
+                  (itemType === 'root' && linkTargetType === 'folder')
+                }
+                value={itemType === 'root' && linkTargetType === 'folder' ? '/' : route}
                 onChange={(e) => setRoute(e.target.value)}
                 placeholder="/about یا https://intamedia.ir"
                 maxLength={250}
@@ -792,4 +871,7 @@ export default function MenuItemFormModal({
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') return modalMarkup
+  return createPortal(modalMarkup, document.body)
 }

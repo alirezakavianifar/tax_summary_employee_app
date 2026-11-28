@@ -16,22 +16,32 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useMenuSettings } from '@/contexts/MenuSettingsContext'
+import {
+  useMenuSettings,
+  ACTION_ROUTE_MAP,
+  MODULE_KEY_MAP,
+} from '@/contexts/MenuSettingsContext'
 import { getAuthorizedPortalModules } from '@/lib/modules/portalRegistry'
 import { resolveMenuIcon } from '@/lib/icons/menuIcons'
+import type { MenuSettingItem } from '@/types/menuSettings'
 
 export interface NavActionItem {
   id: string
+  menuKey?: string
   title: string
   description?: string
   href: string
   icon: LucideIcon
   isExternal?: boolean
   displayOrder?: number
+  isVisible?: boolean
+  isCustom?: boolean
+  menuSetting?: MenuSettingItem
 }
 
 export interface NavSection {
   id: string
+  menuKey: string
   navTitle: string
   title: string
   badgeText: string
@@ -43,11 +53,14 @@ export interface NavSection {
   isExternal?: boolean
   isAdmin?: boolean
   isCustom?: boolean
+  isVisible: boolean
   displayOrder: number
+  menuSetting?: MenuSettingItem
 }
 
 interface AdminActionDef extends NavActionItem {
   checkVisibility: boolean
+  settingKey: string
 }
 
 const REGISTRY_TO_SETTING_KEY: Record<string, string> = {
@@ -70,6 +83,7 @@ const BUILT_IN_ROOT_KEYS = new Set([
 const ADMIN_ACTIONS: AdminActionDef[] = [
   {
     id: 'admin-users',
+    settingKey: 'action_admin_users',
     title: 'فهرست و مدیریت کاربران',
     description: 'تعیین نقش‌ها و ادارات سازمانی',
     href: '/admin/users',
@@ -78,6 +92,7 @@ const ADMIN_ACTIONS: AdminActionDef[] = [
   },
   {
     id: 'admin-users-create',
+    settingKey: 'action_admin_users',
     title: 'تعریف کاربر جدید',
     description: 'افزودن دسترسی کاربری جدید',
     href: '/admin/users/create',
@@ -86,6 +101,7 @@ const ADMIN_ACTIONS: AdminActionDef[] = [
   },
   {
     id: 'admin-roles',
+    settingKey: 'action_admin_roles',
     title: 'مدیریت نقش‌ها و اختیارات',
     description: 'تعریف نقش‌های سازمانی و اختیارات سفارشی',
     href: '/admin/roles',
@@ -94,6 +110,7 @@ const ADMIN_ACTIONS: AdminActionDef[] = [
   },
   {
     id: 'admin-menu-settings',
+    settingKey: 'action_admin_menus',
     title: 'مدیریت منوها و دسترسی‌ها',
     description: 'پیکربندی نمایش و مخفی‌سازی گزینه‌های منو',
     href: '/admin/menu-settings',
@@ -102,6 +119,7 @@ const ADMIN_ACTIONS: AdminActionDef[] = [
   },
   {
     id: 'admin-audit-logs',
+    settingKey: 'action_admin_audit_logs',
     title: 'لاگ‌ها و رویدادهای امنیتی',
     description: 'پایش تاریخچه تغییرات و رویدادهای سامانه',
     href: '/admin/audit-logs',
@@ -110,6 +128,7 @@ const ADMIN_ACTIONS: AdminActionDef[] = [
   },
   {
     id: 'admin-auditor-metrics',
+    settingKey: 'action_admin_auditor_metrics',
     title: 'شاخص‌های عملکرد حسابرسان',
     description: 'پیکربندی فرمول‌ها، اوزان و شبیه‌سازی زنده',
     href: '/admin/auditor-metrics',
@@ -118,6 +137,7 @@ const ADMIN_ACTIONS: AdminActionDef[] = [
   },
   {
     id: 'admin-branding',
+    settingKey: 'action_admin_branding',
     title: 'هویت بصری و برندینگ سازمان',
     description: 'شخصی‌سازی لوگو، نام اداره کل و عناوین سامانه',
     href: '/admin/branding',
@@ -157,17 +177,29 @@ export function isMostSpecificRouteMatch(
   return !hasLongerMatch
 }
 
+export interface UsePortalNavigationOptions {
+  includeHiddenForAdmin?: boolean
+}
+
 /**
  * Builds the authorized, visibility-filtered navigation sections (combining
  * built-in portal modules, admin actions, and admin-created custom menus)
  * along with active route state for the sidebar and mobile drawer.
  */
-export function usePortalNavigation() {
+export function usePortalNavigation(options?: UsePortalNavigationOptions) {
   const { user, isAuthenticated } = useAuth()
   const { settings, isModuleVisible, isActionVisible, loading: menuLoading } = useMenuSettings()
   const pathname = usePathname()
 
-  const showHome = isModuleVisible('nav_home')
+  const isAdmin = user?.role === 'Admin'
+  const includeHidden = Boolean(isAdmin && options?.includeHiddenForAdmin)
+
+  const homeSetting = useMemo(
+    () => settings.find((s) => s.menuKey.toLowerCase() === 'nav_home'),
+    [settings]
+  )
+
+  const showHome = isModuleVisible('nav_home') || (includeHidden && Boolean(homeSetting))
 
   const sections = useMemo<NavSection[]>(() => {
     if (!isAuthenticated) return []
@@ -175,22 +207,58 @@ export function usePortalNavigation() {
     const settingsByKey = new Map(
       settings.map((s) => [s.menuKey.toLowerCase(), s])
     )
+    const settingsByRoute = new Map<string, MenuSettingItem>()
+    for (const item of settings) {
+      if (item.route) {
+        const lower = item.route.toLowerCase()
+        const trimmed = lower.replace(/\/+$/, '') || '/'
+        if (!settingsByRoute.has(lower)) settingsByRoute.set(lower, item)
+        if (!settingsByRoute.has(trimmed)) settingsByRoute.set(trimmed, item)
+      }
+    }
+
+    const resolveActionSetting = (
+      href: string,
+      explicitKey?: string
+    ): MenuSettingItem | undefined => {
+      if (explicitKey) {
+        const direct = settingsByKey.get(explicitKey.toLowerCase())
+        if (direct) return direct
+      }
+      const trimmed = href.trim().replace(/\/+$/, '') || '/'
+      const mappedKey = (
+        ACTION_ROUTE_MAP[trimmed] ||
+        ACTION_ROUTE_MAP[href] ||
+        ''
+      ).toLowerCase()
+      if (mappedKey && settingsByKey.has(mappedKey)) {
+        return settingsByKey.get(mappedKey)
+      }
+      return (
+        settingsByRoute.get(trimmed.toLowerCase()) ||
+        settingsByRoute.get(href.toLowerCase())
+      )
+    }
 
     const customChildrenByParent = new Map<string, NavActionItem[]>()
     for (const item of settings) {
       if (!item.isCustom || !item.parentKey) continue
       const parentKey = item.parentKey.toLowerCase()
-      if (!isActionVisible(item.menuKey, item.parentKey)) continue
+      if (!includeHidden && !isActionVisible(item.menuKey, item.parentKey)) continue
 
       const list = customChildrenByParent.get(parentKey) ?? []
       list.push({
         id: item.menuKey,
+        menuKey: item.menuKey,
         title: item.title,
         description: item.description || undefined,
         href: item.route,
         icon: resolveMenuIcon(item.iconName, Link2),
         isExternal: isExternalHref(item.route),
         displayOrder: item.displayOrder,
+        isVisible: item.isVisible,
+        isCustom: true,
+        menuSetting: item,
       })
       customChildrenByParent.set(parentKey, list)
     }
@@ -199,68 +267,121 @@ export function usePortalNavigation() {
       builtInActions: NavActionItem[],
       settingKey: string
     ): NavActionItem[] => {
-      const customChildren = (customChildrenByParent.get(settingKey) ?? [])
-        .filter((custom) => !builtInActions.some((b) => b.href === custom.href))
-        .sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999))
-      return [...builtInActions, ...customChildren]
+      const customChildren = (customChildrenByParent.get(settingKey) ?? []).filter(
+        (custom) => !builtInActions.some((b) => b.href === custom.href)
+      )
+      return [...builtInActions, ...customChildren].sort(
+        (a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999)
+      )
     }
 
     const modules = getAuthorizedPortalModules(user?.role)
     const builtSections: NavSection[] = []
 
     modules.forEach((mod, index) => {
-      if (!isModuleVisible(mod.id)) return
+      const settingKey = (
+        REGISTRY_TO_SETTING_KEY[mod.id] ||
+        MODULE_KEY_MAP[mod.id] ||
+        mod.id
+      ).toLowerCase()
+      const moduleSetting = settingsByKey.get(settingKey)
+      const moduleVisible = isModuleVisible(mod.id)
 
-      const settingKey = (REGISTRY_TO_SETTING_KEY[mod.id] || mod.id).toLowerCase()
+      if (!moduleVisible && !(includeHidden && moduleSetting)) return
+
       const builtInActions: NavActionItem[] = mod
         .getAuthorizedActions(user?.role)
-        .filter((a) => isActionVisible(a.href, mod.id))
-        .map((a) => ({
-          id: a.id,
-          title: a.title,
-          description: a.description,
-          href: a.href,
-          icon: a.icon,
-          isExternal: isExternalHref(a.href),
-        }))
+        .filter((a) => includeHidden || isActionVisible(a.href, mod.id))
+        .map((a, actionIndex) => {
+          const actionSetting = resolveActionSetting(a.href)
+          return {
+            id: a.id,
+            menuKey: actionSetting?.menuKey,
+            title: actionSetting?.title || a.title,
+            description: actionSetting?.description ?? a.description,
+            href: a.href,
+            icon: actionSetting?.iconName
+              ? resolveMenuIcon(actionSetting.iconName, a.icon)
+              : a.icon,
+            isExternal: isExternalHref(a.href),
+            displayOrder: actionSetting?.displayOrder ?? actionIndex + 1,
+            isVisible: actionSetting?.isVisible ?? true,
+            isCustom: actionSetting?.isCustom ?? false,
+            menuSetting: actionSetting,
+          }
+        })
 
       const mergedActions = mergeWithCustomChildren(builtInActions, settingKey)
-      if (mergedActions.length === 0) return
+      if (mergedActions.length === 0 && !includeHidden) return
 
       builtSections.push({
         id: mod.id,
-        navTitle: mod.navTitle,
-        title: mod.title,
-        badgeText: mod.badgeText,
-        icon: mod.icon,
+        menuKey: settingKey,
+        navTitle: moduleSetting?.title || mod.navTitle,
+        title: moduleSetting?.title || mod.title,
+        badgeText: moduleSetting?.badgeText || mod.badgeText,
+        icon: moduleSetting?.iconName
+          ? resolveMenuIcon(moduleSetting.iconName, mod.icon)
+          : mod.icon,
         accentColor: mod.accentColor,
         iconBgColor: mod.iconBgColor,
         actions: mergedActions,
-        displayOrder: settingsByKey.get(settingKey)?.displayOrder ?? index + 2,
+        isCustom: moduleSetting?.isCustom ?? false,
+        isVisible: moduleSetting?.isVisible ?? true,
+        displayOrder: moduleSetting?.displayOrder ?? index + 2,
+        menuSetting: moduleSetting,
       })
     })
 
-    if (user?.role === 'Admin' && isModuleVisible('module_admin')) {
+    const adminSetting = settingsByKey.get('module_admin')
+    if (
+      user?.role === 'Admin' &&
+      (isModuleVisible('module_admin') || (includeHidden && Boolean(adminSetting)))
+    ) {
       const builtInAdmin: NavActionItem[] = ADMIN_ACTIONS
-        .filter((item) => !item.checkVisibility || isActionVisible(item.href, 'admin'))
-        .map(({ checkVisibility: _cv, ...action }) => ({
-          ...action,
-          isExternal: isExternalHref(action.href),
-        }))
+        .filter(
+          (item) =>
+            includeHidden ||
+            !item.checkVisibility ||
+            isActionVisible(item.href, 'admin')
+        )
+        .map(({ checkVisibility: _cv, settingKey: actionSettingKey, ...action }, actionIndex) => {
+          const actionSetting = resolveActionSetting(action.href, actionSettingKey)
+          return {
+            ...action,
+            menuKey: actionSetting?.menuKey,
+            title: actionSetting?.title || action.title,
+            description: actionSetting?.description ?? action.description,
+            icon: actionSetting?.iconName
+              ? resolveMenuIcon(actionSetting.iconName, action.icon)
+              : action.icon,
+            isExternal: isExternalHref(action.href),
+            displayOrder: actionSetting?.displayOrder ?? actionIndex + 1,
+            isVisible: actionSetting?.isVisible ?? true,
+            isCustom: actionSetting?.isCustom ?? false,
+            menuSetting: actionSetting,
+          }
+        })
 
       const mergedAdmin = mergeWithCustomChildren(builtInAdmin, 'module_admin')
-      if (mergedAdmin.length > 0) {
+      if (mergedAdmin.length > 0 || includeHidden) {
         builtSections.push({
           id: 'admin',
-          navTitle: 'مدیریت سیستم',
-          title: 'پنل راهبری و مدیریت سیستم',
-          badgeText: 'راهبری سامانه',
-          icon: ShieldCheck,
+          menuKey: 'module_admin',
+          navTitle: adminSetting?.title || 'مدیریت سیستم',
+          title: adminSetting?.title || 'پنل راهبری و مدیریت سیستم',
+          badgeText: adminSetting?.badgeText || 'راهبری سامانه',
+          icon: adminSetting?.iconName
+            ? resolveMenuIcon(adminSetting.iconName, ShieldCheck)
+            : ShieldCheck,
           accentColor: 'text-purple-600',
           iconBgColor: 'bg-purple-50 text-purple-600',
           actions: mergedAdmin,
           isAdmin: true,
-          displayOrder: settingsByKey.get('module_admin')?.displayOrder ?? 100,
+          isCustom: adminSetting?.isCustom ?? false,
+          isVisible: adminSetting?.isVisible ?? true,
+          displayOrder: adminSetting?.displayOrder ?? 100,
+          menuSetting: adminSetting,
         })
       }
     }
@@ -269,17 +390,19 @@ export function usePortalNavigation() {
     for (const item of settings) {
       const key = item.menuKey.toLowerCase()
       if (!item.isCustom || item.parentKey || BUILT_IN_ROOT_KEYS.has(key)) continue
-      if (!isModuleVisible(item.menuKey)) continue
+      if (!includeHidden && !isModuleVisible(item.menuKey)) continue
 
-      const childActions = (customChildrenByParent.get(key) ?? [])
-        .sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999))
+      const childActions = (customChildrenByParent.get(key) ?? []).sort(
+        (a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999)
+      )
 
       const hasChildren = childActions.length > 0
       builtSections.push({
         id: item.menuKey,
+        menuKey: item.menuKey,
         navTitle: item.title,
         title: item.title,
-        badgeText: 'منوی سفارشی',
+        badgeText: item.badgeText || 'منوی سفارشی',
         icon: resolveMenuIcon(item.iconName, hasChildren ? Folder : Link2),
         accentColor: 'text-indigo-600',
         iconBgColor: 'bg-indigo-50 text-indigo-600',
@@ -287,12 +410,21 @@ export function usePortalNavigation() {
         directHref: hasChildren ? undefined : item.route,
         isExternal: hasChildren ? false : isExternalHref(item.route),
         isCustom: true,
+        isVisible: item.isVisible,
         displayOrder: item.displayOrder,
+        menuSetting: item,
       })
     }
 
     return builtSections.sort((a, b) => a.displayOrder - b.displayOrder)
-  }, [isAuthenticated, user?.role, settings, isModuleVisible, isActionVisible])
+  }, [
+    isAuthenticated,
+    user?.role,
+    settings,
+    includeHidden,
+    isModuleVisible,
+    isActionVisible,
+  ])
 
   const allHrefs = useMemo(
     () =>
@@ -328,6 +460,7 @@ export function usePortalNavigation() {
   return {
     pathname,
     showHome,
+    homeSetting,
     sections,
     menuLoading,
     isActionActive,

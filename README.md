@@ -61,6 +61,7 @@ A modern, full-stack enterprise web application for managing employee performanc
 6. **Administration & Dynamic Menu Management (`/admin`)**:
    - Granular Role-Based Access Control (Admin, Manager, Employee, OfficeHead, Expert, Auditor).
    - Database-backed dynamic menu visibility management and collapsible RTL sidebar navigation.
+   - **Direct In-Place Sidebar Menu Editing (`SidebarNav`)**: Administrators can toggle an inline **"ویرایش منو"** mode directly inside the sidebar (or trigger submenu creation from collapsed icon-rail flyouts) to add root modules/submenus, edit metadata, toggle visibility, reorder siblings, and delete custom items without leaving the active page.
    - **Collapsed Sidebar Menu Interaction Control (`/admin/menu-settings`)**: Administrators can configure whether submenus in the collapsed mini-sidebar (icon rail) expand upon **Click** or automatically upon mouse **Hover** (with debounced pointer traversal and full touch/keyboard accessibility).
    - **Excel Report Creation, Editing & Deletion RBAC Controls**: Administrators can configure role-based access for custom reports in `/admin/menu-settings`:
      - Creation (`action_reporting_create_custom_dataset`): Restricts new dataset generation from Excel to designated organizational roles.

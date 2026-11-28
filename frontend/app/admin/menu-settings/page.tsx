@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import MenuItemFormModal from '@/components/admin/MenuItemFormModal'
+import DeleteMenuItemModal from '@/components/admin/DeleteMenuItemModal'
 import { useMenuSettings } from '@/contexts/MenuSettingsContext'
 import { useBranding } from '@/contexts/BrandingContext'
 import { menuSettingsApi } from '@/lib/api/menuSettings'
@@ -62,7 +63,13 @@ function sanitizeMenuItemRoles(data: MenuSettingItem[]): MenuSettingItem[] {
 function MenuSettingsAdminContent() {
   const searchParams = useSearchParams()
   const highlightKey = searchParams?.get('highlight') || null
-  const { refreshSettings } = useMenuSettings()
+  const {
+    createSetting,
+    updateSettingMetadata,
+    deleteSetting,
+    updateSettings,
+    resetSettings,
+  } = useMenuSettings()
   const { collapsedMenuExpandMode, setCollapsedMenuExpandMode } = useBranding()
   const [items, setItems] = useState<MenuSettingItem[]>([])
   const [originalItems, setOriginalItems] = useState<MenuSettingItem[]>([])
@@ -305,10 +312,8 @@ function MenuSettingsAdminContent() {
         }
       })
 
-      const updated = await menuSettingsApi.updateMenuSettings({ settings: updatePayload })
-      setItems(updated)
-      setOriginalItems(JSON.parse(JSON.stringify(updated)))
-      await refreshSettings()
+      const updated = await updateSettings({ settings: updatePayload })
+      syncWithServerList(updated)
 
       setStatusMessage({
         type: 'success',
@@ -335,9 +340,8 @@ function MenuSettingsAdminContent() {
       setStatusMessage(null)
       setShowResetConfirm(false)
 
-      const defaults = await menuSettingsApi.resetMenuSettings()
+      const defaults = await resetSettings()
       syncWithServerList(defaults)
-      await refreshSettings()
 
       setStatusMessage({
         type: 'success',
@@ -377,9 +381,8 @@ function MenuSettingsAdminContent() {
   const handleCreateCustomItem = async (payload: CreateMenuSettingPayload) => {
     setMutatingCustom(true)
     try {
-      const updated = await menuSettingsApi.createMenuSetting(payload)
+      const updated = await createSetting(payload)
       syncWithServerList(updated)
-      await refreshSettings()
       setStatusMessage({
         type: 'success',
         text: `گزینه منوی «${payload.title}» با موفقیت ایجاد و در نوار ناوبری فعال شد.`,
@@ -395,9 +398,8 @@ function MenuSettingsAdminContent() {
   ) => {
     setMutatingCustom(true)
     try {
-      const updated = await menuSettingsApi.updateMenuSettingMetadata(menuKey, payload)
+      const updated = await updateSettingMetadata(menuKey, payload)
       syncWithServerList(updated)
-      await refreshSettings()
       setStatusMessage({
         type: 'success',
         text: `مشخصات گزینه «${payload.title}» با موفقیت به‌روزرسانی شد.`,
@@ -412,10 +414,9 @@ function MenuSettingsAdminContent() {
     try {
       setMutatingCustom(true)
       const targetTitle = deleteTarget.title
-      const updated = await menuSettingsApi.deleteMenuSetting(deleteTarget.menuKey)
+      const updated = await deleteSetting(deleteTarget.menuKey)
       setDeleteTarget(null)
       syncWithServerList(updated)
-      await refreshSettings()
       setStatusMessage({
         type: 'success',
         text: `گزینه سفارشی «${targetTitle}» با موفقیت حذف شد.`,
@@ -1285,47 +1286,13 @@ function MenuSettingsAdminContent() {
           />
 
           {/* Delete Custom Menu Item Confirmation Modal */}
-          {deleteTarget !== null && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-2xl p-6 max-w-md w-full border border-gray-200 shadow-2xl space-y-4">
-                <div className="flex items-center gap-3 text-rose-600">
-                  <div className="p-2.5 bg-rose-50 rounded-xl">
-                    <Trash2 className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-base font-bold text-gray-900">حذف گزینه منوی سفارشی</h3>
-                </div>
-
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  آیا از حذف گزینه منوی <span className="font-bold text-gray-900">«{deleteTarget.title}»</span> اطمینان دارید؟ این عملیات قابل بازگشت نیست.
-                </p>
-
-                {(childrenByParent[deleteTarget.menuKey]?.length || 0) > 0 && (
-                  <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-3 text-xs leading-relaxed">
-                    هشدار: این بخش دارای {childrenByParent[deleteTarget.menuKey].length} زیرمنو است. با حذف این گزینه، تمامی زیرمنوهای سفارشی آن نیز به صورت خودکار حذف خواهند شد.
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(null)}
-                    disabled={mutatingCustom}
-                    className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50"
-                  >
-                    انصراف
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCustomItem()}
-                    disabled={mutatingCustom}
-                    className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    {mutatingCustom ? 'در حال حذف...' : 'بله، حذف شود'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <DeleteMenuItemModal
+            target={deleteTarget}
+            childCount={deleteTarget ? (childrenByParent[deleteTarget.menuKey]?.length || 0) : 0}
+            submitting={mutatingCustom}
+            onCancel={() => setDeleteTarget(null)}
+            onConfirm={handleDeleteCustomItem}
+          />
         </div>
       </div>
     </ProtectedRoute>
